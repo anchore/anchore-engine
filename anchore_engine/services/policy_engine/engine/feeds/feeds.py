@@ -1,6 +1,6 @@
 import datetime
 import time
-from typing import Tuple
+from typing import Optional, Tuple
 
 from sqlalchemy.orm.session import Session
 
@@ -35,6 +35,10 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
     FileData,
     LocalFeedDataRepo,
 )
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncError,
+    GrypeDBSyncManager,
+)
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
     GemPackageDataMapper,
     GenericFeedDataMapper,
@@ -48,10 +52,6 @@ from anchore_engine.services.policy_engine.engine.feeds.mappers import (
 from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBFile,
     GrypeDBStorage,
-)
-from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
-    GrypeDBSyncError,
-    GrypeDBSyncManager,
 )
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     ThreadLocalFeedGroupNameCache,
@@ -89,7 +89,6 @@ class DataFeed(object):
         """
         Instantiates any necessary clients and makes the feed ready to use
         :param metadata: an existing metadata record if available for bootstrapping
-        :param src: an object to use as the feed source. if not provided then the class's __source_cls__ definition is used
         """
         self.metadata = metadata
 
@@ -585,6 +584,21 @@ class GrypeDBFeed(AnchoreServiceFeed):
     _cve_key = None
     __group_data_mappers__ = {}
 
+    def __init__(self, metadata: Optional[FeedMetadata] = None):
+        # The catalog_client is stored with the instance here to to avoid breaking Liskov Substitution Principle.
+        # Signatures for overridden methods from superclass should not change in subclass.
+        self.__catalog_client: Optional[CatalogClient] = None
+        super(GrypeDBFeed, self).__init__(metadata=metadata)
+
+    @property
+    def _catalog_client(self) -> CatalogClient:
+        if not isinstance(self.__catalog_client, CatalogClient):
+            logger.debug(
+                "Catalog Client not initialized in GrypeDBFeed. Initializing..."
+            )
+            self.__catalog_client = internal_client_for(CatalogClient, userId=None)
+        return self.__catalog_client
+
     def record_count(self, group_name: str, db: Session):
         try:
             return self._find_match(db).count()
@@ -604,9 +618,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             results = results.filter(GrypeDBMetadata.active == active)
         return results
 
-    def _flush_group(
-        self, group_obj, operation_id=None, catalog_client: CatalogClient = None
-    ):
+    def _flush_group(self, group_obj, operation_id=None):
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
 
@@ -614,6 +626,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :return:
         """
         db = get_session()
+        catalog_client = self._catalog_client
 
         logger.info(
             log_msg_ctx(
@@ -653,11 +666,11 @@ class GrypeDBFeed(AnchoreServiceFeed):
     def _switch_active_grypedb(
         self,
         db: Session,
-        catalog_client: CatalogClient,
         group_download_result: GroupDownloadResult,
         record: FileData,
         checksum: str,
     ) -> None:
+        catalog_client = self._catalog_client
         # delete all records not active
         inactive_records = self._find_match(db, active=False)
         for inactive_record in inactive_records.all():
@@ -693,7 +706,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
         full_flush=False,
         local_repo=None,
         operation_id=None,
-        event_client: CatalogClient = None,
     ):
         """
         Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
@@ -704,7 +716,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
         total_updated_count = 0
         result = build_group_sync_result()
         result["group"] = group_download_result.group
-        catalog_client = internal_client_for(event_client, userId=None)
 
         db = get_session()
         group_db_obj = None
@@ -741,7 +752,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 self._flush_group(
                     group_db_obj,
                     operation_id=operation_id,
-                    catalog_client=catalog_client,
                 )
 
             # Iterate thru the records and commit
@@ -766,7 +776,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 if self._find_match(db, checksum).count() == 0:
                     self._switch_active_grypedb(
                         db,
-                        catalog_client,
                         group_download_result,
                         record,
                         checksum,
@@ -891,6 +900,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :param: operation_id
         :return: changed data updated in the sync as a list of records
         """
+        self.__catalog_client = event_client
         result = build_feed_sync_results()
         result["feed"] = self.__feed_name__
         failed_count = 0
@@ -922,7 +932,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
                     full_flush=full_flush,
                     local_repo=fetched_data,
                     operation_id=operation_id,
-                    event_client=CatalogClient,
                 )  # Each group sync is a transaction
                 result["groups"].append(new_data)
             except Exception as e:
