@@ -44,8 +44,6 @@ from anchore_engine.subsys.events import (
     FeedSyncTaskStarted,
 )
 
-# from anchore_engine.clients import grype_wrapper
-
 
 def construct_task_from_json(json_obj):
     """

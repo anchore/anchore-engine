@@ -90,6 +90,9 @@ class TestGrypeDBSyncTask:
             mock_local_checksum=local_checksum,
         )
 
+        # mock execution of update
+        GrypeDBSyncManager.update_grypedb = Mock(return_value=True)
+
         # pass a file path to bypass connection to catalog to retrieve tar from object storage
         sync_ran = GrypeDBSyncManager.run_grypedb_sync(
             grypedb_file_path="test/bypass/catalog.txt"

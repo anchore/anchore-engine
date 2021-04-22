@@ -9,6 +9,7 @@ from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBStorage,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.clients import grype_wrapper
 
 
 class GrypeDBSyncError(Exception):
@@ -67,9 +68,7 @@ class GrypeDBSyncManager:
         rtype: str
         """
         # get local grypedb checksum
-        # TODO Will use the grype facade once implemented
-        # return grype_wrapper.get_current_grype_db_checksum()
-        return ""
+        return grype_wrapper.get_current_grype_db_checksum()
 
     @classmethod
     def update_grypedb(
@@ -83,9 +82,9 @@ class GrypeDBSyncManager:
         """
         try:
             if grypedb_file_path:
-                # TODO Pass the path directly to the facade
-                logger.info("Pass to facade with file path")
-                # grype_wrapper.update_grype_db(self.grypedb_file_path, self.active_grypedb.checksum)
+                grype_wrapper.update_grype_db(
+                    grypedb_file_path, active_grypedb.checksum
+                )
             else:
                 catalog_client = internal_client_for(CatalogClient, userId=None)
                 grypedb_document = catalog_client.get_raw_document(
@@ -97,9 +96,9 @@ class GrypeDBSyncManager:
                 with GrypeDBStorage() as grypedb_file:
                     with grypedb_file.create_file(active_grypedb.checksum) as f:
                         f.write(grypedb_document)
-                    # TODO pass file path to grype facade
-                    logger.info("Pass to facade with created file path")
-                    # grype_wrapper.update_grype_db(grypedb_file.path, self.active_grypedb.checksum)
+                    grype_wrapper.update_grype_db(
+                        grypedb_file.path, active_grypedb.checksum
+                    )
         except Exception as e:
             logger.exception("GrypeDBSyncTask failed to sync")
             raise GrypeDBSyncError(str(e)) from e
