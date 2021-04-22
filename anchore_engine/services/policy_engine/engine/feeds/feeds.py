@@ -25,7 +25,6 @@ from anchore_engine.db import (
     Vulnerability,
     VulnerableArtifact,
 )
-from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_feed_json,
@@ -1707,7 +1706,7 @@ def have_vulnerabilities_for(distro_namespace_obj):
 
     # All options are the same, no need to loop
     # Check all options for distro/flavor mappings
-    db = get_thread_scoped_session()
+    db = get_session()
     for namespace_name in distro_namespace_obj.like_namespace_names:
         for vuln_feed in feed_registry.registered_vulnerability_feed_names():
             feed = get_feed_json(db_session=db, feed_name=vuln_feed)

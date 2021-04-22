@@ -3,8 +3,7 @@ from typing import Iterable, Optional
 
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.db import GrypeDBMetadata
-from anchore_engine.db import get_thread_scoped_session, end_session
+from anchore_engine.db import GrypeDBMetadata, get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBFile,
     GrypeDBStorage,
@@ -56,15 +55,8 @@ class GrypeDBSyncManager:
         return: Array of GrypeDBMetadatas
         rtype: list
         """
-        try:
-            db = get_thread_scoped_session()
-            results = (
-                db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
-            )
-        finally:
-            end_session()
-
-        return results
+        db = get_thread_scoped_session()
+        return db.query(GrypeDBMetadata).filter(GrypeDBMetadata.active == True).all()
 
     @classmethod
     def get_local_grypedb_checksum(cls) -> str:

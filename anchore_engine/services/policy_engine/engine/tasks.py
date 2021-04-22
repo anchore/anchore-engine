@@ -624,4 +624,7 @@ class GrypeDBSyncTask(IAsyncTask):
         return: Returns True if the grypedb was updated or False if the local instance is up to date
         rtype: bool
         """
-        return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
+        try:
+            return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
+        finally:
+            end_session()
