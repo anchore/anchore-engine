@@ -8,7 +8,7 @@ import tarfile
 
 from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
-from anchore_engine.utils import run_check, CommandException
+from anchore_engine.utils import CommandException, run_piped_command, run_check
 from readerwriterlock import rwlock
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -20,19 +20,11 @@ grype_db_session = None
 grype_db_lock = rwlock.RWLockWrite()
 Base = declarative_base()
 
+GRYPE_SUB_CMD = "grype -vv -o json"
 VULNERABILITY_FILE_NAME = "vulnerability.db"
+METADATA_FILE_NAME = "metadata.json"
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
-
-
-# TODO Implement, once added to Grype
-def get_current_grype_db_checksum():
-    """
-    Return the checksum for the in-use version of grype db
-    """
-    grype_db_checksum = None
-    logger.info("Returning current grype_db checksum: {}".format(grype_db_checksum))
-    return grype_db_checksum
 
 
 def _get_default_grype_db_dir_from_config():
@@ -163,12 +155,6 @@ def _init_grype_db(lastest_grype_db_archive: str, version_name: str):
     Write the db string to file, create the engine, and create the session
     Return the file and session
     """
-    # TODO Further refine this, we should be extracting everything to a subdir, and letting the
-    # replacement logic operate at that level (ie always write and remove the contents of an
-    # archive file to a subdir under '<service-dir>/grype_db/', rather than operating on
-    # the specific vulnerability.db file.
-    # It sounds like we will also be getting the metata.json file, and the further contents
-    # of those archives could change if they needed to.
     latest_grype_db_dir = _move_and_open_grype_db_archive(
         lastest_grype_db_archive, version_name
     )
@@ -231,32 +217,92 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
             write_lock.release()
 
 
-def get_vulnerabilities(grype_sbom: str) -> json:
+def get_current_grype_db_metadata() -> json:
     """
-    Use grype to scan the provided sbom for vulnerabilites.
+    Return the json contents of the metadata file for the in-use version of grype db
     """
     global grype_db_dir
 
+    # Get the path to the latest grype_db metadata file
+    latest_grype_db_metadata_file = os.path.join(grype_db_dir, METADATA_FILE_NAME)
+
+    # Ensure the file exists
+    if not os.path.exists(latest_grype_db_metadata_file):
+        # If not, return None
+        return None
+    else:
+        # Get the contents of the file
+        with open(latest_grype_db_metadata_file) as read_file:
+            json_output = json.load(read_file)
+            return json_output
+
+
+def _get_proc_env():
+    global grype_db_dir
+
+    # Set grype env variables, including the grype db location
+    grype_env = {
+        "GRYPE_CHECK_FOR_APP_UPDATE": "0",
+        "GRYPE_LOG_STRUCTURED": "1",
+        "GRYPE_DB_AUTO_UPDATE": "0",
+        "GRYPE_DB_CACHE_DIR": "{}".format(grype_db_dir),
+    }
+    proc_env = os.environ.copy()
+    proc_env.update(grype_env)
+    return proc_env
+
+
+def get_vulnerabilities_for_sbom(grype_sbom: str) -> json:
+    """
+    Use grype to scan the provided sbom for vulnerabilites.
+    """
     # Get the read lock
     read_lock = grype_db_lock.gen_rlock()
     if read_lock.acquire(blocking=False, timeout=60):
         try:
-            # Set grype env variables, including the grype db location
-            grype_env = {
-                "GRYPE_CHECK_FOR_APP_UPDATE": "0",
-                "GRYPE_LOG_STRUCTURED": "1",
-                "GRYPE_DB_AUTO_UPDATE": "0",
-                "GRYPE_DB_CACHE_DIR": "{}".format(grype_db_dir),
-            }
+            # Get env variables to run the grype scan with
+            proc_env = _get_proc_env()
 
-            proc_env = os.environ.copy()
-            proc_env.update(grype_env)
+            # Format and run the command. Grype supports piping in an sbom string, so we need to this in two steps.
+            # 1) Echo the sbom string to std_out
+            # 2) Pipe that into grype
+            pipe_sub_cmd = 'echo \'{sbom}\''.format(
+                sbom=grype_sbom,
+            )
+            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(GRYPE_SUB_CMD)]
+
+            logger.debug("Running grype with command: {} | {}".format(pipe_sub_cmd, GRYPE_SUB_CMD))
+
+            stdout = None
+            err = None
+            try:
+                _, stdout, _ = run_piped_command(full_cmd, env=proc_env)
+            except CommandException as exc:
+                logger.error(
+                    "Exception running command: {} | {}, stderr: {}".format(pipe_sub_cmd, GRYPE_SUB_CMD, exc.stderr)
+                )
+                raise exc
+        finally:
+            read_lock.release()
+
+        # Return the output as json
+        return json.loads(stdout.decode("utf-8"))
+
+
+def get_vulnerabilities_for_sbom_file(grype_sbom_file: str) -> json:
+    """
+    Use grype to scan the provided sbom for vulnerabilites.
+    """
+    # Get the read lock
+    read_lock = grype_db_lock.gen_rlock()
+    if read_lock.acquire(blocking=False, timeout=60):
+        try:
+            # Get env variables to run the grype scan with
+            proc_env = _get_proc_env()
 
             # Format and run the command
-            # TODO This is currently expecting an sbom file reference, not the actual sbom string itself
-            # Should we support both, or just the string?
             cmd = "grype -vv -o json sbom:{sbom}".format(
-                sbom=grype_sbom,
+                sbom=grype_sbom_file,
             )
 
             logger.debug("Running grype with command: {}".format(cmd))

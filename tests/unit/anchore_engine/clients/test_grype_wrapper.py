@@ -22,10 +22,13 @@ def get_test_file_path(basename: str) -> str:
 
 
 def get_test_sbom(sbom_file_name):
-    # TODO Pass the body as a string, not the file
     full_sbom_path = get_test_file_path(sbom_file_name)
-    # with open(full_sbom_path, "r") as read_file:
-    #     return read_file.read().replace('\n', '')
+    with open(full_sbom_path, "r") as read_file:
+        return read_file.read().replace('\n', '')
+
+
+def get_test_sbom_file(sbom_file_name):
+    full_sbom_path = get_test_file_path(sbom_file_name)
     return full_sbom_path
 
 
@@ -65,15 +68,6 @@ def old_grype_db_dir(tmp_path):
     input_dir = os.path.join(parent_dir, OLD_VERSION_NAME)
     shutil.copytree(get_test_file_path(OLD_VERSION_NAME), input_dir)
     return input_dir
-
-
-# TODO implement along with function under test
-# def test_get_current_grype_db_checksum():
-#     # Function under test
-#     result = grype_wrapper.get_current_grype_db_checksum()
-#
-#     # Validate result
-#     assert result == None
 
 
 def test_get_default_cache_dir_from_config(grype_db_parent_dir, tmp_path):
@@ -204,19 +198,66 @@ def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive
     assert not os.path.exists(old_grype_db_dir)
 
 
-# TODO This needs to move to a functional test to pass on the ci, as the container with grype
-# is not built before that. Disabling for now. Works locally if you have grype installed.
+def test_get_current_grype_db_metadata(grype_db_dir):
+    # Setup test input
+    grype_wrapper.grype_db_dir = grype_db_dir
+
+    # Function under test
+    result = grype_wrapper.get_current_grype_db_metadata()
+
+    # Validate result
+    assert result["checksum"] == "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
+
+
+def test_get_proc_env(grype_db_dir):
+    # Setup test input
+    grype_wrapper.grype_db_dir = grype_db_dir
+
+    # Function under test
+    result = grype_wrapper._get_proc_env()
+
+    # Validate result
+    assert result["GRYPE_CHECK_FOR_APP_UPDATE"] == "0"
+    assert result["GRYPE_LOG_STRUCTURED"] == "1"
+    assert result["GRYPE_DB_AUTO_UPDATE"] == "0"
+    assert result["GRYPE_DB_CACHE_DIR"] == grype_db_dir
+
+
+# TODO Replace this with a functional test against the API that calls the function under test.
+# This test will not pass on the CI because that machine does not have grype installed.
+# I am leaving it for now, but commented out. It is useful for local dev and will
+# pass if you have grype installed.
 # @pytest.mark.parametrize(
 #     "sbom_file_name, expected_output",
 #     [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
 # )
-# def test_get_vulnerabilities(grype_db_dir, sbom_file_name, expected_output):
+# def test_get_vulnerabilities_for_sbom(grype_db_dir, sbom_file_name, expected_output):
 #     # Setup test inputs
 #     grype_wrapper.grype_db_dir = grype_db_dir
 #     test_sbom = get_test_sbom(sbom_file_name)
 #
 #     # Function under test
-#     result = grype_wrapper.get_vulnerabilities(test_sbom)
+#     result = grype_wrapper.get_vulnerabilities_for_sbom(test_sbom)
+#
+#     # TODO Assert expected results
+#     assert result["distro"]["name"] == expected_output
+
+
+# TODO Replace this with a functional test against the API that calls the function under test.
+# This test will not pass on the CI because that machine does not have grype installed.
+# I am leaving it for now, but commented out. It is useful for local dev and will
+# pass if you have grype installed.
+# @pytest.mark.parametrize(
+#     "sbom_file_name, expected_output",
+#     [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
+# )
+# def test_get_vulnerabilities_for_sbom_file(grype_db_dir, sbom_file_name, expected_output):
+#     # Setup test inputs
+#     grype_wrapper.grype_db_dir = grype_db_dir
+#     test_sbom_file = get_test_sbom_file(sbom_file_name)
+#
+#     # Function under test
+#     result = grype_wrapper.get_vulnerabilities_for_sbom_file(test_sbom_file)
 #
 #     # TODO Assert expected results
 #     assert result["distro"]["name"] == expected_output
