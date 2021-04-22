@@ -618,4 +618,10 @@ class GrypeDBSyncTask(IAsyncTask):
         self.grypedb_file_path: Optional[str] = grypedb_file_path
 
     def execute(self) -> bool:
+        """
+        Runs the GrypeDBSyncTask by calling the GrypeDBSyncManager.
+
+        return: Returns True if the grypedb was updated or False if the local instance is up to date
+        rtype: bool
+        """
         return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
