@@ -42,14 +42,14 @@ def read_expected_content(module_path, filename):
 
 
 @pytest.fixture
-def expected_content(request) -> Callable[[str], Dict]:
+def expected_content(request) -> Callable:
     """
     Returns method that will load expected vulnerability response json for a given image_digest
     :rtype: Callable[[str], Dict]
     :return: method that loads expected response json
     """
 
-    def get_expected_content(filename) -> Dict:
+    def get_expected_content(filename):
         module_path = request.module.__file__
         return read_expected_content(module_path, filename)
 
