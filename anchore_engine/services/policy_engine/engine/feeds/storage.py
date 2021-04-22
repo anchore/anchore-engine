@@ -19,7 +19,7 @@ class GrypeDBFile:
     def verify_integrity(cls, file_data: bytes, expected_checksum: str):
         actual_checksum = hashlib.sha256(file_data).hexdigest()
         if actual_checksum != expected_checksum:
-            raise ChecksumMismatchError
+            raise ChecksumMismatchError(expected_checksum, actual_checksum)
 
     def __init__(self, parent_directory_path: str):
         self.root_directory = parent_directory_path
