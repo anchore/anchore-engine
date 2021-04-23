@@ -178,14 +178,14 @@ class TestLocalFeedDataRepo:
             r.teardown()
 
     def test_local_feed_data_repo_read_files(self, get_file):
+        """
+        Test writing chunks of binary data to LocalFeedDataRepo and reading using LocalFeedDataRepo.read_files()
+        """
         tmpdir = tempfile.mkdtemp(prefix="anchoretest_repo-")
         r = LocalFeedDataRepo(metadata=LocalFeedDataRepoMetadata(data_write_dir=tmpdir))
         try:
             r.initialize()
             ts = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
-            r.metadata.download_result = DownloadOperationResult(
-                started=ts, status=FeedDownloader.State.in_progress.value, results=[]
-            )
             meta = GroupDownloadResult(
                 feed="feed1",
                 group="group1",
@@ -194,8 +194,9 @@ class TestLocalFeedDataRepo:
                 started=datetime.datetime.utcnow(),
                 group_metadata={},
             )
-            r.metadata.download_result.results.append(meta)
-            r.flush_metadata()
+            r.metadata.download_result = DownloadOperationResult(
+                started=ts, status=FeedDownloader.State.in_progress.value, results=[meta]
+            )
             expected_output = []
             for chunk_number in range(2):
                 with open(get_file(f"{chunk_number}.data"), "rb") as f:
@@ -210,19 +211,20 @@ class TestLocalFeedDataRepo:
                 )
                 meta.total_records += 1
                 meta.group_metadata.update(group_metadata)
-                r.flush_metadata()
             meta.status = FeedDownloader.State.complete.value
             meta.ended = datetime.datetime.utcnow()
             r.flush_metadata()
-            with timer("Read single record group file data", log_level="info"):
-                found_count = 0
-                for idx, file_data in enumerate(r.read_files("feed1", "group1")):
-                    logger.info("Got record {}".format(file_data))
-                    found_count += 1
-                    assert isinstance(file_data, FileData)
-                    assert file_data.data == expected_output[idx]
-                    assert str(idx) in meta.group_metadata
-                    assert file_data.metadata["test_value"] == str(idx)
+            r.metadata = None
+            r.reload_metadata()
+            assert r.metadata.download_result.results[0].total_records == 2
+            assert all([x in r.metadata.download_result.results[0].group_metadata for x in ["0", "1"]])
+            found_count = 0
+            for idx, file_data in enumerate(r.read_files("feed1", "group1")):
+                found_count += 1
+                assert isinstance(file_data, FileData)
+                assert file_data.data == expected_output[idx]
+                assert str(idx) in meta.group_metadata
+                assert file_data.metadata["test_value"] == str(idx)
             assert found_count == 2
         finally:
             r.teardown()
