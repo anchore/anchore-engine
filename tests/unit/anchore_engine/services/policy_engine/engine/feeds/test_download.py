@@ -195,7 +195,9 @@ class TestLocalFeedDataRepo:
                 group_metadata={},
             )
             r.metadata.download_result = DownloadOperationResult(
-                started=ts, status=FeedDownloader.State.in_progress.value, results=[meta]
+                started=ts,
+                status=FeedDownloader.State.in_progress.value,
+                results=[meta],
             )
             expected_output = []
             for chunk_number in range(2):
@@ -217,7 +219,12 @@ class TestLocalFeedDataRepo:
             r.metadata = None
             r.reload_metadata()
             assert r.metadata.download_result.results[0].total_records == 2
-            assert all([x in r.metadata.download_result.results[0].group_metadata for x in ["0", "1"]])
+            assert all(
+                [
+                    x in r.metadata.download_result.results[0].group_metadata
+                    for x in ["0", "1"]
+                ]
+            )
             found_count = 0
             for idx, file_data in enumerate(r.read_files("feed1", "group1")):
                 found_count += 1
