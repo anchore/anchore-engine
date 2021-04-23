@@ -213,7 +213,7 @@ def main(
     tag=None,
     work_dir=None,
     localconfig=None,
-    **kw
+    **kw,
 ):
     # Re-assign work_dir in case it is using the cache, which gets computed
     # dynamically

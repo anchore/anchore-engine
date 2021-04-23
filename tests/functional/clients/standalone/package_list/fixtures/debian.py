@@ -32,7 +32,11 @@ pkgs_allinfo = {
         "type": "dpkg",
         "cpes": [
             "cpe:2.3:a:libustr-1.0-1:libustr-1.0-1:1.0.4-6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libustr_1.0_1:libustr-1.0-1:1.0.4-6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libustr-1.0-1:libustr_1.0_1:1.0.4-6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libustr_1.0_1:libustr_1.0_1:1.0.4-6:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:libustr-1.0-1:1.0.4-6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libustr_1.0_1:1.0.4-6:*:*:*:*:*:*:*",
         ],
     },
     "gcc-6-base": {
@@ -46,7 +50,11 @@ pkgs_allinfo = {
         "type": "dpkg",
         "cpes": [
             "cpe:2.3:a:gcc-6-base:gcc-6-base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gcc_6_base:gcc-6-base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gcc-6-base:gcc_6_base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gcc_6_base:gcc_6_base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:gcc-6-base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:gcc_6_base:6.3.0-18+deb9u1:*:*:*:*:*:*:*",
         ],
     },
     "libc-bin": {
@@ -60,7 +68,11 @@ pkgs_allinfo = {
         "type": "dpkg",
         "cpes": [
             "cpe:2.3:a:libc-bin:libc-bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libc_bin:libc-bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libc-bin:libc_bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libc_bin:libc_bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:libc-bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libc_bin:2.24-11+deb9u4:*:*:*:*:*:*:*",
         ],
     },
     "libaudit-common": {
@@ -74,7 +86,11 @@ pkgs_allinfo = {
         "type": "dpkg",
         "cpes": [
             "cpe:2.3:a:libaudit-common:libaudit-common:1:2.6.7-2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libaudit_common:libaudit-common:1:2.6.7-2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libaudit-common:libaudit_common:1:2.6.7-2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libaudit_common:libaudit_common:1:2.6.7-2:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:libaudit-common:1:2.6.7-2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libaudit_common:1:2.6.7-2:*:*:*:*:*:*:*",
         ],
     },
     "e2fslibs": {
@@ -130,7 +146,11 @@ pkgs_allinfo = {
         "type": "dpkg",
         "cpes": [
             "cpe:2.3:a:sensible-utils:sensible-utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:sensible_utils:sensible-utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:sensible-utils:sensible_utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:sensible_utils:sensible_utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:sensible-utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:sensible_utils:0.0.9+deb9u1:*:*:*:*:*:*:*",
         ],
     },
     "bash": {
