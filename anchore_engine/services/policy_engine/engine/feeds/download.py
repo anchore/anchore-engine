@@ -409,7 +409,7 @@ class FeedDownloader(object):
                         for count, group_metadata in self._fetch_group_data(group):
                             record_count += count
                             meta.total_records = record_count
-                            meta.group_metadata = group_metadata
+                            meta.group_metadata.update(group_metadata)
                             self.local_repo.flush_metadata()
 
                     _update_download_complete(meta, record_count)
