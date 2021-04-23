@@ -587,7 +587,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         # The catalog_client is stored with the instance here to to avoid breaking Liskov Substitution Principle.
         # Signatures for overridden methods from superclass should not change in subclass.
         self.__catalog_client: Optional[CatalogClient] = None
-        super(GrypeDBFeed, self).__init__(metadata=metadata)
+        super().__init__(metadata=metadata)
 
     @property
     def _catalog_client(self) -> CatalogClient:
@@ -900,63 +900,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :return: changed data updated in the sync as a list of records
         """
         self.__catalog_client = event_client
-        result = build_feed_sync_results()
-        result["feed"] = self.__feed_name__
-        failed_count = 0
-
-        # Each group update is a unique session and can roll itself back.
-        t = time.time()
-
-        logger.info(
-            log_msg_ctx(operation_id, self.__feed_name__, None, "Starting feed sync")
-        )
-
-        # Only iterate thru what was fetched
-        for group_download_result in filter(
-            lambda x: x.feed == self.__feed_name__ and (not group or group == x.name),
-            fetched_data.metadata.download_result.results,
-        ):
-            logger.info(
-                log_msg_ctx(
-                    operation_id,
-                    group_download_result.feed,
-                    group_download_result.group,
-                    "Processing group for db update",
-                )
-            )
-
-            try:
-                new_data = self._sync_group(
-                    group_download_result,
-                    full_flush=full_flush,
-                    local_repo=fetched_data,
-                    operation_id=operation_id,
-                )  # Each group sync is a transaction
-                result["groups"].append(new_data)
-            except Exception as e:
-                logger.exception(
-                    log_msg_ctx(
-                        operation_id,
-                        group_download_result.feed,
-                        group_download_result.group,
-                        "Failed syncing group data",
-                    )
-                )
-                failed_count += 1
-                fail_result = build_group_sync_result()
-                fail_result["group"] = group_download_result.group
-                result["groups"].append(fail_result)
-
-        sync_time = time.time() - t
-        self._update_last_full_sync_timestamp()
-
-        # This is the merge/update only time, not including download time. Caller can compute total from this return value
-        result["total_time_seconds"] = sync_time
-
-        if failed_count == 0:
-            result["status"] = "success"
-
-        return result
+        super().sync(fetched_data, full_flush, event_client, operation_id, group)
 
 
 class VulnerabilityFeed(AnchoreServiceFeed):
