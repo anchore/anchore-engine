@@ -53,3 +53,11 @@ class TestStorage:
             with GrypeDBStorage() as grypedb_file:
                 with grypedb_file.create_file(test_data_checksum) as f:
                     f.write(malformed_data)
+
+    def test_file_data(self):
+        with GrypeDBStorage() as grypedb_file:
+            with grypedb_file.create_file(test_data_checksum) as f:
+                f.write(test_data)
+
+            with open(grypedb_file._file_path, "rb") as f:
+                assert test_data == f.read()
