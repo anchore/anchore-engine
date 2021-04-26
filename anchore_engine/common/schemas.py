@@ -3,9 +3,11 @@ Shared global location for all JSON serialization schemas. They should only refe
 can import cleanly into any service or module.
 """
 import datetime
+from typing import Dict
 
 import marshmallow
-from marshmallow import Schema, post_load, fields
+from marshmallow import Schema, fields, post_load
+
 from anchore_engine.utils import datetime_to_rfc3339, rfc3339str_to_datetime
 
 # For other modules to import from this one instead of having to know/use marshmallow directly
@@ -522,6 +524,10 @@ class GroupDownloadResult(JsonSerializable):
         group = fields.Str()
         status = fields.Str()
         total_records = fields.Int()
+        group_metadata = fields.Dict(
+            keys=fields.Str(),
+            values=fields.Dict(keys=fields.Str(), values=fields.Str()),
+        )
 
         @post_load
         def make(self, data, **kwargs):
@@ -537,6 +543,7 @@ class GroupDownloadResult(JsonSerializable):
         group: str = None,
         status: str = None,
         total_records: int = None,
+        group_metadata: Dict[str, Dict[str, str]] = None,
     ):
         self.started = started
         self.ended = ended
@@ -544,6 +551,7 @@ class GroupDownloadResult(JsonSerializable):
         self.feed = feed
         self.group = group
         self.total_records = total_records
+        self.group_metadata = group_metadata
 
 
 class DownloadOperationResult(JsonSerializable):
