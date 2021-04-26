@@ -2,41 +2,37 @@ import datetime
 import hashlib
 import json
 import re
-import time
 import zlib
 from collections import namedtuple
 
 from sqlalchemy import (
-    Column,
+    JSON,
     BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
     Integer,
     LargeBinary,
-    Float,
-    Boolean,
-    String,
-    ForeignKey,
-    Enum,
-    ForeignKeyConstraint,
-    DateTime,
-    types,
-    Text,
-    Index,
-    JSON,
-    or_,
-    and_,
     Sequence,
-    func,
+    String,
+    Text,
     event,
+    func,
+    or_,
 )
-from sqlalchemy.orm import relationship, synonym, joinedload
+from sqlalchemy.orm import joinedload, relationship, synonym
 from sqlalchemy.dialects.postgresql import JSONB
 
-from anchore_engine.utils import ensure_str, ensure_bytes
-
-from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
-from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
+from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
+from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
+from anchore_engine.utils import ensure_bytes, ensure_str
 
 try:
     from anchore_engine.subsys import logger as log
@@ -46,9 +42,7 @@ except:
     logger = logging.getLogger(__name__)
     log = logger
 
-from .common import Base, UtilMixin, StringJSON
-from .common import get_thread_scoped_session
-
+from .common import Base, StringJSON, UtilMixin, get_thread_scoped_session
 
 DistroTuple = namedtuple("DistroTuple", ["distro", "version", "flavor"])
 
@@ -139,6 +133,36 @@ class FeedGroupMetadata(Base, UtilMixin):
             j["feed"] = None  # Ensure no non-serializable stuff
 
         return j
+
+
+class GrypeDBMetadata(Base):
+    """
+    A data model for persisting the current active grype db that the system should use across all policy-engine instances
+    Each instance of policy engine witll use the active record in this table to determine the correct grype db
+    Primary key is checksum, which refers to the checksum of the tar file
+    The object url points to the location in object storage that the tar file is stored. This is used by processes that sync
+    There should only ever be a single active record. More than one indicates an error in the system
+    """
+
+    __tablename__ = "grype_db_metadata"
+
+    checksum = Column(String, primary_key=True)
+    feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
+    group_name = Column(String, nullable=False)
+    date_generated = Column(DateTime, nullable=False)
+    object_url = Column(String, nullable=False)
+    active = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_update = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            columns=(feed_name, group_name),
+            refcolumns=(FeedGroupMetadata.feed_name, FeedGroupMetadata.name),
+        ),
+    )
 
 
 class GenericFeedDataRecord(Base):
