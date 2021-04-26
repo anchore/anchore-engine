@@ -27,8 +27,11 @@ class APIResponse(object):
         self.code = status_code
         if response is not None:
             self.url = response.url
+
             try:
                 self.body = response.json()
+            except json.decoder.JSONDecodeError:
+                self.body = response.content
             except ValueError:
                 self.body = response.text or ""
 
@@ -139,7 +142,12 @@ def http_post_bytes(
     return APIResponse(resp.status_code, response=resp)
 
 
-def http_get(path_parts, query=None, config: callable = get_api_conf):
+def http_get(
+    path_parts,
+    query=None,
+    config: callable = get_api_conf,
+    extra_headers=None,
+):
 
     api_conf = config()
 
@@ -149,7 +157,7 @@ def http_get(path_parts, query=None, config: callable = get_api_conf):
     resp = requests.get(
         build_url(path_parts, api_conf),
         auth=(api_conf["ANCHORE_API_USER"], api_conf["ANCHORE_API_PASS"]),
-        headers=get_headers(api_conf),
+        headers=get_headers(api_conf, extra_headers),
         params=query,
     )
 
