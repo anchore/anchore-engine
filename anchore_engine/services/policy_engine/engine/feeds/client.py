@@ -1,31 +1,37 @@
 import abc
 import copy
+import datetime
+import json
+from dataclasses import dataclass, field
+from io import BytesIO
+from typing import Any, Dict, Optional
 
+import ijson
 import requests
 import requests.exceptions
-import json
-import datetime
-import typing
 
-from io import BytesIO
-import ijson
-
+from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
-from anchore_engine.utils import ensure_str, ensure_bytes, AnchoreException
 from anchore_engine.services.policy_engine.engine.feeds import (
-    IFeedSource,
     FeedGroupList,
     FeedList,
     GroupData,
+    IFeedSource,
 )
-from anchore_engine.common.schemas import (
-    FeedAPIRecord,
-    FeedAPIGroupRecord,
-)
+from anchore_engine.subsys import logger
+from anchore_engine.utils import AnchoreException, ensure_bytes, ensure_str
 
 FEED_DATA_ITEMS_PATH = "data.item"
 FEED_DATA_NEXT_TOKEN_PATH = "next_token"
+
+
+@dataclass
+class HTTPClientResponse:
+    content_type: Optional[str] = None
+    status_code: int = 1
+    content: bytes = b""
+    success: bool = False
+    headers: Dict[str, Any] = field(default_factory=dict)
 
 
 class FeedServiceClient(IFeedSource):
@@ -72,8 +78,8 @@ class FeedServiceClient(IFeedSource):
                     requests.get, url, retries=self.retry_count
                 )
 
-                if record["success"]:
-                    data = json.loads(ensure_str(record["content"]))
+                if record.success:
+                    data = json.loads(ensure_str(record.content))
                     if data and "feeds" in data:
                         feed_list.feeds.extend(
                             [
@@ -92,9 +98,7 @@ class FeedServiceClient(IFeedSource):
                             more_data = False
                 else:
                     raise Exception(
-                        "Feed list operation failed. Msg: {}. Response: {}".format(
-                            record.get("err_msg"), record.get("text")
-                        )
+                        "Feed list operation failed. Msg: {}.".format(record.content)
                     )
             except Exception as e:
                 logger.exception("Error executing feed listing: {}".format(e))
@@ -116,8 +120,8 @@ class FeedServiceClient(IFeedSource):
                 record = self.http_client.execute_request(
                     requests.get, url, retries=self.retry_count
                 )
-                if record["success"]:
-                    data = json.loads(ensure_str(record["content"]))
+                if record.success:
+                    data = json.loads(ensure_str(record.content))
                     if "groups" in data:
                         group_list.groups.extend(
                             [
@@ -136,9 +140,7 @@ class FeedServiceClient(IFeedSource):
                         more_data = False
                 else:
                     raise Exception(
-                        "Feed list operation failed. Msg: {}. Response: {}".format(
-                            record.get("err_msg"), record.get("text")
-                        )
+                        "Feed list operation failed. Msg: {}.".format(record.content)
                     )
             except Exception as e:
                 logger.debug("Error executing feed listing: {}".format(e))
@@ -155,21 +157,33 @@ class FeedServiceClient(IFeedSource):
     ):
         try:
             record = self.get_raw_feed_group_data(feed, group, since, next_token)
-            if record["success"]:
-                next_token, group_data, count = self._extract_response_data(
-                    record["content"]
-                )
-                return GroupData(
-                    data=group_data,
-                    next_token=next_token,
-                    since=since,
-                    record_count=count,
-                )
+            if record.success:
+                if record.content_type == "application/json":
+                    next_token, group_data, count = self._extract_response_data(
+                        record.content
+                    )
+                    return GroupData(
+                        data=group_data,
+                        next_token=next_token,
+                        since=since,
+                        record_count=count,
+                        response_metadata={},
+                    )
+                elif record.content_type == "application/gzip":
+                    return GroupData(
+                        data=record.content,
+                        next_token=None,
+                        since=since,
+                        record_count=1,
+                        response_metadata=record.headers,
+                    )
+                else:
+                    raise Exception(
+                        "Feed list operation failed. Unrecognized MIME type in feed response."
+                    )
             else:
                 raise Exception(
-                    "Feed list operation failed. Msg: {}. Response: {}".format(
-                        record.get("err_msg"), record.get("text")
-                    )
+                    "Feed list operation failed. Msg: {}.".format(record.content)
                 )
         except Exception as e:
             logger.debug("Error executing feed data download: {}".format(e))
@@ -181,7 +195,7 @@ class FeedServiceClient(IFeedSource):
         group: str,
         since: datetime.datetime = None,
         next_token: str = None,
-    ) -> typing.Tuple:
+    ) -> HTTPClientResponse:
         if since and not isinstance(since, datetime.datetime):
             raise TypeError("since should be a datetime object")
 
@@ -403,20 +417,21 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
 
     def authenticated_get(
         self, url, connect_timeout=None, read_timeout=None, retries=None
-    ):
+    ) -> HTTPClientResponse:
         return self.execute_request(
             requests.get, url, connect_timeout, read_timeout, retries
         )
 
     def execute_request(
         self, method, url, connect_timeout=None, read_timeout=None, retries=None
-    ):
+    ) -> HTTPClientResponse:
         """
         Execute an HTTP request with auth params and the specified timeout overrides
 
         :param method: a callable for the http method to execute (e.g. requests.get, requests.put, ...)
         :param url:
-        :param timeout:
+        :param connect_timeout:
+        :param read_timeout:
         :param retries:
         :return:
         """
@@ -434,7 +449,7 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
 
         verify = self.auth_config["verify"]
 
-        ret = {"status_code": 1, "content": "", "success": False}
+        client_response = HTTPClientResponse()
 
         success = False
         count = 0
@@ -465,15 +480,19 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                     r.raise_for_status()
                 elif r.status_code == 200:
                     success = True
-                    ret["success"] = True
+                    client_response.success = True
                 elif r.status_code in [403, 404]:
                     r.raise_for_status()
 
-                ret["status_code"] = r.status_code
-                ret["content"] = r.content
+                client_response.status_code = r.status_code
+                client_response.content_type = r.headers["Content-Type"]
+                client_response.content = r.content
+                client_response.headers = r.headers
             except requests.exceptions.ConnectTimeout as err:
                 logger.debug("attempt failed: " + str(err))
-                ret["content"] = ensure_bytes("server error: timed_out: " + str(err))
+                client_response.content = ensure_bytes(
+                    "server error: timed_out: " + str(err)
+                )
                 # return(ret)
 
             except requests.HTTPError as e:
@@ -482,12 +501,12 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
                     # raise e
                 else:
                     logger.debug("attempt failed: " + str(e))
-                    ret["content"] = ensure_bytes("server error: " + str(e))
+                    client_response.content = ensure_bytes("server error: " + str(e))
             except Exception as err:
                 logger.debug("attempt failed: " + str(err))
-                ret["content"] = ensure_bytes("server error: " + str(err))
+                client_response.content = ensure_bytes("server error: " + str(err))
 
-        return ret
+        return client_response
 
 
 class AnchoreIOClientError(AnchoreException):
