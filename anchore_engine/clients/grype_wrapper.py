@@ -276,7 +276,9 @@ def get_vulnerabilities_for_sbom(grype_sbom: str) -> json:
             # Format and run the command. Grype supports piping in an sbom string, so we need to this in two steps.
             # 1) Echo the sbom string to std_out
             # 2) Pipe that into grype
-            pipe_sub_cmd = "echo '{sbom}'".format(sbom=grype_sbom,)
+            pipe_sub_cmd = "echo '{sbom}'".format(
+                sbom=grype_sbom,
+            )
             full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(GRYPE_SUB_CMD)]
 
             logger.debug(
@@ -315,7 +317,9 @@ def get_vulnerabilities_for_sbom_file(grype_sbom_file: str) -> json:
             proc_env = _get_proc_env()
 
             # Format and run the command
-            cmd = "{grype_sub_command} sbom:{sbom}".format(grype_sub_command=GRYPE_SUB_CMD, sbom=grype_sbom_file)
+            cmd = "{grype_sub_command} sbom:{sbom}".format(
+                grype_sub_command=GRYPE_SUB_CMD, sbom=grype_sbom_file
+            )
 
             logger.debug("Running grype with command: {}".format(cmd))
 
@@ -365,7 +369,10 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
 
 
 def query_vulnerabilities(
-    vuln_id=None, affected_package=None, affected_package_version=None, namespace=None,
+    vuln_id=None,
+    affected_package=None,
+    affected_package_version=None,
+    namespace=None,
 ):
     """
     Query the grype db for vulnerabilites. affected_package_version is unused, but is left in place for now to match the

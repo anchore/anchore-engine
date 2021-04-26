@@ -111,7 +111,8 @@ def test_run_sanitize_good_input():
 
 
 @pytest.mark.parametrize(
-    "input", [";&<>", ";", "&", "<", ">"],
+    "input",
+    [";&<>", ";", "&", "<", ">"],
 )
 def test_run_sanitize_bad_input(input):
     with pytest.raises(Exception):
@@ -237,7 +238,10 @@ class TestRunCheck:
         stdout, stderr = run_check(["ls"])
         assert debug_log.calls[0]["args"] == ("running cmd: %s", "ls")
         assert debug_log.calls[1]["args"] == ("stdout: %s", "stdout")
-        assert debug_log.calls[2]["args"] == ("stdout: %s", "line",)
+        assert debug_log.calls[2]["args"] == (
+            "stdout: %s",
+            "line",
+        )
 
     def test_log_stderr_does_not_log(self, monkeypatch):
         # a 0 exit status doesn't log stderr

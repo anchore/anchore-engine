@@ -353,7 +353,9 @@ def test_query_vulnerabilities(
 
     # Test and validate the query param combinations
     results = grype_wrapper.query_vulnerabilities(
-        vuln_id=vuln_id, affected_package=affected_package, namespace=namespace,
+        vuln_id=vuln_id,
+        affected_package=affected_package,
+        namespace=namespace,
     )
     assert len(results) == expected_result_length
     assert list(map(lambda result: result.id, results)) == expected_output
