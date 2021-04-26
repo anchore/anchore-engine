@@ -120,7 +120,7 @@ def test_run_sanitize_bad_input(input):
 
 @pytest.mark.parametrize(
     "cmds_list, expected_return_code, expected_stdout, expected_stderr",
-    [([], None, None, None), ([["pwd"], ["wc", "-l"]], 0, b"       1\n", b"")],
+    [([], None, None, None), ([["pwd"], ["wc", "-l"]], 0, "1", b"")],
 )
 def test_run_piped_command(
     cmds_list, expected_return_code, expected_stdout, expected_stderr
@@ -128,8 +128,12 @@ def test_run_piped_command(
     # Function under test
     return_code, stdout, stderr = run_piped_command_list(cmds_list)
 
+    # Binary string returned in different environments can be padded with different amounts of whitespace
+    # So where expected_output != None, convert it to utf-8 and trim it so we get a clean, reliable comparison
+    if stdout is not None:
+        stdout = stdout.decode("utf-8").strip()
+
     # Validate input
-    # Formatting the stdout and stderr is up to the caller so we are testing the raw binary string output here
     assert return_code == expected_return_code
     assert stdout == expected_stdout
     assert stderr == expected_stderr
