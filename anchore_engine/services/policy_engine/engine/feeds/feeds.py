@@ -60,6 +60,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     process_updated_vulnerability,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.utils import rfc3339str_to_datetime
 
 
 def build_group_sync_result(group=None, status="failure"):
@@ -751,9 +752,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         catalog_client.create_raw_document(
             group_download_result.group, checksum, record.data
         )
-        date_generated = datetime.datetime.strptime(
-            record.metadata["Date-Created"], "%Y-%m-%dT%H:%M:%SZ"
-        )
+        date_generated = rfc3339str_to_datetime(record.metadata["Date-Created"])
         grypedb_meta = GrypeDBMetadata(
             checksum=checksum,
             feed_name=GrypeDBFeed.__feed_name__,
