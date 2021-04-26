@@ -167,6 +167,7 @@ class FeedServiceClient(IFeedSource):
                         next_token=next_token,
                         since=since,
                         record_count=count,
+                        response_metadata={},
                     )
                 elif record.content_type == "application/gzip":
                     return GroupData(
