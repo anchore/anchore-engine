@@ -12,46 +12,41 @@ import time
 import uuid
 
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.db import (
-    get_thread_scoped_session as get_session,
-    FeedMetadata,
-    FeedGroupMetadata,
-)
-from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    build_feed_sync_results,
-    build_group_sync_result,
-    feed_instance_by_name,
-    notify_event,
-    VulnerabilityFeed,
-    VulnDBFeed,
-    PackagesFeed,
-    NvdV2Feed,
-)
-from anchore_engine.services.policy_engine.engine.feeds.client import get_client
-from anchore_engine.services.policy_engine.engine.feeds.download import (
-    FeedDownloader,
+from anchore_engine.common.schemas import (
     DownloadOperationConfiguration,
-    LocalFeedDataRepo,
+    GroupDownloadOperationConfiguration,
+    GroupDownloadOperationParams,
 )
+from anchore_engine.configuration import localconfig
+from anchore_engine.db import FeedGroupMetadata, FeedMetadata
+from anchore_engine.db import get_thread_scoped_session as get_session
+from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
+from anchore_engine.services.policy_engine.engine.feeds.client import get_client
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_all_feeds,
     get_all_feeds_detached,
 )
+from anchore_engine.services.policy_engine.engine.feeds.download import (
+    FeedDownloader,
+    LocalFeedDataRepo,
+)
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    NvdV2Feed,
+    PackagesFeed,
+    VulnDBFeed,
+    VulnerabilityFeed,
+    build_feed_sync_results,
+    feed_instance_by_name,
+)
+from anchore_engine.subsys import logger
 from anchore_engine.subsys.events import (
-    FeedSyncStarted,
-    FeedSyncFailed,
-    FeedSyncCompleted,
-    FeedGroupSyncStarted,
+    EventBase,
     FeedGroupSyncCompleted,
     FeedGroupSyncFailed,
-)
-from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
-from anchore_engine.common.schemas import (
-    GroupDownloadOperationParams,
-    GroupDownloadOperationConfiguration,
-    DownloadOperationConfiguration,
+    FeedGroupSyncStarted,
+    FeedSyncCompleted,
+    FeedSyncFailed,
+    FeedSyncStarted,
 )
 
 
@@ -733,3 +728,21 @@ def _sync_order(feed_name: str) -> int:
     else:
         # Anything else is less than packages but more than the vuln-related
         return 99
+
+
+def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
+    """
+    Send an event or just log it if client is None
+    Always log the event to info level
+    """
+
+    if client:
+        try:
+            client.add_event(event)
+        except Exception as e:
+            logger.warn("Error adding feed start event: {}".format(e))
+
+    try:
+        logger.info("Event: {} (operation_id={})".format(event.to_json(), operation_id))
+    except TypeError:
+        logger.exception("Error logging event")

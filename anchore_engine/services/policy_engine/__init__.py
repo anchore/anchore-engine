@@ -1,29 +1,30 @@
-import time
-import sys
-import pkg_resources
 import os
-import retrying
+import sys
+import time
 
+import pkg_resources
+import retrying
 from sqlalchemy.exc import IntegrityError
 
 # anchore modules
 import anchore_engine.clients.services.common
-import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.subsys import logger
-from anchore_engine.configuration import localconfig
-from anchore_engine.clients.services import simplequeue, internal_client_for
+import anchore_engine.subsys.servicestatus
+from anchore_engine.clients.services import internal_client_for, simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    VulnerabilityFeed,
+    GithubFeed,
+    GrypeDBFeed,
+    NvdFeed,
     NvdV2Feed,
     PackagesFeed,
     VulnDBFeed,
-    GithubFeed,
+    VulnerabilityFeed,
     feed_registry,
-    NvdFeed,
 )
+from anchore_engine.subsys import logger
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
@@ -145,7 +146,7 @@ def process_preflight():
 
 
 def _init_distro_mappings():
-    from anchore_engine.db import session_scope, DistroMapping
+    from anchore_engine.db import DistroMapping, session_scope
 
     initial_mappings = [
         DistroMapping(from_distro="alpine", to_distro="alpine", flavor="ALPINE"),
@@ -205,6 +206,7 @@ def init_feed_registry():
         (PackagesFeed, False),
         (GithubFeed, False),
         (NvdFeed, False),
+        (GrypeDBFeed, True),
     ]:
         logger.info("Registering feed handler {}".format(cls_tuple[0].__feed_name__))
         feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
@@ -350,6 +352,42 @@ def handle_feed_sync_trigger(*args, **kwargs):
     return True
 
 
+def handle_grypedb_sync(*args, **kwargs):
+    """
+    Calls function to run GrypeDBSyncTask
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    # import code in function so that it is not imported to all contexts that import policy engine
+    # this is an issue caused by these handlers being declared within the __init__.py file
+    # See https://github.com/anchore/anchore-engine/issues/991
+    from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
+    from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+        GrypeDBSyncError,
+    )
+
+    system_user = _system_creds()
+
+    logger.info("init args: {}".format(kwargs))
+    cycle_time = kwargs["mythread"]["cycle_timer"]
+
+    while True:
+        try:
+            result = GrypeDBSyncTask().execute()
+
+            if result:
+                logger.info("Grype DB synced to local instance via handler")
+        #         TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
+        except Exception:
+            logger.exception(
+                "Error encountered when running GrypeDBSyncTask from async monitor"
+            )
+        time.sleep(cycle_time)
+    return True
+
+
 @retrying.retry(
     stop_max_attempt_number=FEED_SYNC_RETRIES,
     wait_incrementing_start=FEED_SYNC_RETRY_BACKOFF * 1000,
@@ -407,6 +445,17 @@ class PolicyEngineService(ApiService):
             "cycle_timer": 3600,
             "min_cycle_timer": 1800,
             "max_cycle_timer": 100000,
+            "last_queued": 0,
+            "last_return": False,
+            "initialized": False,
+        },
+        "grypedb_sync": {
+            "handler": handle_grypedb_sync,
+            "taskType": "handle_grypedb_sync",
+            "args": [],
+            "cycle_timer": 60,
+            "min_cycle_timer": 60,
+            "max_cycle_timer": 60,
             "last_queued": 0,
             "last_return": False,
             "initialized": False,

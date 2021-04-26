@@ -2,44 +2,47 @@
 Long running tasks
 """
 
-import json
 import datetime
+import json
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+import uuid
+from typing import Optional
+
 import dateutil.parser
 import requests
-import time
-import urllib.request, urllib.parse, urllib.error
-import uuid
 
-from anchore_engine.db import (
-    get_thread_scoped_session as get_session,
-    Image,
-    end_session,
-)
-from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
-from anchore_engine.services.policy_engine.engine.exc import *
-
-from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services import internal_client_for
-from anchore_engine.services.policy_engine.engine.feeds.sync import (
-    get_selected_feeds_to_sync,
-    DataFeeds,
-)
-from anchore_engine.services.policy_engine.engine.feeds.feeds import notify_event
-from anchore_engine.configuration import localconfig
+from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
-from anchore_engine.subsys.events import (
-    FeedSyncTaskStarted,
-    FeedSyncTaskCompleted,
-    FeedSyncTaskFailed,
-)
-from anchore_engine.subsys import identities, logger
+from anchore_engine.configuration import localconfig
 
 # A hack to get admin credentials for executing api ops
+from anchore_engine.db import Image, end_session
+from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import session_scope
-from anchore_engine.utils import timer
+from anchore_engine.services.policy_engine.engine.exc import *
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncManager,
+)
+from anchore_engine.services.policy_engine.engine.feeds.sync import (
+    DataFeeds,
+    get_selected_feeds_to_sync,
+    notify_event,
+)
+from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
+from anchore_engine.subsys import identities, logger
+from anchore_engine.subsys.events import (
+    FeedSyncTaskCompleted,
+    FeedSyncTaskFailed,
+    FeedSyncTaskStarted,
+)
+from anchore_engine.utils import timer
 
 
 def construct_task_from_json(json_obj):
@@ -605,3 +608,22 @@ class ImageLoadTask(IAsyncTask):
     def _get_file(self, path):
         with open(path) as r:
             return json.load(r)
+
+
+class GrypeDBSyncTask(IAsyncTask):
+    __task_name__ = "grypedb_sync_task"
+
+    def __init__(self, grypedb_file_path: Optional[str] = None):
+        self.grypedb_file_path: Optional[str] = grypedb_file_path
+
+    def execute(self) -> bool:
+        """
+        Runs the GrypeDBSyncTask by calling the GrypeDBSyncManager.
+
+        return: Returns True if the grypedb was updated or False if the local instance is up to date
+        rtype: bool
+        """
+        try:
+            return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
+        finally:
+            end_session()
