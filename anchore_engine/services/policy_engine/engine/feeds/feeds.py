@@ -1,7 +1,8 @@
 import datetime
 import time
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
+from sqlalchemy.orm import Query
 from sqlalchemy.orm.session import Session
 
 from anchore_engine.clients.services import internal_client_for
@@ -11,6 +12,7 @@ from anchore_engine.common.schemas import GroupDownloadResult
 from anchore_engine.db import (
     CpeV2Vulnerability,
     CpeVulnerability,
+    FeedGroupMetadata,
     FeedMetadata,
     FixedArtifact,
     GemMetadata,
@@ -477,6 +479,7 @@ class AnchoreServiceFeed(DataFeed):
 
         # Only iterate thru what was fetched
         for group_download_result in filter(
+            # if `group` is none or empty string OR if `group` matches the name attribute in group download result
             lambda x: x.feed == self.__feed_name__ and (not group or group == x.name),
             fetched_data.metadata.download_result.results,
         ):
@@ -571,7 +574,7 @@ class UnexpectedRawGrypeDBFile(GrypeDBFeedSyncError):
 
 
 class RefreshTaskCreationError(GrypeDBFeedSyncError):
-    def __init__(self, errors: Tuple[str, Exception]):
+    def __init__(self, errors: Sequence[Tuple[str, Exception]]):
         self.errors = errors
         super().__init__(
             f"Failed to create {len(self.errors)} RefreshTasks in simple queue."
@@ -579,26 +582,74 @@ class RefreshTaskCreationError(GrypeDBFeedSyncError):
 
 
 class GrypeDBFeed(AnchoreServiceFeed):
+    """
+    AnchoreServiceFeed used to sync Grype DB data.
+
+    :param metadata: FeedMetadata instance to use to store stateful information about this feed
+    :type metadata: Optional[FeedMetadata], defaults to None
+    """
+
     __feed_name__ = "grypedb"
     _cve_key = None
     __group_data_mappers__ = {}
 
     def __init__(self, metadata: Optional[FeedMetadata] = None):
+        """
+        Constructor method.
+        """
         # The catalog_client is stored with the instance here to to avoid breaking Liskov Substitution Principle.
         # Signatures for overridden methods from superclass should not change in subclass.
-        self.__catalog_client: Optional[CatalogClient] = None
+        self._catalog_svc_client: Optional[CatalogClient] = None
         super().__init__(metadata=metadata)
 
     @property
     def _catalog_client(self) -> CatalogClient:
-        if not isinstance(self.__catalog_client, CatalogClient):
+        """
+        Getter for catalog client
+
+        :return: catalog client instance
+        :rtype: CatalogClient
+        """
+        if not isinstance(self._catalog_svc_client, CatalogClient):
             logger.debug(
                 "Catalog Client not initialized in GrypeDBFeed. Initializing..."
             )
-            self.__catalog_client = internal_client_for(CatalogClient, userId=None)
-        return self.__catalog_client
+            self._catalog_svc_client = internal_client_for(CatalogClient, userId=None)
+        return self._catalog_svc_client
 
-    def record_count(self, group_name: str, db: Session):
+    def _find_match(
+        self, db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
+    ) -> Query:
+        """
+        Utility Method, queries GrypeDBMetadata and optionally filters on checksum or active attribute.
+
+        :param db: sqlalchemy database session
+        :type db: Session
+        :param checksum: checksum of the grype db file
+        :type checksum: Optional[str], defaults to None
+        :param active: whether or not to filter on the active record
+        :type active: Optional[bool], defaults to None
+        :return: sqlalchemy query object
+        :rtype: Query
+        """
+        results = db.query(GrypeDBMetadata)
+        if checksum:
+            results = results.filter(GrypeDBMetadata.checksum == checksum)
+        if not isinstance(active, type(None)):
+            results = results.filter(GrypeDBMetadata.active == active)
+        return results
+
+    def record_count(self, group_name: str, db: Session) -> int:
+        """
+        Returns number of records present in the database for a given group (GrypeDBMetadata records)
+
+        :param group_name: name of the group
+        :type group_name: str
+        :param db: sqlaclhemy database session
+        :type db: Session
+        :return: number of records
+        :rtype: int
+        """
         try:
             return self._find_match(db).count()
         except Exception:
@@ -609,20 +660,16 @@ class GrypeDBFeed(AnchoreServiceFeed):
             )
             raise
 
-    def _find_match(self, db: Session, checksum: str = None, active: bool = None):
-        results = db.query(GrypeDBMetadata)
-        if checksum:
-            results = results.filter(GrypeDBMetadata.checksum == checksum)
-        if not isinstance(active, type(None)):
-            results = results.filter(GrypeDBMetadata.active == active)
-        return results
-
-    def _flush_group(self, group_obj, operation_id=None):
+    def _flush_group(
+        self, group_obj: FeedGroupMetadata, operation_id: Optional[str] = None
+    ) -> None:
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
 
-        :param group_obj:
-        :return:
+        :param group_obj: feed group metadata record
+        :type group_obj: FeedGroupMetadata
+        :param operation_id: UUID4 hexadecimal string
+        :type operation_id:  Optional[str], defaults to None
         """
         db = get_session()
         catalog_client = self._catalog_client
@@ -644,7 +691,13 @@ class GrypeDBFeed(AnchoreServiceFeed):
         group_obj.count = 0
         db.flush()
 
-    def _enqueue_refresh_tasks(self, db: Session):
+    def _enqueue_refresh_tasks(self, db: Session) -> None:
+        """
+        Places a refresh task on the simple queue service for every image id in the image table.
+
+        :param db: sqlalchemy database session
+        :type db: Session
+        """
         q_client = internal_client_for(SimpleQueueClient, None)
         subscription_type = "refresh_tasks"
         image_ids = db.query(Image.id).all()
@@ -669,6 +722,19 @@ class GrypeDBFeed(AnchoreServiceFeed):
         record: FileData,
         checksum: str,
     ) -> None:
+        """
+        Inserts a new active GrypeDBMetadata record. Before doing so, it deletes all inactive records and then
+        marks the currently active record as inactive. No more than two GrypeDBMetadata records are persisted at once.
+
+        :param db: sqlalchemy database session
+        :type db: Session
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param record: FileData record retrieved from download.FileListIterator
+        :type record: FileData
+        :param checksum: grype DB file checksum
+        :type checksum: str
+        """
         catalog_client = self._catalog_client
         # delete all records not active
         inactive_records = self._find_match(db, active=False)
@@ -702,14 +768,21 @@ class GrypeDBFeed(AnchoreServiceFeed):
     def _sync_group(
         self,
         group_download_result: GroupDownloadResult,
-        full_flush=False,
-        local_repo=None,
-        operation_id=None,
+        full_flush: bool = False,
+        local_repo: Optional[LocalFeedDataRepo] = None,
+        operation_id: Optional[str] = None,
     ):
         """
         Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
 
-        :param group_obj:
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param full_flush: whether or not to flush out old records before syncing
+        :type full_flush: bool, defaults to False
+        :param local_repo: LocalFeedDataRepo (disk cache for download results)
+        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
+        :param operation_id: operation id (UUID4 in hexadecimal)
+        :type operation_id: Optional[str], defaults to None
         :return:
         """
         total_updated_count = 0
@@ -879,13 +952,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
         self,
         fetched_data: LocalFeedDataRepo,
         full_flush: bool = False,
-        event_client: CatalogClient = None,
-        operation_id=None,
-        group=None,
+        event_client: Optional[CatalogClient] = None,
+        operation_id: Optional[str] = None,
+        group: Optional[str] = None,
     ) -> dict:
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
-
         Returns a dict with the following structure:
         {
         'group_name': [ record1, record2, ..., recordN],
@@ -893,14 +965,21 @@ class GrypeDBFeed(AnchoreServiceFeed):
         ...
         }
 
-        :param: fetched_data
-        :param: full_flush
-        :param: event_client
-        :param: operation_id
+        :param fetched_data: disk cache for downloaded data to sync
+        :type fetched_data: LocalFeedDataRepo
+        :param full_flush: whether or not to flush all records before syncing new ones
+        :type full_flush: bool, defaults to False
+        :param event_client: catalog client
+        :type event_client: Optional[CatalogClient], defaults to None
+        :param operation_id: UUID4 hexadeicmal string
+        :type operation_id: Optional[str], defaults to None
+        :param group: filter for which groups to update
+        :type group: Optional[str], defaults to None
         :return: changed data updated in the sync as a list of records
+        :rtype: dict
         """
-        self.__catalog_client = event_client
-        super().sync(fetched_data, full_flush, event_client, operation_id, group)
+        self._catalog_svc_client = event_client
+        return super().sync(fetched_data, full_flush, event_client, operation_id, group)
 
 
 class VulnerabilityFeed(AnchoreServiceFeed):
