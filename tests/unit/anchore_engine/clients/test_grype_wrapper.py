@@ -102,20 +102,24 @@ def test_move_missing_grype_db_archive(tmp_path):
     output_dir = os.path.join(tmp_path, "output")
     os.mkdir(output_dir)
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError) as error:
         # Function under test
-        grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(
+        grype_wrapper._move_grype_db_archive(
             missing_output_archive, output_dir
         )
+
+    # Validate error message
+    assert error.value.strerror == "New grype_db archive file not found as provided location"
+    assert error.value.filename == missing_output_archive
 
 
 def test_move_grype_db_archive_to_missing_dir(tmp_path, grype_db_archive):
     # Create a var for the output dir, but don't actually create it
     output_dir = os.path.join(tmp_path, "output")
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(FileNotFoundError) as error:
         # Function under test
-        grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(
+        grype_wrapper._move_grype_db_archive(
             grype_db_archive, output_dir
         )
 
@@ -234,6 +238,29 @@ def test_get_current_grype_db_metadata(grype_db_dir):
         result["checksum"]
         == "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
     )
+
+
+def test_get_current_grype_db_metadata_missing_file(tmp_path):
+    # Setup test input
+    grype_wrapper.grype_db_dir = os.path.join(tmp_path)
+
+    # Function under test
+    result = grype_wrapper.get_current_grype_db_metadata()
+
+    # Validate result
+    assert result is None
+
+
+def test_get_current_grype_db_metadata_bad_file(tmp_path):
+    # Setup test input
+    tmp_path.joinpath("metadata.json").touch()
+    grype_wrapper.grype_db_dir = os.path.join(tmp_path)
+
+    # Function under test
+    result = grype_wrapper.get_current_grype_db_metadata()
+
+    # Validate result
+    assert result is None
 
 
 def test_get_proc_env(grype_db_dir):

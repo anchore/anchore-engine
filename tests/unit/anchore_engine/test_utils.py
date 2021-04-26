@@ -2,11 +2,13 @@ import pytest
 import shlex
 
 from anchore_engine.utils import (
-    parse_dockerimage_string,
-    run_check,
     CommandException,
+    parse_dockerimage_string,
+    PIPED_CMD_VALUE_ERROR_MESSAGE,
+    run_check,
     run_piped_command_list,
     run_sanitize,
+    SANITIZE_CMD_ERROR_MESSAGE,
 )
 
 images = [
@@ -106,7 +108,7 @@ def test_run_sanitize_good_input():
     # Function under test
     output_cmd_list = run_sanitize(input_cmd_list)
 
-    # Validate input
+    # Validate output
     output_cmd_list == input_cmd_list
 
 
@@ -115,13 +117,19 @@ def test_run_sanitize_good_input():
     [";&<>", ";", "&", "<", ">"],
 )
 def test_run_sanitize_bad_input(input):
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as error:
+        # Function under test
         run_sanitize(input)
+
+    # Validate error message
+    assert str(error.value) == SANITIZE_CMD_ERROR_MESSAGE
 
 
 @pytest.mark.parametrize(
     "cmds_list, expected_return_code, expected_stdout, expected_stderr",
-    [([], None, None, None), ([["pwd"], ["wc", "-l"]], 0, "1", b"")],
+    [
+        ([["pwd"], ["wc", "-l"]], 0, "1", b"")
+    ],
 )
 def test_run_piped_command(
     cmds_list, expected_return_code, expected_stdout, expected_stderr
@@ -130,7 +138,7 @@ def test_run_piped_command(
     return_code, stdout, stderr = run_piped_command_list(cmds_list)
 
     # Binary string returned in different environments can be padded with different amounts of whitespace
-    # So where expected_output != None, convert it to utf-8 and trim it so we get a clean, reliable comparison
+    # So convert it to utf-8 and trim it so we get a clean, reliable comparison
     if stdout is not None:
         stdout = stdout.decode("utf-8").strip()
 
@@ -140,15 +148,29 @@ def test_run_piped_command(
     assert stderr == expected_stderr
 
 
+@pytest.mark.parametrize(
+    "cmds_list", [[], None]
+)
+def test_run_empty_piped_command(cmds_list):
+    with pytest.raises(ValueError) as error:
+        # Function under test
+        run_piped_command_list(cmds_list)
+
+    # Validate error message
+    assert str(error.value) == PIPED_CMD_VALUE_ERROR_MESSAGE
+
+
 def test_run_invalid_piped_command():
     # Setup input var
     first_command = shlex.split("pwd")
     bad_command = shlex.split("<")
     cmds_list = [first_command, bad_command]
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as error:
         # Function under test
         run_piped_command_list(cmds_list)
+
+    assert str(error.value) == SANITIZE_CMD_ERROR_MESSAGE
 
 
 # allows raising from a lambda

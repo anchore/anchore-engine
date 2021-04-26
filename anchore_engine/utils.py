@@ -23,6 +23,8 @@ from ijson.backends import python as ijpython
 from anchore_engine.subsys import logger
 from anchore_engine.util.docker import parse_dockerimage_string
 
+SANITIZE_CMD_ERROR_MESSAGE = "bad character in shell input"
+PIPED_CMD_VALUE_ERROR_MESSAGE = "Piped command cannot be None or empty"
 
 K_BYTES = 1024
 M_BYTES = 1024 * K_BYTES
@@ -213,7 +215,7 @@ def run_sanitize(cmd_list):
         if not re.search("[;&<>]", x):
             return x
         else:
-            raise Exception("bad character in shell input")
+            raise Exception(SANITIZE_CMD_ERROR_MESSAGE)
 
     return [x for x in cmd_list if shellcheck(x)]
 
@@ -227,7 +229,9 @@ def run_piped_command_list(
     cmd_lists should be passed as: [['echo', '{}'], ['grype']]
     Do not include the actual pipe symbol, it is inferred from the data structure.
     """
-    if cmd_lists:
+    if not cmd_lists:
+        raise ValueError(PIPED_CMD_VALUE_ERROR_MESSAGE)
+    else:
         output = None
         for cmd_list in cmd_lists:
             run_sanitize(cmd_list)
@@ -247,8 +251,6 @@ def run_piped_command_list(
         stdout_result, stderr_result = output.communicate()
 
         return output.returncode, stdout_result, stderr_result
-    else:
-        return None, None, None
 
 
 def run_command_list(

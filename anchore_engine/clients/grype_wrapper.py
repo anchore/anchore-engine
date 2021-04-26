@@ -1,3 +1,6 @@
+import errno
+from json.decoder import JSONDecodeError
+
 import anchore_engine.configuration.localconfig
 import os
 import json
@@ -25,6 +28,8 @@ VULNERABILITY_FILE_NAME = "vulnerability.db"
 METADATA_FILE_NAME = "metadata.json"
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
+
+ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE = "New grype_db archive file not found"
 
 
 def _get_default_grype_db_dir_from_config():
@@ -59,7 +64,11 @@ def _move_grype_db_archive(
                 grype_db_archive_copied_file_location,
             )
         )
-        raise FileNotFoundError
+        raise FileNotFoundError(
+            errno.ENOENT,
+            ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE,
+            grype_db_archive_local_file_location
+        )
     else:
         # Move the archive file
         logger.info(
@@ -243,8 +252,11 @@ def get_current_grype_db_metadata() -> json:
     else:
         # Get the contents of the file
         with open(latest_grype_db_metadata_file) as read_file:
-            json_output = json.load(read_file)
-            return json_output
+            try:
+                return json.load(read_file)
+            except JSONDecodeError:
+                logger.error("Unable to decode grype_db metadata file into json: %s", read_file)
+                return None
 
 
 def _get_proc_env():
