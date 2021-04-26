@@ -1247,24 +1247,6 @@ def feed_instance_by_name(name: str) -> DataFeed:
     return feed_registry.get(name)()
 
 
-def notify_event(event: EventBase, client: CatalogClient, operation_id=None):
-    """
-    Send an event or just log it if client is None
-    Always log the event to info level
-    """
-
-    if client:
-        try:
-            client.add_event(event)
-        except Exception as e:
-            logger.warn("Error adding feed start event: {}".format(e))
-
-    try:
-        logger.info("Event: {} (operation_id={})".format(event.to_json(), operation_id))
-    except:
-        logger.exception("Error logging event")
-
-
 def log_msg_ctx(operation_id, feed, group, msg):
     return "{} (operation_id={}, feed={}, group={})".format(
         msg, operation_id, feed, group
