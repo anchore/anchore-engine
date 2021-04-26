@@ -127,9 +127,7 @@ def test_run_sanitize_bad_input(input):
 
 @pytest.mark.parametrize(
     "cmds_list, expected_return_code, expected_stdout, expected_stderr",
-    [
-        ([["pwd"], ["wc", "-l"]], 0, "1", b"")
-    ],
+    [([["pwd"], ["wc", "-l"]], 0, "1", b"")],
 )
 def test_run_piped_command(
     cmds_list, expected_return_code, expected_stdout, expected_stderr
@@ -148,9 +146,7 @@ def test_run_piped_command(
     assert stderr == expected_stderr
 
 
-@pytest.mark.parametrize(
-    "cmds_list", [[], None]
-)
+@pytest.mark.parametrize("cmds_list", [[], None])
 def test_run_empty_piped_command(cmds_list):
     with pytest.raises(ValueError) as error:
         # Function under test

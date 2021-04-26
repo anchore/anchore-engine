@@ -5,7 +5,7 @@ import shutil
 import sqlalchemy
 
 from anchore_engine.clients import grype_wrapper
-
+from anchore_engine.clients.grype_wrapper import ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE
 
 TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
 GRYPE_ARCHIVE_FILE_NAME = "grype_db_test_archive.tar.gz"
@@ -109,7 +109,7 @@ def test_move_missing_grype_db_archive(tmp_path):
         )
 
     # Validate error message
-    assert error.value.strerror == "New grype_db archive file not found as provided location"
+    assert error.value.strerror == ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE
     assert error.value.filename == missing_output_archive
 
 
@@ -119,9 +119,7 @@ def test_move_grype_db_archive_to_missing_dir(tmp_path, grype_db_archive):
 
     with pytest.raises(FileNotFoundError) as error:
         # Function under test
-        grype_wrapper._move_grype_db_archive(
-            grype_db_archive, output_dir
-        )
+        grype_wrapper._move_grype_db_archive(grype_db_archive, output_dir)
 
 
 def test_open_grype_db_archive(grype_db_archive):

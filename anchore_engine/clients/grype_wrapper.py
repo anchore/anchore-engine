@@ -1,9 +1,7 @@
-import errno
-from json.decoder import JSONDecodeError
-
 import anchore_engine.configuration.localconfig
-import os
+import errno
 import json
+import os
 import shlex
 import shutil
 import sqlalchemy
@@ -12,6 +10,7 @@ import tarfile
 from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
 from anchore_engine.utils import CommandException, run_check, run_piped_command_list
+from json.decoder import JSONDecodeError
 from readerwriterlock import rwlock
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -67,7 +66,7 @@ def _move_grype_db_archive(
         raise FileNotFoundError(
             errno.ENOENT,
             ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE,
-            grype_db_archive_local_file_location
+            grype_db_archive_local_file_location,
         )
     else:
         # Move the archive file
@@ -255,7 +254,9 @@ def get_current_grype_db_metadata() -> json:
             try:
                 return json.load(read_file)
             except JSONDecodeError:
-                logger.error("Unable to decode grype_db metadata file into json: %s", read_file)
+                logger.error(
+                    "Unable to decode grype_db metadata file into json: %s", read_file
+                )
                 return None
 
 
