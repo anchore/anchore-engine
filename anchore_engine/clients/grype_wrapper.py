@@ -315,7 +315,7 @@ def get_vulnerabilities_for_sbom_file(grype_sbom_file: str) -> json:
             proc_env = _get_proc_env()
 
             # Format and run the command
-            cmd = "grype -vv -o json sbom:{sbom}".format(sbom=grype_sbom_file)
+            cmd = "{grype_sub_command} sbom:{sbom}".format(grype_sub_command=GRYPE_SUB_CMD, sbom=grype_sbom_file)
 
             logger.debug("Running grype with command: {}".format(cmd))
 
