@@ -24,7 +24,7 @@ def get_test_file_path(basename: str) -> str:
 def get_test_sbom(sbom_file_name):
     full_sbom_path = get_test_file_path(sbom_file_name)
     with open(full_sbom_path, "r") as read_file:
-        return read_file.read().replace('\n', '')
+        return read_file.read().replace("\n", "")
 
 
 def get_test_sbom_file(sbom_file_name):
@@ -94,6 +94,30 @@ def test_move_grype_db_archive(tmp_path, grype_db_archive):
     assert grype_db_archive_copied_file_location == os.path.join(
         output_dir, "grype_db_test_archive.tar.gz"
     )
+
+
+def test_move_missing_grype_db_archive(tmp_path):
+    # Setup non-existent input archive and real output dir
+    missing_output_archive = "/does/not/exist.tar.gz"
+    output_dir = os.path.join(tmp_path, "output")
+    os.mkdir(output_dir)
+
+    with pytest.raises(FileNotFoundError):
+        # Function under test
+        grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(
+            missing_output_archive, output_dir
+        )
+
+
+def test_move_grype_db_archive_to_missing_dir(tmp_path, grype_db_archive):
+    # Create a var for the output dir, but don't actually create it
+    output_dir = os.path.join(tmp_path, "output")
+
+    with pytest.raises(FileNotFoundError):
+        # Function under test
+        grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(
+            grype_db_archive, output_dir
+        )
 
 
 def test_open_grype_db_archive(grype_db_archive):
@@ -206,7 +230,10 @@ def test_get_current_grype_db_metadata(grype_db_dir):
     result = grype_wrapper.get_current_grype_db_metadata()
 
     # Validate result
-    assert result["checksum"] == "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
+    assert (
+        result["checksum"]
+        == "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
+    )
 
 
 def test_get_proc_env(grype_db_dir):
@@ -234,12 +261,12 @@ def test_get_proc_env(grype_db_dir):
 # def test_get_vulnerabilities_for_sbom(grype_db_dir, sbom_file_name, expected_output):
 #     # Setup test inputs
 #     grype_wrapper.grype_db_dir = grype_db_dir
-#     test_sbom = get_test_sbom(sbom_file_name)
+#     test_sbom = get_test_sbom(sbom_file_name).replace("<", "").replace(">", "")
 #
 #     # Function under test
 #     result = grype_wrapper.get_vulnerabilities_for_sbom(test_sbom)
 #
-#     # TODO Assert expected results
+#     # Validate results
 #     assert result["distro"]["name"] == expected_output
 
 
@@ -259,7 +286,7 @@ def test_get_proc_env(grype_db_dir):
 #     # Function under test
 #     result = grype_wrapper.get_vulnerabilities_for_sbom_file(test_sbom_file)
 #
-#     # TODO Assert expected results
+#     # Validate results
 #     assert result["distro"]["name"] == expected_output
 
 
@@ -326,9 +353,7 @@ def test_query_vulnerabilities(
 
     # Test and validate the query param combinations
     results = grype_wrapper.query_vulnerabilities(
-        vuln_id=vuln_id,
-        affected_package=affected_package,
-        namespace=namespace,
+        vuln_id=vuln_id, affected_package=affected_package, namespace=namespace,
     )
     assert len(results) == expected_result_length
     assert list(map(lambda result: result.id, results)) == expected_output

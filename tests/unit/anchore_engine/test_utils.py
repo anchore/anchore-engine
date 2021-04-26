@@ -1,6 +1,13 @@
 import pytest
-from anchore_engine.utils import parse_dockerimage_string, run_check, CommandException
+import shlex
 
+from anchore_engine.utils import (
+    parse_dockerimage_string,
+    run_check,
+    CommandException,
+    run_piped_command_list,
+    run_sanitize,
+)
 
 images = [
     (
@@ -92,6 +99,53 @@ def test_parse_dockerimage_string(image, expected):
     assert result == expected
 
 
+def test_run_sanitize_good_input():
+    # Setup input
+    input_cmd_list = ["wc", "-l"]
+
+    # Function under test
+    output_cmd_list = run_sanitize(input_cmd_list)
+
+    # Validate input
+    output_cmd_list == input_cmd_list
+
+
+@pytest.mark.parametrize(
+    "input", [";&<>", ";", "&", "<", ">"],
+)
+def test_run_sanitize_bad_input(input):
+    with pytest.raises(Exception):
+        run_sanitize(input)
+
+
+@pytest.mark.parametrize(
+    "cmds_list, expected_return_code, expected_stdout, expected_stderr",
+    [([], None, None, None), ([["pwd"], ["wc", "-l"]], 0, b"       1\n", b"")],
+)
+def test_run_piped_command(
+    cmds_list, expected_return_code, expected_stdout, expected_stderr
+):
+    # Function under test
+    return_code, stdout, stderr = run_piped_command_list(cmds_list)
+
+    # Validate input
+    # Formatting the stdout and stderr is up to the caller so we are testing the raw binary string output here
+    assert return_code == expected_return_code
+    assert stdout == expected_stdout
+    assert stderr == expected_stderr
+
+
+def test_run_invalid_piped_command():
+    # Setup input var
+    first_command = shlex.split("pwd")
+    bad_command = shlex.split("<")
+    cmds_list = [first_command, bad_command]
+
+    with pytest.raises(Exception):
+        # Function under test
+        run_piped_command_list(cmds_list)
+
+
 # allows raising from a lambda
 def _raise(exc):
     raise exc
@@ -179,10 +233,7 @@ class TestRunCheck:
         stdout, stderr = run_check(["ls"])
         assert debug_log.calls[0]["args"] == ("running cmd: %s", "ls")
         assert debug_log.calls[1]["args"] == ("stdout: %s", "stdout")
-        assert debug_log.calls[2]["args"] == (
-            "stdout: %s",
-            "line",
-        )
+        assert debug_log.calls[2]["args"] == ("stdout: %s", "line",)
 
     def test_log_stderr_does_not_log(self, monkeypatch):
         # a 0 exit status doesn't log stderr

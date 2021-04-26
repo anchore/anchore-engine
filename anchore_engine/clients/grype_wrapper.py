@@ -8,7 +8,7 @@ import tarfile
 
 from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
-from anchore_engine.utils import CommandException, run_piped_command, run_check
+from anchore_engine.utils import CommandException, run_check, run_piped_command_list
 from readerwriterlock import rwlock
 from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -52,16 +52,26 @@ def _move_grype_db_archive(
     archive_file_name = os.path.basename(grype_db_archive_local_file_location)
     grype_db_archive_copied_file_location = os.path.join(output_dir, archive_file_name)
 
-    # Move the archive file
-    logger.info(
-        "Moving the grype_db archive from {} to {}".format(
+    if not os.path.exists(grype_db_archive_local_file_location):
+        logger.warn(
+            "Unable to move grype_db archive from {} to {} because it does not exist".format(
+                grype_db_archive_local_file_location,
+                grype_db_archive_copied_file_location,
+            )
+        )
+        raise FileNotFoundError
+    else:
+        # Move the archive file
+        logger.info(
+            "Moving the grype_db archive from {} to {}".format(
+                grype_db_archive_local_file_location,
+                grype_db_archive_copied_file_location,
+            )
+        )
+        os.replace(
             grype_db_archive_local_file_location, grype_db_archive_copied_file_location
         )
-    )
-    os.replace(
-        grype_db_archive_local_file_location, grype_db_archive_copied_file_location
-    )
-    return grype_db_archive_copied_file_location
+        return grype_db_archive_copied_file_location
 
 
 def _open_grype_db_archive(
@@ -106,7 +116,7 @@ def _move_and_open_grype_db_archive(
     # Get the location to copy the archive to
     local_db_dir = _get_default_grype_db_dir_from_config()
 
-    # Copy the archive
+    # Move the archive
     grype_db_archive_copied_file_location = _move_grype_db_archive(
         grype_db_archive_local_file_location, local_db_dir
     )
@@ -266,20 +276,24 @@ def get_vulnerabilities_for_sbom(grype_sbom: str) -> json:
             # Format and run the command. Grype supports piping in an sbom string, so we need to this in two steps.
             # 1) Echo the sbom string to std_out
             # 2) Pipe that into grype
-            pipe_sub_cmd = 'echo \'{sbom}\''.format(
-                sbom=grype_sbom,
-            )
+            pipe_sub_cmd = "echo '{sbom}'".format(sbom=grype_sbom,)
             full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(GRYPE_SUB_CMD)]
 
-            logger.debug("Running grype with command: {} | {}".format(pipe_sub_cmd, GRYPE_SUB_CMD))
+            logger.debug(
+                "Running grype with command: {} | {}".format(
+                    pipe_sub_cmd, GRYPE_SUB_CMD
+                )
+            )
 
             stdout = None
             err = None
             try:
-                _, stdout, _ = run_piped_command(full_cmd, env=proc_env)
+                _, stdout, _ = run_piped_command_list(full_cmd, env=proc_env)
             except CommandException as exc:
                 logger.error(
-                    "Exception running command: {} | {}, stderr: {}".format(pipe_sub_cmd, GRYPE_SUB_CMD, exc.stderr)
+                    "Exception running command: {} | {}, stderr: {}".format(
+                        pipe_sub_cmd, GRYPE_SUB_CMD, exc.stderr
+                    )
                 )
                 raise exc
         finally:
@@ -301,9 +315,7 @@ def get_vulnerabilities_for_sbom_file(grype_sbom_file: str) -> json:
             proc_env = _get_proc_env()
 
             # Format and run the command
-            cmd = "grype -vv -o json sbom:{sbom}".format(
-                sbom=grype_sbom_file,
-            )
+            cmd = "grype -vv -o json sbom:{sbom}".format(sbom=grype_sbom_file)
 
             logger.debug("Running grype with command: {}".format(cmd))
 
@@ -353,10 +365,7 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
 
 
 def query_vulnerabilities(
-    vuln_id=None,
-    affected_package=None,
-    affected_package_version=None,
-    namespace=None,
+    vuln_id=None, affected_package=None, affected_package_version=None, namespace=None,
 ):
     """
     Query the grype db for vulnerabilites. affected_package_version is unused, but is left in place for now to match the

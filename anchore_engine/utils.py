@@ -218,7 +218,7 @@ def run_sanitize(cmd_list):
     return [x for x in cmd_list if shellcheck(x)]
 
 
-def run_piped_command(
+def run_piped_command_list(
     cmd_lists, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
 ):
     """
@@ -227,16 +227,28 @@ def run_piped_command(
     cmd_lists should be passed as: [['echo', '{}'], ['grype']]
     Do not include the actual pipe symbol, it is inferred from the data structure.
     """
-    output = None
-    for cmd_list in cmd_lists:
-        if output is None:
-            output = subprocess.Popen(cmd_list, stdout=stdout, stderr=stderr, **kwargs)
-        else:
-            output = subprocess.Popen(cmd_list, stdin=output.stdout, stdout=stdout, stderr=stderr, **kwargs)
+    if cmd_lists:
+        output = None
+        for cmd_list in cmd_lists:
+            run_sanitize(cmd_list)
+            if output is None:
+                output = subprocess.Popen(
+                    cmd_list, stdout=stdout, stderr=stderr, **kwargs
+                )
+            else:
+                output = subprocess.Popen(
+                    cmd_list,
+                    stdin=output.stdout,
+                    stdout=stdout,
+                    stderr=stderr,
+                    **kwargs
+                )
 
-    stdout_result, stderr_result = output.communicate()
+        stdout_result, stderr_result = output.communicate()
 
-    return output.returncode, stdout_result, stderr_result
+        return output.returncode, stdout_result, stderr_result
+    else:
+        return None, None, None
 
 
 def run_command_list(
