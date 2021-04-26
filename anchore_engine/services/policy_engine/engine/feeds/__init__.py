@@ -1,9 +1,11 @@
-from collections import namedtuple
 import datetime
+from collections import namedtuple
 
 FeedGroupList = namedtuple("FeedGroupList", ["groups"])
 FeedList = namedtuple("FeedList", ["feeds"])
-GroupData = namedtuple("GroupData", ["data", "next_token", "since", "record_count"])
+GroupData = namedtuple(
+    "GroupData", ["data", "next_token", "since", "record_count", "response_metadata"]
+)
 
 
 class IFeedSource(object):
