@@ -37,16 +37,16 @@ def _get_default_grype_db_dir_from_config():
     """
     localconfig = anchore_engine.configuration.localconfig.get_config()
     if "grype_db_dir" in localconfig:
-        grype_db_dir = os.path.join(
+        local_grype_db_dir = os.path.join(
             localconfig["service_dir"], localconfig["grype_db_dir"]
         )
     else:
-        grype_db_dir = os.path.join(localconfig["service_dir"], "grype_db/")
+        local_grype_db_dir = os.path.join(localconfig["service_dir"], "grype_db/")
 
-    if not os.path.exists(grype_db_dir):
-        os.mkdir(grype_db_dir)
+    if not os.path.exists(local_grype_db_dir):
+        os.mkdir(local_grype_db_dir)
 
-    return grype_db_dir
+    return local_grype_db_dir
 
 
 def _move_grype_db_archive(
@@ -141,7 +141,7 @@ def _move_and_open_grype_db_archive(
     return latest_grype_db_dir
 
 
-def _init_grype_db_engine(latest_grype_db_dir):
+def _init_latest_grype_db_engine(latest_grype_db_dir):
     """
     Create and return the sqlalchemy engine object
     """
@@ -154,7 +154,7 @@ def _init_grype_db_engine(latest_grype_db_dir):
     return latest_grype_db_engine
 
 
-def _init_grype_db_session(grype_db_engine):
+def _init_latest_grype_db_session(grype_db_engine):
     """
     Create and return the db session
     """
@@ -168,7 +168,7 @@ def _init_grype_db_session(grype_db_engine):
     return grype_db_session
 
 
-def _init_grype_db(lastest_grype_db_archive: str, version_name: str):
+def _init_latest_grype_db(lastest_grype_db_archive: str, version_name: str):
     """
     Write the db string to file, create the engine, and create the session
     Return the file and session
@@ -176,8 +176,8 @@ def _init_grype_db(lastest_grype_db_archive: str, version_name: str):
     latest_grype_db_dir = _move_and_open_grype_db_archive(
         lastest_grype_db_archive, version_name
     )
-    latest_grype_db_engine = _init_grype_db_engine(latest_grype_db_dir)
-    latest_grype_db_session = _init_grype_db_session(latest_grype_db_engine)
+    latest_grype_db_engine = _init_latest_grype_db_engine(latest_grype_db_dir)
+    latest_grype_db_session = _init_latest_grype_db_session(latest_grype_db_engine)
 
     # Return the dir, file, and engine
     return latest_grype_db_dir, latest_grype_db_session
@@ -199,7 +199,9 @@ def _remove_local_grype_db(grype_db_dir):
     return
 
 
-def update_grype_db(grype_db_archive_local_file_location: str, version_name: str):
+def __init_grype_db_engine(
+    grype_db_archive_local_file_location: str, version_name: str
+):
     """
     Update the installed grype db with the provided definition, and remove the old grype db file.
     This method does not validation of the db, and assumes it has passed any required validation upstream
@@ -218,7 +220,7 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
 
             # Store the db locally and
             # Create the sqlalchemy engine for the new db
-            latest_grype_db_dir, latest_grype_db_session = _init_grype_db(
+            latest_grype_db_dir, latest_grype_db_session = _init_latest_grype_db(
                 grype_db_archive_local_file_location, version_name
             )
 
@@ -235,14 +237,24 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
             write_lock.release()
 
 
+def _get_grype_db_dir():
+    global grype_db_dir
+    return grype_db_dir
+
+
+def _get_grype_db_session():
+    global grype_db_session
+    return grype_db_session
+
+
 def get_current_grype_db_metadata() -> json:
     """
     Return the json contents of the metadata file for the in-use version of grype db
     """
-    global grype_db_dir
-
     # Get the path to the latest grype_db metadata file
-    latest_grype_db_metadata_file = os.path.join(grype_db_dir, METADATA_FILE_NAME)
+    latest_grype_db_metadata_file = os.path.join(
+        _get_grype_db_dir(), METADATA_FILE_NAME
+    )
 
     # Ensure the file exists
     if not os.path.exists(latest_grype_db_metadata_file):
@@ -261,14 +273,12 @@ def get_current_grype_db_metadata() -> json:
 
 
 def _get_proc_env():
-    global grype_db_dir
-
     # Set grype env variables, including the grype db location
     grype_env = {
         "GRYPE_CHECK_FOR_APP_UPDATE": "0",
         "GRYPE_LOG_STRUCTURED": "1",
         "GRYPE_DB_AUTO_UPDATE": "0",
-        "GRYPE_DB_CACHE_DIR": "{}".format(grype_db_dir),
+        "GRYPE_DB_CACHE_DIR": "{}".format(_get_grype_db_dir()),
     }
     proc_env = os.environ.copy()
     proc_env.update(grype_env)
@@ -391,8 +401,6 @@ def query_vulnerabilities(
     Query the grype db for vulnerabilites. affected_package_version is unused, but is left in place for now to match the
     header of the existing function this is meant to replace.
     """
-    global grype_db_session
-
     # Get and release read locks
     read_lock = grype_db_lock.gen_rlock()
     if read_lock.acquire(blocking=False, timeout=60):
@@ -409,9 +417,13 @@ def query_vulnerabilities(
                 )
             )
 
-            query = grype_db_session.query(GrypeVulnerability).join(
-                GrypeVulnerabilityMetadata,
-                GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+            query = (
+                _get_grype_db_session()
+                .query(GrypeVulnerability)
+                .join(
+                    GrypeVulnerabilityMetadata,
+                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+                )
             )
 
             if vuln_id is not None:

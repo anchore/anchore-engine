@@ -151,7 +151,7 @@ def test_init_grype_db_engine(grype_db_dir):
     vuln_file_path = os.path.join(grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
 
     # Function under test
-    latest_grype_db_engine = grype_wrapper._init_grype_db_engine(grype_db_dir)
+    latest_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
 
     # Validate expected output
     assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
@@ -165,7 +165,7 @@ def test_init_grype_db_session(grype_db_dir):
     assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
 
     # Function under test
-    latest_grype_db_session = grype_wrapper._init_grype_db_session(
+    latest_grype_db_session = grype_wrapper._init_latest_grype_db_session(
         latest_grype_db_engine
     )
 
@@ -181,7 +181,7 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
     )
 
     # Function under test
-    latest_grype_db_dir, latest_grype_db_session = grype_wrapper._init_grype_db(
+    latest_grype_db_dir, latest_grype_db_session = grype_wrapper._init_latest_grype_db(
         grype_db_archive, NEW_VERSION_NAME
     )
 
@@ -201,7 +201,7 @@ def test_remove_local_grype_db(old_grype_db_dir):
     assert not os.path.exists(old_grype_db_dir)
 
 
-def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive):
+def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_archive):
     # Setup
     grype_wrapper.grype_db_dir = old_grype_db_dir
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
@@ -210,7 +210,7 @@ def test_update_grype_db(grype_db_parent_dir, old_grype_db_dir, grype_db_archive
     )
 
     # Function under test
-    grype_wrapper.update_grype_db(grype_db_archive, NEW_VERSION_NAME)
+    grype_wrapper.__init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
 
     # Validate output
     assert os.path.exists(grype_wrapper.grype_db_dir)
@@ -369,8 +369,8 @@ def test_query_vulnerabilities(
     expected_output,
 ):
     # Setup the sqlalchemy artifacts on the test grype db
-    test_grype_db_engine = grype_wrapper._init_grype_db_engine(grype_db_dir)
-    grype_wrapper.grype_db_session = grype_wrapper._init_grype_db_session(
+    test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
+    grype_wrapper.grype_db_session = grype_wrapper._init_latest_grype_db_session(
         test_grype_db_engine
     )
 
