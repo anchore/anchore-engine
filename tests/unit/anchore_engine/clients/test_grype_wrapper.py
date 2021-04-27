@@ -104,9 +104,7 @@ def test_move_missing_grype_db_archive(tmp_path):
 
     with pytest.raises(FileNotFoundError) as error:
         # Function under test
-        grype_wrapper._move_grype_db_archive(
-            missing_output_archive, output_dir
-        )
+        grype_wrapper._move_grype_db_archive(missing_output_archive, output_dir)
 
     # Validate error message
     assert error.value.strerror == ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE
