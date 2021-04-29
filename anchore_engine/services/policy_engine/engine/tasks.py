@@ -9,7 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Optional
+from typing import List, Optional
 
 import dateutil.parser
 import requests
@@ -24,6 +24,7 @@ from anchore_engine.db import Image, end_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import session_scope
 from anchore_engine.services.policy_engine.engine.exc import *
+from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedSyncResult
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
 )
@@ -146,7 +147,9 @@ class FeedsUpdateTask(IAsyncTask):
     locking_enabled = True
 
     @classmethod
-    def run_feeds_update(cls, json_obj=None, force_flush=False):
+    def run_feeds_update(
+        cls, json_obj=None, force_flush=False
+    ) -> Optional[List[FeedSyncResult]]:
         """
         Creates a task and runs it, optionally with a thread if locking is enabled.
 
@@ -193,7 +196,7 @@ class FeedsUpdateTask(IAsyncTask):
     def is_full_sync(self):
         return self.feeds is None
 
-    def execute(self):
+    def execute(self) -> List[FeedSyncResult]:
         logger.info("Starting feed sync. (operation_id={})".format(self.uuid))
 
         # Feed syncs will update the images with any new cves that are pulled in for a the sync. As such, any images that are loaded while the sync itself is in progress need to be
@@ -221,15 +224,14 @@ class FeedsUpdateTask(IAsyncTask):
         start_time = datetime.datetime.utcnow()
         try:
             start_time = datetime.datetime.utcnow()
-            updated_dict = DataFeeds.sync(
+            updated_list = DataFeeds.sync(
                 to_sync=self.feeds,
                 full_flush=self.full_flush,
                 catalog_client=catalog_client,
                 operation_id=self.uuid,
             )
-
             logger.info("Feed sync complete (operation_id={})".format(self.uuid))
-            return updated_dict
+            return updated_list
         except Exception as e:
             error = e
             logger.exception(
