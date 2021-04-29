@@ -248,6 +248,52 @@ class AnchoreServiceFeed(DataFeed):
 
         return mapper
 
+    def _process_group_file_records(
+        self,
+        db: Session,
+        group_download_result: GroupDownloadResult,
+        group_obj: FeedGroupMetadata,
+        group_sync_result: GroupSyncResult,
+        local_repo: Optional[LocalFeedDataRepo],
+    ):
+        mapper = self._load_mapper(group_obj)
+        count = 0
+
+        for record in local_repo.read(
+            group_download_result.feed, group_download_result.group, 0
+        ):
+            mapped = mapper.map(record)
+            db.merge(mapped)
+            group_sync_result.updated_record_count += 1
+            count += 1
+
+            if count >= self.RECORDS_PER_CHUNK:
+                # Commit
+                group_obj.count = self.record_count(group_obj.name, db)
+                db.commit()
+                db = get_session()
+                logger.info(
+                    self._log_context.format_msg(
+                        "DB Update Progress: {}/{}".format(
+                            group_sync_result.updated_record_count,
+                            group_download_result.total_records,
+                        ),
+                    )
+                )
+                count = 0
+
+        else:
+            group_obj.count = self.record_count(group_obj.name, db)
+            db.commit()
+            logger.info(
+                self._log_context.format_msg(
+                    "DB Update Progress: {}/{}".format(
+                        group_sync_result.updated_record_count,
+                        group_download_result.total_records,
+                    ),
+                )
+            )
+
     def _sync_group(
         self,
         group_download_result: GroupDownloadResult,
@@ -291,8 +337,6 @@ class AnchoreServiceFeed(DataFeed):
                 )
                 self._flush_group(group_db_obj)
 
-            mapper = self._load_mapper(group_db_obj)
-
             # Iterate thru the records and commit
 
             logger.info(
@@ -302,42 +346,10 @@ class AnchoreServiceFeed(DataFeed):
                     ),
                 )
             )
-            count = 0
-            for record in local_repo.read(
-                group_download_result.feed, group_download_result.group, 0
-            ):
-                mapped = mapper.map(record)
-                db.merge(mapped)
-                result.updated_record_count += 1
-                count += 1
-
-                if count >= self.RECORDS_PER_CHUNK:
-                    # Commit
-                    group_db_obj.count = self.record_count(group_db_obj.name, db)
-                    db.commit()
-                    db = get_session()
-                    logger.info(
-                        self._log_context.format_msg(
-                            "DB Update Progress: {}/{}".format(
-                                result.updated_record_count,
-                                group_download_result.total_records,
-                            ),
-                        )
-                    )
-                    count = 0
-
-            else:
-                group_db_obj.count = self.record_count(group_db_obj.name, db)
-                db.commit()
-                db = get_session()
-                logger.info(
-                    self._log_context.format_msg(
-                        "DB Update Progress: {}/{}".format(
-                            result.updated_record_count,
-                            group_download_result.total_records,
-                        ),
-                    )
-                )
+            self._process_group_file_records(
+                db, group_download_result, group_db_obj, result, local_repo
+            )
+            db = get_session()
 
             logger.debug(
                 self._log_context.format_msg(
@@ -753,162 +765,72 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 f.write(grype_db_data)
             GrypeDBSyncManager.run_grypedb_sync(grypedb_file.path)
 
-    def _sync_group(
+    def _process_group_file_records(
         self,
+        db: Session,
         group_download_result: GroupDownloadResult,
-        full_flush: bool = False,
-        local_repo: Optional[LocalFeedDataRepo] = None,
-    ) -> GroupSyncResult:
-        """
-        Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
-
-        :param group_download_result: group download result record to update
-        :type group_download_result: GroupDownloadResult
-        :param full_flush: whether or not to flush out old records before syncing
-        :type full_flush: bool, defaults to False
-        :param local_repo: LocalFeedDataRepo (disk cache for download results)
-        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
-        :return:
-        """
-        result = GroupSyncResult(group=group_download_result.group)
-
-        db = get_session()
-        group_db_obj = None
-        if self.metadata:
-            db.refresh(self.metadata)
-            group_db_obj = self.group_by_name(group_download_result.group)
-
-        if not group_db_obj:
-            logger.error(
-                self._log_context.format_msg(
-                    "Skipping sync for feed group {}, not found in db, record should have been synced already",
+        group_obj: FeedGroupMetadata,
+        group_sync_result: GroupSyncResult,
+        local_repo: Optional[LocalFeedDataRepo],
+    ):
+        for record in local_repo.read_files(
+            group_download_result.feed, group_download_result.group
+        ):
+            # If we go through two files, then that means the feed service provided two GrypeDB files.
+            # This is an unexpected condition.
+            if group_sync_result.updated_record_count >= 1:
+                raise UnexpectedRawGrypeDBFile()
+            # Check that the data that we downloaded matches the checksum provided
+            checksum = record.metadata["Checksum"]
+            GrypeDBFile.verify_integrity(record.data, checksum)
+            # If there aren't any other database files with the same checksum, then this is a new database file.
+            if self._find_match(db, checksum).count() == 0:
+                # Update the database and the catalog with the new Grype DB file.
+                self._switch_active_grypedb(
+                    db,
+                    group_download_result,
+                    record,
+                    checksum,
                 )
-            )
-            return result
-
-        download_started = group_download_result.started.replace(
-            tzinfo=datetime.timezone.utc
-        )
-        sync_started = time.time()
-        try:
-            if full_flush:
-                logger.info(
-                    self._log_context.format_msg(
-                        "Performing data flush prior to sync as requested",
-                    )
-                )
-                self._flush_group(
-                    group_db_obj,
-                )
-
-            # Iterate thru the records and commit
-
-            logger.info(
-                self._log_context.format_msg(
-                    "Syncing {} total update records into db in sets of {}".format(
-                        group_download_result.total_records, self.RECORDS_PER_CHUNK
-                    ),
-                )
-            )
-            for record in local_repo.read_files(
-                group_download_result.feed, group_download_result.group
-            ):
-                # If we go through two files, then that means the feed service provided two GrypeDB files.
-                # This is an unexpected condition.
-                if result.updated_record_count >= 1:
-                    raise UnexpectedRawGrypeDBFile()
-                # Check that the data that we downloaded matches the checksum provided
-                checksum = record.metadata["Checksum"]
-                GrypeDBFile.verify_integrity(record.data, checksum)
-                # If there aren't any other database files with the same checksum, then this is a new database file.
-                if self._find_match(db, checksum).count() == 0:
-                    # Update the database and the catalog with the new Grype DB file.
-                    self._switch_active_grypedb(
-                        db,
-                        group_download_result,
-                        record,
-                        checksum,
-                    )
-                    # Cache the file to temporary storage and call GrypeDBSyncTask
-                    # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
-                    # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
-                    # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
-                    try:
-                        self._run_grypedb_sync_task(checksum, record.data)
-                    except GrypeDBSyncError:
-                        logger.exception(
-                            self._log_context.format_msg(
-                                "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
-                            )
-                        )
-                    # Update number of records processed
-                    result.updated_record_count += 1
-                    logger.info(
+                # Cache the file to temporary storage and call GrypeDBSyncTask
+                # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
+                # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
+                # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
+                try:
+                    self._run_grypedb_sync_task(checksum, record.data)
+                except GrypeDBSyncError:
+                    logger.exception(
                         self._log_context.format_msg(
-                            "DB Update Progress: {}/{}".format(
-                                result.updated_record_count,
-                                group_download_result.total_records,
-                            ),
+                            "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
                         )
                     )
-            else:
-                group_db_obj.count = self.record_count(group_db_obj.name, db)
-                db.commit()
-                db = get_session()
+                # Update number of records processed
+                group_sync_result.updated_record_count += 1
                 logger.info(
                     self._log_context.format_msg(
-                        "DB Update Complete, Progress: {}/{}".format(
-                            result.updated_record_count,
+                        "DB Update Progress: {}/{}".format(
+                            group_sync_result.updated_record_count,
                             group_download_result.total_records,
                         ),
                     )
                 )
-
-            logger.debug(
-                self._log_context.format_msg(
-                    "Updating last sync timestamp to {}".format(download_started),
-                )
-            )
-            group_db_obj = self.group_by_name(group_download_result.group)
-            # There are potential failures that could happen when downloading,
-            # skipping updating the `last_sync` allows the system to retry
-            if group_download_result.status == "complete":
-                group_db_obj.last_sync = download_started
-            group_db_obj.count = self.record_count(group_db_obj.name, db)
-            db.add(group_db_obj)
+        else:
+            group_obj.count = self.record_count(group_obj.name, db)
             db.commit()
-            logger.debug(
-                self._log_context.format_msg(
-                    "Enqueuing image refresh tasks.",
-                )
-            )
-            self._enqueue_refresh_tasks(db)
-        except Exception as exc:
-            logger.exception(
-                self._log_context.format_msg(
-                    "Error syncing",
-                )
-            )
-            db.rollback()
-            raise GrypeDBFeedSyncError from exc
-        finally:
-            sync_time = time.time() - sync_started
-            result.total_time_seconds = time.time() - download_started.timestamp()
             logger.info(
                 self._log_context.format_msg(
-                    "Sync to db duration: {} sec".format(sync_time),
-                )
-            )
-            logger.info(
-                self._log_context.format_msg(
-                    "Total sync, including download, duration: {} sec".format(
-                        result.total_time_seconds
+                    "DB Update Complete, Progress: {}/{}".format(
+                        group_sync_result.updated_record_count,
+                        group_download_result.total_records,
                     ),
                 )
             )
-
-        result.status = "success"
-        return result
+        logger.debug(
+            self._log_context.format_msg(
+                "Enqueuing image refresh tasks.",
+            )
+        )
+        self._enqueue_refresh_tasks(db)
 
     def sync(
         self,
@@ -960,138 +882,74 @@ class VulnerabilityFeed(AnchoreServiceFeed):
     __vuln_processing_fn__ = process_updated_vulnerability
     __flush_helper_fn__ = flush_vulnerability_matches
 
-    def _sync_group(
+    def _process_group_file_records(
         self,
+        db: Session,
         group_download_result: GroupDownloadResult,
-        full_flush=False,
-        local_repo=None,
-        operation_id=None,
-    ):
+        group_obj: FeedGroupMetadata,
+        local_repo: Optional[LocalFeedDataRepo],
+    ) -> int:
         """
-        Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
-
-        :param group_download_result
-        :return:
+        Convert the download results for a feed group into database records and write to the database session
+        Does not flush, so transaction can be rolled back if an exception is encountered.
+        :param db: sqlalchemy database session
+        :type db: Session
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param group_obj: metadata record for this feed group
+        :type group_obj: FeedGroupMetadata
+        :param local_repo: LocalFeedDataRepo (disk cache for download results)
+        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
+        :return: int
+        :rtype: total number of records updated
         """
-        result = GroupSyncResult(group=group_download_result.group)
-
-        db = get_session()
-        db.refresh(self.metadata)
-        group_db_obj = self.group_by_name(group_download_result.group)
-
-        if not group_db_obj:
-            logger.error(
-                self._log_context.format_msg(
-                    "Skipping group sync. Record not found in db, should have been synced already",
-                )
+        total_records_updated = 0
+        mapper = self._load_mapper(group_obj)
+        # Iterate thru the records and commit
+        count = 0
+        for record in local_repo.read(
+            group_download_result.feed, group_download_result.group, 0
+        ):
+            mapped = mapper.map(record)
+            updated_image_ids = self.update_vulnerability(
+                db,
+                mapped,
+                vulnerability_processing_fn=VulnerabilityFeed.__vuln_processing_fn__,
             )
-            return result
+            db.merge(mapped)
+            total_records_updated += 1
+            count += 1
 
-        sync_started = time.time()
-        download_started = group_download_result.started.replace(
-            tzinfo=datetime.timezone.utc
-        )
+            if len(updated_image_ids) > 0:
+                db.flush()  # Flush after every one so that mem footprint stays small if lots of images are updated
 
-        try:
-            updated_images = (
-                set()
-            )  # To get unique set of all images updated by this sync
-
-            if full_flush:
-                logger.info(
-                    self._log_context.format_msg(
-                        "Performing group data flush prior to sync",
-                    )
-                )
-                self._flush_group(group_db_obj)
-
-            mapper = self._load_mapper(group_db_obj)
-
-            # Iterate thru the records and commit
-            count = 0
-            for record in local_repo.read(
-                group_download_result.feed, group_download_result.group, 0
-            ):
-                mapped = mapper.map(record)
-                updated_image_ids = self.update_vulnerability(
-                    db,
-                    mapped,
-                    vulnerability_processing_fn=VulnerabilityFeed.__vuln_processing_fn__,
-                )
-                updated_images = updated_images.union(
-                    set(updated_image_ids)
-                )  # Record after commit to ensure in-sync.
-                db.merge(mapped)
-                result.updated_record_count += 1
-                count += 1
-
-                if len(updated_image_ids) > 0:
-                    db.flush()  # Flush after every one so that mem footprint stays small if lots of images are updated
-
-                if count >= self.RECORDS_PER_CHUNK:
-                    # Commit
-                    group_db_obj.count = self.record_count(group_db_obj.name, db)
-                    db.commit()
-                    logger.info(
-                        self._log_context.format_msg(
-                            "DB Update Progress: {}/{}".format(
-                                result.updated_record_count,
-                                group_download_result.total_records,
-                            ),
-                        )
-                    )
-                    db = get_session()
-                    count = 0
-
-            else:
-                group_db_obj.count = self.record_count(group_db_obj.name, db)
+            if count >= self.RECORDS_PER_CHUNK:
+                # Commit
+                group_obj.count = self.record_count(group_obj.name, db)
                 db.commit()
                 logger.info(
                     self._log_context.format_msg(
                         "DB Update Progress: {}/{}".format(
-                            result.updated_record_count,
+                            total_records_updated,
                             group_download_result.total_records,
                         ),
                     )
                 )
                 db = get_session()
+                count = 0
 
-            logger.debug(
-                self._log_context.format_msg(
-                    "Updating last sync timestamp to {}".format(download_started),
-                )
-            )
-            group_db_obj = self.group_by_name(group_download_result.group)
-            group_db_obj.last_sync = download_started
-            group_db_obj.count = self.record_count(group_db_obj.name, db)
-            db.add(group_db_obj)
+        else:
+            group_obj.count = self.record_count(group_obj.name, db)
             db.commit()
-        except Exception as e:
-            logger.exception(
-                self._log_context.format_msg(
-                    "Error syncing group",
-                )
-            )
-            db.rollback()
-            raise e
-        finally:
-            result.total_time_seconds = time.time() - download_started.timestamp()
-            sync_time = time.time() - sync_started
             logger.info(
                 self._log_context.format_msg(
-                    "Sync to db duration: {} sec".format(sync_time),
-                )
-            )
-            logger.info(
-                self._log_context.format_msg(
-                    "Total sync, including download, duration: {} sec".format(
-                        result.total_time_seconds
+                    "DB Update Progress: {}/{}".format(
+                        total_records_updated,
+                        group_download_result.total_records,
                     ),
                 )
             )
-
-        result.status = "success"
-        return result
+        return total_records_updated
 
     @staticmethod
     def _are_match_equivalent(vulnerability_a, vulnerability_b):
