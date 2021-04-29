@@ -605,8 +605,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
             self._catalog_svc_client = internal_client_for(CatalogClient, userId=None)
         return self._catalog_svc_client
 
+    @staticmethod
     def _find_match(
-        self, db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
+        db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
     ) -> Query:
         """
         Utility Method, queries GrypeDBMetadata and optionally filters on checksum or active attribute.
@@ -664,7 +665,8 @@ class GrypeDBFeed(AnchoreServiceFeed):
         group_obj.count = 0
         db.flush()
 
-    def _enqueue_refresh_tasks(self, db: Session) -> None:
+    @staticmethod
+    def _enqueue_refresh_tasks(db: Session) -> None:
         """
         Places a refresh task on the simple queue service for every image id in the image table.
 
