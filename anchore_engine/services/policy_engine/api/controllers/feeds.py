@@ -1,31 +1,31 @@
+import typing
+from dataclasses import asdict
+
 from flask import jsonify
 
-from anchore_engine.common.errors import AnchoreError
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.exceptions import (
+    AnchoreApiError,
     BadRequest,
     ConflictingRequest,
-    ResourceNotFound,
     InternalError,
-    AnchoreApiError,
+    ResourceNotFound,
 )
 from anchore_engine.clients.services.simplequeue import (
     LeaseAcquisitionFailedError,
     LeaseUnavailableError,
 )
+from anchore_engine.common.errors import AnchoreError
 from anchore_engine.common.helpers import make_response_error
+from anchore_engine.db import FeedGroupMetadata as DbFeedGroupMetadata
+from anchore_engine.db import FeedMetadata as DbFeedMetadata
 from anchore_engine.services.policy_engine.api.models import (
-    FeedMetadata,
     FeedGroupMetadata,
+    FeedMetadata,
 )
 from anchore_engine.services.policy_engine.engine.feeds import db, sync
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.subsys import logger as log
-from anchore_engine.db import (
-    FeedMetadata as DbFeedMetadata,
-    FeedGroupMetadata as DbFeedGroupMetadata,
-)
-import typing
 
 authorizer = get_authorizer()
 
@@ -125,7 +125,7 @@ def sync_feeds(sync=True, force_flush=False):
             log.exception("Error executing feed update task")
             return jsonify(make_response_error(e, in_httpcode=500)), 500
 
-    return jsonify(result), 200
+    return jsonify([asdict(sync_result) for sync_result in result]), 200
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)

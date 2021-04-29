@@ -1,6 +1,7 @@
 import datetime
 import time
-from typing import Optional, Sequence, Tuple
+from dataclasses import dataclass, field
+from typing import List, Optional, Sequence, Tuple
 
 from sqlalchemy.orm import Query
 from sqlalchemy.orm.session import Session
@@ -63,18 +64,21 @@ from anchore_engine.subsys import logger
 from anchore_engine.utils import rfc3339str_to_datetime
 
 
-def build_group_sync_result(group=None, status="failure"):
-    return {
-        "group": group,
-        "status": status,
-        "total_time_seconds": 0,
-        "updated_record_count": 0,
-        "updated_image_count": 0,
-    }
+@dataclass
+class GroupSyncResult:
+    group: Optional[str] = None
+    status: str = "failure"
+    total_time_seconds: int = 0
+    updated_record_count: int = 0
+    updated_image_count: int = 0
 
 
-def build_feed_sync_results(feed=None, status="failure"):
-    return {"feed": feed, "status": status, "total_time_seconds": 0, "groups": []}
+@dataclass
+class FeedSyncResult:
+    feed: Optional[str] = None
+    status: str = "failure"
+    total_time_seconds: int = 0
+    groups: List[GroupSyncResult] = field(default_factory=list)
 
 
 class LogContext:
@@ -118,7 +122,7 @@ class DataFeed(object):
         event_client: CatalogClient = None,
         operation_id=None,
         group=None,
-    ) -> dict:
+    ) -> FeedSyncResult:
         """
         Ensure the feed is synchronized. Performs checks per sync item and if item_processing_fn is provided.
         Transaction scope is the update for an entire group.
@@ -251,16 +255,13 @@ class AnchoreServiceFeed(DataFeed):
         group_download_result: GroupDownloadResult,
         full_flush=False,
         local_repo=None,
-    ):
+    ) -> GroupSyncResult:
         """
         Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
 
-        :param group_obj:
         :return:
         """
-        total_updated_count = 0
-        result = build_group_sync_result()
-        result["group"] = group_download_result.group
+        result = GroupSyncResult(group=group_download_result.group)
 
         db = get_session()
         group_db_obj = None
@@ -308,8 +309,8 @@ class AnchoreServiceFeed(DataFeed):
                 group_download_result.feed, group_download_result.group, 0
             ):
                 mapped = mapper.map(record)
-                merged = db.merge(mapped)
-                total_updated_count += 1
+                db.merge(mapped)
+                result.updated_record_count += 1
                 count += 1
 
                 if count >= self.RECORDS_PER_CHUNK:
@@ -320,7 +321,8 @@ class AnchoreServiceFeed(DataFeed):
                     logger.info(
                         self._log_context.format_msg(
                             "DB Update Progress: {}/{}".format(
-                                total_updated_count, group_download_result.total_records
+                                result.updated_record_count,
+                                group_download_result.total_records,
                             ),
                         )
                     )
@@ -333,7 +335,8 @@ class AnchoreServiceFeed(DataFeed):
                 logger.info(
                     self._log_context.format_msg(
                         "DB Update Progress: {}/{}".format(
-                            total_updated_count, group_download_result.total_records
+                            result.updated_record_count,
+                            group_download_result.total_records,
                         ),
                     )
                 )
@@ -361,7 +364,7 @@ class AnchoreServiceFeed(DataFeed):
             raise e
         finally:
             sync_time = time.time() - sync_started
-            total_group_time = time.time() - download_started.timestamp()
+            result.total_time_seconds = time.time() - download_started.timestamp()
             logger.info(
                 self._log_context.format_msg(
                     "Sync to db duration: {} sec".format(sync_time),
@@ -370,15 +373,12 @@ class AnchoreServiceFeed(DataFeed):
             logger.info(
                 self._log_context.format_msg(
                     "Total sync, including download, duration: {} sec".format(
-                        total_group_time
+                        result.total_time_seconds
                     ),
                 )
             )
 
-        result["updated_record_count"] = total_updated_count
-        result["status"] = "success"
-        result["total_time_seconds"] = total_group_time
-        result["updated_image_count"] = 0
+        result.status = "success"
         return result
 
     def _flush_group(self, group_obj):
@@ -445,7 +445,7 @@ class AnchoreServiceFeed(DataFeed):
         event_client: CatalogClient = None,
         operation_id=None,
         group=None,
-    ) -> dict:
+    ) -> FeedSyncResult:
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
 
@@ -462,8 +462,7 @@ class AnchoreServiceFeed(DataFeed):
         :param: operation_id
         :return: changed data updated in the sync as a list of records
         """
-        result = build_feed_sync_results()
-        result["feed"] = self.__feed_name__
+        result = FeedSyncResult(feed=self.__feed_name__)
         failed_count = 0
 
         # Each group update is a unique session and can roll itself back.
@@ -495,28 +494,25 @@ class AnchoreServiceFeed(DataFeed):
                     group_download_result,
                     full_flush=full_flush,
                     local_repo=fetched_data,
-                    operation_id=operation_id,
                 )  # Each group sync is a transaction
-                result["groups"].append(new_data)
-            except Exception as e:
+                result.groups.append(new_data)
+            except Exception:
                 logger.exception(
                     self._log_context.format_msg(
                         "Failed syncing group data",
                     )
                 )
                 failed_count += 1
-                fail_result = build_group_sync_result()
-                fail_result["group"] = group_download_result.group
-                result["groups"].append(fail_result)
+                fail_result = GroupSyncResult(group=group_download_result.group)
+                result.groups.append(fail_result)
 
-        sync_time = time.time() - t
+        result.total_time_seconds = time.time() - t
         self._update_last_full_sync_timestamp()
 
         # This is the merge/update only time, not including download time. Caller can compute total from this return value
-        result["total_time_seconds"] = sync_time
 
         if failed_count == 0:
-            result["status"] = "success"
+            result.status = "success"
 
         return result
 
@@ -647,16 +643,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
         """
         return self._find_match(db).count()
 
-    def _flush_group(
-        self, group_obj: FeedGroupMetadata, operation_id: Optional[str] = None
-    ) -> None:
+    def _flush_group(self, group_obj: FeedGroupMetadata) -> None:
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
 
         :param group_obj: feed group metadata record
         :type group_obj: FeedGroupMetadata
-        :param operation_id: UUID4 hexadecimal string
-        :type operation_id:  Optional[str], defaults to None
         """
         db = get_session()
         catalog_client = self._catalog_client
@@ -746,7 +738,8 @@ class GrypeDBFeed(AnchoreServiceFeed):
         )
         db.add(grypedb_meta)
 
-    def _run_grypedb_sync_task(self, checksum: str, grype_db_data: bytes) -> None:
+    @staticmethod
+    def _run_grypedb_sync_task(checksum: str, grype_db_data: bytes) -> None:
         """
         Write the Grype DB to a tar.gz in a temporary directory and pass to GrypeDBSyncManager.
         The GrypeDBSyncManager updates the working copy of GrypeDB on this instance of policy engine.
@@ -766,8 +759,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         group_download_result: GroupDownloadResult,
         full_flush: bool = False,
         local_repo: Optional[LocalFeedDataRepo] = None,
-        operation_id: Optional[str] = None,
-    ):
+    ) -> GroupSyncResult:
         """
         Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
 
@@ -777,12 +769,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :type full_flush: bool, defaults to False
         :param local_repo: LocalFeedDataRepo (disk cache for download results)
         :type local_repo: Optional[LocalFeedDataRepo], defaults to None
-        :param operation_id: operation id (UUID4 in hexadecimal)
-        :type operation_id: Optional[str], defaults to None
         :return:
         """
-        result = build_group_sync_result()
-        result["group"] = group_download_result.group
+        result = GroupSyncResult(group=group_download_result.group)
 
         db = get_session()
         group_db_obj = None
@@ -802,7 +791,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
             tzinfo=datetime.timezone.utc
         )
         sync_started = time.time()
-        total_updated_count = 0
         try:
             if full_flush:
                 logger.info(
@@ -812,7 +800,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 )
                 self._flush_group(
                     group_db_obj,
-                    operation_id=operation_id,
                 )
 
             # Iterate thru the records and commit
@@ -829,7 +816,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             ):
                 # If we go through two files, then that means the feed service provided two GrypeDB files.
                 # This is an unexpected condition.
-                if total_updated_count >= 1:
+                if result.updated_record_count >= 1:
                     raise UnexpectedRawGrypeDBFile()
                 # Check that the data that we downloaded matches the checksum provided
                 checksum = record.metadata["Checksum"]
@@ -849,18 +836,19 @@ class GrypeDBFeed(AnchoreServiceFeed):
                     # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
                     try:
                         self._run_grypedb_sync_task(checksum, record.data)
-                    except GrypeDBSyncError as e:
+                    except GrypeDBSyncError:
                         logger.exception(
                             self._log_context.format_msg(
                                 "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
                             )
                         )
                     # Update number of records processed
-                    total_updated_count += 1
+                    result.updated_record_count += 1
                     logger.info(
                         self._log_context.format_msg(
                             "DB Update Progress: {}/{}".format(
-                                total_updated_count, group_download_result.total_records
+                                result.updated_record_count,
+                                group_download_result.total_records,
                             ),
                         )
                     )
@@ -871,7 +859,8 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 logger.info(
                     self._log_context.format_msg(
                         "DB Update Complete, Progress: {}/{}".format(
-                            total_updated_count, group_download_result.total_records
+                            result.updated_record_count,
+                            group_download_result.total_records,
                         ),
                     )
                 )
@@ -905,7 +894,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             raise GrypeDBFeedSyncError from exc
         finally:
             sync_time = time.time() - sync_started
-            total_group_time = time.time() - download_started.timestamp()
+            result.total_time_seconds = time.time() - download_started.timestamp()
             logger.info(
                 self._log_context.format_msg(
                     "Sync to db duration: {} sec".format(sync_time),
@@ -914,15 +903,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
             logger.info(
                 self._log_context.format_msg(
                     "Total sync, including download, duration: {} sec".format(
-                        total_group_time
+                        result.total_time_seconds
                     ),
                 )
             )
 
-        result["updated_record_count"] = total_updated_count
-        result["status"] = "success"
-        result["total_time_seconds"] = total_group_time
-        result["updated_image_count"] = 0
+        result.status = "success"
         return result
 
     def sync(
@@ -932,7 +918,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         event_client: Optional[CatalogClient] = None,
         operation_id: Optional[str] = None,
         group: Optional[str] = None,
-    ) -> dict:
+    ) -> FeedSyncResult:
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
         Returns a dict with the following structure:
@@ -988,10 +974,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         :param group_download_result
         :return:
         """
-        total_updated_count = 0
-        result = build_group_sync_result()
-        result["group"] = group_download_result.group
-        sync_started = None
+        result = GroupSyncResult(group=group_download_result.group)
 
         db = get_session()
         db.refresh(self.metadata)
@@ -1021,7 +1004,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                         "Performing group data flush prior to sync",
                     )
                 )
-                self._flush_group(group_db_obj, operation_id=operation_id)
+                self._flush_group(group_db_obj)
 
             mapper = self._load_mapper(group_db_obj)
 
@@ -1039,8 +1022,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                 updated_images = updated_images.union(
                     set(updated_image_ids)
                 )  # Record after commit to ensure in-sync.
-                merged = db.merge(mapped)
-                total_updated_count += 1
+                db.merge(mapped)
+                result.updated_record_count += 1
                 count += 1
 
                 if len(updated_image_ids) > 0:
@@ -1053,7 +1036,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                     logger.info(
                         self._log_context.format_msg(
                             "DB Update Progress: {}/{}".format(
-                                total_updated_count, group_download_result.total_records
+                                result.updated_record_count,
+                                group_download_result.total_records,
                             ),
                         )
                     )
@@ -1066,7 +1050,8 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                 logger.info(
                     self._log_context.format_msg(
                         "DB Update Progress: {}/{}".format(
-                            total_updated_count, group_download_result.total_records
+                            result.updated_record_count,
+                            group_download_result.total_records,
                         ),
                     )
                 )
@@ -1091,7 +1076,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             db.rollback()
             raise e
         finally:
-            total_group_time = time.time() - download_started.timestamp()
+            result.total_time_seconds = time.time() - download_started.timestamp()
             sync_time = time.time() - sync_started
             logger.info(
                 self._log_context.format_msg(
@@ -1101,15 +1086,12 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             logger.info(
                 self._log_context.format_msg(
                     "Total sync, including download, duration: {} sec".format(
-                        total_group_time
+                        result.total_time_seconds
                     ),
                 )
             )
 
-        result["updated_record_count"] = total_updated_count
-        result["status"] = "success"
-        result["total_time_seconds"] = total_group_time
-        result["updated_image_count"] = 0
+        result.status = "success"
         return result
 
     @staticmethod
@@ -1156,8 +1138,9 @@ class VulnerabilityFeed(AnchoreServiceFeed):
 
         return True
 
+    @staticmethod
     def update_vulnerability(
-        self, db, vulnerability_record, vulnerability_processing_fn=None
+        db, vulnerability_record, vulnerability_processing_fn=None
     ):
         """
         Processes a single vulnerability record. Specifically for vulnerabilities:
@@ -1182,7 +1165,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                     )
                     .one_or_none()
                 )
-            except:
+            except Exception:
                 logger.debug(
                     "No current record found for {}".format(vulnerability_record)
                 )
@@ -1215,7 +1198,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
             logger.exception("Error in vulnerability processing")
             raise e
 
-    def _flush_group(self, group_obj, operation_id=None):
+    def _flush_group(self, group_obj):
         logger.info(
             self._log_context.format_msg(
                 "Flushing group records",
@@ -1266,7 +1249,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         event_client: CatalogClient = None,
         operation_id=None,
         group=None,
-    ) -> dict:
+    ) -> FeedSyncResult:
         """
         Sync data with the feed source. This may be *very* slow if there are lots of updates.
 
@@ -1307,7 +1290,7 @@ class VulnerabilityFeed(AnchoreServiceFeed):
                 .filter(Vulnerability.namespace_name == group_name)
                 .count()
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "Error getting feed data group record count in package feed for group: {}".format(
                     group_name
@@ -1325,7 +1308,8 @@ class PackagesFeed(AnchoreServiceFeed):
 
     __group_data_mappers__ = {"gem": GemPackageDataMapper, "npm": NpmPackageDataMapper}
 
-    def _dedup_data_key(self, item):
+    @staticmethod
+    def _dedup_data_key(item):
         return item.name
 
     def record_count(self, group_name, db):
@@ -1336,7 +1320,7 @@ class PackagesFeed(AnchoreServiceFeed):
                 return db.query(GemMetadata).count()
             else:
                 return 0
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "Error getting feed data group record count in package feed for group: {}".format(
                     group_name
@@ -1344,10 +1328,11 @@ class PackagesFeed(AnchoreServiceFeed):
             )
             raise
 
-    def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
+    def _flush_group(self, group_obj):
         db = get_session()
-        if flush_helper_fn:
-            flush_helper_fn(
+
+        if self.__flush_helper_fn__:
+            self.__flush_helper_fn__(
                 db=db, feed_name=group_obj.feed_name, group_name=group_obj.name
             )
 
@@ -1386,10 +1371,11 @@ class NvdV2Feed(AnchoreServiceFeed):
         __feed_name__, NvdV2FeedDataMapper, _cve_key
     )
 
-    def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
+    def _flush_group(self, group_obj):
         db = get_session()
-        if flush_helper_fn:
-            flush_helper_fn(
+
+        if self.__flush_helper_fn__:
+            self.__flush_helper_fn__(
                 db=db, feed_name=group_obj.feed_name, group_name=group_obj.name
             )
 
@@ -1425,7 +1411,7 @@ class NvdV2Feed(AnchoreServiceFeed):
                 .filter(NvdV2Metadata.namespace_name == group_name)
                 .count()
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "Error getting feed data group record count in package feed for group: {}".format(
                     group_name
@@ -1452,17 +1438,16 @@ class NvdFeed(AnchoreServiceFeed):
         event_client: CatalogClient = None,
         operation_id=None,
         group=None,
-    ) -> dict:
+    ) -> FeedSyncResult:
         logger.warn("Sync not supported for legacy nvd feed")
-        result = build_feed_sync_results(feed="nvd", status="failed")
-        result["status"] = "failed"
+        result = FeedSyncResult(feed="nvd")
         return result
 
-    def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
-
+    def _flush_group(self, group_obj):
         db = get_session()
-        if flush_helper_fn:
-            flush_helper_fn(
+
+        if self.__flush_helper_fn__:
+            self.__flush_helper_fn__(
                 db=db, feed_name=group_obj.feed_name, group_name=group_obj.name
             )
 
@@ -1519,11 +1504,11 @@ class VulnDBFeed(AnchoreServiceFeed):
         __feed_name__, VulnDBFeedDataMapper, _cve_key
     )
 
-    def _flush_group(self, group_obj, flush_helper_fn=None, operation_id=None):
+    def _flush_group(self, group_obj):
         db = get_session()
 
-        if flush_helper_fn:
-            flush_helper_fn(
+        if self.__flush_helper_fn__:
+            self.__flush_helper_fn__(
                 db=db, feed_name=group_obj.feed_name, group_name=group_obj.name
             )
 
@@ -1559,7 +1544,7 @@ class VulnDBFeed(AnchoreServiceFeed):
                 .filter(VulnDBMetadata.namespace_name == group_name)
                 .count()
             )
-        except Exception as e:
+        except Exception:
             logger.exception(
                 "Error getting feed data group record count in vulndb feed for group: {}".format(
                     group_name
