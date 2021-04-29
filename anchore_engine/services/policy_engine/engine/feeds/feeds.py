@@ -42,9 +42,11 @@ from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
 )
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
+    FeedDataMapper,
     GemPackageDataMapper,
-    GenericFeedDataMapper,
     GithubFeedDataMapper,
+    MapperFactory,
+    MultiTypeMapperFactory,
     NpmPackageDataMapper,
     NvdV2FeedDataMapper,
     SingleTypeMapperFactory,
@@ -106,7 +108,9 @@ class DataFeed(object):
     """
 
     __feed_name__ = None
-    __group_data_mappers__ = None  # A dict/map of group names to mapper objects for translating group data into db types
+    __group_data_mappers__: Optional[
+        MapperFactory
+    ] = None  # A dict/map of group names to mapper objects for translating group data into db types
 
     def __init__(self, metadata: FeedMetadata):
         """
@@ -176,7 +180,8 @@ class AnchoreServiceFeed(DataFeed):
     operations will sync data and metadata from the upstream service.
     """
 
-    __group_data_mappers__ = GenericFeedDataMapper
+    __feed_name__ = "base"
+    __group_data_mappers__ = MultiTypeMapperFactory(__feed_name__, {}, None)
     __flush_helper_fn__ = None
 
     RECORDS_PER_CHUNK = 500
@@ -227,26 +232,19 @@ class AnchoreServiceFeed(DataFeed):
             logger.error("Could not update group counts")
             raise
 
-    def _load_mapper(self, group_obj):
+    def _load_mapper(self, group_obj) -> FeedDataMapper:
         """
         Find and instantiate the right mapper object for the given group.
 
         :param group_obj:
         :return:
         """
-        if not hasattr(self.__class__.__group_data_mappers__, "get"):
-            mapper = self.__class__.__group_data_mappers__
-        else:
-            mapper = self.__class__.__group_data_mappers__.get(group_obj.name)
+        mapper = self.__class__.__group_data_mappers__.get(group_obj.name)
 
         if not mapper:
             raise Exception(
                 "No mapper class found for group: {}".format(group_obj.name)
             )
-
-            # If it's a class, instantiate it
-        if type(mapper) == type:
-            mapper = mapper(self.__feed_name__, group_obj.name, keyname=None)
 
         return mapper
 
@@ -582,7 +580,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
     __feed_name__ = "grypedb"
     _cve_key = None
-    __group_data_mappers__ = {}
 
     def __init__(self, metadata: Optional[FeedMetadata] = None):
         """
@@ -1306,7 +1303,9 @@ class PackagesFeed(AnchoreServiceFeed):
 
     __feed_name__ = "packages"
 
-    __group_data_mappers__ = {"gem": GemPackageDataMapper, "npm": NpmPackageDataMapper}
+    __group_data_mappers__ = MultiTypeMapperFactory(
+        __feed_name__, {"gem": GemPackageDataMapper, "npm": NpmPackageDataMapper}, None
+    )
 
     @staticmethod
     def _dedup_data_key(item):
@@ -1429,7 +1428,7 @@ class NvdFeed(AnchoreServiceFeed):
 
     __feed_name__ = "nvd"
     _cve_key = "@id"
-    __group_data_mappers__ = {}
+    __group_data_mappers__ = MultiTypeMapperFactory(__feed_name__, {}, None)
 
     def sync(
         self,
