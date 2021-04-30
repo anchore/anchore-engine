@@ -866,7 +866,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         )
 
         db.commit()
-        return report
+        return report.to_json(), 200
 
     except HTTPException:
         db.rollback()

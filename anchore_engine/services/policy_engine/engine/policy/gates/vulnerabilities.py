@@ -30,6 +30,10 @@ from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common import nonos_package_types
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.vulns.scanners import get_scanner
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
+)
+from anchore_engine.db.entities.common import get_thread_scoped_session
 
 
 SEVERITY_ORDERING = ["unknown", "negligible", "low", "medium", "high", "critical"]
@@ -1071,5 +1075,10 @@ class VulnerabilitiesGate(Gate):
                 severity_matches[sev].append((image_cpe, vulnerability_cpe))
 
         context.data["loaded_cpe_vulnerabilities"] = severity_matches
+        db_session = get_thread_scoped_session()
+        provider = get_vulnerabilities_provider()
+        context.data["loaded_vulnerabilities_new"] = provider.get_image_vulnerabilities(
+            image_obj, db_session
+        )
 
         return context

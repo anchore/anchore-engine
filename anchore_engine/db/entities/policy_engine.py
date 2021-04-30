@@ -1290,6 +1290,7 @@ class VulnDBMetadata(Base):
 
         if self.vendor_cvss_v2:
             for cvss_v2_item in self.vendor_cvss_v2:
+                # create a new record for every single score as there could be a different number of v2 and v3 scores and its not clear which belong as a pair
                 results.append(
                     {
                         "id": self.name,
@@ -1314,6 +1315,7 @@ class VulnDBMetadata(Base):
 
         if self.vendor_cvss_v3:
             for cvss_v3_item in self.vendor_cvss_v3:
+                # create a new record for every single score as there could be a different number of v2 and v3 scores and its not clear which belong as a pair
                 results.append(
                     {
                         "id": self.name,
@@ -2599,14 +2601,14 @@ class ImagePackageVulnerability(Base):
 
         return fixed_in
 
-    def fixed_in(self):
+    def fixed_in(self, fixed_in: FixedArtifact = None):
         """
         Return the fixed_in version string value given a package matched (in case there are multiple packages specified in the vuln.
 
-        :param package: package to find a fix version for, if available
         :return: the fixed in version string if any or None if not found
         """
-        fixed_in = self.fixed_artifact()
+        if not fixed_in:
+            fixed_in = self.fixed_artifact()
         fix_available_in = (
             fixed_in.version if fixed_in and fixed_in.version != "None" else None
         )
@@ -2632,13 +2634,14 @@ class ImagePackageVulnerability(Base):
 
         return fix_available_in
 
-    def fix_has_no_advisory(self):
+    def fix_has_no_advisory(self, fixed_in: FixedArtifact = None):
         """
         For a given package vulnerability match, if the issue won't be addressed by the vendor return True.
         Return False otherwise
         :return:
         """
-        fixed_in = self.fixed_artifact()
+        if not fixed_in:
+            fixed_in = self.fixed_artifact()
         return fixed_in and fixed_in.vendor_no_advisory
 
     @classmethod

@@ -1,3 +1,4 @@
+import datetime
 import json
 
 from anchore_engine.clients.services.common import get_service_endpoint
@@ -20,25 +21,19 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 )
 from anchore_engine.subsys import logger as log
 from anchore_engine.utils import timer
+from anchore_engine.services.policy_engine.api.models import (
+    Vulnerability as VulnerabilityModel,
+    VulnerabilityMatch,
+    Artifact,
+    ImageVulnerabilitiesReport,
+    VulnerabilitiesReportMetadata,
+    CvssCombined,
+    FixedArtifact,
+    CvssScore,
+    Match,
+)
+from anchore_engine import version
 
-
-TABLE_STYLE_HEADER_LIST = [
-    "CVE_ID",
-    "Severity",
-    "*Total_Affected",
-    "Vulnerable_Package",
-    "Fix_Available",
-    "Fix_Images",
-    "Rebuild_Images",
-    "URL",
-    "Package_Type",
-    "Feed",
-    "Feed_Group",
-    "Package_Name",
-    "Package_Path",
-    "Package_Version",
-    "CVES",
-]
 # Disabled by default, can be set in config file. Seconds for connection to cache for policy evals
 DEFAULT_CACHE_CONN_TIMEOUT = -1
 # Disabled by default, can be set in config file. Seconds for first byte timeout for policy eval cache
@@ -113,6 +108,8 @@ class LegacyProvider(VulnerabilitiesProvider):
         user_id = image.user_id
         image_id = image.id
 
+        results = []
+
         if force_refresh:
             log.info(
                 "Forcing refresh of vulnerabilities for {}/{}".format(user_id, image_id)
@@ -160,59 +157,57 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         with timer("Image vulnerability output formatting", log_level="debug"):
             for vuln, nvd_records in vulns:
+                fixed_artifact = vuln.fixed_artifact()
+
                 # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
-                if vendor_only and vuln.fix_has_no_advisory():
+                if vendor_only and vuln.fix_has_no_advisory(fixed_in=fixed_artifact):
                     continue
 
-                # rennovation this for new CVSS references
-                cves = ""
-                nvd_list = []
-                all_data = {"nvd_data": nvd_list, "vendor_data": []}
+                nvd_scores = [
+                    self._make_cvss_score(score)
+                    for nvd_record in nvd_records
+                    for score in nvd_record.get_cvss_scores_nvd()
+                ]
 
-                for nvd_record in nvd_records:
-                    nvd_list.extend(nvd_record.get_cvss_data_nvd())
-
-                cves = json.dumps(all_data)
-
-                if vuln.pkg_name != vuln.package.fullversion:
-                    pkg_final = "{}-{}".format(vuln.pkg_name, vuln.package.fullversion)
-                else:
-                    pkg_final = vuln.pkg_name
-
-                rows.append(
-                    [
-                        vuln.vulnerability_id,
-                        vuln.vulnerability.severity,
-                        1,
-                        pkg_final,
-                        str(vuln.fixed_in()),
-                        vuln.pkg_image_id,
-                        "None",  # Always empty this for now
-                        vuln.vulnerability.link,
-                        vuln.pkg_type,
-                        "vulnerabilities",
-                        vuln.vulnerability.namespace_name,
-                        vuln.pkg_name,
-                        vuln.pkg_path,
-                        vuln.package.fullversion,
-                        cves,
-                    ]
+                results.append(
+                    VulnerabilityMatch(
+                        vulnerability=VulnerabilityModel(
+                            vulnerability_id=vuln.vulnerability_id,
+                            description="NA",
+                            severity=vuln.vulnerability.severity,
+                            link=vuln.vulnerability.link,
+                            feed="vulnerabilities",
+                            feed_group=vuln.vulnerability.namespace_name,
+                            cvss_scores_nvd=nvd_scores,
+                            cvss_scores_vendor=[],
+                            created_at=vuln.vulnerability.created_at,
+                            last_modified=vuln.vulnerability.updated_at,
+                        ),
+                        artifact=Artifact(
+                            name=vuln.pkg_name,
+                            version=vuln.package.fullversion,
+                            pkg_type=vuln.pkg_type,
+                            pkg_path=vuln.pkg_path,
+                            cpe="None",
+                            cpe23="None",
+                        ),
+                        fixes=[
+                            FixedArtifact(
+                                version=str(vuln.fixed_in(fixed_in=fixed_artifact)),
+                                wont_fix=vuln.fix_has_no_advisory(
+                                    fixed_in=fixed_artifact
+                                ),
+                                observed_at=fixed_artifact.fix_observed_at
+                                if fixed_artifact
+                                else None,
+                            )
+                        ],
+                        match=Match(detected_at=vuln.created_at),
+                    )
                 )
 
-        vuln_listing = {
-            "multi": {
-                "url_column_index": 7,
-                "result": {
-                    "header": TABLE_STYLE_HEADER_LIST,
-                    "rowcount": len(rows),
-                    "colcount": len(TABLE_STYLE_HEADER_LIST),
-                    "rows": rows,
-                },
-                "warns": warns,
-            }
-        }
-
-        cpe_vuln_listing = []
+        # TODO move dedup here so api doesn't have to
+        # cpe_vuln_listing = []
         try:
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
                 all_cpe_matches = scanner.get_cpe_vulnerabilities(
@@ -231,32 +226,73 @@ class LegacyProvider(VulnerabilitiesProvider):
                             api_endpoint, vulnerability_cpe.vulnerability_id
                         )
 
-                    cpe_vuln_el = {
-                        "vulnerability_id": vulnerability_cpe.parent.normalized_id,
-                        "severity": vulnerability_cpe.parent.severity,
-                        "link": link,
-                        "pkg_type": image_cpe.pkg_type,
-                        "pkg_path": image_cpe.pkg_path,
-                        "name": image_cpe.name,
-                        "version": image_cpe.version,
-                        "cpe": image_cpe.get_cpestring(),
-                        "cpe23": image_cpe.get_cpe23string(),
-                        "feed_name": vulnerability_cpe.feed_name,
-                        "feed_namespace": vulnerability_cpe.namespace_name,
-                        "nvd_data": vulnerability_cpe.parent.get_cvss_data_nvd(),
-                        "vendor_data": vulnerability_cpe.parent.get_cvss_data_vendor(),
-                        "fixed_in": vulnerability_cpe.get_fixed_in(),
-                    }
-                    cpe_vuln_listing.append(cpe_vuln_el)
-        except Exception as err:
-            log.warn("could not fetch CPE matches - exception: " + str(err))
+                    nvd_scores = [
+                        self._make_cvss_score(score)
+                        for score in vulnerability_cpe.parent.get_cvss_scores_nvd()
+                    ]
 
-        return {
-            "user_id": image.user_id,
-            "image_id": image.id,
-            "legacy_report": vuln_listing,
-            "cpe_report": cpe_vuln_listing,
-        }
+                    vendor_scores = [
+                        self._make_cvss_score(score)
+                        for score in vulnerability_cpe.parent.get_cvss_scores_vendor()
+                    ]
+
+                    results.append(
+                        VulnerabilityMatch(
+                            vulnerability=VulnerabilityModel(
+                                vulnerability_id=vulnerability_cpe.parent.normalized_id,
+                                description="NA",
+                                severity=vulnerability_cpe.parent.severity,
+                                link=link,
+                                feed=vulnerability_cpe.feed_name,
+                                feed_group=vulnerability_cpe.namespace_name,
+                                cvss_scores_nvd=nvd_scores,
+                                cvss_scores_vendor=vendor_scores,
+                                created_at=vulnerability_cpe.parent.created_at,
+                                last_modified=vulnerability_cpe.parent.updated_at,
+                            ),
+                            artifact=Artifact(
+                                name=image_cpe.name,
+                                version=image_cpe.version,
+                                pkg_type=image_cpe.pkg_type,
+                                pkg_path=image_cpe.pkg_path,
+                                cpe=image_cpe.get_cpestring(),
+                                cpe23=image_cpe.get_cpe23string(),
+                            ),
+                            fixes=[
+                                FixedArtifact(
+                                    version=item,
+                                    wont_fix=False,
+                                    observed_at=vulnerability_cpe.created_at,
+                                )
+                                for item in vulnerability_cpe.get_fixed_in()
+                            ],
+                            # using vulnerability created_at to indicate the match timestamp for now
+                            match=Match(detected_at=vulnerability_cpe.created_at),
+                        )
+                    )
+        except Exception as err:
+            log.exception("could not fetch CPE matches")
+
+        import uuid
+
+        return ImageVulnerabilitiesReport(
+            account_id=image.user_id,
+            image_id=image_id,
+            results=results,
+            metadata=VulnerabilitiesReportMetadata(
+                generated_at=datetime.datetime.utcnow(),
+                uuid=str(uuid.uuid4()),
+                generated_by=self._get_provider_metadata(),
+            ),
+            problems=[],
+        )
+
+    def _make_cvss_score(self, score):
+        return CvssCombined(
+            id=score.get("id"),
+            cvss_v2=CvssScore.CvssScoreV1Schema().make(data=score.get("cvss_v2")),
+            cvss_v3=CvssScore.CvssScoreV1Schema().make(data=score.get("cvss_v3")),
+        )
 
     @staticmethod
     def _get_api_endpoint():
@@ -279,6 +315,13 @@ class LegacyProvider(VulnerabilitiesProvider):
 
     def get_images_by_vulnerability(self, **kwargs):
         pass
+
+    def _get_provider_metadata(self):
+        return {
+            "name": self.__class__.__name__,
+            "version": version.version,
+            "database_version": version.db_version,
+        }
 
 
 default_type = LegacyProvider
