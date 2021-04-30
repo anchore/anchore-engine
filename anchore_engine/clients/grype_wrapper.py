@@ -383,7 +383,9 @@ class GrypeVulnerability(Base, UtilMixin):
     cpes = Column(String)
     proxy_vulnerabilities = Column(String)
     fixed_in_version = Column(String)
-    vulnerability_metadata = relationship("GrypeVulnerabilityMetadata")
+    vulnerability_metadata = relationship(
+        "GrypeVulnerabilityMetadata", back_populates="vulnerability"
+    )
 
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
@@ -396,6 +398,9 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     description = Column(String)
     cvss_v2 = Column(String)
     cvss_v3 = Column(String)
+    vulnerability = relationship(
+        "GrypeVulnerability", back_populates="vulnerability_metadata"
+    )
 
 
 def query_vulnerabilities(
@@ -426,10 +431,10 @@ def query_vulnerabilities(
 
             query = (
                 _get_grype_db_session()
-                .query(GrypeVulnerability)
+                .query(GrypeVulnerabilityMetadata)
                 .join(
-                    GrypeVulnerabilityMetadata,
-                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+                    GrypeVulnerability,
+                    GrypeVulnerabilityMetadata.id == GrypeVulnerability.id,
                 )
             )
 
