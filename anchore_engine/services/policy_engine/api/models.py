@@ -572,3 +572,187 @@ class PolicyValidationResponse(JsonSerializable):
     def __init__(self, valid=None, validation_details=None):
         self.valid = valid
         self.validation_details = validation_details
+
+
+class Vulnerability(JsonSerializable):
+    class VulnerabilityV1Schema(Schema):
+        vulnerability_id = fields.Str()
+        description = fields.Str()
+        severity = fields.Str()
+        link = fields.Str()
+        feed = fields.Str()
+        feed_group = fields.Str()
+        cvss_scores_nvd = fields.List(fields.Nested(CvssCombined.CvssCombinedV1Schema))
+        cvss_scores_vendor = fields.List(
+            fields.Nested(CvssCombined.CvssCombinedV1Schema)
+        )
+        created_at = RFC3339DateTime()
+        last_modified = RFC3339DateTime()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return Vulnerability(**data)
+
+    __schema__ = VulnerabilityV1Schema()
+
+    def __init__(
+        self,
+        vulnerability_id=None,
+        description=None,
+        severity=None,
+        link=None,
+        feed=None,
+        feed_group=None,
+        cvss_scores_nvd=None,
+        cvss_scores_vendor=None,
+        created_at=None,
+        last_modified=None,
+    ):
+        self.vulnerability_id = vulnerability_id
+        self.description = description
+        self.severity = severity
+        self.link = link
+        self.feed = feed
+        self.feed_group = feed_group
+        self.cvss_scores_nvd = cvss_scores_nvd
+        self.cvss_scores_vendor = cvss_scores_vendor
+        self.created_at = created_at
+        self.last_modified = last_modified
+
+
+class Artifact(JsonSerializable):
+    class ArtifactV1Schema(Schema):
+        name = fields.Str()
+        version = fields.Str()
+        pkg_type = fields.Str()
+        pkg_path = fields.Str()
+        cpe = fields.Str()
+        cpe23 = fields.Str()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return Artifact(**data)
+
+    __schema__ = ArtifactV1Schema()
+
+    def __init__(
+        self,
+        name=None,
+        version=None,
+        pkg_type=None,
+        pkg_path=None,
+        cpe=None,
+        cpe23=None,
+    ):
+        self.name = name
+        self.version = version
+        self.pkg_type = pkg_type
+        self.pkg_path = pkg_path
+        self.cpe = cpe
+        self.cpe23 = cpe23
+
+
+class FixedArtifact(JsonSerializable):
+    class FixedArtifactV1Schema(Schema):
+        version = fields.Str()
+        wont_fix = fields.Bool()
+        observed_at = RFC3339DateTime()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return FixedArtifact(**data)
+
+    __schema__ = FixedArtifactV1Schema()
+
+    def __init__(self, version=None, wont_fix=None, observed_at=None):
+        self.version = version
+        self.wont_fix = wont_fix
+        self.observed_at = observed_at
+
+
+class Match(JsonSerializable):
+    class MatchV1Schema(Schema):
+        detected_at = RFC3339DateTime()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return Match(**data)
+
+    __schema__ = MatchV1Schema()
+
+    def __init__(self, detected_at=None):
+        self.detected_at = detected_at
+
+
+class VulnerabilityMatch(JsonSerializable):
+    class VulnerabilityMatchV1Schema(Schema):
+        vulnerability = fields.Nested(Vulnerability.VulnerabilityV1Schema)
+        artifact = fields.Nested(Artifact.ArtifactV1Schema)
+        fixes = fields.List(fields.Nested(FixedArtifact.FixedArtifactV1Schema))
+        match = fields.Nested(Match.MatchV1Schema)
+
+        @post_load
+        def make(self, data, **kwargs):
+            return VulnerabilityMatch(**data)
+
+    __schema__ = VulnerabilityMatchV1Schema()
+
+    def __init__(self, vulnerability=None, artifact=None, fixes=None, match=None):
+        self.vulnerability = vulnerability
+        self.artifact = artifact
+        self.fixes = fixes
+        self.match = match
+
+
+class VulnerabilitiesReportMetadata(JsonSerializable):
+    class VulnerabilitiesReportMetadataV1Schema(Schema):
+        generated_at = RFC3339DateTime()
+        uuid = fields.Str()
+        generated_by = fields.Dict()
+
+    @post_load
+    def make(self, data, **kwargs):
+        return VulnerabilitiesReportMetadata(**data)
+
+    __schema__ = VulnerabilitiesReportMetadataV1Schema()
+
+    def __init__(self, generated_at=None, uuid=None, generated_by=None):
+        self.generated_at = generated_at
+        self.uuid = uuid
+        self.generated_by = generated_by
+
+
+class ImageVulnerabilitiesReport(JsonSerializable):
+    class ImageVulnerabilitiesReportV1Schema(Schema):
+        account_id = fields.Str()
+        image_id = fields.Str()
+        results = fields.List(
+            fields.Nested(VulnerabilityMatch.VulnerabilityMatchV1Schema)
+        )
+        metadata = fields.Nested(
+            VulnerabilitiesReportMetadata.VulnerabilitiesReportMetadataV1Schema
+        )
+        problems = fields.List(
+            fields.Nested(VulnerabilityScanProblem.VulnerabilityScanProblemV1Schema)
+        )
+
+        @post_load
+        def make(self, data, **kwargs):
+            return ImageVulnerabilitiesReport(**data)
+
+    __schema__ = ImageVulnerabilitiesReportV1Schema()
+
+    def __init__(
+        self,
+        account_id=None,
+        image_id=None,
+        results=None,
+        metadata=None,
+        problems=None,
+    ):
+
+        self.account_id = account_id
+        self.image_id = image_id
+        self.results = results
+        self.metadata = metadata
+        self.problems = problems
