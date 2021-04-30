@@ -203,7 +203,7 @@ def test_remove_local_grype_db(old_grype_db_dir):
 
 def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_archive):
     # Setup
-    grype_wrapper.grype_db_dir = old_grype_db_dir
+    grype_wrapper._set_grype_db_dir(old_grype_db_dir)
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
     expected_output_file = os.path.join(
         expected_output_dir, grype_wrapper.VULNERABILITY_FILE_NAME
@@ -213,10 +213,10 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
     grype_wrapper.__init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
 
     # Validate output
-    assert os.path.exists(grype_wrapper.grype_db_dir)
-    assert grype_wrapper.grype_db_dir == expected_output_dir
+    assert os.path.exists(grype_wrapper._get_grype_db_dir())
+    assert grype_wrapper._get_grype_db_dir() == expected_output_dir
 
-    assert grype_wrapper.grype_db_session is not None
+    assert grype_wrapper._get_grype_db_session() is not None
     assert os.path.exists(expected_output_file)
 
     assert not os.path.exists(old_grype_db_dir)
@@ -224,7 +224,7 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
 
 def test_get_current_grype_db_metadata(grype_db_dir):
     # Setup test input
-    grype_wrapper.grype_db_dir = grype_db_dir
+    grype_wrapper._set_grype_db_dir(grype_db_dir)
 
     # Function under test
     result = grype_wrapper.get_current_grype_db_metadata()
@@ -238,7 +238,7 @@ def test_get_current_grype_db_metadata(grype_db_dir):
 
 def test_get_current_grype_db_metadata_missing_file(tmp_path):
     # Setup test input
-    grype_wrapper.grype_db_dir = os.path.join(tmp_path)
+    grype_wrapper._set_grype_db_dir(os.path.join(tmp_path))
 
     # Function under test
     result = grype_wrapper.get_current_grype_db_metadata()
@@ -250,7 +250,7 @@ def test_get_current_grype_db_metadata_missing_file(tmp_path):
 def test_get_current_grype_db_metadata_bad_file(tmp_path):
     # Setup test input
     tmp_path.joinpath("metadata.json").touch()
-    grype_wrapper.grype_db_dir = os.path.join(tmp_path)
+    grype_wrapper._set_grype_db_dir(os.path.join(tmp_path))
 
     # Function under test
     result = grype_wrapper.get_current_grype_db_metadata()
@@ -261,7 +261,7 @@ def test_get_current_grype_db_metadata_bad_file(tmp_path):
 
 def test_get_proc_env(grype_db_dir):
     # Setup test input
-    grype_wrapper.grype_db_dir = grype_db_dir
+    grype_wrapper._set_grype_db_dir(grype_db_dir)
 
     # Function under test
     result = grype_wrapper._get_proc_env()
@@ -370,8 +370,8 @@ def test_query_vulnerabilities(
 ):
     # Setup the sqlalchemy artifacts on the test grype db
     test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
-    grype_wrapper.grype_db_session = grype_wrapper._init_latest_grype_db_session(
-        test_grype_db_engine
+    grype_wrapper._set_grype_db_session(
+        grype_wrapper._init_latest_grype_db_session(test_grype_db_engine)
     )
 
     # Test and validate the query param combinations

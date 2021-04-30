@@ -16,8 +16,8 @@ from sqlalchemy import Column, String, Integer, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
-grype_db_dir = None
-grype_db_session = None
+__grype_db_dir = None
+__grype_db_session = None
 
 grype_db_lock = rwlock.RWLockWrite()
 Base = declarative_base()
@@ -206,7 +206,6 @@ def __init_grype_db_engine(
     Update the installed grype db with the provided definition, and remove the old grype db file.
     This method does not validation of the db, and assumes it has passed any required validation upstream
     """
-    global grype_db_dir, grype_db_session
 
     logger.info(
         "Updating grype with a new grype_db archive from {}".format(
@@ -226,9 +225,9 @@ def __init_grype_db_engine(
 
             # Store the dir and session variables globally
             # For use during reads and to remove in the next update
-            old_grype_db_dir = grype_db_dir
-            grype_db_dir = latest_grype_db_dir
-            grype_db_session = latest_grype_db_session
+            old_grype_db_dir = _get_grype_db_dir()
+            _set_grype_db_dir(latest_grype_db_dir)
+            _set_grype_db_session(latest_grype_db_session)
 
             # Remove the old local db
             if old_grype_db_dir:
@@ -238,13 +237,21 @@ def __init_grype_db_engine(
 
 
 def _get_grype_db_dir():
-    global grype_db_dir
-    return grype_db_dir
+    return __grype_db_dir
 
 
 def _get_grype_db_session():
-    global grype_db_session
-    return grype_db_session
+    return __grype_db_session
+
+
+def _set_grype_db_dir(grype_db_dir):
+    global __grype_db_dir
+    __grype_db_dir = grype_db_dir
+
+
+def _set_grype_db_session(grype_db_session):
+    global __grype_db_session
+    __grype_db_session = grype_db_session
 
 
 def get_current_grype_db_metadata() -> json:
