@@ -9,6 +9,7 @@ from anchore_engine.apis.authorization import (
 )
 import anchore_engine.common.pagination
 import anchore_engine.common.helpers
+from anchore_engine.clients import grype_wrapper
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services import internal_client_for
@@ -22,6 +23,75 @@ authorizer = get_authorizer()
 
 @authorizer.requires([])
 def query_vulnerabilities(
+    id=None,
+    page=1,
+    limit=None,
+    affected_package=None,
+    affected_package_version=None,
+    namespace=None,
+):
+    def legacy_query(request_inputs):
+        client = internal_client_for(
+            PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
+        )
+        timer = time.time()
+        result = client.query_vulnerabilities(
+            vuln_id=request_inputs.get("params", {}).get("id"),
+            affected_package=request_inputs.get("params", {}).get("affected_package"),
+            affected_package_version=request_inputs.get("params", {}).get(
+                "affected_package_version"
+            ),
+            namespace=request_inputs.get("params", {}).get("namespace"),
+        )
+        policy_engine_call_time = time.time() - timer
+        return policy_engine_call_time, result
+
+    return query_vulnerabilities_common(
+        legacy_query,
+        id,
+        page,
+        limit,
+        affected_package,
+        affected_package_version,
+        namespace,
+    )
+
+
+# @authorizer.requires([])
+def query_vulnerabilities_grype(
+    id=None,
+    page=1,
+    limit=None,
+    affected_package=None,
+    affected_package_version=None,
+    namespace=None,
+):
+    def grype_query(request_inputs):
+        timer = time.time()
+        result = grype_wrapper.query_vulnerabilities(
+            vuln_id=request_inputs.get("params", {}).get("id"),
+            affected_package=request_inputs.get("params", {}).get("affected_package"),
+            affected_package_version=request_inputs.get("params", {}).get(
+                "affected_package_version"
+            ),
+            namespace=request_inputs.get("params", {}).get("namespace"),
+        )
+        grype_wrapper_call_time = time.time() - timer
+        return grype_wrapper_call_time, result
+
+    return query_vulnerabilities_common(
+        grype_query,
+        id,
+        page,
+        limit,
+        affected_package,
+        affected_package_version,
+        namespace,
+    )
+
+
+def query_vulnerabilities_common(
+    query_callback,
     id=None,
     page=1,
     limit=None,
@@ -65,21 +135,7 @@ def query_vulnerabilities(
                 query_digest=request_inputs["pagination_query_digest"]
             )
         except Exception as err:
-            client = internal_client_for(
-                PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
-            )
-            timer = time.time()
-            result = client.query_vulnerabilities(
-                vuln_id=request_inputs.get("params", {}).get("id"),
-                affected_package=request_inputs.get("params", {}).get(
-                    "affected_package"
-                ),
-                affected_package_version=request_inputs.get("params", {}).get(
-                    "affected_package_version"
-                ),
-                namespace=request_inputs.get("params", {}).get("namespace"),
-            )
-            policy_engine_call_time = time.time() - timer
+            policy_engine_call_time, result = query_callback(request_inputs)
 
         return_object = (
             anchore_engine.common.pagination.make_response_paginated_envelope(
