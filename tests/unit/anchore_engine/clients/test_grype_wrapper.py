@@ -1111,11 +1111,7 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
             [
                 "CVE-2019-16775",
                 "CVE-2019-16777",
-                "CVE-2019-16776",
-                "CVE-2020-10174",
                 "CVE-2019-2391",
-                "CVE-2020-7610",
-                "CVE-2020-8518",
                 "CVE-2019-9658",
                 "CVE-2019-15690",
                 "CVE-2019-20788",
@@ -1135,7 +1131,10 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
                 "CVE-2020-10174",
             ],
         ),
-        ("CVE-2019-16775", "npm", "debian:10", 1, ["CVE-2019-16775"]),
+        ("CVE-2019-16775", None, None, 2, ["CVE-2019-16775"]),
+        (None, "npm", None, 4, ["CVE-2019-16775", "CVE-2019-16777"]),
+        (None, None, "debian:10", 4, ["CVE-2019-16775", "CVE-2019-16777"]),
+        ("CVE-2019-16775", "npm", "debian:10", 2, ["CVE-2019-16775"]),
     ],
 )
 def test_query_vulnerabilities(
@@ -1165,11 +1164,10 @@ def test_query_vulnerabilities(
         affected_package=affected_package,
         namespace=namespace,
     )
+
+    # Validate results
     assert len(results) == expected_result_length
-    assert list(map(lambda result: result.id, results)) == expected_output
-    # TODO Assert joined vulnerability_metadata is correct
-    # I need to further simplify the test data set to keep the expected_output size manageable
-    # Or else that matrix is just going to be unreadable
+    assert sorted(list(set(map(lambda result: result.id, results)))) == expected_output
 
 
 def test_query_vulnerabilities_missing_session():

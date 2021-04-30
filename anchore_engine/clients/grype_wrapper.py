@@ -41,7 +41,13 @@ class GrypeVulnerability(Base, UtilMixin):
     fixed_in_versions = Column(String)
     fix_state = Column(String)
     advisories = Column(String)
-    vulnerability_metadata = relationship("GrypeVulnerabilityMetadata")
+    vulnerability_metadata = relationship(
+        "GrypeVulnerabilityMetadata", back_populates="vulnerability"
+    )
+
+    @property
+    def deserialized_related_vulnerabilities(self):
+        return json.loads(self.related_vulnerabilities)
 
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
@@ -55,6 +61,17 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     urls = Column(String)
     description = Column(String)
     cvss = Column(String)
+    vulnerability = relationship(
+        "GrypeVulnerability", back_populates="vulnerability_metadata"
+    )
+
+    @property
+    def deserialized_links(self):
+        return json.loads(self.links)
+
+    @property
+    def deserialized_cvss(self):
+        return json.loads(self.cvss)
 
 
 @dataclass
@@ -837,9 +854,16 @@ class GrypeWrapperSingleton(object):
             )
 
             with self.grype_session_scope() as session:
-                query = session.query(GrypeVulnerability).join(
-                    GrypeVulnerabilityMetadata,
-                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+                query = (
+                    session.query(GrypeVulnerabilityMetadata)
+                    .join(
+                        GrypeVulnerability,
+                        GrypeVulnerabilityMetadata.id == GrypeVulnerability.id,
+                    )
+                    .order_by(
+                        GrypeVulnerabilityMetadata.id,
+                        GrypeVulnerabilityMetadata.record_source,
+                    )
                 )
 
                 if vuln_id is not None:
@@ -869,6 +893,7 @@ class GrypeWrapperSingleton(object):
                         func.count(GrypeVulnerability.namespace).label("count"),
                     )
                     .group_by(GrypeVulnerability.namespace)
+                    .order_by(GrypeVulnerability.namespace)
                     .all()
                 )
 

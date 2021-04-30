@@ -9,6 +9,8 @@ import dateutil.parser
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
+from anchore_engine import version
+from anchore_engine.clients import grype_wrapper
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.common.models.policy_engine import (
@@ -1161,8 +1163,94 @@ class GrypeProvider(VulnerabilitiesProvider):
 
             return new_report
 
-    def get_vulnerabilities(self, **kwargs):
-        raise NotImplemented
+    def _transform_grype_vulnerability(grype_raw_result):
+        """
+        Receives a single vulnerability_metadata record from grype_db and maps into the data structure engine expects.
+        The vulnerability_metadata record may optionally (but in practice should always) have a nested record for the
+        related vulnerability record.
+        """
+        # Create the templated output object
+        output_vulnerability = {}
+        return_el_template = {
+            "id": None,
+            "namespace": None,
+            "severity": None,
+            "link": None,
+            "affected_packages": None,
+            "description": None,
+            "references": None,
+            "nvd_data": None,
+            "vendor_data": None,
+        }
+        output_vulnerability.update(return_el_template)
+
+        # Set mapped field values
+        output_vulnerability["id"] = grype_raw_result.id
+        output_vulnerability["description"] = grype_raw_result.description
+        output_vulnerability["severity"] = grype_raw_result.severity
+
+        # TODO What should we do with multiple links. Currently just grabbing the first one
+        if grype_raw_result.deserialized_links:
+            output_vulnerability["link"] = grype_raw_result.deserialized_links[0]
+        else:
+            output_vulnerability["link"] = []
+
+        # TODO Not sure yet how these should be mapped
+        output_vulnerability["references"] = None
+
+        vendor_data = {}
+        vendor_data["id"] = grype_raw_result.id
+        vendor_data["cvss_v2"] = grype_raw_result.deserialized_cvss_v2
+        vendor_data["cvss_v3"] = grype_raw_result.deserialized_cvss_v3
+        if (
+            grype_raw_result.record_source
+            and grype_raw_result.record_source.startswith("nvdv2")
+        ):
+            output_vulnerability["nvd_data"] = [vendor_data]
+            output_vulnerability["vendor_data"] = []
+        else:
+            output_vulnerability["nvd_data"] = []
+            output_vulnerability["vendor_data"] = [vendor_data]
+
+        # Get fields from the nested vulnerability object, if it exists
+        if grype_raw_result.vulnerability is not None:
+            output_vulnerability["namespace"] = grype_raw_result.vulnerability.namespace
+
+            affected_package = {}
+            affected_package["name"] = grype_raw_result.vulnerability.package_name
+            affected_package["type"] = grype_raw_result.vulnerability.version_format
+            affected_package[
+                "version"
+            ] = grype_raw_result.vulnerability.version_constraint
+            output_vulnerability["affected_packages"] = [affected_package]
+
+        return output_vulnerability
+
+    def _transform_grype_vulnerabilities(self, grype_raw_results):
+        """
+        Receives a list of vulnerability_metadata records from grype_db and returns a list of vulnerabilities mapped
+        into the data structure engine expects.
+        """
+        transformed_vulnerabilities = []
+        for grype_raw_result in grype_raw_results:
+            transformed_vulnerabilities.append(
+                self._transform_grype_vulnerability(grype_raw_result)
+            )
+
+        return transformed_vulnerabilities
+
+    def get_vulnerabilities(
+        self, ids, affected_package, affected_package_version, namespace, session
+    ):
+        raw_results = grype_wrapper.query_vulnerabilities(
+            vuln_id=ids,
+            affected_package=affected_package,
+            affected_package_version=affected_package_version,
+            namespace=namespace,
+        )
+        mapped_results = self._transform_grype_vulnerabilities(raw_results)
+
+        return mapped_results
 
     def get_images_by_vulnerability(
         self,
