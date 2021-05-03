@@ -1602,11 +1602,12 @@ def perform_vulnerability_scan(
         doqueue = False
 
         vdiff = {}
-        if last_vuln_result and curr_vuln_result:
-            vdiff = anchore_utils.process_cve_status(
-                old_cves_result=last_vuln_result["legacy_report"],
-                new_cves_result=curr_vuln_result["legacy_report"],
-            )
+        # TODO implement the differ correctly for the new format
+        # if last_vuln_result and curr_vuln_result:
+        #     vdiff = anchore_utils.process_cve_status(
+        #         old_cves_result=last_vuln_result["legacy_report"],
+        #         new_cves_result=curr_vuln_result["legacy_report"],
+        #     )
 
         obj_store.put_document(
             userId, "vulnerability_scan", archiveId, curr_vuln_result
