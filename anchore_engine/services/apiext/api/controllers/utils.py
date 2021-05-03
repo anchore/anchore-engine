@@ -14,6 +14,7 @@ import anchore_engine.common
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.utils import parse_dockerimage_string
 from anchore_engine.subsys import logger
+from anchore_engine.common import nonos_package_types
 
 REGISTRY_TAG_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryTagSource"
 REGISTRY_DIGEST_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryDigestSource"
@@ -298,6 +299,66 @@ def make_cvss_scores(metrics):
             }
 
     return score_list
+
+
+def make_response_vulnerability_report(vulnerability_type, vulnerability_report):
+
+    os_vulns = []
+    non_os_vulns = []
+
+    vuln_matches = vulnerability_report.get("results", [])
+
+    for vuln_match in vuln_matches:
+        vulnerability_dict = vuln_match.get("vulnerability", {})
+        artifact_dict = vuln_match.get("artifact", {})
+        fix_list = vuln_match.get("fixes", [])
+        fix_versions = (
+            [
+                item["version"]
+                for item in fix_list
+                if item["version"] and item["version"] != "None"
+                for item in fix_list
+            ]
+            if fix_list
+            else []
+        )
+        fixed_in_version = ", ".join(fix_versions) if fix_versions else "None"
+
+        if not vulnerability_dict or not artifact_dict:
+            logger.warn(
+                "Missing vulnerability and artifact data in match record, skipping"
+            )
+            continue
+
+        record = {
+            "vuln": vulnerability_dict["vulnerability_id"],
+            "severity": vulnerability_dict["severity"],
+            "url": vulnerability_dict["link"],
+            "fix": fixed_in_version,
+            "package": "{}-{}".format(artifact_dict["name"], artifact_dict["version"]),
+            "package_name": artifact_dict["name"],
+            "package_version": artifact_dict["version"],
+            "package_type": artifact_dict["pkg_type"],
+            "package_cpe": artifact_dict["cpe"],
+            "package_cpe23": artifact_dict["cpe23"],
+            "package_path": artifact_dict["pkg_path"],
+            "feed": vulnerability_dict["feed"],
+            "feed_group": vulnerability_dict["feed_group"],
+            "nvd_data": vulnerability_dict["cvss_scores_nvd"],
+            "vendor_data": vulnerability_dict["cvss_scores_vendor"],
+        }
+
+        if artifact_dict["pkg_type"] in nonos_package_types:
+            non_os_vulns.append(record)
+        else:
+            os_vulns.append(record)
+
+    if vulnerability_type == "os":
+        return os_vulns
+    elif vulnerability_type == "non-os":
+        return non_os_vulns
+    else:
+        return os_vulns + non_os_vulns
 
 
 def make_response_vulnerability(vulnerability_type, vulnerability_data):

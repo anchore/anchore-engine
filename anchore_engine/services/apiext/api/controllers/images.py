@@ -27,7 +27,8 @@ from anchore_engine.db.entities.common import anchore_now
 from anchore_engine.services.apiext.api.controllers.utils import (
     normalize_image_add_source,
     validate_image_add_source,
-    make_response_vulnerability,
+    # make_response_vulnerability,
+    make_response_vulnerability_report,
 )
 from anchore_engine.subsys import taskstate, logger
 from anchore_engine.subsys.metrics import flask_metrics
@@ -243,7 +244,8 @@ def vulnerability_query(
                 vendor_only=vendor_only,
             )
             if doformat:
-                ret = make_response_vulnerability(vulnerability_type, resp)
+                # ret = make_response_vulnerability(vulnerability_type, resp)
+                ret = make_response_vulnerability_report(vulnerability_type, resp)
                 return_object[imageDigest] = ret
             else:
                 return_object[imageDigest] = resp
