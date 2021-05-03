@@ -12,9 +12,6 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
 )
 from anchore_engine.db import (
     DistroNamespace,
-    ImageCpe,
-    CpeVulnerability,
-    select_nvd_classes,
 )
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.policy.params import (
@@ -26,10 +23,8 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     SimpleStringParameter,
     CommaDelimitedStringListParameter,
 )
-from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common import nonos_package_types
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
-from anchore_engine.services.policy_engine.engine.vulns.scanners import get_scanner
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
@@ -273,443 +268,154 @@ class VulnerabilityMatchTrigger(BaseTrigger):
             self.vendor_cvss_v3_impact_score_comparison.value(default_if_none=">=")
         )
 
-        api_endpoint = (
-            None  # for populating vulnerability links that point back to engine
-        )
-
         package_path_re = None
         path_exclude_re_value = self.package_path_exclude.value()
         if path_exclude_re_value is not None:
             package_path_re = re.compile(path_exclude_re_value)
 
-        if self.package_type.value() in ["all", "non-os"]:
-            cpevulns = context.data.get("loaded_cpe_vulnerabilities")
-            if cpevulns:
-                try:
-                    for sev in list(cpevulns.keys()):
-                        found_severity_idx = (
-                            SEVERITY_ORDERING.index(sev.lower()) if sev else 0
-                        )
-                        if comparison_fn(found_severity_idx, comparison_idx):
-                            for image_cpe, vulnerability_cpe in cpevulns[sev]:
-                                parameter_data = OrderedDict()
+        vuln_matches = context.data.get("loaded_vulnerabilities")
 
-                                # use normalized ID for trigger
-                                normalized_id = vulnerability_cpe.parent.normalized_id
-
-                                parameter_data["severity"] = sev.upper()
-                                parameter_data["vulnerability_id"] = normalized_id
-                                parameter_data["pkg_class"] = "non-os"
-                                parameter_data["pkg_type"] = image_cpe.pkg_type
-
-                                if package_path_re is not None:
-                                    match_found = package_path_re.match(
-                                        image_cpe.pkg_path
-                                    )
-                                    if match_found is not None:
-                                        logger.debug(
-                                            "Non-OS vulnerability {} package path {} matches package path exlcude {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                image_cpe.pkg_path,
-                                                path_exclude_re_value,
-                                            )
-                                        )
-                                        continue
-
-                                # setting fixed_version here regardless of gate parameter,
-                                fix_available_in = vulnerability_cpe.get_fixed_in()
-                                if fix_available_in:
-                                    parameter_data["fixed_version"] = ", ".join(
-                                        fix_available_in
-                                    )
-
-                                # Check if the vulnerability is too recent for this policy
-                                if timeallowed:
-                                    if (
-                                        calendar.timegm(
-                                            vulnerability_cpe.created_at.timetuple()
-                                        )
-                                        > timeallowed
-                                    ):
-                                        continue
-                                    parameter_data[
-                                        "max_days_since_creation"
-                                    ] = vulnerability_cpe.created_at.date()
-
-                                if cvss_v3_base_score is not None:
-                                    vuln_cvss_base_score = (
-                                        vulnerability_cpe.parent.get_max_base_score_nvd()
-                                    )
-                                    if not cvss_v3_base_score_comparison_fn(
-                                        vuln_cvss_base_score, cvss_v3_base_score
-                                    ):
-                                        logger.debug(
-                                            "Non-OS vulnerability {} cvss V3 base score {} is not {} than policy cvss V3 base score {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                vuln_cvss_base_score,
-                                                self.cvss_v3_base_score_comparison.value(),
-                                                cvss_v3_base_score,
-                                            )
-                                        )
-                                        continue
-                                    else:
-                                        parameter_data[
-                                            "cvss_v3_base_score"
-                                        ] = vuln_cvss_base_score
-
-                                if cvss_v3_exploitability_score is not None:
-                                    vuln_cvss_exploitability_score = (
-                                        vulnerability_cpe.parent.get_max_exploitability_score_nvd()
-                                    )
-                                    if not cvss_v3_exploitability_score_comparison_fn(
-                                        vuln_cvss_exploitability_score,
-                                        cvss_v3_exploitability_score,
-                                    ):
-                                        logger.debug(
-                                            "Non-OS vulnerability {} cvss V3 exploitability sub score {} is not {} than policy cvss V3 exploitability sub score {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                vuln_cvss_exploitability_score,
-                                                self.cvss_v3_exploitability_score_comparison.value(),
-                                                cvss_v3_exploitability_score,
-                                            )
-                                        )
-                                        continue
-                                    else:
-                                        parameter_data[
-                                            "cvss_v3_exploitability_score"
-                                        ] = vuln_cvss_exploitability_score
-
-                                if cvss_v3_impact_score is not None:
-                                    vuln_cvss_impact_score = (
-                                        vulnerability_cpe.parent.get_max_impact_score_nvd()
-                                    )
-                                    if not cvss_v3_impact_score_comparison_fn(
-                                        vuln_cvss_impact_score, cvss_v3_impact_score
-                                    ):
-                                        logger.debug(
-                                            "Non-OS vulnerability {} cvss V3 impact sub score {} is not {} than policy cvss V3 impact score {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                vuln_cvss_impact_score,
-                                                self.cvss_v3_impact_score_comparison.value(),
-                                                cvss_v3_impact_score,
-                                            )
-                                        )
-                                        continue
-                                    else:
-                                        parameter_data[
-                                            "cvss_v3_impact_score"
-                                        ] = vuln_cvss_impact_score
-
-                                trigger_fname = None
-                                if image_cpe.pkg_type in ["java", "gem"]:
-                                    try:
-                                        trigger_fname = image_cpe.pkg_path.split("/")[
-                                            -1
-                                        ]
-                                    except:
-                                        trigger_fname = None
-                                elif image_cpe.pkg_type in ["npm"]:
-                                    try:
-                                        trigger_fname = image_cpe.pkg_path.split("/")[
-                                            -2
-                                        ]
-                                    except:
-                                        trigger_fname = None
-
-                                if not trigger_fname:
-                                    trigger_fname = "-".join(
-                                        [image_cpe.name, image_cpe.version]
-                                    )
-
-                                # Check fix_available status if specified by user in policy
-                                if is_fix_available is not None:
-                                    # explicit fix state check matches fix availability
-                                    if is_fix_available != (
-                                        fix_available_in is not None
-                                        and len(fix_available_in) > 0
-                                    ):
-                                        # if_fix_available is set but does not match is_fix_available check
-                                        continue
-
-                                    if is_fix_available and fix_timeallowed is not None:
-                                        if fix_available_in:
-                                            if (
-                                                calendar.timegm(
-                                                    vulnerability_cpe.created_at.timetuple()
-                                                )
-                                                > fix_timeallowed
-                                            ):
-                                                continue
-                                            else:
-                                                parameter_data[
-                                                    "max_days_since_fix"
-                                                ] = vulnerability_cpe.created_at.date()
-
-                                if not vulnerability_cpe.parent.link:
-                                    if not api_endpoint:
-                                        api_endpoint = get_service_endpoint(
-                                            "apiext"
-                                        ).strip("/")
-                                    parameter_data[
-                                        "link"
-                                    ] = "{}/query/vulnerabilities?id={}".format(
-                                        api_endpoint, vulnerability_cpe.vulnerability_id
-                                    )
-                                else:
-                                    parameter_data[
-                                        "link"
-                                    ] = vulnerability_cpe.parent.link
-
-                                fix_msg = ""
-                                if parameter_data.get("fixed_version", None):
-                                    fix_msg = "(fixed in: {})".format(
-                                        parameter_data.get("fixed_version")
-                                    )
-
-                                score_msg = ""
-                                score_tuples = []
-                                for s in [
-                                    "cvss_v3_base_score",
-                                    "cvss_v3_exploitability_score",
-                                    "cvss_v3_impact_score",
-                                ]:
-                                    if parameter_data.get(s, None):
-                                        score_tuples.append(
-                                            "{}={}".format(s, parameter_data.get(s))
-                                        )
-                                if score_tuples:
-                                    score_msg = "({})".format(" ".join(score_tuples))
-
-                                time_msg = ""
-                                time_tuples = []
-                                for s in [
-                                    "max_days_since_creation",
-                                    "max_days_since_fix",
-                                ]:
-                                    if parameter_data.get(s, None):
-                                        time_tuples.append(
-                                            "{}={}".format(s, parameter_data.get(s))
-                                        )
-                                if time_tuples:
-                                    time_msg = "({})".format(" ".join(time_tuples))
-
-                                if vendor_cvss_v3_base_score is not None:
-                                    vuln_vendor_cvss_base_score = (
-                                        vulnerability_cpe.parent.get_max_base_score_vendor()
-                                    )
-                                    if not vendor_cvss_v3_base_score_comparison_fn(
-                                        vuln_vendor_cvss_base_score,
-                                        vendor_cvss_v3_base_score,
-                                    ):
-                                        logger.debug(
-                                            "Non-OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                vuln_vendor_cvss_base_score,
-                                                self.vendor_cvss_v3_base_score_comparison.value(),
-                                                vendor_cvss_v3_base_score,
-                                            )
-                                        )
-                                        continue
-                                    else:
-                                        parameter_data[
-                                            "vendor_cvss_v3_base_score"
-                                        ] = vuln_vendor_cvss_base_score
-
-                                if vendor_cvss_v3_exploitability_score is not None:
-                                    vuln_vendor_cvss_exploitability_score = (
-                                        vulnerability_cpe.parent.get_max_exploitability_score_vendor()
-                                    )
-                                    if not vendor_cvss_v3_exploitability_score_comparison_fn(
-                                        vuln_vendor_cvss_exploitability_score,
-                                        vendor_cvss_v3_exploitability_score,
-                                    ):
-                                        logger.debug(
-                                            "Non-OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                vuln_vendor_cvss_exploitability_score,
-                                                self.vendor_cvss_v3_exploitability_score_comparison.value(),
-                                                vendor_cvss_v3_exploitability_score,
-                                            )
-                                        )
-                                        continue
-                                    else:
-                                        parameter_data[
-                                            "vendor_cvss_v3_exploitability_score"
-                                        ] = vuln_vendor_cvss_exploitability_score
-
-                                if vendor_cvss_v3_impact_score is not None:
-                                    vuln_vendor_cvss_impact_score = (
-                                        vulnerability_cpe.parent.get_max_impact_score_vendor()
-                                    )
-                                    if not vendor_cvss_v3_impact_score_comparison_fn(
-                                        vuln_vendor_cvss_impact_score,
-                                        vendor_cvss_v3_impact_score,
-                                    ):
-                                        logger.debug(
-                                            "Non-OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(
-                                                vulnerability_cpe.parent.name,
-                                                vuln_vendor_cvss_impact_score,
-                                                self.vendor_cvss_v3_impact_score_comparison.value(),
-                                                vendor_cvss_v3_impact_score,
-                                            )
-                                        )
-                                        continue
-                                    else:
-                                        parameter_data[
-                                            "vendor_cvss_v3_impact_score"
-                                        ] = vuln_vendor_cvss_impact_score
-
-                                vendor_score_msg = ""
-                                vendor_score_tuples = []
-                                for s in [
-                                    "vendor_cvss_v3_base_score",
-                                    "vendor_cvss_v3_exploitability_score",
-                                    "vendor_cvss_v3_impact_score",
-                                ]:
-                                    if parameter_data.get(s, None):
-                                        vendor_score_tuples.append(
-                                            "{}={}".format(s, parameter_data.get(s))
-                                        )
-                                if vendor_score_tuples:
-                                    vendor_score_msg = "({})".format(
-                                        " ".join(vendor_score_tuples)
-                                    )
-
-                                # new detail message approach
-                                # pkgname = image_cpe.pkg_path
-                                # msg = "Vulnerability found in package {} - matching parameters: ".format(pkgname)
-                                # for i in parameter_data:
-                                #    msg += "{}={} ".format(i, parameter_data[i])
-
-                                pkgname = image_cpe.pkg_path
-                                msg = "{} Vulnerability found in {} package type ({}) - {} {}{}{}{}({} - {})".format(
-                                    parameter_data["severity"].upper(),
-                                    parameter_data["pkg_class"],
-                                    parameter_data["pkg_type"],
-                                    pkgname,
-                                    fix_msg,
-                                    score_msg,
-                                    time_msg,
-                                    vendor_score_msg,
-                                    parameter_data["vulnerability_id"],
-                                    parameter_data["link"],
-                                )
-                                self._fire(
-                                    instance_id=normalized_id + "+" + trigger_fname,
-                                    msg=msg,
-                                )
-
-                except Exception as err:
-                    logger.warn(
-                        "problem during non-os vulnerability evaluation - exception: {}".format(
-                            err
-                        )
-                    )
-
-        # Process vulnerabilities that match using ImagePackageVulnerability objects, which can include all types as well
-        vulns = context.data.get("loaded_vulnerabilities")
-
-        if vulns:
-            # get nvd classes from context or select them once and be done
-            _nvd_cls, _cpe_cls = context.data.get("nvd_cpe_cls", (None, None))
-            if not _nvd_cls or not _cpe_cls:
-                _nvd_cls, _cpe_cls = select_nvd_classes()
-
+        if vuln_matches:
             pkg_type_value = self.package_type.value()
-            for pkg_vuln in vulns:
-                parameter_data = OrderedDict()
 
-                parameter_data["severity"] = pkg_vuln.vulnerability.severity.upper()
-                parameter_data["vulnerability_id"] = pkg_vuln.vulnerability_id
-                parameter_data["pkg_type"] = pkg_vuln.pkg_type
-                parameter_data["pkg_class"] = (
-                    "non-os" if pkg_vuln.pkg_type in nonos_package_types else "os"
+            for vuln_match in vuln_matches:
+                vulnerability_obj = vuln_match.vulnerability
+                artifact_obj = vuln_match.artifact
+                fix_obj_list = vuln_match.fixes
+                match_obj = vuln_match.match
+
+                new_vuln_pkg_class = (
+                    "non-os"
+                    if artifact_obj.pkg_type.lower() in nonos_package_types
+                    else "os"
                 )
 
+                # Filter first by package class, if rule has a filter
+                if pkg_type_value != "all" and pkg_type_value != new_vuln_pkg_class:
+                    logger.debug(
+                        "Gate package type {} is not a match for artifact package type {}, skipping".format(
+                            pkg_type_value, artifact_obj.pkg_type
+                        )
+                    )
+                    # don't process the vulnerability if the affected package type is not a match for the gate
+                    continue
+
+                # Start constructing gate parameter data
+                parameter_data = OrderedDict()
+
+                parameter_data["severity"] = vulnerability_obj.severity.upper()
+                parameter_data["vulnerability_id"] = vulnerability_obj.vulnerability_id
+                parameter_data["pkg_type"] = artifact_obj.pkg_type
+                parameter_data["pkg_class"] = new_vuln_pkg_class
+
                 # setting fixed_version here regardless of gate parameter,
-                fix_available_in = pkg_vuln.fixed_in()
+                fix_versions = [
+                    item.version
+                    for item in fix_obj_list
+                    if item.version and item.version != "None"
+                ]
+                fix_available_in = ", ".join(fix_versions) if fix_versions else None
+
                 if fix_available_in:
                     parameter_data["fixed_version"] = fix_available_in
 
-                # Filter first by package class, if rule has a filter
-                if (
-                    pkg_type_value != "all"
-                    and pkg_type_value != parameter_data["pkg_class"]
-                ):
-                    continue
-
                 # Filter by level first
                 found_severity_idx = (
-                    SEVERITY_ORDERING.index(pkg_vuln.vulnerability.severity.lower())
-                    if pkg_vuln.vulnerability.severity
+                    SEVERITY_ORDERING.index(vulnerability_obj.severity.lower())
+                    if vulnerability_obj.severity
                     else 0
                 )
                 if comparison_fn(found_severity_idx, comparison_idx):
+                    # package path excludes logic for non-os packages only
+                    if new_vuln_pkg_class == "non-os" and package_path_re:
+                        match_found = package_path_re.match(artifact_obj.pkg_path)
+                        if match_found is not None:
+                            logger.debug(
+                                "Non-OS vulnerability {} package path {} matches package path exclude {}, skipping".format(
+                                    artifact_obj.name,
+                                    artifact_obj.pkg_path,
+                                    path_exclude_re_value,
+                                )
+                            )
+                            continue
+
                     # Check vendor_only flag specified by the user in policy
                     if is_vendor_only:
-                        if pkg_vuln.fix_has_no_advisory():
-                            # skip this vulnerability
+                        if any(item.wont_fix for item in fix_obj_list):
+                            logger.debug(
+                                "{} vulnerability {} for package {} is marked by vendor as won't fix, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
+                                    artifact_obj.name,
+                                )
+                            )
                             continue
 
                     # Check if the vulnerability is to recent for this policy
                     if timeallowed:
                         if (
-                            calendar.timegm(
-                                pkg_vuln.vulnerability.created_at.timetuple()
-                            )
+                            calendar.timegm(match_obj.detected_at.timetuple())
                             > timeallowed
                         ):
                             continue
                         parameter_data[
                             "max_days_since_creation"
-                        ] = pkg_vuln.vulnerability.created_at.date()
+                        ] = match_obj.detected_at.date()
 
                     if is_fix_available and fix_timeallowed is not None:
-                        fix = pkg_vuln.fixed_artifact()
-                        if fix.version and fix.version != "None":
-                            if (
-                                fix.fix_observed_at
-                                and calendar.timegm(fix.fix_observed_at.timetuple())
-                                > fix_timeallowed
-                            ):
-                                continue
-                            else:
-                                parameter_data[
-                                    "max_days_since_fix"
-                                ] = fix.fix_observed_at.date()
+                        observed_at_list = [
+                            item.observed_at
+                            for item in fix_obj_list
+                            if item.version
+                            and item.version != "None"
+                            and item.observed_at
+                        ]
+
+                        fix_observed_at = (
+                            max(observed_at_list) if observed_at_list else None
+                        )
+
+                        if (
+                            fix_observed_at
+                            and calendar.timegm(fix_observed_at.timetuple())
+                            > fix_timeallowed
+                        ):
+                            continue
+                        else:
+                            parameter_data[
+                                "max_days_since_fix"
+                            ] = fix_observed_at.date()
 
                     vuln_cvss_base_score = -1.0
                     vuln_cvss_exploitability_score = -1.0
                     vuln_cvss_impact_score = -1.0
 
-                    for nvd_record in pkg_vuln.vulnerability.get_nvd_vulnerabilities(
-                        _nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls
-                    ):
-                        cvss_score = nvd_record.get_max_cvss_score_nvd()
-                        if cvss_score.get("base_score", -1.0) > vuln_cvss_base_score:
-                            vuln_cvss_base_score = cvss_score.get("base_score", -1.0)
-                        if (
-                            cvss_score.get("exploitability_score", -1.0)
-                            > vuln_cvss_exploitability_score
-                        ):
-                            vuln_cvss_exploitability_score = cvss_score.get(
-                                "exploitability_score", -1.0
-                            )
-                        if (
-                            cvss_score.get("impact_score", -1.0)
-                            > vuln_cvss_impact_score
-                        ):
-                            vuln_cvss_impact_score = cvss_score.get(
-                                "impact_score", -1.0
-                            )
+                    # Gather cvss scores before operating with max
+                    nvd_cvss_v3_scores = [
+                        item.cvss_v3
+                        for item in vulnerability_obj.cvss_scores_nvd
+                        if item.cvss_v3
+                    ]
+
+                    if nvd_cvss_v3_scores:
+                        vuln_cvss_base_score = max(
+                            item.base_score for item in nvd_cvss_v3_scores
+                        )
+                        vuln_cvss_exploitability_score = max(
+                            item.exploitability_score for item in nvd_cvss_v3_scores
+                        )
+                        vuln_cvss_impact_score = max(
+                            item.impact_score for item in nvd_cvss_v3_scores
+                        )
 
                     if cvss_v3_base_score is not None:
                         if not cvss_v3_base_score_comparison_fn(
                             vuln_cvss_base_score, cvss_v3_base_score
                         ):
                             logger.debug(
-                                "OS vulnerability {} cvss V3 base_score {} is not {} than policy cvss V3 base_score {}, skipping".format(
-                                    pkg_vuln.vulnerability_id,
+                                "{} vulnerability {} cvss V3 base_score {} is not {} than policy cvss V3 base_score {}, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
                                     vuln_cvss_base_score,
                                     self.cvss_v3_base_score_comparison.value(),
                                     cvss_v3_base_score,
@@ -724,8 +430,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             vuln_cvss_exploitability_score, cvss_v3_exploitability_score
                         ):
                             logger.debug(
-                                "OS vulnerability {} cvss V3 exploitability_score {} is not {} than policy cvss V3 exploitability_score {}, skipping".format(
-                                    pkg_vuln.vulnerability_id,
+                                "{} vulnerability {} cvss V3 exploitability_score {} is not {} than policy cvss V3 exploitability_score {}, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
                                     vuln_cvss_exploitability_score,
                                     self.cvss_v3_exploitability_score_comparison.value(),
                                     cvss_v3_exploitability_score,
@@ -742,8 +449,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             vuln_cvss_impact_score, cvss_v3_impact_score
                         ):
                             logger.debug(
-                                "OS vulnerability {} cvss V3 impact_score {} is not {} than policy cvss V3 impact_score {}, skipping".format(
-                                    pkg_vuln.vulnerability_id,
+                                "{} vulnerability {} cvss V3 impact_score {} is not {} than policy cvss V3 impact_score {}, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
                                     vuln_cvss_impact_score,
                                     self.cvss_v3_impact_score_comparison.value(),
                                     cvss_v3_impact_score,
@@ -762,7 +470,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             # if_fix_available is set but does not match is_fix_available check
                             continue
 
-                    parameter_data["link"] = pkg_vuln.vulnerability.link
+                    parameter_data["link"] = vulnerability_obj.link
 
                     fix_msg = ""
                     if parameter_data.get("fixed_version", None):
@@ -792,18 +500,37 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     if time_tuples:
                         time_msg = "({})".format(" ".join(time_tuples))
 
-                    # vendor vulnerability scores not currently available for os packages, this is a pass through
+                    # process vendor CVSS scores
                     vuln_vendor_cvss_base_score = -1.0
                     vuln_vendor_cvss_exploitability_score = -1.0
                     vuln_vendor_cvss_impact_score = -1.0
+
+                    # Gather cvss scores before operating with max
+                    vendor_cvss_v3_scores = [
+                        item.cvss_v3
+                        for item in vulnerability_obj.cvss_scores_vendor
+                        if item.cvss_v3
+                    ]
+
+                    if vendor_cvss_v3_scores:
+                        vuln_vendor_cvss_base_score = max(
+                            item.base_score for item in vendor_cvss_v3_scores
+                        )
+                        vuln_vendor_cvss_exploitability_score = max(
+                            item.exploitability_score for item in vendor_cvss_v3_scores
+                        )
+                        vuln_vendor_cvss_impact_score = max(
+                            item.impact_score for item in vendor_cvss_v3_scores
+                        )
 
                     if vendor_cvss_v3_base_score is not None:
                         if not vendor_cvss_v3_base_score_comparison_fn(
                             vuln_vendor_cvss_base_score, vendor_cvss_v3_base_score
                         ):
                             logger.debug(
-                                "OS vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(
-                                    pkg_vuln.vulnerability_id,
+                                "{} vulnerability {} vendor cvss V3 base score {} is not {} than policy vendor cvss V3 base score {}, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
                                     vuln_vendor_cvss_base_score,
                                     self.vendor_cvss_v3_base_score_comparison.value(),
                                     vendor_cvss_v3_base_score,
@@ -821,8 +548,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             vendor_cvss_v3_exploitability_score,
                         ):
                             logger.debug(
-                                "OS vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(
-                                    pkg_vuln.vulnerability_id,
+                                "{} vulnerability {} vendor cvss V3 exploitability sub score {} is not {} than policy vendor cvss V3 exploitability sub score {}, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
                                     vuln_vendor_cvss_exploitability_score,
                                     self.vendor_cvss_v3_exploitability_score_comparison.value(),
                                     vendor_cvss_v3_exploitability_score,
@@ -839,8 +567,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score
                         ):
                             logger.debug(
-                                "OS vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(
-                                    pkg_vuln.vulnerability_id,
+                                "{}} vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(
+                                    new_vuln_pkg_class,
+                                    vulnerability_obj.vulnerability_id,
                                     vuln_vendor_cvss_impact_score,
                                     self.vendor_cvss_v3_impact_score_comparison.value(),
                                     vendor_cvss_v3_impact_score,
@@ -874,8 +603,30 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     # for i in parameter_data:
                     #    msg += "{}={} ".format(i, parameter_data[i])
 
+                    if new_vuln_pkg_class == "non-os":
+                        trigger_fname = None
+                        if artifact_obj.pkg_type in ["java", "gem"]:
+                            try:
+                                trigger_fname = artifact_obj.pkg_path.split("/")[-1]
+                            except:
+                                trigger_fname = None
+                        elif artifact_obj.pkg_type in ["npm"]:
+                            try:
+                                trigger_fname = artifact_obj.pkg_path.split("/")[-2]
+                            except:
+                                trigger_fname = None
+
+                        if not trigger_fname:
+                            trigger_fname = "-".join(
+                                [artifact_obj.name, artifact_obj.version]
+                            )
+
+                        pkgname = artifact_obj.pkg_path
+                    else:
+                        trigger_fname = artifact_obj.name
+                        pkgname = artifact_obj.name
+
                     # original detail message approach
-                    pkgname = pkg_vuln.pkg_name
                     msg = "{} Vulnerability found in {} package type ({}) - {} {}{}{}{}({} - {})".format(
                         parameter_data["severity"].upper(),
                         parameter_data["pkg_class"],
@@ -890,7 +641,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     )
 
                     self._fire(
-                        instance_id=pkg_vuln.vulnerability_id + "+" + pkg_vuln.pkg_name,
+                        instance_id=vulnerability_obj.vulnerability_id
+                        + "+"
+                        + trigger_fname,
                         msg=msg,
                     )
 
@@ -991,27 +744,16 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
         for vid in vids:
             found = False
 
-            # search for vid in OS vulns
-            vulns = context.data.get("loaded_vulnerabilities")
-            for vuln in vulns:
+            matches = context.data.get("loaded_vulnerabilities_new")
+            for match in matches:
                 if is_vendor_only:
-                    if vuln.fix_has_no_advisory():
+                    if match.fixes and any(item.wont_fix for item in match.fixes):
                         continue
-                if vid == vuln.vulnerability_id:
+                # search for vid in all vulns
+                if vid == match.vulnerability.vulnerability_id:
                     found = True
                     break
 
-            if not found:
-                # search for vid in non-os vulns
-                cpevulns = context.data.get("loaded_cpe_vulnerabilities")
-                for sev in list(cpevulns.keys()):
-                    for image_cpe, vulnerability_cpe in cpevulns[sev]:
-                        # use normalized ID for evaluating match
-                        if vid == vulnerability_cpe.parent.normalized_id:
-                            found = True
-                            break
-                    if found:
-                        break
             if found:
                 found_vids.append(vid)
 
@@ -1037,48 +779,10 @@ class VulnerabilitiesGate(Gate):
         :rtype:
         """
 
-        # select the nvd classes once and be done, load them into context for eval
-        _nvd_cls, _cpe_cls = select_nvd_classes()
-        context.data["nvd_cpe_cls"] = (_nvd_cls, _cpe_cls)
-
-        scanner = get_scanner()
-
-        # Load the package vulnerability info up front
-        pkg_vulns = scanner.get_vulnerabilities(image_obj)
-        context.data["loaded_vulnerabilities"] = pkg_vulns
-
-        # Load the non-package (CPE) vulnerability info up front
-        all_cpe_matches = scanner.get_cpe_vulnerabilities(image_obj, _nvd_cls, _cpe_cls)
-        if not all_cpe_matches:
-            all_cpe_matches = []
-
-        dedup_hash = {}
-        severity_matches = {}
-        for image_cpe, vulnerability_cpe in all_cpe_matches:
-            sev = vulnerability_cpe.parent.severity
-            if sev not in severity_matches:
-                severity_matches[sev] = []
-
-            if image_cpe.pkg_path:
-                if image_cpe.pkg_path not in dedup_hash:
-                    dedup_hash[image_cpe.pkg_path] = []
-
-                if (
-                    vulnerability_cpe.vulnerability_id
-                    not in dedup_hash[image_cpe.pkg_path]
-                ):
-                    dedup_hash[image_cpe.pkg_path].append(
-                        vulnerability_cpe.vulnerability_id
-                    )
-                    severity_matches[sev].append((image_cpe, vulnerability_cpe))
-            else:
-                severity_matches[sev].append((image_cpe, vulnerability_cpe))
-
-        context.data["loaded_cpe_vulnerabilities"] = severity_matches
         db_session = get_thread_scoped_session()
-        provider = get_vulnerabilities_provider()
-        context.data["loaded_vulnerabilities_new"] = provider.get_image_vulnerabilities(
+        vuln_report = get_vulnerabilities_provider().get_image_vulnerabilities(
             image_obj, db_session
         )
+        context.data["loaded_vulnerabilities"] = vuln_report.results
 
         return context
