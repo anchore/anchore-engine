@@ -33,7 +33,8 @@ def apply_hints(analyzer_report, unpackdir):
         if pkg_type and pkg_type in syft.modules_by_engine_type:
             handler = syft.modules_by_engine_type[pkg_type]
             handler.save_entry(analyzer_report, engine_entry)
-
+        else:
+            logger.info("Current package type: %s is not processed by syft", pkg_type)
 
 def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir):
     for f in list_modules():
