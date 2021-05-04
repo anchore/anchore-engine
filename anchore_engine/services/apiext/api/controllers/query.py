@@ -13,76 +13,15 @@ from anchore_engine.clients import grype_wrapper
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services import internal_client_for
+from anchore_engine.services.apiext.api.controllers.utils import (
+    transform_grype_vulnerabilities,
+)
 from anchore_engine.subsys import logger
 from flask import request
 
 import anchore_engine.common
 
 authorizer = get_authorizer()
-
-
-def transform_grype_vulnerability(grype_raw_result):
-    """
-    Receives a single vulnerability_metadata record from grype_db and maps into the data structure engine expects.
-    The vulnerability_metadata record may optionally (but in practice should always) have a nested record for the
-    related vulnerability record.
-    """
-    # Create the templated output object
-    output_vulnerability = {}
-    return_el_template = {
-        "id": None,
-        "namespace": None,
-        "severity": None,
-        "link": None,
-        "affected_packages": None,
-        "description": None,
-        "references": None,
-        "nvd_data": None,
-        "vendor_data": None,
-    }
-    output_vulnerability.update(return_el_template)
-
-    # Set mapped field values
-    output_vulnerability["id"] = grype_raw_result.id
-    output_vulnerability["description"] = grype_raw_result.description
-    output_vulnerability["severity"] = grype_raw_result.severity
-
-    # TODO What should we do with multiple links. Currently just grabbing the first one
-    if grype_raw_result.deserialized_links:
-        output_vulnerability["link"] = grype_raw_result.deserialized_links[0]
-    else:
-        output_vulnerability["link"] = []
-
-    # TODO Not sure yet how these should be mapped
-    output_vulnerability["references"] = None
-    output_vulnerability["nvd_data"] = []
-    output_vulnerability["vendor_data"] = []
-
-    # Get fields from the nested vulnerability object, if it exists
-    if grype_raw_result.vulnerability is not None:
-        output_vulnerability["namespace"] = grype_raw_result.vulnerability.namespace
-
-        affected_package = {}
-        affected_package["name"] = grype_raw_result.vulnerability.package_name
-        affected_package["type"] = grype_raw_result.vulnerability.version_format
-        affected_package["version"] = grype_raw_result.vulnerability.version_constraint
-        output_vulnerability["affected_packages"] = [affected_package]
-
-    return output_vulnerability
-
-
-def transform_grype_vulnerabilities(grype_raw_results):
-    """
-    Receives a list of vulnerability_metadata records from grype_db and returns a list of vulnerabilities mapped
-    into the data structure engine expects.
-    """
-    transformed_vulnerabilities = []
-    for grype_raw_result in grype_raw_results:
-        transformed_vulnerabilities.append(
-            transform_grype_vulnerability(grype_raw_result)
-        )
-
-    return transformed_vulnerabilities
 
 
 @authorizer.requires([])
