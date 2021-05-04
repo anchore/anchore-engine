@@ -323,7 +323,7 @@ def test_get_proc_env(grype_db_dir):
             None,
             None,
             None,
-            10,
+            68,
             [
                 "CVE-2019-16775",
                 "CVE-2019-16777",
@@ -337,13 +337,13 @@ def test_get_proc_env(grype_db_dir):
                 "CVE-2019-20788",
             ],
         ),
-        ("CVE-2019-16775", None, None, 1, ["CVE-2019-16775"]),
-        (None, "npm", None, 3, ["CVE-2019-16775", "CVE-2019-16777", "CVE-2019-16776"]),
+        ("CVE-2019-16775", None, None, 6, ["CVE-2019-16775"]),
+        (None, "npm", None, 18, ["CVE-2019-16775", "CVE-2019-16777", "CVE-2019-16776"]),
         (
             None,
             None,
             "debian:10",
-            10,
+            68,
             [
                 "CVE-2019-16775",
                 "CVE-2019-16777",
@@ -357,7 +357,7 @@ def test_get_proc_env(grype_db_dir):
                 "CVE-2019-20788",
             ],
         ),
-        ("CVE-2019-16775", "npm", "debian:10", 1, ["CVE-2019-16775"]),
+        ("CVE-2019-16775", "npm", "debian:10", 6, ["CVE-2019-16775"]),
     ],
 )
 def test_query_vulnerabilities(
@@ -381,7 +381,10 @@ def test_query_vulnerabilities(
         namespace=namespace,
     )
     assert len(results) == expected_result_length
-    assert list(map(lambda result: result.id, results)) == expected_output
+    assert (
+        list(set(map(lambda result: result.id, results))).sort()
+        == expected_output.sort()
+    )
     # TODO Assert joined vulnerability_metadata is correct
     # I need to further simplify the test data set to keep the expected_output size manageable
     # Or else that matrix is just going to be unreadable

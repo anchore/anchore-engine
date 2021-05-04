@@ -387,6 +387,10 @@ class GrypeVulnerability(Base, UtilMixin):
         "GrypeVulnerabilityMetadata", back_populates="vulnerability"
     )
 
+    @property
+    def deserialized_proxy_vulnerabilities(self):
+        return json.loads(self.proxy_vulnerabilities)
+
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
     __tablename__ = VULNERABILITY_METADATA_TABLE_NAME
@@ -401,6 +405,18 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     vulnerability = relationship(
         "GrypeVulnerability", back_populates="vulnerability_metadata"
     )
+
+    @property
+    def deserialized_links(self):
+        return json.loads(self.links)
+
+    @property
+    def deserialized_cvss_v2(self):
+        return json.loads(self.cvss_v2)
+
+    @property
+    def deserialized_cvss_v3(self):
+        return json.loads(self.cvss_v3)
 
 
 def query_vulnerabilities(
