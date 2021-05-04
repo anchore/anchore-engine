@@ -36,6 +36,7 @@ def apply_hints(analyzer_report, unpackdir):
         else:
             logger.info("Current package type: %s is not processed by syft", pkg_type)
 
+
 def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir):
     for f in list_modules():
         cmdstr = " ".join([f, configdir, imageId, unpackdir, outputdir, unpackdir])
