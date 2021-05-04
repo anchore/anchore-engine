@@ -21,6 +21,70 @@ import anchore_engine.common
 authorizer = get_authorizer()
 
 
+def transform_grype_vulnerability(grype_raw_result):
+    """
+    Receives a single vulnerability_metadata record from grype_db and maps into the data structure engine expects.
+    The vulnerability_metadata record may optionally (but in practice should always) have a nested record for the
+    related vulnerability record.
+    """
+    # Create the templated output object
+    output_vulnerability = {}
+    return_el_template = {
+        "id": None,
+        "namespace": None,
+        "severity": None,
+        "link": None,
+        "affected_packages": None,
+        "description": None,
+        "references": None,
+        "nvd_data": None,
+        "vendor_data": None,
+    }
+    output_vulnerability.update(return_el_template)
+
+    # Set mapped field values
+    output_vulnerability["id"] = grype_raw_result.id
+    output_vulnerability["description"] = grype_raw_result.description
+    output_vulnerability["severity"] = grype_raw_result.severity
+
+    # TODO What should we do with multiple links. Currently just grabbing the first one
+    if grype_raw_result.deserialized_links:
+        output_vulnerability["link"] = grype_raw_result.deserialized_links[0]
+    else:
+        output_vulnerability["link"] = []
+
+    # TODO Not sure yet how these should be mapped
+    output_vulnerability["references"] = None
+    output_vulnerability["nvd_data"] = []
+    output_vulnerability["vendor_data"] = []
+
+    # Get fields from the nested vulnerability object, if it exists
+    if grype_raw_result.vulnerability is not None:
+        output_vulnerability["namespace"] = grype_raw_result.vulnerability.namespace
+
+        affected_package = {}
+        affected_package["name"] = grype_raw_result.vulnerability.package_name
+        affected_package["type"] = grype_raw_result.vulnerability.version_format
+        affected_package["version"] = grype_raw_result.vulnerability.version_constraint
+        output_vulnerability["affected_packages"] = [affected_package]
+
+    return output_vulnerability
+
+
+def transform_grype_vulnerabilities(grype_raw_results):
+    """
+    Receives a list of vulnerability_metadata records from grype_db and returns a list of vulnerabilities mapped
+    into the data structure engine expects.
+    """
+    transformed_vulnerabilities = []
+    for grype_raw_result in grype_raw_results:
+        transformed_vulnerabilities.append(
+            transform_grype_vulnerability(grype_raw_result)
+        )
+
+    return transformed_vulnerabilities
+
+
 @authorizer.requires([])
 def query_vulnerabilities(
     id=None,
@@ -30,12 +94,18 @@ def query_vulnerabilities(
     affected_package_version=None,
     namespace=None,
 ):
+    """
+    Query vulnerabilities using the legacy route to the anchore db from the feeds service, through the policy engine.
+    This function calls the common logic around the query in query_vulnerabilities_common, passing through the supplied
+    query params along with a callback to the logic that actually executes (and times) the query.
+    """
+
     def legacy_query(request_inputs):
         client = internal_client_for(
             PolicyEngineClient, userId=ApiRequestContextProxy.namespace()
         )
         timer = time.time()
-        result = client.query_vulnerabilities(
+        results = client.query_vulnerabilities(
             vuln_id=request_inputs.get("params", {}).get("id"),
             affected_package=request_inputs.get("params", {}).get("affected_package"),
             affected_package_version=request_inputs.get("params", {}).get(
@@ -44,7 +114,7 @@ def query_vulnerabilities(
             namespace=request_inputs.get("params", {}).get("namespace"),
         )
         policy_engine_call_time = time.time() - timer
-        return policy_engine_call_time, result
+        return results, policy_engine_call_time
 
     return query_vulnerabilities_common(
         legacy_query,
@@ -57,7 +127,7 @@ def query_vulnerabilities(
     )
 
 
-# @authorizer.requires([])
+@authorizer.requires([])
 def query_vulnerabilities_grype(
     id=None,
     page=1,
@@ -66,9 +136,17 @@ def query_vulnerabilities_grype(
     affected_package_version=None,
     namespace=None,
 ):
+    """
+    Query vulnerabilities using the grype db via the grype warapper.
+    This function calls the common logic around the query in query_vulnerabilities_common, passing through the supplied
+    query params along with a callback to the logic that actually executes (and times) the query. That callback is also
+    responsible for calling a function to map the grype_db vulnerability data structure into the sdata strucure engine
+    expects.
+    """
+
     def grype_query(request_inputs):
         timer = time.time()
-        result = grype_wrapper.query_vulnerabilities(
+        raw_results = grype_wrapper.query_vulnerabilities(
             vuln_id=request_inputs.get("params", {}).get("id"),
             affected_package=request_inputs.get("params", {}).get("affected_package"),
             affected_package_version=request_inputs.get("params", {}).get(
@@ -76,8 +154,9 @@ def query_vulnerabilities_grype(
             ),
             namespace=request_inputs.get("params", {}).get("namespace"),
         )
+        mapped_results = transform_grype_vulnerabilities(raw_results)
         grype_wrapper_call_time = time.time() - timer
-        return grype_wrapper_call_time, result
+        return mapped_results, grype_wrapper_call_time
 
     return query_vulnerabilities_common(
         grype_query,
@@ -90,6 +169,7 @@ def query_vulnerabilities_grype(
     )
 
 
+# TODO Further decompose this function to enable more unit tests
 def query_vulnerabilities_common(
     query_callback,
     id=None,
@@ -134,12 +214,15 @@ def query_vulnerabilities_common(
             result = anchore_engine.common.pagination.get_cached_pagination(
                 query_digest=request_inputs["pagination_query_digest"]
             )
+        # TODO Raising an Exception to indicate cache non-existence or expiration could
+        # mask if there are other exceptions being raised by get_cached_pagination()
+        # Feels cleaner to return and catch None or similar, and catch actual exceptions
         except Exception as err:
-            policy_engine_call_time, result = query_callback(request_inputs)
+            results, policy_engine_call_time = query_callback(request_inputs)
 
         return_object = (
             anchore_engine.common.pagination.make_response_paginated_envelope(
-                result,
+                results,
                 envelope_key="vulnerabilities",
                 page=page,
                 limit=limit,
