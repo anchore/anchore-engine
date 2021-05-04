@@ -30,7 +30,7 @@ def apply_hints(analyzer_report, unpackdir):
     # hints processing.
     for engine_entry in utils.content_hints(unpackdir=unpackdir):
         pkg_type = engine_entry.get("type")
-        if pkg_type:
+        if pkg_type and pkg_type in syft.modules_by_engine_type:
             handler = syft.modules_by_engine_type[pkg_type]
             handler.save_entry(analyzer_report, engine_entry)
 
@@ -47,18 +47,18 @@ def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, output
                 serr = anchore_engine.utils.ensure_str(serr)
                 if rc != 0:
                     logger.error(
-                        "command failed: cmd=%s exitcode=%s stdout=%s stderr=%s".format(
-                            repr(cmdstr),
-                            repr(rc),
-                            repr(sout.strip()),
-                            repr(serr.strip()),
-                        )
+                        "command failed: cmd=%s exitcode=%s stdout=%s stderr=%s",
+                        repr(cmdstr),
+                        repr(rc),
+                        repr(sout.strip()),
+                        repr(serr.strip()),
                     )
                 else:
                     logger.debug(
-                        "command succeeded: cmd=%s stdout=%s stderr=%s".format(
-                            repr(cmdstr), repr(sout.strip()), repr(serr.strip())
-                        )
+                        "command succeeded: cmd=%s stdout=%s stderr=%s",
+                        repr(cmdstr),
+                        repr(sout.strip()),
+                        repr(serr.strip()),
                     )
             except Exception:
                 logger.exception(

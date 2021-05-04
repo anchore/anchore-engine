@@ -82,5 +82,7 @@ except Exception as err:
 if resultlist:
     ofile = os.path.join(outputdir, "pkgs.go")
     anchore_engine.analyzers.utils.write_kvfile_fromdict(ofile, resultlist)
+else:
+    print("No Results found")
 
 sys.exit(0)
