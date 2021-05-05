@@ -15,7 +15,10 @@ def save_entry(findings, engine_entry, pkg_key=None):
             )  # rethink this... ensure it's right
             pkg_key = "/virtual/gempkg/{}-{}".format(pkg_name, pkg_version)
 
-    findings["package_list"]["pkgs.gems"]["base"][pkg_key] = engine_entry
+    if "pkgs.gems" in findings.get("package_list", {}):
+        findings["package_list"]["pkgs.gems"]["base"][pkg_key] = engine_entry
+    else:
+        findings["package_list"]["pkgs.gems"] = {"base": {pkg_key: engine_entry}}
 
 
 def translate_and_save_entry(findings, artifact):

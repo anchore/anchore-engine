@@ -4,10 +4,11 @@ import time
 import collections
 
 import anchore_engine.utils
+from anchore_engine.analyzers.hints import HintsTypeError
 from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import analyzer_paths
 from pkg_resources import resource_filename
-from anchore_engine.analyzers import syft
+from anchore_engine.analyzers import syft, hints
 from anchore_engine.analyzers import binary
 from anchore_engine.analyzers import utils
 
@@ -29,10 +30,24 @@ def apply_hints(analyzer_report, unpackdir):
     # the config does not explicitly enable hints processing, effectively disabling
     # hints processing.
     for engine_entry in utils.content_hints(unpackdir=unpackdir):
-        pkg_type = engine_entry.get("type")
-        if pkg_type:
+        pkg_type = engine_entry.get("type", None)
+
+        # Just in case it's set to null explicitly in the hint
+        pkg_type = pkg_type.lower() if pkg_type else None
+        if (
+            pkg_type
+            and pkg_type in syft.modules_by_engine_type
+            and pkg_type in hints.hints_by_type
+        ):
             handler = syft.modules_by_engine_type[pkg_type]
-            handler.save_entry(analyzer_report, engine_entry)
+            try:
+                hint = hints.hints_by_type[pkg_type](engine_entry).to_dict()
+            except HintsTypeError:
+                logger.exception("failed to process hint")
+                continue
+            handler.save_entry(analyzer_report, hint)
+        else:
+            logger.debug("pkg_type %s not supported for syft hints", pkg_type)
 
 
 def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir):
