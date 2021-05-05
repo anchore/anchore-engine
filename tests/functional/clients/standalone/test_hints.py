@@ -24,15 +24,15 @@ class TestHintsNPM:
         path = "/usr/lib/node_modules/npm/node_modules/string_decoder/node_modules/safe-buffer/package.json"
         package = pkgs.get(path)
         assert package["name"] == "safe-buffer"
-        assert package["license"] == "FREE-FOR-ALL"
-        assert package["version"] == "100"
-        assert package.get("sourcepkg") is None
+        assert package["lics"] == ["FREE-FOR-ALL"]
+        assert package["versions"] == ["100"]
+        assert package.get("sourcepkg") == "safe-buffer"
 
         # Include non-existent package from a custom hint
         package = pkgs.get("/virtual/npmpkg/toure-awesome-1.0rc")
         assert package["name"] == "toure-awesome"
-        assert package["license"] == "Propietary"
-        assert package["version"] == "1.0rc"
+        assert package["lics"] == ["Propietary"]
+        assert package["versions"] == ["1.0rc"]
 
 
 class TestHintsRPM:
@@ -40,11 +40,11 @@ class TestHintsRPM:
         hints = {
             "packages": [
                 {
-                    "name": "tar",
-                    "license": "MIT",
-                    "version": "42",
+                    "name": "zlib",
+                    "license": "zlib and Boost",
+                    "version": "987654:1.2.11-16.el8_2",
                     "type": "rpm",
-                    "origin": "Centos",
+                    "origin": "CentOS",
                 }
             ]
         }
@@ -52,11 +52,11 @@ class TestHintsRPM:
         pkgs = result["image"]["imagedata"]["analysis_report"]["package_list"][
             "pkgs.allinfo"
         ]["base"]
-        package = pkgs.get("tar")
+        package = pkgs.get("zlib")
         assert package["type"] == "rpm"
-        assert package["license"] == "MIT"
-        assert package["version"] == "42"
-        assert package["origin"] == "Centos"
+        assert package["license"] == "zlib and Boost"
+        assert package["version"] == "987654:1.2.11"
+        assert package["origin"] == "CentOS"
 
 
 class TestHintsDPKG:
@@ -100,13 +100,13 @@ class TestHintsJava:
                     "name": "TwilioNotifier",
                     "origin": "com.twilio.jenkins",
                     "location": "/TwilioNotifier.hpi",
-                    "type": "java-hpi",
+                    "type": "java",
                     "version": "N/A",
                 },
                 {
                     "name": "developer-dan",
                     "origin": "com.twilio.jenkins",
-                    "type": "java-hpi",
+                    "type": "java",
                     "version": "193.28",
                 },
             ]
@@ -116,14 +116,14 @@ class TestHintsJava:
             "pkgs.java"
         ]["base"]
         packages = pkgs.get("/TwilioNotifier.hpi")
-        assert packages["type"] == "java-hpi"
+        assert packages["type"] == "java-jar"
         assert packages["location"] == "/TwilioNotifier.hpi"
         assert packages["origin"] == "com.twilio.jenkins"
 
         packages = pkgs.get("/virtual/javapkg/developer-dan-193.28.jar")
-        assert packages["type"] == "java-hpi"
+        assert packages["type"] == "java-jar"
         assert packages["origin"] == "com.twilio.jenkins"
-        assert packages["version"] == "193.28"
+        assert packages["implementation-version"] == "193.28"
 
 
 class TestHintsAPKG:
@@ -183,8 +183,9 @@ class TestHintsPython:
         assert packages["version"] == "1.9.1"
         assert packages["location"] == "/usr/lib/python3.8/my-site-packages"
 
-        packages = pkgs.get("/virtual/pypkg/site-packages/hints-spectacular-1.0.0alpha")
+        packages = pkgs.get("/virtual/pypkg/site-packages")
         assert packages["type"] == "python"
+        assert packages["name"] == "hints-spectacular"
         assert packages["version"] == "1.0.0alpha"
 
 
@@ -194,11 +195,10 @@ class TestHintsGem:
             "packages": [
                 {
                     "name": "uri",
-                    "lics": ["GPL"],
+                    "licenses": ["GPL"],
                     "version": "0.11.0",
-                    "latest": "0.10.0",
                     "origins": ["Akira Yamada"],
-                    "sourcepkg": "https://example.com",
+                    "source": "https://example.com",
                     "type": "gem",
                     "location": "/usr/lib/ruby/gems/2.7.0/specifications/default/uri-0.10.0.gemspec",
                 },
@@ -217,10 +217,10 @@ class TestHintsGem:
         path = "/usr/lib/ruby/gems/2.7.0/specifications/default/uri-0.10.0.gemspec"
         packages = pkgs.get(path)
         assert packages["lics"] == ["GPL"]
-        assert packages["version"] == "0.11.0"
+        assert packages["versions"] == ["0.11.0"]
         assert packages["sourcepkg"] == "https://example.com"
         assert packages["type"] == "gem"
 
         packages = pkgs.get("/virtual/gempkg/diamonds-2.0")
         assert packages["type"] == "gem"
-        assert packages["version"] == "2.0"
+        assert packages["versions"] == ["2.0"]
