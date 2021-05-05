@@ -3,6 +3,8 @@ Unit tests for the api controller utils of external API service
 """
 import base64
 import json
+from unittest import TestCase
+
 import yaml
 import pytest
 from anchore_engine.apis.exceptions import BadRequest
@@ -683,11 +685,11 @@ class TestMakeVulnerabilityResponse:
     [
         (
             "CVE-1234",
-            "{}",
-            "{}",
-            None,
+            '{"BaseScore": 5.5, "ExploitabilityScore": 8, "ImpactScore": 4.9, "Vector": "AV:N/AC:L/Au:S/C:N/I:P/A:P"}',
+            '{"BaseScore": 6.5, "ExploitabilityScore": 2.8, "ImpactScore": 3.6, "Vector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N"}',
+            "Description for the vulnerability.",
             "[]",
-            None,
+            "nvd",
             None,
             None,
             None,
@@ -749,10 +751,23 @@ def test_transform_grype_vulnerability(
     else:
         assert result["link"] == links_deserialized[0]
 
-    # TODO Update these once mapped properly
+    # TODO Update this once mapped properly
     assert result["references"] is None
-    assert result["nvd_data"] == []
-    assert result["vendor_data"] == []
+
+    expected_cvss_dict = {
+        "id": id,
+        "cvss_v2": json.loads(cvss_v2),
+        "cvss_v3": json.loads(cvss_v3),
+    }
+
+    if record_source is not None and record_source.startswith("nvdv2"):
+        assert len(result["nvd_data"]) == 1
+        TestCase().assertDictEqual(expected_cvss_dict, result["nvd_data"][0])
+        assert result["vendor_data"] == []
+    else:
+        assert result["nvd_data"] == []
+        assert len(result["vendor_data"]) == 1
+        TestCase().assertDictEqual(expected_cvss_dict, result["vendor_data"][0])
 
     assert result["affected_packages"] is not None
     assert len(result["affected_packages"]) == 1

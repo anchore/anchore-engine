@@ -507,8 +507,19 @@ def transform_grype_vulnerability(grype_raw_result):
 
     # TODO Not sure yet how these should be mapped
     output_vulnerability["references"] = None
-    output_vulnerability["nvd_data"] = []
-    output_vulnerability["vendor_data"] = []
+
+    vendor_data = {}
+    vendor_data["id"] = grype_raw_result.id
+    vendor_data["cvss_v2"] = grype_raw_result.deserialized_cvss_v2
+    vendor_data["cvss_v3"] = grype_raw_result.deserialized_cvss_v3
+    if grype_raw_result.record_source and grype_raw_result.record_source.startswith(
+        "nvdv2"
+    ):
+        output_vulnerability["nvd_data"] = [vendor_data]
+        output_vulnerability["vendor_data"] = []
+    else:
+        output_vulnerability["nvd_data"] = []
+        output_vulnerability["vendor_data"] = [vendor_data]
 
     # Get fields from the nested vulnerability object, if it exists
     if grype_raw_result.vulnerability is not None:
