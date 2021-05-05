@@ -1,26 +1,23 @@
 import datetime
+import hashlib
 import json
+import time
 
+from sqlalchemy import asc, func, orm
+
+from anchore_engine import version
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db import DistroNamespace
 from anchore_engine.db import (
     Image,
+    ImageCpe,
+    VulnDBMetadata,
+    VulnDBCpe,
     get_thread_scoped_session as get_session,
     select_nvd_classes,
 )
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    have_vulnerabilities_for,
-)
-from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
-from anchore_engine.services.policy_engine.engine.vulns.scanners import (
-    LegacyScanner,
-)
-from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-    merge_nvd_metadata_image_packages,
-)
-from anchore_engine.subsys import logger as log
-from anchore_engine.utils import timer
+from anchore_engine.db import Vulnerability, ImagePackageVulnerability
 from anchore_engine.services.policy_engine.api.models import (
     Vulnerability as VulnerabilityModel,
     VulnerabilityMatch,
@@ -32,7 +29,19 @@ from anchore_engine.services.policy_engine.api.models import (
     CvssScore,
     Match,
 )
-from anchore_engine import version
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    have_vulnerabilities_for,
+)
+from anchore_engine.services.policy_engine.engine.vulnerabilities import (
+    merge_nvd_metadata_image_packages,
+    merge_nvd_metadata,
+    get_imageId_to_record,
+)
+from anchore_engine.services.policy_engine.engine.vulns.scanners import (
+    LegacyScanner,
+)
+from anchore_engine.subsys import logger as log
+from anchore_engine.utils import timer
 
 # Disabled by default, can be set in config file. Seconds for connection to cache for policy evals
 DEFAULT_CACHE_CONN_TIMEOUT = -1
@@ -287,7 +296,384 @@ class LegacyProvider(VulnerabilitiesProvider):
             problems=[],
         )
 
-    def _make_cvss_score(self, score):
+    def get_vulnerabilities(
+        self, ids, package_name_filter, package_version_filter, namespace, db_session
+    ):
+        """
+        Return vulnerability records with the matched criteria from the feed data.
+        Copy pasted query_vulnerabilities() from synchronous_operations.py
+
+        TODO use "with timer" for timing blocks
+        TODO define message models use concretely objects instead of dictionaries
+
+        :param ids: single string or list of string ids
+        :param package_name_filter: string name to filter vulns by in the affected package list
+        :param package_version_filter: version for corresponding package to filter by
+        :param namespace: string or list of strings to filter namespaces by
+        :param db_session: active db session to use
+        :return: list of dicts
+        """
+        return_object = []
+
+        return_el_template = {
+            "id": None,
+            "namespace": None,
+            "severity": None,
+            "link": None,
+            "affected_packages": None,
+            "description": None,
+            "references": None,
+            "nvd_data": None,
+            "vendor_data": None,
+        }
+
+        # order_by ascending timestamp will result in dedup hash having only the latest information stored for return, if there are duplicate records for NVD
+        (_nvd_cls, _cpe_cls) = select_nvd_classes(db_session)
+
+        # Set the relationship loader for use with the queries
+        loader = orm.selectinload
+
+        # Always fetch any matching nvd records, even if namespace doesn't match, since they are used for the cvss data
+        qry = (
+            db_session.query(_nvd_cls)
+            .options(loader(_nvd_cls.vulnerable_cpes))
+            .filter(_nvd_cls.name.in_(ids))
+            .order_by(asc(_nvd_cls.created_at))
+        )
+
+        t1 = time.time()
+        nvd_vulnerabilities = qry.all()
+        nvd_vulnerabilities.extend(
+            db_session.query(VulnDBMetadata)
+            .options(loader(VulnDBMetadata.cpes))
+            .filter(VulnDBMetadata.name.in_(ids))
+            .order_by(asc(VulnDBMetadata.created_at))
+            .all()
+        )
+
+        log.spew("Vuln query 1 timing: {}".format(time.time() - t1))
+
+        api_endpoint = self._get_api_endpoint()
+
+        if not namespace or ("nvdv2:cves" in namespace):
+            dedupped_return_hash = {}
+            t1 = time.time()
+
+            for vulnerability in nvd_vulnerabilities:
+                link = vulnerability.link
+                if not link:
+                    link = "{}/query/vulnerabilities?id={}".format(
+                        api_endpoint, vulnerability.name
+                    )
+
+                namespace_el = {}
+                namespace_el.update(return_el_template)
+                namespace_el["id"] = vulnerability.name
+                namespace_el["namespace"] = vulnerability.namespace_name
+                namespace_el["severity"] = vulnerability.severity
+                namespace_el["link"] = link
+                namespace_el["affected_packages"] = []
+                namespace_el["description"] = vulnerability.description
+                namespace_el["references"] = vulnerability.references
+                namespace_el["nvd_data"] = vulnerability.get_cvss_data_nvd()
+                namespace_el["vendor_data"] = vulnerability.get_cvss_data_vendor()
+
+                for v_pkg in vulnerability.vulnerable_cpes:
+                    if (
+                        not package_name_filter or package_name_filter == v_pkg.name
+                    ) and (
+                        not package_version_filter
+                        or package_version_filter == v_pkg.version
+                    ):
+                        pkg_el = {
+                            "name": v_pkg.name,
+                            "version": v_pkg.version,
+                            "type": "*",
+                        }
+                        namespace_el["affected_packages"].append(pkg_el)
+
+                if not package_name_filter or (
+                    package_name_filter and namespace_el["affected_packages"]
+                ):
+                    dedupped_return_hash[namespace_el["id"]] = namespace_el
+
+            log.spew("Vuln merge took {}".format(time.time() - t1))
+
+            return_object.extend(list(dedupped_return_hash.values()))
+
+        if namespace == ["nvdv2:cves"]:
+            # Skip if requested was 'nvd'
+            vulnerabilities = []
+        else:
+            t1 = time.time()
+
+            qry = (
+                db_session.query(Vulnerability)
+                .options(loader(Vulnerability.fixed_in))
+                .filter(Vulnerability.id.in_(ids))
+            )
+
+            if namespace:
+                if type(namespace) == str:
+                    namespace = [namespace]
+
+                qry = qry.filter(Vulnerability.namespace_name.in_(namespace))
+
+            vulnerabilities = qry.all()
+
+            log.spew("Vuln query 2 timing: {}".format(time.time() - t1))
+
+        if vulnerabilities:
+            log.spew("Merging nvd data into the vulns")
+            t1 = time.time()
+            merged_vulns = merge_nvd_metadata(
+                db_session,
+                vulnerabilities,
+                _nvd_cls,
+                _cpe_cls,
+                already_loaded_nvds=nvd_vulnerabilities,
+            )
+            log.spew("Vuln nvd query 2 timing: {}".format(time.time() - t1))
+
+            for entry in merged_vulns:
+                vulnerability = entry[0]
+                nvds = entry[1]
+                namespace_el = {}
+                namespace_el.update(return_el_template)
+                namespace_el["id"] = vulnerability.id
+                namespace_el["namespace"] = vulnerability.namespace_name
+                namespace_el["severity"] = vulnerability.severity
+                namespace_el["link"] = vulnerability.link
+                namespace_el["affected_packages"] = []
+
+                namespace_el["nvd_data"] = []
+                namespace_el["vendor_data"] = []
+
+                for nvd_record in nvds:
+                    namespace_el["nvd_data"].extend(nvd_record.get_cvss_data_nvd())
+
+                for v_pkg in vulnerability.fixed_in:
+                    if (
+                        not package_name_filter or package_name_filter == v_pkg.name
+                    ) and (
+                        not package_version_filter
+                        or package_version_filter == v_pkg.version
+                    ):
+                        pkg_el = {
+                            "name": v_pkg.name,
+                            "version": v_pkg.version,
+                            "type": v_pkg.version_format,
+                        }
+                        if not v_pkg.version or v_pkg.version.lower() == "none":
+                            pkg_el["version"] = "*"
+
+                        namespace_el["affected_packages"].append(pkg_el)
+
+                for v_pkg in vulnerability.vulnerable_in:
+                    if (
+                        not package_name_filter or package_name_filter == v_pkg.name
+                    ) and (
+                        not package_version_filter
+                        or package_version_filter == v_pkg.version
+                    ):
+                        pkg_el = {
+                            "name": v_pkg.name,
+                            "version": v_pkg.version,
+                            "type": v_pkg.version_format,
+                        }
+                        if not v_pkg.version or v_pkg.version.lower() == "none":
+                            pkg_el["version"] = "*"
+
+                        namespace_el["affected_packages"].append(pkg_el)
+
+                if not package_name_filter or (
+                    package_name_filter and namespace_el["affected_packages"]
+                ):
+                    return_object.append(namespace_el)
+
+        return return_object
+
+    def get_images_by_vulnerability(
+        self,
+        user_id,
+        id,
+        severity_filter,
+        namespace_filter,
+        affected_package_filter,
+        vendor_only,
+        db_session,
+    ):
+        """
+        Return image with nested package records that match the filter criteria
+
+        Copy pasted query_images_by_vulnerability() from synchronous_operations.py
+
+        TODO use "with timer" for timing blocks
+        TODO define message models use concretely objects instead of dictionaries
+        """
+
+        ret_hash = {}
+        pkg_hash = {}
+        advisory_cache = {}
+
+        start = time.time()
+        image_package_matches = []
+        image_cpe_matches = []
+        image_cpe_vlndb_matches = []
+
+        (_nvd_cls, _cpe_cls) = select_nvd_classes(db_session)
+
+        ipm_query = (
+            db_session.query(ImagePackageVulnerability)
+            .filter(ImagePackageVulnerability.vulnerability_id == id)
+            .filter(ImagePackageVulnerability.pkg_user_id == user_id)
+        )
+        icm_query = (
+            db_session.query(ImageCpe, _cpe_cls)
+            .filter(_cpe_cls.vulnerability_id == id)
+            .filter(func.lower(ImageCpe.name) == _cpe_cls.name)
+            .filter(ImageCpe.image_user_id == user_id)
+            .filter(ImageCpe.version == _cpe_cls.version)
+        )
+        icm_vulndb_query = db_session.query(ImageCpe, VulnDBCpe).filter(
+            VulnDBCpe.vulnerability_id == id,
+            func.lower(ImageCpe.name) == VulnDBCpe.name,
+            ImageCpe.image_user_id == user_id,
+            ImageCpe.version == VulnDBCpe.version,
+            VulnDBCpe.is_affected.is_(True),
+        )
+
+        if severity_filter:
+            ipm_query = ipm_query.filter(
+                ImagePackageVulnerability.vulnerability.has(severity=severity_filter)
+            )
+            icm_query = icm_query.filter(
+                _cpe_cls.parent.has(severity=severity_filter)
+            )  # might be slower than join
+            icm_vulndb_query = icm_vulndb_query.filter(
+                _cpe_cls.parent.has(severity=severity_filter)
+            )  # might be slower than join
+        if namespace_filter:
+            ipm_query = ipm_query.filter(
+                ImagePackageVulnerability.vulnerability_namespace_name
+                == namespace_filter
+            )
+            icm_query = icm_query.filter(_cpe_cls.namespace_name == namespace_filter)
+            icm_vulndb_query = icm_vulndb_query.filter(
+                VulnDBCpe.namespace_name == namespace_filter
+            )
+        if affected_package_filter:
+            ipm_query = ipm_query.filter(
+                ImagePackageVulnerability.pkg_name == affected_package_filter
+            )
+            icm_query = icm_query.filter(
+                func.lower(ImageCpe.name) == func.lower(affected_package_filter)
+            )
+            icm_vulndb_query = icm_vulndb_query.filter(
+                func.lower(ImageCpe.name) == func.lower(affected_package_filter)
+            )
+
+        image_package_matches = ipm_query  # .all()
+        image_cpe_matches = icm_query  # .all()
+        image_cpe_vlndb_matches = icm_vulndb_query
+
+        log.debug("QUERY TIME: {}".format(time.time() - start))
+
+        start = time.time()
+        if image_package_matches or image_cpe_matches or image_cpe_vlndb_matches:
+            imageId_to_record = get_imageId_to_record(user_id, dbsession=db_session)
+
+            start = time.time()
+            for image in image_package_matches:
+                if vendor_only and self._check_no_advisory(image, advisory_cache):
+                    continue
+
+                imageId = image.pkg_image_id
+                if imageId not in ret_hash:
+                    ret_hash[imageId] = {
+                        "image": imageId_to_record.get(imageId, {}),
+                        "vulnerable_packages": [],
+                    }
+                    pkg_hash[imageId] = {}
+
+                pkg_el = {
+                    "name": image.pkg_name,
+                    "version": image.pkg_version,
+                    "type": image.pkg_type,
+                    "namespace": image.vulnerability_namespace_name,
+                    "severity": image.vulnerability.severity,
+                }
+
+                ret_hash[imageId]["vulnerable_packages"].append(pkg_el)
+            log.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
+
+            for cpe_matches in [image_cpe_matches, image_cpe_vlndb_matches]:
+                start = time.time()
+                for image_cpe, vulnerability_cpe in cpe_matches:
+                    imageId = image_cpe.image_id
+                    if imageId not in ret_hash:
+                        ret_hash[imageId] = {
+                            "image": imageId_to_record.get(imageId, {}),
+                            "vulnerable_packages": [],
+                        }
+                        pkg_hash[imageId] = {}
+                    pkg_el = {
+                        "name": image_cpe.name,
+                        "version": image_cpe.version,
+                        "type": image_cpe.pkg_type,
+                        "namespace": "{}".format(vulnerability_cpe.namespace_name),
+                        "severity": "{}".format(vulnerability_cpe.parent.severity),
+                    }
+                    phash = hashlib.sha256(
+                        json.dumps(pkg_el).encode("utf-8")
+                    ).hexdigest()
+                    if not pkg_hash[imageId].get(phash, False):
+                        ret_hash[imageId]["vulnerable_packages"].append(pkg_el)
+                    pkg_hash[imageId][phash] = True
+
+                log.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
+
+        start = time.time()
+        vulnerable_images = list(ret_hash.values())
+        return_object = {"vulnerable_images": vulnerable_images}
+        log.debug("RESP TIME: {}".format(time.time() - start))
+
+        return return_object
+
+    def _get_provider_metadata(self):
+        return {
+            "name": self.__class__.__name__,
+            "version": version.version,
+            "database_version": version.db_version,
+        }
+
+    @staticmethod
+    def _check_no_advisory(img_pkg_vuln, advisory_cache):
+        """
+        Caches and returns vendor advisory or "won't fix" for a vulnerability.
+        Cache is a dictionary with ImagePackageVulnerability hash mapped to "won't fix"
+
+        Copied check_no_advisory() from synchronous_operations.py
+        """
+        phash = hashlib.sha256(
+            json.dumps(
+                [
+                    img_pkg_vuln.pkg_name,
+                    img_pkg_vuln.pkg_version,
+                    img_pkg_vuln.vulnerability_namespace_name,
+                ]
+            ).encode("utf-8")
+        ).hexdigest()
+        if phash not in advisory_cache:
+            advisory_cache[phash] = img_pkg_vuln.fix_has_no_advisory()
+
+        return advisory_cache.get(phash)
+
+    @staticmethod
+    def _make_cvss_score(score):
+        """
+        Utility function for creating a cvss score object from a dictionary
+        """
         return CvssCombined(
             id=score.get("id"),
             cvss_v2=CvssScore.CvssScoreV1Schema().make(data=score.get("cvss_v2")),
@@ -296,6 +682,9 @@ class LegacyProvider(VulnerabilitiesProvider):
 
     @staticmethod
     def _get_api_endpoint():
+        """
+        Utility function for fetching the url to external api
+        """
         try:
             return get_service_endpoint("apiext").strip("/")
         except:
@@ -309,19 +698,6 @@ class LegacyProvider(VulnerabilitiesProvider):
                     "No policy engine endpoint found either, using default but invalid url"
                 )
                 return "http://<valid endpoint not found>"
-
-    def get_vulnerabilities(self, **kwargs):
-        pass
-
-    def get_images_by_vulnerability(self, **kwargs):
-        pass
-
-    def _get_provider_metadata(self):
-        return {
-            "name": self.__class__.__name__,
-            "version": version.version,
-            "database_version": version.db_version,
-        }
 
 
 default_type = LegacyProvider
