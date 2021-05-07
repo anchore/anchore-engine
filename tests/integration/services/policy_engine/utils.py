@@ -6,15 +6,15 @@ import datetime
 import json
 import os
 
+from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
+from anchore_engine.db.entities.policy_engine import FeedMetadata
 from anchore_engine.services.policy_engine.engine.feeds import (
-    IFeedSource,
     FeedGroupList,
     FeedList,
     GroupData,
+    IFeedSource,
 )
-from anchore_engine.db.entities.policy_engine import FeedMetadata
 from anchore_engine.subsys import logger
-from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
 from anchore_engine.utils import ensure_bytes
 
 
@@ -30,7 +30,7 @@ def init_distro_mappings():
     :return:
     """
 
-    from anchore_engine.db import session_scope, DistroMapping
+    from anchore_engine.db import DistroMapping, session_scope
 
     initial_mappings = [
         DistroMapping(from_distro="alpine", to_distro="alpine", flavor="ALPINE"),
@@ -219,7 +219,11 @@ class LocalFilesystemFeedClient(IFeedSource):
                 continue
 
         return GroupData(
-            data=data, next_token=None, since=since, record_count=len(data)
+            data=data,
+            next_token=None,
+            since=since,
+            record_count=len(data),
+            response_metadata={},
         )
 
 
@@ -288,7 +292,11 @@ class TimeWindowedLocalFilesytemFeedClient(LocalFilesystemFeedClient):
         outdata = ensure_bytes(json.dumps(data))
 
         return GroupData(
-            data=outdata, next_token=None, since=since, record_count=len(data["data"])
+            data=outdata,
+            next_token=None,
+            since=since,
+            record_count=len(data["data"]),
+            response_metadata={},
         )
 
 

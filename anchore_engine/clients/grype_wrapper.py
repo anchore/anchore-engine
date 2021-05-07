@@ -225,7 +225,8 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
             grype_db_session = latest_grype_db_session
 
             # Remove the old local db
-            _remove_local_grype_db(old_grype_db_dir)
+            if old_grype_db_dir:
+                _remove_local_grype_db(old_grype_db_dir)
         finally:
             write_lock.release()
 
