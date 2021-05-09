@@ -30,7 +30,11 @@ def get_current_grype_db_checksum():
     """
     Return the checksum for the in-use version of grype db
     """
-    grype_db_checksum = None
+    checksums = os.listdir(grype_db_dir)
+    if checksums:
+        grype_db_checksum = checksums[0]
+    else:
+        grype_db_checksum = None
     logger.info("Returning current grype_db checksum: {}".format(grype_db_checksum))
     return grype_db_checksum
 
@@ -224,8 +228,8 @@ def update_grype_db(grype_db_archive_local_file_location: str, version_name: str
             grype_db_dir = latest_grype_db_dir
             grype_db_session = latest_grype_db_session
 
-            # Remove the old local db
-            if old_grype_db_dir:
+            # Remove the old local db only if it's not the current db
+            if old_grype_db_dir and old_grype_db_dir != grype_db_dir:
                 _remove_local_grype_db(old_grype_db_dir)
         finally:
             write_lock.release()
