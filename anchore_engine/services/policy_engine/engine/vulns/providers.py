@@ -2,11 +2,12 @@ import datetime
 import hashlib
 import json
 import time
+import uuid
+from abc import ABC, abstractmethod
 
 from sqlalchemy import asc, func, orm
-import uuid
-from anchore_engine import version
 
+from anchore_engine import version
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db import DistroNamespace
@@ -15,7 +16,6 @@ from anchore_engine.db import (
     ImageCpe,
     VulnDBMetadata,
     VulnDBCpe,
-    ImagePackage,
     get_thread_scoped_session as get_session,
     select_nvd_classes,
 )
@@ -28,7 +28,6 @@ from anchore_engine.services.policy_engine.api.models import (
     VulnerabilitiesReportMetadata,
     CvssCombined,
     FixedArtifact,
-    CvssScore,
     Match,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
@@ -39,15 +38,15 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
     get_imageId_to_record,
 )
-from .scanners import LegacyScanner, GrypeVulnScanner
+from anchore_engine.subsys import logger as log
+from anchore_engine.subsys import metrics
+from anchore_engine.utils import timer
 from .cache_managers import GrypeCacheManager, CacheStatus
 from .mappers import DISTRO_MAPPERS
-from anchore_engine.subsys import logger as log
-from anchore_engine.utils import timer
-from anchore_engine.subsys import metrics
+from .scanners import LegacyScanner, GrypeVulnScanner
 
 
-class VulnerabilitiesProvider:
+class VulnerabilitiesProvider(ABC):
     """
     This is an abstraction for providing answers to any and all vulnerability related questions in the system.
     It encapsulates a scanner for finding vulnerabilities in an image and an optional cache manager to cache the resulting reports.
@@ -57,35 +56,40 @@ class VulnerabilitiesProvider:
     __scanner__ = None
     __cache_manager__ = None
 
+    @abstractmethod
     def load_image(self, **kwargs):
         """
         Ingress the image and compute the vulnerability matches. To be used in the load image path to prime the matches
         """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def get_image_vulnerabilities_json(self, **kwargs) -> json:
         """
-        Returns vulnerabilities report for the image in the json format. To be used to fetch vulnerabilities for an already loaded image
+        Returns vulnerabilities report for the image in the json format. Use to fetch vulnerabilities for an already loaded image
         """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def get_image_vulnerabilities(self, **kwargs) -> ImageVulnerabilitiesReport:
         """
-        Returns a vulnerabilities report for the image. To be used to fetch vulnerabilities for an already loaded image
+        Returns a vulnerabilities report for the image. Use to fetch vulnerabilities for an already loaded image
         """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def get_vulnerabilities(self, **kwargs):
         """
         Query the vulnerabilities database (not matched vulnerabilities) with filters
         """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def get_images_by_vulnerability(self, **kwargs):
         """
         Query the image set impacted by a specific vulnerability
         """
-        raise NotImplementedError()
+        ...
 
 
 class LegacyProvider(VulnerabilitiesProvider):
