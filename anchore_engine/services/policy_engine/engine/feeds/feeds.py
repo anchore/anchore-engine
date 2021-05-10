@@ -634,11 +634,15 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :rtype: Query
         """
         results = db.query(GrypeDBMetadata)
+        # TODO rethink this persistence model
         if checksum:
             results = results.filter(GrypeDBMetadata.checksum == checksum)
-        if not isinstance(active, type(None)):
+        if not isinstance(
+            active, type(None)
+        ):  # TODO check for boolean type specifically
             results = results.filter(GrypeDBMetadata.active == active)
         return results
+        # TODO return results, not the query
 
     def record_count(self, group_name: str, db: Session) -> int:
         """
@@ -851,7 +855,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                     raise UnexpectedRawGrypeDBFile()
                 # Check that the data that we downloaded matches the checksum provided
                 checksum = record.metadata["Checksum"]
-                GrypeDBFile.verify_integrity(record.data, checksum)
+                # GrypeDBFile.verify_integrity(record.data, checksum)  TODO move this to check to download
                 # If there aren't any other database files with the same checksum, then this is a new database file.
                 if self._find_match(db, checksum).count() == 0:
                     # Update the database and the catalog with the new Grype DB file.

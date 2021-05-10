@@ -184,6 +184,24 @@ services:
     cycle_timers:
       feed_sync: ${ANCHORE_FEED_SYNC_INTERVAL_SEC} # 6 hours between feed syncs
       feed_sync_checker: 3600 # 1 hour between checks to see if there needs to be a task queued
+    vulnerabilities:
+      provider: grype
+      feeds:
+        sync_enabled: ${ANCHORE_FEEDS_ENABLED}
+        ssl_verify: ${ANCHORE_FEEDS_SSL_VERIFY}
+        connection_timeout_seconds: 3
+        read_timeout_seconds: 60
+        data:
+          grypedb:
+            enabled: true
+            url: ${ANCHORE_GRYPE_DB_URL}
+          packages:
+            enabled: false
+            anonymous_user_username: anon@ancho.re
+            anonymous_user_password: pbiU2RYZ2XrmYQ
+            url: ${ANCHORE_FEEDS_URL}
+            client_url: ${ANCHORE_FEEDS_CLIENT_URL}
+            token_url: ${ANCHORE_FEEDS_TOKEN_URL}
 
 
 # Defines a maximum compressed image size (MB) to be added for analysis

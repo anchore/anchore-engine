@@ -9,7 +9,9 @@ from anchore_engine.services.policy_engine.engine.feeds.storage import (
 )
 
 test_data = b"test"
-test_data_checksum = "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+test_data_checksum = (
+    "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+)
 malformed_data = b"test123"
 
 

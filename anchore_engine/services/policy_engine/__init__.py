@@ -225,8 +225,8 @@ def do_feed_sync(msg):
     timer = time.time()
     logger.info("FIRING: feed syncer")
     try:
-        feeds = get_selected_feeds_to_sync(localconfig.get_config())
-        logger.info("Syncing configured feeds: {}".format(feeds))
+        # feeds = get_selected_feeds_to_sync(localconfig.get_config())
+        # logger.info("Syncing configured feeds: {}".format(feeds))
         result = FeedsUpdateTask.run_feeds_update(json_obj=msg.get("data"))
 
         if result is not None:
@@ -269,7 +269,21 @@ def handle_feed_sync(*args, **kwargs):
 
     while True:
         config = localconfig.get_config()
-        feed_sync_enabled = config.get("feeds", {}).get("sync_enabled", True)
+
+        # check for the vulnerabilities provider section first
+        provider_config = (
+            config.get("services", {})
+            .get("policy_engine", {})
+            .get("vulnerabilities", {})
+        )
+
+        if provider_config:  # new config added for grype integration found
+            feed_sync_enabled = provider_config.get("feeds", {}).get(
+                "sync_enabled", True
+            )
+        else:  # fall back to older configuration
+            feed_sync_enabled = config.get("feeds", {}).get("sync_enabled", True)
+
         if feed_sync_enabled:
             logger.info("Feed sync task executor activated")
             try:

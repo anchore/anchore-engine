@@ -35,6 +35,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     PackagesFeed,
     VulnDBFeed,
     VulnerabilityFeed,
+    GrypeDBFeed,
     build_feed_sync_results,
     feed_instance_by_name,
 )
@@ -48,6 +49,7 @@ from anchore_engine.subsys.events import (
     FeedSyncFailed,
     FeedSyncStarted,
 )
+from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
 
 
 def download_operation_config_factory(
@@ -91,7 +93,7 @@ def get_feeds_config(full_config):
     return c if c is not None else {}
 
 
-def get_selected_feeds_to_sync(config):
+def get_selected_feeds_to_sync_legacy(config):
     """
     Given a configuration dict, determine which feeds should be synced.
 
@@ -115,6 +117,72 @@ def get_selected_feeds_to_sync(config):
     else:
         # Selective disabled... sync only 'vulnerabilities' and 'nvdv2' per semantics in previous version
         return [VulnerabilityFeed.__feed_name__, NvdV2Feed.__feed_name__]
+
+
+def get_selected_feeds_to_sync(config):
+    """
+    Returns the feeds to be synced based on the configuration.
+    Handles both legacy (top-level) and vulnerabilities provider (policy-engine) configurations
+
+    :param config: dict that is the system configuration
+    :return: list of strings of feed names to sync
+    """
+
+    # check for the vulnerabilities provider section first
+    provider_config = (
+        config.get("services", {}).get("policy_engine", {}).get("vulnerabilities", {})
+    )
+
+    if provider_config:  # new config added for grype integration found
+        logger.debug("Found a vulnerabilities provider configuration")
+        return get_feeds_to_sync_for_vulnerabilities_provider(provider_config)
+    else:  # fall back to older configuration
+        logger.debug("Falling back to legacy feeds configuration")
+        return get_selected_feeds_to_sync_legacy(config)
+
+
+def get_feeds_to_sync_for_vulnerabilities_provider(provider_config):
+    """
+    Expects a vulnerability provider config dictionary and returns the list of data feeds to sync
+
+    Example input:
+    {
+        "provider": "grype",
+        "feeds": {
+            "sync_enabled": True,
+            "ssl_verify": True,
+            "connection_timeout_seconds": 3,
+            "read_timeout_seconds": 60,
+            "data": {
+                "grypedb": {
+                    "enabled": True,
+                    "url": "https://toolbox-data.anchore.io/grype/databases/listing.json",
+                },
+                "packages": {
+                    "enabled": False,
+                    "anonymous_user_username": "anon@ancho.re",
+                    "anonymous_user_password": "pbiU2RYZ2XrmYQ",
+                    "url": "https://ancho.re/v1/service/feeds",
+                    "client_url": "https://ancho.re/v1/account/users",
+                    "token_url": "https://ancho.re/oauth/token",
+                },
+            },
+        },
+    }
+
+    Returns [grypedb]
+
+    """
+    logger.debug("Searching for data feeds to be synced in {}".format(provider_config))
+    data_configs = provider_config.get("feeds", {}).get("data", {})
+    feeds_to_be_synced = [
+        feed_name
+        for feed_name, feed_config in data_configs.items()
+        if feed_config.get("enabled", True)
+    ]
+    logger.info("Data feeds to be synced: {}".format(feeds_to_be_synced))
+
+    return feeds_to_be_synced
 
 
 class DataFeeds(object):
@@ -194,6 +262,28 @@ class DataFeeds(object):
                 }
                 for x in feeds
             }
+
+            # hard code grypedb into the metadata model
+            if "grypedb" in to_sync:
+                source_feeds.update(
+                    {
+                        "grypedb": {
+                            "meta": FeedAPIRecord(
+                                name="grypedb",
+                                description="grypedb feed",
+                                access_tier="0",
+                            ),
+                            "groups": [
+                                FeedAPIGroupRecord(
+                                    name="grypedb:vulnerabilities",
+                                    description="grypedb:vulnerabilities group",
+                                    access_tier="0",
+                                )
+                            ],
+                        }
+                    }
+                )
+
             logger.debug("Upstream feeds available: %s", source_feeds)
             db_feeds = DataFeeds._pivot_and_filter_feeds_by_config(
                 to_sync, list(source_feeds.keys()), get_all_feeds(db)
@@ -560,6 +650,7 @@ class DataFeeds(object):
                                     g.feed_name, g.name, operation_id
                                 )
                             )
+
                             feed_data_repo = downloader.execute(
                                 feed_name=g.feed_name, group_name=g.name
                             )
@@ -717,8 +808,10 @@ def _sync_order(feed_name: str) -> int:
 
     # Later will want to generalize this and add sync order as property of the feed class
 
-    if feed_name == VulnerabilityFeed.__feed_name__:
+    if feed_name == GrypeDBFeed.__feed_name__:
         return 0
+    if feed_name == VulnerabilityFeed.__feed_name__:
+        return 1
     if feed_name == VulnDBFeed.__feed_name__:
         return 10
     if feed_name == NvdV2Feed.__feed_name__:

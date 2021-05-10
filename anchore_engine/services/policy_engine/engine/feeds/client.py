@@ -336,6 +336,12 @@ def get_client(
     return FeedServiceClient(endpoint=feeds_url, http_client=http_client)
 
 
+def get_client_to_grype_db_endpoint():
+    http_client = HTTPBasicAuthClient(
+        username=None, password=None, connect_timeout=3, read_timeout=60
+    )
+
+
 class InsufficientAccessTierError(Exception):
     pass
 

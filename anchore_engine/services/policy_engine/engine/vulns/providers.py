@@ -913,7 +913,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         pass
 
 
-default_type = LegacyProvider
+default_type = GrypeProvider
 
 
 def get_vulnerabilities_provider():

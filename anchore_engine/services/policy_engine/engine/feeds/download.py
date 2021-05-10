@@ -16,6 +16,9 @@ from anchore_engine.common.schemas import (
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.subsys import logger
 from anchore_engine.utils import ensure_bytes, mapped_parser_item_iterator, timer
+import requests
+from collections import namedtuple
+from anchore_engine.configuration import localconfig
 
 FEED_DATA_ITEMS_PATH = "data.item"
 
@@ -476,9 +479,62 @@ class FeedDownloader(object):
                     chunk_number, group.feed, group.group
                 )
             )
-            group_data = self.service_client.get_feed_group_data(
-                group.feed, group.group, since=since, next_token=next_token
-            )
+            if group.feed == "grypedb":
+                config = localconfig.get_config()
+                url = (
+                    config.get("services", {})
+                    .get("policy_engine", {})
+                    .get("vulnerabilities", {})
+                    .get("feeds", {})
+                    .get("data", {})
+                    .get("grypedb", {})
+                    .get("url")
+                )
+                if not url:
+                    url = "https://toolbox-data.anchore.io/grype/databases/listing.json"
+                    logger.info(
+                        "grype db listing.json url not found in config, defaulting"
+                    )
+
+                logger.info("Downloading grypedb listing.json from {}".format(url))
+                listings_response = requests.get(url)
+                if listings_response.status_code == 200:
+                    listings_json = listings_response.json()
+                    listing = listings_json.get("available").get("1")[0]
+                    logger.info("Found relevant grypedb listing: {}".format(listing))
+                    grype_db_url = listing.get("url")
+                    logger.info("Downloading grypedb {}".format(grype_db_url))
+                    grype_db_download_response = requests.get(grype_db_url)
+                    if grype_db_download_response.status_code == 200:
+                        group_data = GroupData(
+                            data=grype_db_download_response.content,
+                            next_token=None,
+                            since=since,
+                            record_count=1,
+                            response_metadata={
+                                "Checksum": listing.get("checksum"),
+                                "Date-Created": listing.get("built"),
+                            },
+                        )
+                    else:
+                        logger.error(
+                            "Unable to download grype db due to error {} {}".format(
+                                grype_db_download_response.status_code,
+                                grype_db_download_response.text,
+                            )
+                        )
+                        grype_db_download_response.raise_for_status()
+                else:
+                    logger.error(
+                        "Unable to download listing.json due to error {} {}".format(
+                            listings_response.status_code, listings_response.text
+                        )
+                    )
+                    listings_response.raise_for_status()
+            else:
+                group_data = self.service_client.get_feed_group_data(
+                    group.feed, group.group, since=since, next_token=next_token
+                )
             get_next = bool(group_data.next_token)
             next_token = group_data.next_token
             count += group_data.record_count
@@ -495,3 +551,8 @@ class FeedDownloader(object):
                 group.feed, group.group, chunk_number
             )
         )
+
+
+GroupData = namedtuple(
+    "GroupData", ["data", "next_token", "since", "record_count", "response_metadata"]
+)
