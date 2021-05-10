@@ -135,7 +135,7 @@ class GrypeDBSyncManager:
         """
         try:
             if grypedb_file_path:
-                grype_wrapper.update_grype_db(
+                grype_wrapper.init_grype_db_engine(
                     grypedb_file_path, active_grypedb.checksum
                 )
             else:
@@ -148,7 +148,7 @@ class GrypeDBSyncManager:
                 with GrypeDBStorage() as grypedb_file:
                     with grypedb_file.create_file(active_grypedb.checksum) as f:
                         f.write(grypedb_document)
-                    grype_wrapper.update_grype_db(
+                    grype_wrapper.init_grype_db_engine(
                         grypedb_file.path, active_grypedb.checksum
                     )
         except Exception as e:
