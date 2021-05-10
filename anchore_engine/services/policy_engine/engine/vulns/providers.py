@@ -2,6 +2,8 @@ import datetime
 import hashlib
 import json
 import time
+import uuid
+from abc import ABC, abstractmethod
 
 from sqlalchemy import asc, func, orm
 
@@ -26,7 +28,6 @@ from anchore_engine.services.policy_engine.api.models import (
     VulnerabilitiesReportMetadata,
     CvssCombined,
     FixedArtifact,
-    CvssScore,
     Match,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
@@ -37,19 +38,13 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
     get_imageId_to_record,
 )
-from anchore_engine.services.policy_engine.engine.vulns.scanners import (
-    LegacyScanner,
-)
 from anchore_engine.subsys import logger as log
 from anchore_engine.utils import timer
-
-# Disabled by default, can be set in config file. Seconds for connection to cache for policy evals
-DEFAULT_CACHE_CONN_TIMEOUT = -1
-# Disabled by default, can be set in config file. Seconds for first byte timeout for policy eval cache
-DEFAULT_CACHE_READ_TIMEOUT = -1
+from .scanners import LegacyScanner
+from .dedup import get_image_vulnerabilities_deduper
 
 
-class VulnerabilitiesProvider:
+class VulnerabilitiesProvider(ABC):
     """
     This is an abstraction for providing answers to any and all vulnerability related questions in the system.
     It encapsulates a scanner for finding vulnerabilities in an image and an optional cache manager to cache the resulting reports.
@@ -59,29 +54,40 @@ class VulnerabilitiesProvider:
     __scanner__ = None
     __cache_manager__ = None
 
+    @abstractmethod
     def load_image(self, **kwargs):
         """
         Ingress the image and compute the vulnerability matches. To be used in the load image path to prime the matches
         """
-        raise NotImplementedError()
+        ...
 
-    def get_image_vulnerabilities(self, **kwargs):
+    @abstractmethod
+    def get_image_vulnerabilities_json(self, **kwargs):
         """
-        Returns a vulnerabilities report for the image. To be used to fetch vulnerabilities for an already loaded image
+        Returns vulnerabilities report for the image in the json format. Use to fetch vulnerabilities for an already loaded image
         """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
+    def get_image_vulnerabilities(self, **kwargs) -> ImageVulnerabilitiesReport:
+        """
+        Returns a vulnerabilities report for the image. Use to fetch vulnerabilities for an already loaded image
+        """
+        ...
+
+    @abstractmethod
     def get_vulnerabilities(self, **kwargs):
         """
         Query the vulnerabilities database (not matched vulnerabilities) with filters
         """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def get_images_by_vulnerability(self, **kwargs):
         """
         Query the image set impacted by a specific vulnerability
         """
-        raise NotImplementedError()
+        ...
 
 
 class LegacyProvider(VulnerabilitiesProvider):
@@ -100,7 +106,7 @@ class LegacyProvider(VulnerabilitiesProvider):
         # flush existing matches, recompute matches and add them to session
         scanner.flush_and_recompute_vulnerabilities(image, db_session=db_session)
 
-    def get_image_vulnerabilities(
+    def get_image_vulnerabilities_json(
         self,
         image: Image,
         db_session,
@@ -108,6 +114,18 @@ class LegacyProvider(VulnerabilitiesProvider):
         force_refresh: bool = False,
         cache: bool = True,
     ):
+        return self.get_image_vulnerabilities(
+            image, db_session, vendor_only, force_refresh, cache
+        ).to_json()
+
+    def get_image_vulnerabilities(
+        self,
+        image: Image,
+        db_session,
+        vendor_only: bool = True,
+        force_refresh: bool = False,
+        cache: bool = True,
+    ) -> ImageVulnerabilitiesReport:
         # select the nvd class once and be done
         _nvd_cls, _cpe_cls = select_nvd_classes(db_session)
 
@@ -173,7 +191,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                     continue
 
                 nvd_scores = [
-                    self._make_cvss_score(score)
+                    CvssCombined.from_json(score)
                     for nvd_record in nvd_records
                     for score in nvd_record.get_cvss_scores_nvd()
                 ]
@@ -236,12 +254,12 @@ class LegacyProvider(VulnerabilitiesProvider):
                         )
 
                     nvd_scores = [
-                        self._make_cvss_score(score)
+                        CvssCombined.from_json(score)
                         for score in vulnerability_cpe.parent.get_cvss_scores_nvd()
                     ]
 
                     vendor_scores = [
-                        self._make_cvss_score(score)
+                        CvssCombined.from_json(score)
                         for score in vulnerability_cpe.parent.get_cvss_scores_vendor()
                     ]
 
@@ -282,12 +300,10 @@ class LegacyProvider(VulnerabilitiesProvider):
         except Exception as err:
             log.exception("could not fetch CPE matches")
 
-        import uuid
-
         return ImageVulnerabilitiesReport(
             account_id=image.user_id,
             image_id=image_id,
-            results=results,
+            results=get_image_vulnerabilities_deduper().execute(results),
             metadata=VulnerabilitiesReportMetadata(
                 generated_at=datetime.datetime.utcnow(),
                 uuid=str(uuid.uuid4()),
@@ -668,17 +684,6 @@ class LegacyProvider(VulnerabilitiesProvider):
             advisory_cache[phash] = img_pkg_vuln.fix_has_no_advisory()
 
         return advisory_cache.get(phash)
-
-    @staticmethod
-    def _make_cvss_score(score):
-        """
-        Utility function for creating a cvss score object from a dictionary
-        """
-        return CvssCombined(
-            id=score.get("id"),
-            cvss_v2=CvssScore.CvssScoreV1Schema().make(data=score.get("cvss_v2")),
-            cvss_v3=CvssScore.CvssScoreV1Schema().make(data=score.get("cvss_v3")),
-        )
 
     @staticmethod
     def _get_api_endpoint():
