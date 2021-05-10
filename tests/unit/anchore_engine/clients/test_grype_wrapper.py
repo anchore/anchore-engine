@@ -210,7 +210,7 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
     )
 
     # Function under test
-    grype_wrapper.__init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
+    grype_wrapper.init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
 
     # Validate output
     assert os.path.exists(grype_wrapper._get_grype_db_dir())

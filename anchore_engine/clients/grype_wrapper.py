@@ -211,9 +211,7 @@ def _remove_local_grype_db(grype_db_dir):
     return
 
 
-def __init_grype_db_engine(
-    grype_db_archive_local_file_location: str, version_name: str
-):
+def init_grype_db_engine(grype_db_archive_local_file_location: str, version_name: str):
     """
     Update the installed grype db with the provided definition, and remove the old grype db file.
     This method does not validation of the db, and assumes it has passed any required validation upstream
