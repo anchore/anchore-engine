@@ -13,6 +13,8 @@ GRYPE_ARCHIVE_FILE_NAME = "grype_db_test_archive.tar.gz"
 GRYPE_DB_DIR = "grype_db/"
 OLD_VERSION_NAME = "old_version"
 NEW_VERSION_NAME = "new_version"
+VULNERABILITIES = "vulnerabilities"
+LAST_SYNCED_TIMESTAMP = "2021-04-07T08:12:05Z"
 
 
 def get_test_file_path(basename: str) -> str:
@@ -385,3 +387,32 @@ def test_query_vulnerabilities(
     # TODO Assert joined vulnerability_metadata is correct
     # I need to further simplify the test data set to keep the expected_output size manageable
     # Or else that matrix is just going to be unreadable
+
+
+@pytest.mark.parametrize(
+    "expected_group, expected_count",
+    [
+        ("debian:10", 4),
+        ("alpine:3.10", 3),
+        ("github:python", 3),
+    ],
+)
+def test_query_record_source_counts(grype_db_dir, expected_group, expected_count):
+    # Setup the grype_db_dir state and the sqlalchemy artifacts on the test grype db
+    grype_wrapper._set_grype_db_dir(grype_db_dir)
+    test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
+    grype_wrapper._set_grype_db_session(
+        grype_wrapper._init_latest_grype_db_session(test_grype_db_engine)
+    )
+
+    # Function under test
+    results = grype_wrapper.query_record_source_counts()
+
+    # Validate output
+    filtered_result = next(
+        (result for result in results if result.group == expected_group), None
+    )
+    assert filtered_result is not None
+    assert filtered_result.feed == VULNERABILITIES
+    assert filtered_result.count == expected_count
+    assert filtered_result.last_synced == LAST_SYNCED_TIMESTAMP
