@@ -10,6 +10,7 @@ import tarfile
 from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
 from anchore_engine.utils import CommandException, run_check, run_piped_command_list
+from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from readerwriterlock import rwlock
 from sqlalchemy import Column, ForeignKey, func, Integer, String
@@ -457,6 +458,14 @@ def query_vulnerabilities(
             read_lock.release()
 
 
+@dataclass
+class RecordSource:
+    count: int
+    feed: str
+    group: str
+    last_synced: str
+
+
 def query_record_source_counts():
     """
     Query the current feed group counts for all current vulnerabilities.
@@ -505,11 +514,3 @@ def query_record_source_counts():
 
         finally:
             read_lock.release()
-
-
-class RecordSource(object):
-    def __init__(self, count, feed=None, group=None, last_synced=None):
-        self.count = count
-        self.feed = feed
-        self.group = group
-        self.last_synced = last_synced
