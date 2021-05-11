@@ -805,34 +805,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
     to do so.
 
-
-    Example json output:
-    {
-       "multi" : {
-          "url_column_index" : 7,
-          "result" : {
-             "rows" : [],
-             "rowcount" : 0,
-             "colcount" : 8,
-             "header" : [
-                "CVE_ID",
-                "Severity",
-                "*Total_Affected",
-                "Vulnerable_Package",
-                "Fix_Available",
-                "Fix_Images",
-                "Rebuild_Images",
-                "URL"
-             ]
-          },
-          "querycommand" : "/usr/lib/python2.7/site-packages/anchore/anchore-modules/multi-queries/cve-scan.py /ebs_data/anchore/querytmp/queryimages.7026386 /ebs_data/anchore/data /ebs_data/anchore/querytmp/query.59057288 all",
-          "queryparams" : "all",
-          "warns" : [
-             "0005b136f0fb (prom/prometheus:master) cannot perform CVE scan: no CVE data is currently available for the detected base distro type (busybox:unknown_version,busybox:v1.26.2)"
-          ]
-       }
-    }
-
     :param user_id: user id of image to evaluate
     :param image_id: image id to evaluate
     :param force_refresh: if true, flush and recompute vulnerabilities rather than returning current values
