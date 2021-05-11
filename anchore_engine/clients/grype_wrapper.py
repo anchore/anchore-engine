@@ -12,7 +12,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.utils import CommandException, run_check, run_piped_command_list
 from json.decoder import JSONDecodeError
 from readerwriterlock import rwlock
-from sqlalchemy import Column, String, Integer, ForeignKey
+from sqlalchemy import Column, ForeignKey, func, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -455,3 +455,61 @@ def query_vulnerabilities(
             return query.all()
         finally:
             read_lock.release()
+
+
+def query_record_source_counts():
+    """
+    Query the current feed group counts for all current vulnerabilities.
+    """
+    # Get and release read locks
+    read_lock = grype_db_lock.gen_rlock()
+    if read_lock.acquire(blocking=False, timeout=60):
+        try:
+            logger.debug("Querying grype_db for feed group counts")
+
+            # Get the counts for each record source
+            results = (
+                _get_grype_db_session()
+                .query(
+                    GrypeVulnerability.record_source,
+                    func.count(GrypeVulnerability.record_source).label("count"),
+                )
+                .group_by(GrypeVulnerability.record_source)
+                .all()
+            )
+
+            # Get the timestamp from the current metadata file
+            metadata = get_current_grype_db_metadata()
+            last_synced = metadata["built"]
+
+            # Transform the results along with the last_synced timestamp for each result
+            output = []
+            for result in results:
+                feed_group = result[0].split(":", 1)
+                if len(feed_group) != 2:
+                    logger.error(
+                        "Unable to process feed/group for record_source {}. Omitting from the response".format()
+                    )
+                    continue
+
+                record_source = RecordSource(
+                    count=result[1],
+                    feed=feed_group[0],
+                    group=feed_group[1],
+                    last_synced=last_synced,
+                )
+                output.append(record_source)
+
+            # Return the results
+            return output
+
+        finally:
+            read_lock.release()
+
+
+class RecordSource(object):
+    def __init__(self, count, feed=None, group=None, last_synced=None):
+        self.count = count
+        self.feed = feed
+        self.group = group
+        self.last_synced = last_synced
