@@ -179,8 +179,9 @@ def safe_formatter(message, args):
     return message
 
 
-def spew(msg_string):
-    return _msg(msg_string, msg_log_level="SPEW")
+def spew(msg_string, *args):
+    formatted_msg_string = safe_formatter(msg_string, args)
+    return _msg(formatted_msg_string, msg_log_level="SPEW")
 
 
 @bootstrap_logger_intercept(logging.DEBUG)

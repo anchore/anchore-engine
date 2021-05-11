@@ -1,4 +1,4 @@
-signle_cve = [
+single_cve = [
     {"source": "Bugtraq ID", "url": "http://www.securityfocus.com/bid/193"},
     {"source": "Snort Signature ID", "url": "http://www.snort.org/search/sid/1500?r=1"},
     {
@@ -6,6 +6,8 @@ signle_cve = [
         "url": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=1999-0449",
     },
 ]
+
+single_cve_references = [(single_cve, ["CVE-1999-0449"])]
 
 multiple_cve = [
     {
@@ -34,6 +36,10 @@ multiple_cve = [
     },
 ]
 
+multiple_cve_references = [
+    (multiple_cve, ["CVE-2018-5146", "CVE-2018-5147", "CVE-2020-20412"])
+]
+
 no_cve = [
     {"source": "Vendor URL", "url": "http://tplink.com"},
     {
@@ -42,3 +48,5 @@ no_cve = [
     },
     {"source": "Exploit Database", "url": "http://www.exploit-db.com/exploits/29802"},
 ]
+
+no_cve_references = [(no_cve, [])]
