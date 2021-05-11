@@ -112,14 +112,6 @@ List operating system packages present in an image:
 
     anchore-cli image content docker.io/library/debian:latest os
 
-Perform a policy evaluation against an image using the default policy:
-
-    anchore-cli evaluate check docker.io/library/debian:latest
-
-View other available policies from the [Anchore Policy Hub](https://www.github.com/anchore/hub)
-
-    anchore-cli policy hub --help
-    anchore-cli policy hub list
 
 ## API
 
