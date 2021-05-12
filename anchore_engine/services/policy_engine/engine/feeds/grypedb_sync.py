@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from types import TracebackType
 from typing import Iterable, Optional, Type
 
-from anchore_engine.clients import grype_wrapper
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.db import GrypeDBMetadata, get_thread_scoped_session
@@ -107,7 +107,7 @@ class GrypeDBSyncManager:
         rtype: str
         """
         # get local grypedb checksum
-        return grype_wrapper.get_current_grype_db_checksum()
+        return GrypeWrapperSingleton.get_instance().get_current_grype_db_checksum()
 
     @classmethod
     def _check_sync_necessary(cls):
@@ -135,7 +135,7 @@ class GrypeDBSyncManager:
         """
         try:
             if grypedb_file_path:
-                grype_wrapper.init_grype_db_engine(
+                GrypeWrapperSingleton.get_instance().init_grype_db_engine(
                     grypedb_file_path, active_grypedb.checksum
                 )
             else:
@@ -148,7 +148,7 @@ class GrypeDBSyncManager:
                 with GrypeDBStorage() as grypedb_file:
                     with grypedb_file.create_file(active_grypedb.checksum) as f:
                         f.write(grypedb_document)
-                    grype_wrapper.init_grype_db_engine(
+                    GrypeWrapperSingleton.get_instance().init_grype_db_engine(
                         grypedb_file.path, active_grypedb.checksum
                     )
         except Exception as e:
