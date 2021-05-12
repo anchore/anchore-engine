@@ -76,10 +76,47 @@ class GrypeWrapperSingleton(object):
     def __new__(cls):
         if cls._grype_wrapper_instance is None:
             cls._grype_wrapper_instance = super(GrypeWrapperSingleton, cls).__new__(cls)
-            cls._grype_db_dir = None
-            cls._grype_db_session = None
+            cls._grype_db_dir_internal = None
+            cls._grype_db_session_internal = None
             cls._grype_db_lock = rwlock.RWLockWrite()
         return cls._grype_wrapper_instance
+
+    @classmethod
+    def get_instance(self):
+        """
+        Returns the singleton instance of this class.
+        """
+        return GrypeWrapperSingleton()
+
+    @classmethod
+    def _get_test_instance(self):
+        """
+        Returns a new instance of this class. This method is not intended for use outside of tests.
+        """
+        self._grype_wrapper_instance = None
+        return GrypeWrapperSingleton()
+
+    @property
+    def _grype_db_dir(self):
+        if self._grype_db_dir_internal is None:
+            raise ValueError(self.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE)
+        else:
+            return self._grype_db_dir_internal
+
+    @_grype_db_dir.setter
+    def _grype_db_dir(self, _grype_db_dir_internal):
+        self._grype_db_dir_internal = _grype_db_dir_internal
+
+    @property
+    def _grype_db_session(self):
+        if self._grype_db_session_internal is None:
+            raise ValueError(self.MISSING_GRYPE_DB_SESSION_ERROR_MESSAGE)
+        else:
+            return self._grype_db_session_internal
+
+    @_grype_db_session.setter
+    def _grype_db_session(self, _grype_db_session_internal):
+        self._grype_db_session_internal = _grype_db_session_internal
 
     def get_current_grype_db_checksum(self):
         """
@@ -258,7 +295,7 @@ class GrypeWrapperSingleton(object):
             logger.info("Removing old grype_db at {}".format(grype_db_dir))
             shutil.rmtree(grype_db_dir)
         else:
-            logger.error(
+            logger.warning(
                 "Failed to remove grype db at {} as it cannot be found.".format(
                     grype_db_dir
                 )
@@ -282,7 +319,6 @@ class GrypeWrapperSingleton(object):
         write_lock = self._grype_db_lock.gen_wlock()
         if write_lock.acquire(blocking=True, timeout=60):
             try:
-
                 # Store the db locally and
                 # Create the sqlalchemy engine for the new db
                 (
