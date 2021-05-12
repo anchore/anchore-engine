@@ -1,3 +1,6 @@
+import json
+
+
 class TestHintsNPM:
     def test_npm_hints(self, hints_image):
         hints = {
@@ -224,3 +227,25 @@ class TestHintsGem:
         packages = pkgs.get("/virtual/gempkg/diamonds-2.0")
         assert packages["type"] == "gem"
         assert packages["versions"] == ["2.0"]
+
+
+class TestHintsGo:
+    def test_go_hints(self, hints_image, analyzed_data):
+        hints = {
+            "packages": [
+                {
+                    "name": "kind",
+                    "version": "v0.10.0",
+                    "type": "go",
+                    "license": "Apache2.0",
+                },
+            ]
+        }
+        result = hints_image(hints, "lean")
+        pkgs = result["image"]["imagedata"]["analysis_report"]["package_list"][
+            "pkgs.go"
+        ]["base"]
+        package = json.loads(pkgs.get("/virtual/gopkg/kind-v0.10.0"))
+        assert package["name"] == "kind"
+        assert package["license"] == "Apache2.0"
+        assert package["version"] == "v0.10.0"
