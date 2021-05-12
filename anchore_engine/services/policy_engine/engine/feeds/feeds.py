@@ -1,5 +1,6 @@
 import datetime
 import time
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
@@ -100,11 +101,13 @@ class LogContext:
         )
 
 
-class DataFeed(object):
+class DataFeed(ABC):
     """
     Interface for a data feed. A DataFeed is a combination of a means to connect to the feed, metadata about the feed actions
     locally, and mapping data ingesting the feed data itself.
 
+    :param metadata: existing FeedMetadata instance to use to store stateful information about this feed (if available for bootstrapping)
+    :type metadata: Optional[FeedMetadata], defaults to None
     """
 
     __feed_name__ = None
@@ -113,12 +116,9 @@ class DataFeed(object):
     ] = None  # A dict/map of group names to mapper objects for translating group data into db types
 
     def __init__(self, metadata: FeedMetadata):
-        """
-        Instantiates any necessary clients and makes the feed ready to use
-        :param metadata: an existing metadata record if available for bootstrapping
-        """
-        self.metadata = metadata
+        self.metadata: FeedMetadata = metadata
 
+    @abstractmethod
     def sync(
         self,
         fetched_data: LocalFeedDataRepo,
@@ -134,50 +134,75 @@ class DataFeed(object):
         item_processing_fn is exepected to be a function that can consume a db session but should *NOT* commit or rollback the session. The caller will handle that to properly maintain
         session scope to each item to be updated.
 
-        :param fetched_data: the local data repo
-        :param full_flush: Remove any old data from the feed and replace with new sync data
-        :param operation_id: uuid of the sync operation, mostly for logging usage
-        :return: list of updated records added to the database
+        :param fetched_data: disk cache for downloaded data to sync
+        :type fetched_data: LocalFeedDataRepo
+        :param full_flush: whether or not to flush all records before syncing new ones
+        :type full_flush: bool, defaults to False
+        :param event_client: catalog client
+        :type event_client: Optional[CatalogClient], defaults to None
+        :param operation_id: UUID4 hexadeicmal string
+        :type operation_id: Optional[str], defaults to None
+        :param group: filter for which groups to update
+        :type group: Optional[str], defaults to None
+        :return: changed data updated in the sync as a list of records
+        :rtype: FeedSyncResult
         """
-        raise NotImplementedError()
+        ...
 
-    def record_count(self, group_name, db):
+    @abstractmethod
+    def record_count(self, group_name, db) -> int:
         """
-        :param group_name: Name of group to get count for
-        :param db: db session to use
-        :return:
+        Returns number of records present in the database for a given group
+
+        :param group_name: name of the group
+        :type group_name: str
+        :param db: sqlaclhemy database session
+        :type db: Session
+        :return: number of records
+        :rtype: int
         """
-        raise NotImplementedError()
+        ...
 
-    def update_counts(self):
-        raise NotImplementedError()
-
-    def flush_group(self, group_name):
+    @abstractmethod
+    def update_counts(self) -> None:
         """
-        Flushes data out of a specific group. Does not remove the group metadata record, but will set the count to zero.
-        This is a db unit-of-work. Will create transaction and commit result
-
-        :param group_name:
-        :return: True on success
+        Self-contained unit of work to update the row counts for each feed group in the feed group metadata
         """
-        raise NotImplementedError()
+        ...
 
-    def flush_all(self):
+    @abstractmethod
+    def flush_group(self, group_name: str) -> FeedGroupMetadata:
+        """
+        Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
+
+        :param group_name: name of group to flush
+        :type group_name: str
+        :return: db record containing metadata of group flushed
+        :rtype: FeedGroupMetadata
+        """
+        ...
+
+    @abstractmethod
+    def flush_all(self) -> FeedMetadata:
         """
         Flush all groups for the feed, unset the last full sync timestamp, but leave metadata records for feed.
 
-        :return:
+        :return: db record containing feed metadata
+        :rtype: FeedMetadata
         """
-        raise NotImplementedError()
+        ...
 
 
-class AnchoreServiceFeed(DataFeed):
+class AnchoreServiceFeed(DataFeed, ABC):
     """
     A data feed provided by the Anchore Feeds service.
 
     Metadata persisted in the backing db.
     Instance load will fire a load from the db to get the latest metadata in db, and sync
     operations will sync data and metadata from the upstream service.
+
+    :param metadata: existing FeedMetadata instance to use to store stateful information about this feed (if available for bootstrapping)
+    :type metadata: Optional[FeedMetadata], defaults to None
     """
 
     __feed_name__ = "base"
@@ -199,20 +224,24 @@ class AnchoreServiceFeed(DataFeed):
 
     @property
     def _log_context(self):
+        """
+        Getter for log context.
+        """
         return self._log_ctx
 
     @_log_context.setter
-    def _log_context(self, log_context: LogContext):
+    def _log_context(self, log_context: LogContext) -> None:
+        """
+        Setter for log context.
+
+        :param log_context: log context object to replace what's currently stored
+        :type log_context: LogContext
+        """
         self._log_ctx = log_context
 
-    def record_count(self, group_name, db):
-        # Implement in subclasses
-        raise NotImplementedError()
-
-    def update_counts(self):
+    def update_counts(self) -> None:
         """
         Self-contained unit of work to update the row counts for each feed group in the feed group metadata
-        :return:
         """
 
         db = get_session()
@@ -237,7 +266,8 @@ class AnchoreServiceFeed(DataFeed):
         Find and instantiate the right mapper object for the given group.
 
         :param group_obj:
-        :return:
+        :return: feed data mapper for this group
+        :rtype: FeedDataMapper
         """
         mapper = self.__class__.__group_data_mappers__.get(group_obj.name)
 
@@ -253,20 +283,42 @@ class AnchoreServiceFeed(DataFeed):
         db: Session,
         group_download_result: GroupDownloadResult,
         group_obj: FeedGroupMetadata,
-        group_sync_result: GroupSyncResult,
         local_repo: Optional[LocalFeedDataRepo],
-    ):
+    ) -> int:
+        """
+        Convert the download results for a feed group into database records and write to the database session.
+        Transactions are batched by the integer specified in AnchoreServiceFeed.RECORDS_PER_CHUNK, so a commit only
+        occurs once for every chunk. The transaction can be rolled back in _sync_group() for a specific chunk if an
+        exception is encountered.
+        :param db: sqlalchemy database session
+        :type db: Session
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param group_obj: metadata record for this feed group
+        :type group_obj: FeedGroupMetadata
+        :param local_repo: LocalFeedDataRepo (disk cache for download results)
+        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
+        :return: int
+        :rtype: total number of records updated
+        """
+
+        #  load the mapper for this record type
         mapper = self._load_mapper(group_obj)
         count = 0
+        total_records_updated = 0
 
+        #  iterate over the downloaded json rows in the local storage
         for record in local_repo.read(
             group_download_result.feed, group_download_result.group, 0
         ):
+
+            # convert the json record to the corresponding database record structure and update or add
             mapped = mapper.map(record)
             db.merge(mapped)
-            group_sync_result.updated_record_count += 1
+            total_records_updated += 1
             count += 1
 
+            # every time we process RECORDS_PER_CHUNK records, flush the changes and commit the txn
             if count >= self.RECORDS_PER_CHUNK:
                 # Commit
                 group_obj.count = self.record_count(group_obj.name, db)
@@ -275,24 +327,26 @@ class AnchoreServiceFeed(DataFeed):
                 logger.info(
                     self._log_context.format_msg(
                         "DB Update Progress: {}/{}".format(
-                            group_sync_result.updated_record_count,
+                            total_records_updated,
                             group_download_result.total_records,
                         ),
                     )
                 )
                 count = 0
 
+        # Once we run out of records, flush the changes and commit the txn
         else:
             group_obj.count = self.record_count(group_obj.name, db)
             db.commit()
             logger.info(
                 self._log_context.format_msg(
                     "DB Update Progress: {}/{}".format(
-                        group_sync_result.updated_record_count,
+                        total_records_updated,
                         group_download_result.total_records,
                     ),
                 )
             )
+        return total_records_updated
 
     def _sync_group(
         self,
@@ -301,9 +355,16 @@ class AnchoreServiceFeed(DataFeed):
         local_repo=None,
     ) -> GroupSyncResult:
         """
-        Sync data from a single group and return the data. This operation is scoped to a transaction on the db.
+        Sync data from a single group and return the data. Transactions are batched.
 
-        :return:
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param full_flush: whether or not to flush out old records before syncing
+        :type full_flush: bool, defaults to False
+        :param local_repo: LocalFeedDataRepo (disk cache for download results)
+        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
+        :return: GroupSyncResult as a dict
+        :rtype: dict
         """
         result = GroupSyncResult(group=group_download_result.group)
 
@@ -346,8 +407,8 @@ class AnchoreServiceFeed(DataFeed):
                     ),
                 )
             )
-            self._process_group_file_records(
-                db, group_download_result, group_db_obj, result, local_repo
+            result.updated_record_count = self._process_group_file_records(
+                db, group_download_result, group_db_obj, local_repo
             )
             db = get_session()
 
@@ -391,12 +452,12 @@ class AnchoreServiceFeed(DataFeed):
         result.status = "success"
         return result
 
-    def _flush_group(self, group_obj):
+    def _flush_group(self, group_obj: FeedGroupMetadata) -> None:
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
 
-        :param group_obj:
-        :return:
+        :param group_obj: feed group metadata record
+        :type group_obj: FeedGroupMetadata
         """
         db = get_session()
 
@@ -416,7 +477,15 @@ class AnchoreServiceFeed(DataFeed):
         group_obj.count = 0
         db.flush()
 
-    def flush_group(self, group_name):
+    def flush_group(self, group_name: str) -> FeedGroupMetadata:
+        """
+        Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
+
+        :param group_name: name of group to flush
+        :type group_name: str
+        :return: db record containing metadata of group flushed
+        :rtype: FeedGroupMetadata
+        """
         db = get_session()
         try:
             g = self.group_by_name(group_name)
@@ -430,7 +499,13 @@ class AnchoreServiceFeed(DataFeed):
             db.rollback()
             raise
 
-    def flush_all(self):
+    def flush_all(self) -> FeedMetadata:
+        """
+        Flush all groups for the feed, unset the last full sync timestamp, but leave metadata records for feed.
+
+        :return: db record containing feed metadata
+        :rtype: FeedMetadata
+        """
         db = get_session()
         try:
             db.refresh(self.metadata)
@@ -466,17 +541,24 @@ class AnchoreServiceFeed(DataFeed):
         ...
         }
 
-        :param: fetched_data
-        :param: full_flush
-        :param: event_client
-        :param: operation_id
-        :return: changed data updated in the sync as a list of records
+        :param fetched_data: disk cache for downloaded data to sync
+        :type fetched_data: LocalFeedDataRepo
+        :param full_flush: whether or not to flush all records before syncing new ones
+        :type full_flush: bool, defaults to False
+        :param event_client: catalog client
+        :type event_client: Optional[CatalogClient], defaults to None
+        :param operation_id: UUID4 hexadeicmal string
+        :type operation_id: Optional[str], defaults to None
+        :param group: filter for which groups to update
+        :type group: Optional[str], defaults to None
+        :return: FeedSyncResult, containing sync results for each group
+        :rtype: FeedSyncResult
         """
         result = FeedSyncResult(feed=self.__feed_name__)
         failed_count = 0
 
         # Each group update is a unique session and can roll itself back.
-        t = time.time()
+        sync_start_time = time.time()
 
         logger.info(
             LogContext(operation_id, self.__feed_name__, None).format_msg(
@@ -516,7 +598,7 @@ class AnchoreServiceFeed(DataFeed):
                 fail_result = GroupSyncResult(group=group_download_result.group)
                 result.groups.append(fail_result)
 
-        result.total_time_seconds = time.time() - t
+        result.total_time_seconds = time.time() - sync_start_time
         self._update_last_full_sync_timestamp()
 
         # This is the merge/update only time, not including download time. Caller can compute total from this return value
@@ -526,7 +608,10 @@ class AnchoreServiceFeed(DataFeed):
 
         return result
 
-    def _update_last_full_sync_timestamp(self):
+    def _update_last_full_sync_timestamp(self) -> None:
+        """
+        Update the last sync timestamp of the FeedMetadata record for this feed
+        """
         db = get_session()
         try:
             if self.metadata:
@@ -543,7 +628,15 @@ class AnchoreServiceFeed(DataFeed):
             db.rollback()
             raise e
 
-    def group_by_name(self, group_name):
+    def group_by_name(self, group_name: str) -> Optional[FeedGroupMetadata]:
+        """
+        Gets the metadata record for the group with the given name.
+
+        :param group_name: the name of the group for which to retreive the metadata record
+        :type group_name: str
+        :return: the metadata record if it exists
+        :rtype: Optional[FeedGroupMetadata]
+        """
         found = (
             [x for x in self.metadata.groups if x.name == group_name]
             if self.metadata
@@ -770,15 +863,31 @@ class GrypeDBFeed(AnchoreServiceFeed):
         db: Session,
         group_download_result: GroupDownloadResult,
         group_obj: FeedGroupMetadata,
-        group_sync_result: GroupSyncResult,
         local_repo: Optional[LocalFeedDataRepo],
-    ):
+    ) -> int:
+        """
+        Convert the download results for Grype DB into database records and write to the database session.
+        While transactions are batched by the integer specified in AnchoreServiceFeed.RECORDS_PER_CHUNK, we are only
+        expecting a single Grype DB file to be downloaded at any one point in time, so there should only be one
+        transaction. The transaction can be rolled back in _sync_group() if an exception is encountered.
+        :param db: sqlalchemy database session
+        :type db: Session
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param group_obj: metadata record for this feed group
+        :type group_obj: FeedGroupMetadata
+        :param local_repo: LocalFeedDataRepo (disk cache for download results)
+        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
+        :return: int
+        :rtype: total number of records updated
+        """
+        total_records_updated = 0
         for record in local_repo.read_files(
             group_download_result.feed, group_download_result.group
         ):
             # If we go through two files, then that means the feed service provided two GrypeDB files.
             # This is an unexpected condition.
-            if group_sync_result.updated_record_count >= 1:
+            if total_records_updated >= 1:
                 raise UnexpectedRawGrypeDBFile()
             # Check that the data that we downloaded matches the checksum provided
             checksum = record.metadata["Checksum"]
@@ -805,11 +914,11 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         )
                     )
                 # Update number of records processed
-                group_sync_result.updated_record_count += 1
+                total_records_updated += 1
                 logger.info(
                     self._log_context.format_msg(
                         "DB Update Progress: {}/{}".format(
-                            group_sync_result.updated_record_count,
+                            total_records_updated,
                             group_download_result.total_records,
                         ),
                     )
@@ -820,7 +929,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             logger.info(
                 self._log_context.format_msg(
                     "DB Update Complete, Progress: {}/{}".format(
-                        group_sync_result.updated_record_count,
+                        total_records_updated,
                         group_download_result.total_records,
                     ),
                 )
@@ -831,6 +940,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             )
         )
         self._enqueue_refresh_tasks(db)
+        return total_records_updated
 
     def sync(
         self,
@@ -860,7 +970,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :param group: filter for which groups to update
         :type group: Optional[str], defaults to None
         :return: changed data updated in the sync as a list of records
-        :rtype: dict
+        :rtype: FeedSyncResult
         """
         self._catalog_svc_client = event_client
         return super().sync(fetched_data, full_flush, event_client, operation_id, group)
@@ -890,8 +1000,10 @@ class VulnerabilityFeed(AnchoreServiceFeed):
         local_repo: Optional[LocalFeedDataRepo],
     ) -> int:
         """
-        Convert the download results for a feed group into database records and write to the database session
-        Does not flush, so transaction can be rolled back if an exception is encountered.
+        Convert the download results for a feed group into database records and write to the database session.
+        Transactions are batched by the integer specified in AnchoreServiceFeed.RECORDS_PER_CHUNK, so a commit only
+        occurs once for every chunk. The transaction can be rolled back in _sync_group() for a specific chunk if an
+        exception is encountered.
         :param db: sqlalchemy database session
         :type db: Session
         :param group_download_result: group download result record to update
@@ -1424,7 +1536,7 @@ class GithubFeed(VulnerabilityFeed):
     )
 
 
-def feed_instance_by_name(name: str) -> DataFeed:
+def feed_instance_by_name(name: str) -> AnchoreServiceFeed:
     """
     Returns an instance of the feed using the given name, raises KeyError if name not found
 
