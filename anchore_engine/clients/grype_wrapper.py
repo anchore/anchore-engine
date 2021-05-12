@@ -127,7 +127,7 @@ class GrypeWrapperSingleton(object):
             grype_db_checksum = os.path.basename(grype_db_dir)
         else:
             grype_db_checksum = None
-        logger.info("Returning current grype_db checksum: {}".format(grype_db_checksum))
+        logger.info("Returning current grype_db checksum: %s", grype_db_checksum)
         return grype_db_checksum
 
     @staticmethod
@@ -159,10 +159,9 @@ class GrypeWrapperSingleton(object):
 
         if not os.path.exists(grype_db_archive_local_file_location):
             logger.warn(
-                "Unable to move grype_db archive from {} to {} because it does not exist".format(
-                    grype_db_archive_local_file_location,
-                    grype_db_archive_copied_file_location,
-                )
+                "Unable to move grype_db archive from %s to %s because it does not exist",
+                grype_db_archive_local_file_location,
+                grype_db_archive_copied_file_location,
             )
             raise FileNotFoundError(
                 errno.ENOENT,
@@ -172,10 +171,9 @@ class GrypeWrapperSingleton(object):
         else:
             # Move the archive file
             logger.info(
-                "Moving the grype_db archive from {} to {}".format(
-                    grype_db_archive_local_file_location,
-                    grype_db_archive_copied_file_location,
-                )
+                "Moving the grype_db archive from %s to %s",
+                grype_db_archive_local_file_location,
+                grype_db_archive_copied_file_location,
             )
             os.replace(
                 grype_db_archive_local_file_location,
@@ -194,9 +192,9 @@ class GrypeWrapperSingleton(object):
             os.mkdir(output_dir)
 
         logger.info(
-            "Unpacking the grype_db archive at {} into {}".format(
-                grype_db_archive_copied_file_location, output_dir
-            )
+            "Unpacking the grype_db archive at %s into %s",
+            grype_db_archive_copied_file_location,
+            output_dir,
         )
 
         # Put the extracted files in the same dir as the archive
@@ -204,14 +202,13 @@ class GrypeWrapperSingleton(object):
             read_archive.extractall(output_dir)
 
         # Return the full path to the grype_db dir
-        logger.info("Returning the unpacked grype_db dir at {}".format(output_dir))
+        logger.info("Returning the unpacked grype_db dir at %s", output_dir)
         return output_dir
 
     def _remove_grype_db_archive(self, grype_db_archive_local_file_location: str):
         logger.info(
-            "Removing the now-unpacked grype_db archive at {}".format(
-                grype_db_archive_local_file_location
-            )
+            "Removing the now-unpacked grype_db archive at %s",
+            grype_db_archive_local_file_location,
         )
         os.remove(grype_db_archive_local_file_location)
 
@@ -247,9 +244,7 @@ class GrypeWrapperSingleton(object):
         Create and return the sqlalchemy engine object
         """
         logger.info(
-            "Creating new db engine based on the grype_db at {}".format(
-                latest_grype_db_dir
-            )
+            "Creating new db engine based on the grype_db at %s", latest_grype_db_dir
         )
         latest_grype_db_file = os.path.join(
             latest_grype_db_dir, self.VULNERABILITY_FILE_NAME
@@ -263,9 +258,7 @@ class GrypeWrapperSingleton(object):
         Create and return the db session
         """
         logger.info(
-            "Creating new grype_db session from engine based on {}".format(
-                grype_db_engine.url
-            )
+            "Creating new grype_db session from engine based on %s", grype_db_engine.url
         )
         SessionMaker = sessionmaker(bind=grype_db_engine)
         grype_db_session = SessionMaker()
@@ -292,13 +285,11 @@ class GrypeWrapperSingleton(object):
         Remove old the local grype db file
         """
         if os.path.exists(grype_db_dir):
-            logger.info("Removing old grype_db at {}".format(grype_db_dir))
+            logger.info("Removing old grype_db at %s", grype_db_dir)
             shutil.rmtree(grype_db_dir)
         else:
             logger.warning(
-                "Failed to remove grype db at {} as it cannot be found.".format(
-                    grype_db_dir
-                )
+                "Failed to remove grype db at %s as it cannot be found.", grype_db_dir
             )
         return
 
@@ -311,9 +302,8 @@ class GrypeWrapperSingleton(object):
         """
 
         logger.info(
-            "Updating grype with a new grype_db archive from {}".format(
-                grype_db_archive_local_file_location
-            )
+            "Updating grype with a new grype_db archive from %s",
+            grype_db_archive_local_file_location,
         )
 
         write_lock = self._grype_db_lock.gen_wlock()
@@ -397,9 +387,9 @@ class GrypeWrapperSingleton(object):
                 full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_CMD)]
 
                 logger.debug(
-                    "Running grype with command: {} | {}".format(
-                        pipe_sub_cmd, self.GRYPE_SUB_CMD
-                    )
+                    "Running grype with command: %s | %s",
+                    pipe_sub_cmd,
+                    self.GRYPE_SUB_CMD,
                 )
 
                 stdout = None
@@ -408,9 +398,10 @@ class GrypeWrapperSingleton(object):
                     _, stdout, _ = run_piped_command_list(full_cmd, env=proc_env)
                 except CommandException as exc:
                     logger.error(
-                        "Exception running command: {} | {}, stderr: {}".format(
-                            pipe_sub_cmd, self.GRYPE_SUB_CMD, exc.stderr
-                        )
+                        "Exception running command: %s | %s, stderr: %s",
+                        pipe_sub_cmd,
+                        self.GRYPE_SUB_CMD,
+                        exc.stderr,
                     )
                     raise exc
             finally:
@@ -435,7 +426,7 @@ class GrypeWrapperSingleton(object):
                     grype_sub_command=self.GRYPE_SUB_CMD, sbom=grype_sbom_file
                 )
 
-                logger.debug("Running grype with command: {}".format(cmd))
+                logger.debug("Running grype with command: %s", cmd)
 
                 stdout = None
                 err = None
@@ -443,9 +434,9 @@ class GrypeWrapperSingleton(object):
                     stdout, _ = run_check(shlex.split(cmd), env=proc_env)
                 except CommandException as exc:
                     logger.error(
-                        "Exception running command: {}, stderr: {}".format(
-                            cmd, exc.stderr
-                        )
+                        "Exception running command: %s, stderr: %s",
+                        cmd,
+                        exc.stderr,
                     )
                     raise exc
             finally:
@@ -476,9 +467,10 @@ class GrypeWrapperSingleton(object):
                     namespace = [namespace]
 
                 logger.debug(
-                    "Querying grype_db for vuln_id: {}, namespace: {}, affected_package: {}".format(
-                        vuln_id, namespace, affected_package
-                    )
+                    "Querying grype_db for vuln_id: %s, namespace: %s, affected_package: %s",
+                    vuln_id,
+                    namespace,
+                    affected_package,
                 )
 
                 query = self._grype_db_session.query(GrypeVulnerability).join(
