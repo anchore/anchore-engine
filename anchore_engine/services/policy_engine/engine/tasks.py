@@ -224,14 +224,14 @@ class FeedsUpdateTask(IAsyncTask):
         start_time = datetime.datetime.utcnow()
         try:
             start_time = datetime.datetime.utcnow()
-            updated_list = DataFeeds.sync(
+            updated_data_feeds = DataFeeds.sync(
                 to_sync=self.feeds,
                 full_flush=self.full_flush,
                 catalog_client=catalog_client,
                 operation_id=self.uuid,
             )
             logger.info("Feed sync complete (operation_id={})".format(self.uuid))
-            return updated_list
+            return updated_data_feeds
         except Exception as e:
             error = e
             logger.exception(
