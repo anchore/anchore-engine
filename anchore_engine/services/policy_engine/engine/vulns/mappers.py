@@ -16,38 +16,452 @@ from anchore_engine.services.policy_engine.api.models import (
 )
 
 
+class DistroMapper:
+    engine_distro = None
+    grype_os = None
+    grype_like_os = None
+
+    @staticmethod
+    def for_engine(distro: str):
+        return ENGINE_DISTRO_MAPPERS.get(distro)
+
+    @staticmethod
+    def for_grype(distro: str):
+        return GRYPE_DISTRO_MAPPERS.get(distro)
+
+    def to_grype_distro(self, version):
+        return {
+            "name": self.grype_os,
+            "version": version,
+            "idLike": self.grype_like_os,
+        }
+
+
+class RhelMapper(DistroMapper):
+    engine_distro = "rhel"
+    grype_os = "redhat"
+    grype_like_os = "fedora"
+
+
+class DebianMapper(DistroMapper):
+    engine_distro = "debian"
+    grype_os = "debian"
+    grype_like_os = "debian"
+
+
+class UbuntuMapper(DistroMapper):
+    engine_distro = "ubuntu"
+    grype_os = "ubuntu"
+    grype_like_os = "debian"
+
+
+class AlpineMapper(DistroMapper):
+    engine_distro = "alpine"
+    grype_os = "alpine"
+    grype_like_os = "alpine"
+
+
+class CentOSMapper(DistroMapper):
+    engine_distro = "centos"
+    grype_os = "centos"
+    grype_like_os = "fedora"  # TODO check with toolbox
+
+
+class OracleLinuxMapper(DistroMapper):
+    engine_distro = "ol"
+    engine_like_distro = "fedora"
+    grype_os = "oraclelinux"
+    grype_like_os = "fedora"  # TODO check with toolbox
+
+
+class AmazonLinuxMapper(DistroMapper):
+    engine_distro = "amzn"
+    engine_like_distro = "fedora"
+    grype_os = "amazonlinux"
+    grype_like_os = "fedora"  # TODO check with toolbox
+
+
+class PackageMapper:
+    engine_type = None
+    grype_type = None
+
+    @staticmethod
+    def for_engine(pkg_type: str):
+        return ENGINE_PACKAGE_MAPPERS.get(pkg_type)
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": image_package.name,
+            "version": image_package.fullversion,
+            "type": self.grype_type,
+            "language": "",
+            "locations": [
+                {
+                    "path": image_package.pkg_path,
+                }
+            ],
+            # TODO check with alex on how to format source package and version. Override this method in individual mappers
+        }
+
+        return artifact
+
+    def to_engine_vulnerability_match(self, item, now: datetime.datetime):
+        artifact = item.get("artifact")
+        vuln = item.get("vulnerability")
+
+        vuln_id = vuln.get("id")
+        fix_ver = vuln.get("fixedInVersion")
+        if fix_ver:
+            fix_observed_at = now
+        else:
+            fix_ver = "None"  # barf needed for policy evals and external api
+            fix_observed_at = None
+
+        engine_nvd_scores = []
+        engine_vendor_scores = []  # TODO replace with grype data when available
+
+        grype_cvss_v2 = vuln.get("cvssV2")
+        grype_cvss_v3 = vuln.get("cvssV3")
+
+        # TODO replace this with grype data
+        if grype_cvss_v2 or grype_cvss_v3:
+            engine_score = CvssCombined(id=vuln_id)
+            engine_nvd_scores.append(engine_score)
+
+            if grype_cvss_v2:
+                engine_score.cvss_v2 = CvssScore(
+                    base_score=grype_cvss_v2.get("baseScore", -1.0),
+                    exploitability_score=grype_cvss_v2.get("exploitabilityScore", -1.0),
+                    impact_score=grype_cvss_v2.get("impactScore", -1.0),
+                )
+
+            if grype_cvss_v3:
+                engine_score.cvss_v3 = CvssScore(
+                    base_score=grype_cvss_v3.get("baseScore", -1.0),
+                    exploitability_score=grype_cvss_v3.get("exploitabilityScore", -1.0),
+                    impact_score=grype_cvss_v3.get("impactScore", -1.0),
+                )
+
+        pkg_name = artifact.get("name")
+        pkg_version = artifact.get("version")
+        pkg_path = (
+            artifact.get("locations")[0].get("path")
+            if artifact.get("locations")
+            else "NA"
+        )
+
+        search_key = item.get("matchDetails").get("searchKey")
+
+        # TODO replace with grype data when available
+        is_legacy = False
+        if "distro" in search_key:
+            distro = search_key.get("distro")
+            feed_group = self.get_feed_group_from_grype_match_distro(distro)
+            feed = "vulnerabilities"
+        elif vuln_id.startswith("GHSA"):
+            feed = "vulnerabilities"
+            feed_group = "github:{}".format(self.engine_type)
+        elif vuln_id.startswith("VULNDB"):  # this is absolutely WRONG!!!
+            feed = "vulndb"
+            feed_group = "vulndb:vulnerabilities"
+        else:
+            feed = "nvdv2"
+            feed_group = "nvdv2:cves"
+
+        vuln_match = VulnerabilityMatch(
+            vulnerability=Vulnerability(
+                vulnerability_id=vuln_id,
+                description="NA",
+                severity=vuln.get("severity"),
+                link=vuln.get("links")[0] if vuln.get("links") else None,
+                feed=feed,
+                feed_group=feed_group,
+                cvss_scores_nvd=engine_nvd_scores,
+                cvss_scores_vendor=[],
+                created_at=now,  # TODO replace with grype data when available
+                last_modified=now,  # TODO replace with grype data when available
+            ),
+            artifact=Artifact(
+                name=pkg_name,
+                version=pkg_version,
+                pkg_type=self.engine_type,
+                pkg_path=pkg_path,
+                cpe="None",  # TODO replace with grype data when available
+                cpe23="None",  # TODO replace with grype data when available
+            ),
+            fixes=[
+                FixedArtifact(
+                    version=fix_ver,
+                    wont_fix=False,  # TODO replace with grype data when available
+                    observed_at=fix_observed_at,
+                )
+            ],
+            match=Match(detected_at=now),
+        )
+
+        return vuln_match
+
+    def get_feed_group_from_grype_match_distro(self, distro_dict):
+        return None
+
+
+class RpmMapper(PackageMapper):
+    engine_type = "rpm"
+    grype_type = "rpm"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        artifact = super().to_grype_artifact(image_package, location_cpes_dict)
+        if image_package.normalized_src_pkg != "N/A":
+            artifact["metadata"] = {"sourceRpm": image_package.normalized_src_pkg}
+        return artifact
+
+    def get_feed_group_from_grype_match_distro(self, distro_dict):
+        """
+        TODO This tries to map the feed group from grype match. Replace it with feed group from grype
+        {
+         "type": "redhat",
+         "version": "8.3"
+        }
+        """
+        distro = distro_dict.get("type")
+        if distro.lower() in [RhelMapper.grype_os, CentOSMapper.grype_os]:
+            distro = RhelMapper.engine_distro
+        elif distro.lower() == OracleLinuxMapper.grype_os:
+            distro = OracleLinuxMapper.engine_distro
+        elif distro.lower() == AmazonLinuxMapper.grype_os:
+            distro = AmazonLinuxMapper.engine_distro
+        else:
+            raise ValueError(
+                "Expected distro to be in {} but found {}".format(
+                    [
+                        RhelMapper.grype_os,
+                        CentOSMapper.grype_os,
+                        OracleLinuxMapper.grype_os,
+                        AmazonLinuxMapper.grype_os,
+                    ],
+                    distro,
+                )
+            )
+
+        version = distro_dict.get("version").split(".", 1)[0]
+
+        return "{}:{}".format(distro, version)
+
+
+class DpkgMapper(PackageMapper):
+    engine_type = "dpkg"
+    grype_type = "deb"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        artifact = super().to_grype_artifact(image_package, location_cpes_dict)
+        # TODO
+        # if image_package.normalized_src_pkg != "N/A":
+        #     artifact["metadata"] = {"sourceRpm": image_package.normalized_src_pkg}
+        return artifact
+
+    def get_feed_group_from_grype_match_distro(self, distro_dict):
+        """
+        {
+         "type": "ubuntu",
+         "version": "8.3"
+        }
+        """
+        distro = distro_dict.get("type")
+        if distro.lower() == UbuntuMapper.grype_os:
+            distro = UbuntuMapper.engine_distro
+        elif distro.lower() == DebianMapper.grype_os:
+            distro = DebianMapper.engine_distro
+        else:
+            raise ValueError(
+                "Expected distro to be {} or {} but found {}".format(
+                    UbuntuMapper.grype_os, DebianMapper.grype_os, distro
+                )
+            )
+
+        version = distro_dict.get("version")
+
+        return "{}:{}".format(distro, version)
+
+
+class ApkgMapper(PackageMapper):
+    engine_type = "APKG"
+    grype_type = "apk"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        artifact = super().to_grype_artifact(image_package, location_cpes_dict)
+        # TODO
+        # if image_package.normalized_src_pkg != "N/A":
+        #     artifact["metadata"] = {"sourceRpm": image_package.normalized_src_pkg}
+        return artifact
+
+    def get_feed_group_from_grype_match_distro(self, distro_dict):
+        """
+        {
+         "type": "redhat",
+         "version": "8.3"
+        }
+        """
+        distro = distro_dict.get("type")
+        if distro.lower() == AlpineMapper.grype_os:
+            distro = AlpineMapper.engine_distro
+        else:
+            raise ValueError(
+                "Expected distro to be {} but found {}".format(
+                    AlpineMapper.grype_os, distro
+                )
+            )
+
+        version = distro_dict.get("version").split(".", 1)[0]
+
+        return "{}:{}".format(distro, version)
+
+
+class CPEMapper(PackageMapper):
+    engine_type = None
+    grype_type = None
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        artifact = super().to_grype_artifact(image_package)
+        artifact["cpes"] = [
+            # cpe : 2.3 : part : vendor : product : version : update : edition : language : sw_edition : target_sw : target_hw : other
+            "cpe:2.3:{}".format(
+                ":".join(
+                    [
+                        item.cpetype,  # part
+                        item.vendor,  # vendor
+                        item.name,  # product
+                        item.version,  # version
+                        item.update,  # update
+                        item.meta,  # edition
+                        "-",  # language
+                        "-",  # sw_edition
+                        "-",  # target_sw
+                        "-",  # target_hw
+                        "-",  # other
+                    ]
+                )
+            )
+            for item in location_cpes_dict.get(image_package.pkg_path)
+        ]
+
+        return artifact
+
+
+class PythonMapper(CPEMapper):
+    engine_type = "python"
+    grype_type = "python"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        return super().to_grype_artifact(image_package, location_cpes_dict)
+
+
+class JavaMapper(CPEMapper):
+    engine_type = "java"
+    grype_type = "java-archive"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        return super().to_grype_artifact(image_package, location_cpes_dict)
+
+
+class NpmMapper(CPEMapper):
+    engine_type = "npm"
+    grype_type = "npm"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        return super().to_grype_artifact(image_package, location_cpes_dict)
+
+
+class GemMapper(CPEMapper):
+    engine_type = "gem"
+    grype_type = "gem"
+
+    def to_grype_artifact(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        return super().to_grype_artifact(image_package, location_cpes_dict)
+
+
+# key is the engine distro
+ENGINE_DISTRO_MAPPERS = {
+    "rhel": RhelMapper,
+    "debian": DebianMapper,
+    "ubuntu": UbuntuMapper,
+    "alpine": AlpineMapper,
+    "ol": OracleLinuxMapper,
+    "amzn": AmazonLinuxMapper,
+    "centos": CentOSMapper,
+}
+
+# key is the grype distro
+GRYPE_DISTRO_MAPPERS = {
+    "redhat": RhelMapper,
+    "ubuntu": UbuntuMapper,
+    "debian": DebianMapper,
+    "alpine": AlpineMapper,
+    "oraclelinux": OracleLinuxMapper,
+    "amazonlinux": AmazonLinuxMapper,
+    "centos": CentOSMapper,
+}
+
+ENGINE_PACKAGE_MAPPERS = {
+    "rpm": RpmMapper,
+    "dpkg": DpkgMapper,
+    "APKG": ApkgMapper,
+    "python": PythonMapper,
+    "npm": NpmMapper,
+    "gem": GemMapper,
+    "java": JavaMapper,
+}
+
+GRYPE_PACKAGE_MAPPERS = {
+    "rpm": RpmMapper,
+    "deb": DpkgMapper,
+    "apk": ApkgMapper,
+    "python": PythonMapper,
+    "npm": NpmMapper,
+    "gem": GemMapper,
+    "java-archive": JavaMapper,
+    "java-plugin": JavaMapper,
+}
+
+
 class EngineGrypeMapper:
-    __engine_distro__ = None
-    __grype_os__ = None
-    __grype_like_os__ = None
-    __engine_distro_pkg_type__ = None
-    __grype_os_pkg_type__ = None
-
-    __engine_grype_pkg_type_map__ = {
-        "dpkg": "deb",
-        "rpm": "rpm",
-        "APKG": "apk",
-        "java": "java-archive",
-        "gem": "gem",
-        "npm": "npm",
-        "python": "python",
-    }
-
-    __grype_engine_pkg_type_map__ = {
-        "deb": "dpkg",
-        "rpm": "rpm",
-        "apk": "APKG",
-        "gem": "gem",
-        "npm": "npm",
-        "python": "python",
-        "java-archive": "java",
-        "jenkins-plugin": "java",
-    }
-
-    def _get_grype_os_pkg_metadata(self, pkg: ImagePackage):
-        raise NotImplementedError()
-
-    def transform_image_to_sbom(
+    def to_grype_sbom(
         self,
         image: Image,
         image_packages: List[ImagePackage],
@@ -56,13 +470,27 @@ class EngineGrypeMapper:
         """
         Generate grype sbom from ImagePackage artifacts
         """
-        # initialize sbom
+        distro_mapper_class = ENGINE_DISTRO_MAPPERS.get(image.distro_name)
+        if not distro_mapper_class:
+            log.error(
+                "No distro mapper found for %s. Cannot generate sbom", image.distro_name
+            )
+            raise ValueError(
+                "No distro mapper found for {}. Cannot generate sbom".format(
+                    image.distro_name
+                )
+            )
+        distro_mapper = distro_mapper_class()
+
+        # map the package (location) to its list of cpes
+        location_cpes_dict = defaultdict(list)
+        for image_cpe in image_cpes:
+            location_cpes_dict[image_cpe.pkg_path].append(image_cpe)
+
+        # create the sbom
         sbom = dict()
-        sbom["distro"] = {
-            "name": self.__grype_os__,
-            "version": image.distro_version,
-            "idLike": self.__grype_like_os__,
-        }
+
+        sbom["distro"] = distro_mapper.to_grype_distro(image.distro_version)
         sbom["source"] = {
             "type": "image",
             "target": {
@@ -71,84 +499,23 @@ class EngineGrypeMapper:
             },
         }
 
-        # map the package (location) to its list of cpes
-        location_cpes_dict = defaultdict(list)
-        for image_cpe in image_cpes:
-            location_cpes_dict[image_cpe.pkg_path].append(image_cpe)
-
         artifacts = []
         sbom["artifacts"] = artifacts
 
         for pkg in image_packages:
-            grype_pkg_type = self.__engine_grype_pkg_type_map__.get(pkg.pkg_type)
-            if not grype_pkg_type:
+            pkg_mapper_class = PackageMapper.for_engine(pkg.pkg_type)
+            if not pkg_mapper_class:
                 log.warn(
-                    "Skipping {} since {} package type is not supported by grype".format(
-                        pkg.name, pkg.pkg_type
-                    )
+                    "No package mapper found for engine package type %s", pkg.pkg_type
                 )
-                continue
-
-            if pkg.pkg_type == self.__engine_distro_pkg_type__:
-                art = {
-                    "id": str(uuid.uuid4()),
-                    "name": pkg.name,
-                    "version": pkg.fullversion,
-                    "type": grype_pkg_type,
-                    "language": "",
-                    "locations": [
-                        {
-                            "path": pkg.pkg_path,
-                        }
-                    ],
-                    # TODO check with alex on how to format source package and version. Override this method in individual mappers
-                    "metadata": self._get_grype_os_pkg_metadata(pkg),
-                }
-
-            else:
-                grype_cpes = [
-                    # cpe : 2.3 : part : vendor : product : version : update : edition : language : sw_edition : target_sw : target_hw : other
-                    "cpe:2.3:{}".format(
-                        ":".join(
-                            [
-                                item.cpetype,  # part
-                                item.vendor,  # vendor
-                                item.name,  # product
-                                item.version,  # version
-                                item.update,  # update
-                                item.meta,  # edition
-                                "-",  # language
-                                "-",  # sw_edition
-                                "-",  # target_sw
-                                "-",  # target_hw
-                                "-",  # other
-                            ]
-                        )
-                    )
-                    for item in location_cpes_dict.get(pkg.pkg_path)
-                ]
-
-                art = {
-                    "id": str(uuid.uuid4()),
-                    "name": pkg.name,
-                    "version": pkg.fullversion,
-                    "type": grype_pkg_type,
-                    "language": pkg.pkg_type,
-                    "locations": [
-                        {
-                            "path": pkg.pkg_path,
-                        }
-                    ],
-                    "cpes": grype_cpes,
-                }
-
-            artifacts.append(art)
+            pkg_mapper = pkg_mapper_class()
+            artifacts.append(pkg_mapper.to_grype_artifact(pkg, location_cpes_dict))
 
         # log.debug("image sbom: {}".format(json.dumps(sbom, indent=2)))
 
         return sbom
 
-    def transform_matches_to_vulnerabilities(self, grype_response):
+    def to_engine_vulnerabilities(self, grype_response):
         """
         Transform grype results into engine vulnerabilities
         """
@@ -157,180 +524,29 @@ class EngineGrypeMapper:
         now = datetime.datetime.utcnow()
         matches = grype_response.get("matches", [])
 
-        unique_results = dict()
-        dup_count = 0
+        results = []
 
         for item in matches:
-            vuln = item.get("vulnerability")
             artifact = item.get("artifact")
 
-            vuln_id = vuln.get("id")
-            fix_ver = vuln.get("fixedInVersion")
-            if fix_ver:
-                fix_observed_at = now
-            else:
-                fix_ver = "None"  # barf
-                fix_observed_at = None
-
-            engine_nvd_scores = []
-            engine_vendor_scores = []  # TODO replace with grype data when available
-
-            grype_cvss_v2 = vuln.get("cvssV2")
-            grype_cvss_v3 = vuln.get("cvssV3")
-
-            if grype_cvss_v2 or grype_cvss_v3:
-                engine_score = CvssCombined(id=vuln_id)
-                engine_nvd_scores.append(engine_score)
-
-                if grype_cvss_v2:
-                    engine_score.cvss_v2 = CvssScore(
-                        base_score=grype_cvss_v2.get("baseScore"),
-                        exploitability_score=grype_cvss_v2.get("exploitabilityScore"),
-                        impact_score=grype_cvss_v2.get("impactScore"),
-                    )
-
-                if grype_cvss_v3:
-                    engine_score.cvss_v3 = CvssScore(
-                        base_score=grype_cvss_v3.get("baseScore"),
-                        exploitability_score=grype_cvss_v3.get("exploitabilityScore"),
-                        impact_score=grype_cvss_v3.get("impactScore"),
-                    )
-
-            pkg_type = self.__grype_engine_pkg_type_map__.get(artifact.get("type"))
-            pkg_name = artifact.get("name")
-            pkg_version = artifact.get("version")
-            pkg_path = (
-                artifact.get("locations")[0].get("path")
-                if artifact.get("locations")
-                else "NA"
-            )
-
-            search_key = item.get("matchDetails").get("searchKey")
-
-            # TODO replace with grype data when available
-            is_legacy = False
-            if "distro" in search_key:
-                is_legacy = True
-                feed = "vulnerabilities"
-                distro = search_key.get("distro")
-
-                distro_type = distro.get("type")
-                if distro_type.lower() == "redhat":
-                    feed_group = "rhel:"
-                else:
-                    feed_group = distro_type.lower() + ":"
-
-                distro_version = distro.get("version")
-                group = distro_version.split(".", 1)[0]
-                feed_group += group
-            elif vuln_id.startswith("GHSA"):
-                is_legacy = True
-                feed = "vulnerabilities"
-                feed_group = "github:{}".format(pkg_type)
-            elif vuln_id.startswith("VULNDB"):  # this is absolutely WRONG!!!
-                feed = "vulndb"
-                feed_group = "vulndb:vulnerabilities"
-            else:
-                feed = "nvdv2"
-                feed_group = "nvdv2:cves"
-
-            vuln_tuple = (vuln_id, feed_group, pkg_name, pkg_version, pkg_path)
-            if vuln_tuple in unique_results:
+            pkg_mapper_class = GRYPE_PACKAGE_MAPPERS.get(artifact.get("type"))
+            if not pkg_mapper_class:
                 log.warn(
-                    "{} in {} namespace detected for {} {}, skipping".format(
-                        vuln_id, vuln_id, pkg_name, pkg_version
-                    )
+                    "No package mapper found for grype package type %s",
+                    artifact.get("type"),
                 )
-                dup_count += 1
-                continue
-            else:
-                unique_results[vuln_tuple] = VulnerabilityMatch(
-                    vulnerability=Vulnerability(
-                        vulnerability_id=vuln_id,
-                        description="NA",
-                        severity=vuln.get("severity"),
-                        link=vuln.get("links")[0] if vuln.get("links") else None,
-                        feed=feed,
-                        feed_group=feed_group,
-                        cvss_scores_nvd=engine_nvd_scores,
-                        cvss_scores_vendor=[],
-                        created_at=now,  # TODO replace with grype data when available
-                        last_modified=now,  # TODO replace with grype data when available
-                    ),
-                    artifact=Artifact(
-                        name=pkg_name,
-                        version=pkg_version,
-                        pkg_type=pkg_type,
-                        pkg_path=pkg_path,
-                        cpe="None",  # TODO replace with grype data when available
-                        cpe23="None",  # TODO replace with grype data when available
-                    ),
-                    fixes=[
-                        FixedArtifact(
-                            version=fix_ver,
-                            wont_fix=False,  # TODO replace with grype data when available
-                            observed_at=fix_observed_at,
-                        )
-                    ],
-                    match=Match(detected_at=now),
-                )
+            pkg_mapper = pkg_mapper_class()
 
-        log.info(
-            "Number of unique vulnerabilities: {}, duplicates: {}".format(
-                len(unique_results), dup_count
-            )
-        )
+            results.append(pkg_mapper.to_engine_vulnerability_match(item, now))
 
-        return list(unique_results.values())
+        return results
 
 
-class RHELMapper(EngineGrypeMapper):
-    __engine_distro__ = "rhel"
-    __engine_distro_pkg_type__ = "rpm"
-    __grype_os__ = "redhat"
-    __grype_os_pkg_type__ = "rpm"
-    __grype_like_os__ = "fedora"
-
-    def _get_grype_os_pkg_metadata(self, pkg: ImagePackage):
-        return {"sourceRpm": pkg.src_pkg} if pkg.src_pkg != "N/A" else dict()
-
-
-class CentOSMapper(RHELMapper):
-    __engine_distro__ = "centos"
-    __grype_os__ = "centos"
-
-
-class DebianMapper(EngineGrypeMapper):
-    __engine_distro__ = "debian"
-    __engine_distro_pkg_type__ = "dpkg"
-    __grype_os__ = "debian"
-    __grype_os_pkg_type__ = "deb"
-    __grype_like_os__ = "debian"
-
-    def _get_grype_os_pkg_metadata(self, pkg: ImagePackage):
-        return dict()
-
-
-class UbuntuMapper(DebianMapper):
-    __engine_distro__ = "ubuntu"
-    __grype_os__ = "ubuntu"
-
-
-class AlpineMapper(EngineGrypeMapper):
-    __engine_distro__ = "alpine"
-    __engine_distro_pkg_type__ = "APKG"
-    __grype_os__ = "alpine"
-    __grype_os_pkg_type__ = "apkg"
-    __grype_like_os__ = "alpine"
-
-    def _get_grype_os_pkg_metadata(self, pkg: ImagePackage):
-        return None
-
-
-DISTRO_MAPPERS = {
-    RHELMapper.__engine_distro__: RHELMapper,
-    CentOSMapper.__engine_distro__: CentOSMapper,
-    DebianMapper.__engine_distro__: DebianMapper,
-    UbuntuMapper.__engine_distro__: UbuntuMapper,
-    AlpineMapper.__engine_distro__: AlpineMapper,
-}
+# if __name__ == "__main__":
+#     a = ImagePackage()
+#     a.name = "foo"
+#     a.fullversion = "foo"
+#     a.pkg_path = "foo"
+#     a.normalized_src_pkg = "foo"
+#     b = RpmPackageMapper().to_grype(a)
+#     print(b)
