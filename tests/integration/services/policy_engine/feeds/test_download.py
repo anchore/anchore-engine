@@ -15,7 +15,7 @@ from anchore_engine.common.schemas import (
     GroupDownloadOperationParams,
     LocalFeedDataRepoMetadata,
 )
-from anchore_engine.services.policy_engine.engine.feeds.client import get_client
+from anchore_engine.services.policy_engine.engine.feeds.client import get_feeds_client
 from anchore_engine.utils import ensure_bytes, timer
 
 init_test_logging(level="debug")
@@ -49,7 +49,7 @@ def test_feed_downloader():
     tmpdir = tempfile.mkdtemp(prefix="anchoretest_repo-")
     data_repo = None
     try:
-        client = get_client(
+        client = get_feeds_client(
             ANCHOREIO_URI,
             user=("something", "something"),
             conn_timeout=1,
