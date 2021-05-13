@@ -82,18 +82,18 @@ class GrypeWrapperSingleton(object):
         return cls._grype_wrapper_instance
 
     @classmethod
-    def get_instance(self):
+    def get_instance(cls):
         """
         Returns the singleton instance of this class.
         """
         return GrypeWrapperSingleton()
 
     @classmethod
-    def _get_test_instance(self):
+    def _get_test_instance(cls):
         """
         Returns a new instance of this class. This method is not intended for use outside of tests.
         """
-        self._grype_wrapper_instance = None
+        cls._grype_wrapper_instance = None
         return GrypeWrapperSingleton()
 
     @property
