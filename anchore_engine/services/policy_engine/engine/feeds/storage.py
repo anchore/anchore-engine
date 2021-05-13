@@ -42,7 +42,7 @@ class GrypeDBFile:
         :param expected_checksum: expected sha256 checksum value
         :type expected_checksum: str
         """
-        actual_checksum = hashlib.sha256(file_data).hexdigest()
+        actual_checksum = "sha256:{}".format(hashlib.sha256(file_data).hexdigest())
         if actual_checksum != expected_checksum:
             raise ChecksumMismatchError(expected_checksum, actual_checksum)
 
