@@ -369,48 +369,48 @@ def test_get_proc_env_missing_dir():
 # This test will not pass on the CI because that machine does not have grype installed.
 # I am leaving it for now, but commented out. It is useful for local dev and will
 # pass if you have grype installed.
-@pytest.mark.parametrize(
-    "sbom_file_name, expected_output",
-    [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
-)
-def test_get_vulnerabilities_for_sbom(grype_db_dir, sbom_file_name, expected_output):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
-
-    # Setup test inputs
-    grype_wrapper._grype_db_dir = grype_db_dir
-    test_sbom = get_test_sbom(sbom_file_name).replace("<", "").replace(">", "")
-
-    # Function under test
-    result = grype_wrapper.get_vulnerabilities_for_sbom(test_sbom)
-
-    # Validate results
-    assert result["distro"]["name"] == expected_output
+# @pytest.mark.parametrize(
+#     "sbom_file_name, expected_output",
+#     [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
+# )
+# def test_get_vulnerabilities_for_sbom(grype_db_dir, sbom_file_name, expected_output):
+#     # Create grype_wrapper instance
+#     grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+#
+#     # Setup test inputs
+#     grype_wrapper._grype_db_dir = grype_db_dir
+#     test_sbom = get_test_sbom(sbom_file_name).replace("<", "").replace(">", "")
+#
+#     # Function under test
+#     result = grype_wrapper.get_vulnerabilities_for_sbom(test_sbom)
+#
+#     # Validate results
+#     assert result["distro"]["name"] == expected_output
 
 
 # TODO Replace this with a functional test against the API that calls the function under test.
 # This test will not pass on the CI because that machine does not have grype installed.
 # I am leaving it for now, but commented out. It is useful for local dev and will
 # pass if you have grype installed.
-@pytest.mark.parametrize(
-    "sbom_file_name, expected_output",
-    [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
-)
-def test_get_vulnerabilities_for_sbom_file(
-    grype_db_dir, sbom_file_name, expected_output
-):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
-
-    # Setup test inputs
-    grype_wrapper._grype_db_dir = grype_db_dir
-    test_sbom_file = get_test_sbom_file(sbom_file_name)
-
-    # Function under test
-    result = grype_wrapper.get_vulnerabilities_for_sbom_file(test_sbom_file)
-
-    # Validate results
-    assert result["distro"]["name"] == expected_output
+# @pytest.mark.parametrize(
+#     "sbom_file_name, expected_output",
+#     [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
+# )
+# def test_get_vulnerabilities_for_sbom_file(
+#     grype_db_dir, sbom_file_name, expected_output
+# ):
+#     # Create grype_wrapper instance
+#     grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+#
+#     # Setup test inputs
+#     grype_wrapper._grype_db_dir = grype_db_dir
+#     test_sbom_file = get_test_sbom_file(sbom_file_name)
+#
+#     # Function under test
+#     result = grype_wrapper.get_vulnerabilities_for_sbom_file(test_sbom_file)
+#
+#     # Validate results
+#     assert result["distro"]["name"] == expected_output
 
 
 def test_get_vulnerabilities_for_sbom_missing_session():
