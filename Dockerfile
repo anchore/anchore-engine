@@ -132,7 +132,8 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
     AUTHLIB_INSECURE_TRANSPORT=true \
     ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
-    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180
+    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180 \
+    ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json"
 
 # Insecure transport required in case for things like tls sidecars
 
