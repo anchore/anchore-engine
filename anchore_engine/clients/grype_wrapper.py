@@ -494,10 +494,12 @@ def query_record_source_counts():
             # Transform the results along with the last_synced timestamp for each result
             output = []
             for result in results:
-                feed_group = result[0].split(":", 1)
+                feed_group = str(result[0]).split(":", 1)
                 if len(feed_group) != 2:
                     logger.error(
-                        "Unable to process feed/group for record_source {}. Omitting from the response".format()
+                        "Unable to process feed/group for record_source {}. Omitting from the response".format(
+                            feed_group
+                        )
                     )
                     continue
 
