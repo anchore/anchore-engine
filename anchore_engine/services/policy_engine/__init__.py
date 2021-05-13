@@ -73,7 +73,9 @@ except ValueError:
 
 
 def _check_feed_client_credentials():
-    from anchore_engine.services.policy_engine.engine.feeds.client import get_client
+    from anchore_engine.services.policy_engine.engine.feeds.client import (
+        get_feeds_client,
+    )
 
     sleep_time = feed_config_check_backoff
     last_ex = None
@@ -94,7 +96,7 @@ def _check_feed_client_credentials():
                     i + 1, feed_config_check_retries
                 )
             )
-            client = get_client()
+            client = get_feeds_client()
             client = None
             logger.info("Feeds client credentials ok")
             return True
