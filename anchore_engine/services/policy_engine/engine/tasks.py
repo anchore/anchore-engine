@@ -24,6 +24,10 @@ from anchore_engine.db import Image, end_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import session_scope
 from anchore_engine.services.policy_engine.engine.exc import *
+from anchore_engine.services.policy_engine.engine.feeds.client import (
+    get_feeds_client,
+    get_grype_db_client,
+)
 from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedSyncResult
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
@@ -155,8 +159,6 @@ class FeedsUpdateTask(IAsyncTask):
 
         :return:
         """
-        feeds = None
-
         try:
 
             feeds = get_selected_feeds_to_sync(localconfig.get_config())
@@ -224,8 +226,20 @@ class FeedsUpdateTask(IAsyncTask):
         start_time = datetime.datetime.utcnow()
         try:
             start_time = datetime.datetime.utcnow()
-            updated_data_feeds = DataFeeds.sync(
-                to_sync=self.feeds,
+
+            updated_data_feeds = list()
+            if "grypedb" in self.feeds:
+                updated_data_feeds += DataFeeds.sync(
+                    get_grype_db_client(),
+                    to_sync=["grypedb"],
+                    full_flush=self.full_flush,
+                    catalog_client=catalog_client,
+                    operation_id=self.uuid,
+                )
+
+            updated_data_feeds += DataFeeds.sync(
+                get_feeds_client(),
+                to_sync=[x for x in self.feeds if x != "grypedb"],
                 full_flush=self.full_flush,
                 catalog_client=catalog_client,
                 operation_id=self.uuid,
