@@ -11,6 +11,8 @@ from anchore_engine.subsys import logger
 
 def parse_dockerimage_string(instr, strict=True):
     """
+    !!!! DEPRECATED !!! Please use DockerImageReference.parse instead
+
     Parses a string you'd give 'docker pull' into its consitutent parts: registry, repository, tag and/or digest.
     Returns a dict with keys:
 
@@ -153,6 +155,110 @@ def parse_dockerimage_string(instr, strict=True):
     return ret
 
 
+class DockerImageTag:
+    """
+    Docker Image Tag strings can come in a few different formats:
+        - registry_host:registry_port/repository@digest
+        - registry_host:registry_port/repository:tag
+        - simple_registry/repository:tag
+        - simple_registry/repository@digest
+        - repository:tag
+            - in this case, we assume the registry is docker.io
+        - repository@digest
+            - in this case, we assume the registry is docker.io
+
+    The aim of this class is to break this string into it's respective parts:
+        - registry, repository, and (tag OR digest)
+    """
+
+    def __init__(self, docker_input: str):
+        """
+        docker_input should be a tag format (see above), not a digest or image ID
+        """
+        self.registry = "docker.io"
+        self.repository = None
+        self.tag = "latest"
+        self.digest = None
+        self.parse(docker_input)
+
+    def get_host(self):
+        registry_contains_port = re.match(r"(.*?):(.*)", self.registry)
+        if registry_contains_port:
+            return registry_contains_port.group(1)
+        return self.registry
+
+    def get_port(self):
+        registry_contains_port = re.match(r"(.*?):(.*)", self.registry)
+        if registry_contains_port:
+            return registry_contains_port.group(2)
+        return None
+
+    def get_repository_tag(self):
+        if self.digest:
+            return "@".join([self.repository, self.digest])
+        else:
+            return ":".join([self.repository, self.tag])
+
+    def get_full_tag(self):
+        return "/".join([self.registry, self.get_repository_tag()])
+
+    def get_full_digest(self):
+        if self.digest:
+            return "%s/%s@%s" % (self.registry, self.repository, self.digest)
+        return None
+
+    def parse_registry(self, docker_input: str):
+        input_contains_registry = re.match(r"(.*?)/(.*)", docker_input)
+        if input_contains_registry:
+            self.registry = input_contains_registry.group(1)
+
+    def parse_repository(self, docker_input: str):
+        input_contains_registry = re.match(r"(.*?)/(.*)", docker_input)
+        if input_contains_registry:
+            repository_and_details = input_contains_registry.group(2)
+        else:
+            repository_and_details = docker_input
+
+        contains_digest = re.match(r"(.*)@(.*)", repository_and_details)
+        if contains_digest:
+            self.repository = contains_digest.group(1)
+        else:
+            contains_tag = re.match(r"(.*):(.*)", repository_and_details)
+            if contains_tag:
+                self.repository = contains_tag.group(1)
+            else:
+                self.repository = repository_and_details
+
+    def parse_digest(self, docker_input: str):
+        input_is_repository_at_digest = re.match(r"(.*)@(.*)", docker_input)
+        if input_is_repository_at_digest:
+            self.digest = input_is_repository_at_digest.group(2)
+
+    def parse_tag(self, docker_input: str):
+        input_contains_tag = re.match(r"(.*):(.*)", docker_input)
+        if input_contains_tag:
+            self.tag = input_contains_tag.group(2)
+
+    def parse(self, docker_input: str):
+        self.parse_registry(docker_input)
+        self.parse_repository(docker_input)
+        self.parse_digest(docker_input)
+        self.parse_tag(docker_input)
+
+    def to_image_info_dict(self):
+        return {
+            "host": self.get_host(),
+            "port": self.get_port(),
+            "repo": self.repository,
+            "tag": self.tag if not self.digest else None,
+            "registry": self.registry,
+            "repotag": self.get_repository_tag(),
+            "fulltag": self.get_full_tag(),
+            "digest": self.digest if self.digest else None,
+            "fulldigest": self.get_full_digest(),
+        }
+
+
 class DockerImageReference:
     """
     An object representing an image reference in a registry
@@ -167,15 +273,24 @@ class DockerImageReference:
         self.registry = None
         self.repository = None
         self.tag = None
-        self.registry = None
         self.digest = None
         self.image_id = None
 
     def has_tag(self):
         return self.tag is not None
 
+    @staticmethod
+    def is_digest(docker_input: str) -> bool:
+        return re.match(r"^sha256:.*", docker_input)
+
     def has_digest(self):
         return self.digest is not None
+
+    @staticmethod
+    def is_id(docker_input: str) -> bool:
+        return len(docker_input) == 64 and not re.findall(
+            r"[^0-9a-fA-F]+", docker_input
+        )
 
     def has_id(self):
         return self.image_id is not None
@@ -197,6 +312,50 @@ class DockerImageReference:
         return self._digest_pullstring_format.format(
             registry=self.registry, repository=self.repository, digest=self.digest
         )
+
+    @staticmethod
+    def validate_input(docker_input: str):
+        bad_chars = re.findall(r"[^a-zA-Z0-9@:/_\.\-]", docker_input)
+        if bad_chars:
+            raise ValueError(
+                "bad character(s) {} in dockerimage string input ({})".format(
+                    bad_chars, docker_input
+                )
+            )
+
+    def parse(self, docker_input: str, strict=True) -> dict:
+        logger.debug("input string to parse: %s", docker_input)
+        docker_input = docker_input.strip()
+        if strict is True:
+            self.validate_input(docker_input)
+
+        image_info = {
+            "host": None,
+            "port": None,
+            "repo": None,
+            "tag": None,
+            "registry": None,
+            "repotag": None,
+            "fulltag": None,
+            "digest": None,
+            "fulldigest": None,
+            "imageId": None,
+            "pullstring": None,
+        }
+        if self.is_digest(docker_input):
+            image_info["registry"] = "docker.io"
+            image_info["digest"] = docker_input
+        elif self.is_id(docker_input):
+            image_info["imageId"] = docker_input
+        else:
+            tag = DockerImageTag(docker_input)
+            image_info.update(tag.to_image_info_dict())
+
+        if image_info["fulldigest"]:
+            image_info["pullstring"] = image_info["fulldigest"]
+        elif image_info["fulltag"]:
+            image_info["pullstring"] = image_info["fulltag"]
+        return image_info
 
     @classmethod
     def from_string(cls, input_string, strict=True):

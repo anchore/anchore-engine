@@ -1,5 +1,8 @@
 import json
 import re
+from anchore_engine.common.helpers import make_anchore_exception
+
+from anchore_engine.util.docker import DockerImageReference
 
 import anchore_engine.services
 import anchore_engine.utils
@@ -40,12 +43,18 @@ def get_image_info(
     ret = {}
     if image_type == "docker":
         try:
-            image_info = anchore_engine.utils.parse_dockerimage_string(input_string)
-        except Exception as err:
-            raise anchore_engine.common.helpers.make_anchore_exception(
-                err,
+            image_info = DockerImageReference().parse(input_string)
+        except ValueError as ve:
+            raise make_anchore_exception(
+                ve,
                 input_message="cannot handle image input string",
                 input_httpcode=400,
+            )
+        except (KeyError, re.error) as err:
+            raise make_anchore_exception(
+                err,
+                input_message="failed to process image input string",
+                input_httpcode=500,
             )
 
         ret.update(image_info)

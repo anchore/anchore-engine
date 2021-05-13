@@ -6,6 +6,7 @@ import pytest
 from anchore_engine.util.docker import (
     DockerV2ManifestMetadata,
     DockerV1ManifestMetadata,
+    DockerImageTag,
 )
 
 cloudfleet_nginx_v1_manifest = {
@@ -579,3 +580,198 @@ def test_dockerv1manifestmetadata(manifest, expected_history, expected_layer_ids
     t = DockerV1ManifestMetadata(manifest)
     assert t.history == expected_history
     assert t.layer_ids == expected_layer_ids
+
+
+class TestDockerImageTag:
+    @pytest.mark.parametrize(
+        "tag,expected",
+        [
+            (DockerImageTag("sam.dacanay:8080/repo@digest"), "sam.dacanay"),
+            (DockerImageTag("localhost:8080/repo:tag"), "localhost"),
+            (DockerImageTag("docker.io/repo:tag"), "docker.io"),
+            (
+                DockerImageTag("registry.anchore.com/repo@digest"),
+                "registry.anchore.com",
+            ),
+            (DockerImageTag("repo:tag"), "docker.io"),
+            (DockerImageTag("repo@digest"), "docker.io"),
+        ],
+    )
+    def test_get_host(self, tag, expected):
+        if expected is None:
+            assert tag.get_host() is None
+        else:
+            assert tag.get_host() == expected
+
+    @pytest.mark.parametrize(
+        "tag,expected",
+        [
+            (DockerImageTag("sam.dacanay:8080/repo@digest"), "8080"),
+            (DockerImageTag("localhost:8080/repo:tag"), "8080"),
+            (DockerImageTag("docker.io/repo:tag"), None),
+            (DockerImageTag("registry.anchore.com/repo@digest"), None),
+            (DockerImageTag("repo:tag"), None),
+            (DockerImageTag("repo@digest"), None),
+        ],
+    )
+    def test_get_port(self, tag, expected):
+        if expected is None:
+            assert tag.get_port() is None
+        else:
+            assert tag.get_port() == expected
+
+    @pytest.mark.parametrize(
+        "tag,expected",
+        [
+            (DockerImageTag("sam.dacanay:8080/repo@digest"), "repo@digest"),
+            (DockerImageTag("localhost:8080/repo:tag"), "repo:tag"),
+            (DockerImageTag("docker.io/repo:tag"), "repo:tag"),
+            (DockerImageTag("registry.anchore.com/repo@digest"), "repo@digest"),
+            (DockerImageTag("repo:tag"), "repo:tag"),
+            (DockerImageTag("repo@digest"), "repo@digest"),
+        ],
+    )
+    def test_get_repository_tag(self, tag, expected):
+        assert tag.get_repository_tag() == expected
+
+    @pytest.mark.parametrize(
+        "tag,expected",
+        [
+            (
+                DockerImageTag("sam.dacanay:8080/repo@digest"),
+                "sam.dacanay:8080/repo@digest",
+            ),
+            (DockerImageTag("localhost:8080/repo:tag"), "localhost:8080/repo:tag"),
+            (DockerImageTag("docker.io/repo:tag"), "docker.io/repo:tag"),
+            (
+                DockerImageTag("registry.anchore.com/repo@digest"),
+                "registry.anchore.com/repo@digest",
+            ),
+            (DockerImageTag("repo:tag"), "docker.io/repo:tag"),
+            (DockerImageTag("repo@digest"), "docker.io/repo@digest"),
+        ],
+    )
+    def test_get_full_tag(self, tag, expected):
+        assert tag.get_full_tag() == expected
+
+    @pytest.mark.parametrize(
+        "tag,expected",
+        [
+            (
+                DockerImageTag("sam.dacanay:8080/repo@digest"),
+                "sam.dacanay:8080/repo@digest",
+            ),
+            (DockerImageTag("localhost:8080/repo:tag"), None),
+            (DockerImageTag("docker.io/repo:tag"), None),
+            (
+                DockerImageTag("registry.anchore.com/repo@digest"),
+                "registry.anchore.com/repo@digest",
+            ),
+            (DockerImageTag("repo:tag"), None),
+            (DockerImageTag("repo@digest"), "docker.io/repo@digest"),
+        ],
+    )
+    def test_get_full_digest(self, tag, expected):
+        if expected is None:
+            assert tag.get_full_digest() is None
+        else:
+            assert tag.get_full_digest() == expected
+
+    @pytest.mark.parametrize(
+        "tag,expected",
+        [
+            (
+                DockerImageTag("sam.dacanay:8080/repo@digest"),
+                {
+                    "host": "sam.dacanay",
+                    "port": "8080",
+                    "repo": "repo",
+                    "tag": None,
+                    "registry": "sam.dacanay:8080",
+                    "repotag": "repo@digest",
+                    "fulltag": "sam.dacanay:8080/repo@digest",
+                    "digest": "digest",
+                    "fulldigest": "sam.dacanay:8080/repo@digest",
+                },
+            ),
+            (
+                DockerImageTag("localhost:8080/repo:tag"),
+                {
+                    "host": "localhost",
+                    "port": "8080",
+                    "repo": "repo",
+                    "tag": "tag",
+                    "registry": "localhost:8080",
+                    "repotag": "repo:tag",
+                    "fulltag": "localhost:8080/repo:tag",
+                    "digest": None,
+                    "fulldigest": None,
+                },
+            ),
+            (
+                DockerImageTag("docker.io/repo:tag"),
+                {
+                    "host": "docker.io",
+                    "port": None,
+                    "repo": "repo",
+                    "tag": "tag",
+                    "registry": "docker.io",
+                    "repotag": "repo:tag",
+                    "fulltag": "docker.io/repo:tag",
+                    "digest": None,
+                    "fulldigest": None,
+                },
+            ),
+            (
+                DockerImageTag("registry.anchore.com/repo@digest"),
+                {
+                    "host": "registry.anchore.com",
+                    "port": None,
+                    "repo": "repo",
+                    "tag": None,
+                    "registry": "registry.anchore.com",
+                    "repotag": "repo@digest",
+                    "fulltag": "registry.anchore.com/repo@digest",
+                    "digest": "digest",
+                    "fulldigest": "registry.anchore.com/repo@digest",
+                },
+            ),
+            (
+                DockerImageTag("repo:tag"),
+                {
+                    "host": "docker.io",
+                    "port": None,
+                    "repo": "repo",
+                    "tag": "tag",
+                    "registry": "docker.io",
+                    "repotag": "repo:tag",
+                    "fulltag": "docker.io/repo:tag",
+                    "digest": None,
+                    "fulldigest": None,
+                },
+            ),
+            (
+                DockerImageTag("repo@digest"),
+                {
+                    "host": "docker.io",
+                    "port": None,
+                    "repo": "repo",
+                    "tag": None,
+                    "registry": "docker.io",
+                    "repotag": "repo@digest",
+                    "fulltag": "docker.io/repo@digest",
+                    "digest": "digest",
+                    "fulldigest": "docker.io/repo@digest",
+                },
+            ),
+        ],
+    )
+    def test_to_image_info_dict(self, tag, expected):
+        """
+        Implicitly tests the parse method and all the sub parsing methods:
+            - parse_registry
+            - parse repository
+            - parse digest
+            - parse tag
+        """
+        assert tag.to_image_info_dict() == expected
