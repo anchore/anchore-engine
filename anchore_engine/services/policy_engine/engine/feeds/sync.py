@@ -469,10 +469,10 @@ class DataFeeds(object):
 
     @staticmethod
     def sync(
+        feed_client,
         to_sync=None,
         full_flush=False,
         catalog_client=None,
-        feed_client=None,
         operation_id=None,
     ) -> List[FeedSyncResult]:
         """
@@ -481,9 +481,6 @@ class DataFeeds(object):
         """
 
         result = []
-
-        if not feed_client:
-            feed_client = get_client()
 
         logger.info(
             "Performing sync of feeds: {} (operation_id={})".format(
@@ -570,9 +567,6 @@ class DataFeeds(object):
                 )
 
         logger.debug("Groups to download {}".format(groups_to_download))
-
-        if not feed_client:
-            feed_client = get_client()
 
         base_dir = (
             DataFeeds.__scratch_dir__
@@ -704,7 +698,7 @@ class DataFeeds(object):
                             feed_data_repo = None
 
                 except Exception:
-                    logger.error(
+                    logger.exception(
                         "Error syncing {} (operation_id={})".format(f, operation_id)
                     )
 
