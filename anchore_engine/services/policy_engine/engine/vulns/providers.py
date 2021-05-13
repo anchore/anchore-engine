@@ -43,7 +43,7 @@ from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
 from .cache_managers import GrypeCacheManager, CacheStatus
 from .dedup import get_image_vulnerabilities_deduper
-from .mappers import DISTRO_MAPPERS
+from .mappers import EngineGrypeMapper
 from .scanners import LegacyScanner, GrypeVulnScanner
 
 
@@ -862,10 +862,6 @@ class GrypeProvider(VulnerabilitiesProvider):
         # TODO initialize the scanner and check if a grype db refresh is necessary
         scanner = self.__scanner__()
 
-        # initialize the mapper
-
-        mapper = DISTRO_MAPPERS.get(image.distro_name)()
-
         # if image.sbom:
         #     log.info("Found raw image sbom")
         #     input_to_grype = image.sbom.sbom
@@ -882,16 +878,18 @@ class GrypeProvider(VulnerabilitiesProvider):
             .all()
         )
 
-        grype_sbom = mapper.transform_image_to_sbom(image, image_packages, image_cpes)
+        mapper = EngineGrypeMapper()
+
+        grype_sbom = mapper.to_grype_sbom(image, image_packages, image_cpes)
 
         grype_response = scanner.get_vulnerabilities(image.id, grype_sbom)
 
-        vulnerabilities = mapper.transform_matches_to_vulnerabilities(grype_response)
+        vulnerabilities = mapper.to_engine_vulnerabilities(grype_response)
 
         return ImageVulnerabilitiesReport(
             account_id=image.user_id,
             image_id=image.id,
-            results=vulnerabilities,
+            results=get_image_vulnerabilities_deduper().execute(vulnerabilities),
             metadata=VulnerabilitiesReportMetadata(
                 generated_at=datetime.datetime.utcnow(),
                 uuid=str(uuid.uuid4()),

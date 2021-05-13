@@ -9,6 +9,9 @@ from anchore_engine.db.entities.policy_engine import ImageCpe
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncManager,
+)
 
 
 class LegacyScanner:
@@ -141,7 +144,7 @@ class GrypeVulnScanner:
 
     def get_vulnerabilities(self, image_id, sbom):
 
-        # TODO check if grype db needs to be updated
+        GrypeDBSyncManager.run_grypedb_sync()
 
         # TODO saving sbom for debugging purposes, remove this
         file_path = "/tmp/e2g_sbom_{}".format(image_id)
@@ -149,4 +152,4 @@ class GrypeVulnScanner:
         with open(file_path, "w") as fp:
             json.dump(sbom, fp, indent=2)
 
-        return grype_wrapper.get_vulnerabilities(file_path)
+        return grype_wrapper.get_vulnerabilities_for_sbom_file(file_path)
