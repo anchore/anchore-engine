@@ -34,9 +34,9 @@ def get_current_grype_db_checksum():
     """
     Return the checksum for the in-use version of grype db
     """
-    checksums = os.listdir(_get_grype_db_dir())
-    if checksums:
-        grype_db_checksum = checksums[0]
+    grype_db_dir = _get_grype_db_dir()
+    if grype_db_dir and os.path.exists(grype_db_dir):
+        grype_db_checksum = os.path.basename(grype_db_dir)
     else:
         grype_db_checksum = None
     logger.info("Returning current grype_db checksum: {}".format(grype_db_checksum))
