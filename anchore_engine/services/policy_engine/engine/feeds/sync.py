@@ -23,7 +23,6 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.db import FeedGroupMetadata, FeedMetadata
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
-from anchore_engine.services.policy_engine.engine.feeds.client import get_client
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_all_feeds,
     get_all_feeds_detached,
@@ -35,6 +34,7 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     FeedSyncResult,
     GroupSyncResult,
+    GrypeDBFeed,
     NvdV2Feed,
     PackagesFeed,
     VulnDBFeed,
@@ -94,7 +94,7 @@ def get_feeds_config(full_config):
     return c if c is not None else {}
 
 
-def get_selected_feeds_to_sync(config):
+def get_selected_feeds_to_sync_legacy(config):
     """
     Given a configuration dict, determine which feeds should be synced.
 
@@ -719,8 +719,10 @@ def _sync_order(feed_name: str) -> int:
 
     # Later will want to generalize this and add sync order as property of the feed class
 
-    if feed_name == VulnerabilityFeed.__feed_name__:
+    if feed_name == GrypeDBFeed.__feed_name__:
         return 0
+    if feed_name == VulnerabilityFeed.__feed_name__:
+        return 1
     if feed_name == VulnDBFeed.__feed_name__:
         return 10
     if feed_name == NvdV2Feed.__feed_name__:
