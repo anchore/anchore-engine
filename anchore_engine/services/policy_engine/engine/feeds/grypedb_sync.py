@@ -119,7 +119,10 @@ class GrypeDBSyncManager:
         local_grypedb_checksum = cls._get_local_grypedb_checksum()
 
         sync_needed = local_grypedb_checksum != active_grypedb.checksum
-        logger.info("No grypedb sync needed at this time")
+        if not sync_needed:
+            logger.info("No Grype DB sync needed at this time")
+        else:
+            logger.info("Grype DB sync is required.")
 
         return cls.SyncNecessaryResp(sync_needed, active_grypedb)
 
