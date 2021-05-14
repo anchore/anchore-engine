@@ -75,11 +75,13 @@ class GrypeWrapperSingleton(object):
     )
 
     def __new__(cls):
+        # If the singleton has not been initialized yet, do so with the instance variables below
         if cls._grype_wrapper_instance is None:
             cls._grype_wrapper_instance = super(GrypeWrapperSingleton, cls).__new__(cls)
             cls._grype_db_dir_internal = None
             cls._grype_db_session_maker_internal = None
             cls._grype_db_lock = rwlock.RWLockWrite()
+        # Return the singleton instance
         return cls._grype_wrapper_instance
 
     @classmethod
