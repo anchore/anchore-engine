@@ -63,6 +63,8 @@ class RecordSource:
 class GrypeWrapperSingleton(object):
     _grype_wrapper_instance = None
 
+    LOCK_READ_ACCESS_TIMEOUT = 60
+    LOCK_WRITE_ACCESS_TIMEOUT = 60
     GRYPE_SUB_CMD = "grype -vv -o json"
     VULNERABILITY_FILE_NAME = "vulnerability.db"
     METADATA_FILE_NAME = "metadata.json"
@@ -131,7 +133,9 @@ class GrypeWrapperSingleton(object):
         read_lock = self._grype_db_lock.gen_rlock()
 
         try:
-            yield read_lock.acquire(blocking=False, timeout=60)
+            yield read_lock.acquire(
+                blocking=False, timeout=self.LOCK_READ_ACCESS_TIMEOUT
+            )
         except Exception as exception:
             raise exception
         finally:
@@ -148,7 +152,9 @@ class GrypeWrapperSingleton(object):
         write_lock = self._grype_db_lock.gen_wlock()
 
         try:
-            yield write_lock.acquire(blocking=True, timeout=60)
+            yield write_lock.acquire(
+                blocking=True, timeout=self.LOCK_WRITE_ACCESS_TIMEOUT
+            )
         except Exception as exception:
             raise exception
         finally:
