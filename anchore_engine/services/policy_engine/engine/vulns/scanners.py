@@ -125,10 +125,3 @@ class LegacyScanner:
         final_results = list(dedup_hash.values())
 
         return final_results
-
-
-default_type = LegacyScanner
-
-
-def get_scanner():
-    return default_type()

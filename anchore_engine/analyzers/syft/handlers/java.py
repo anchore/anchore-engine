@@ -11,7 +11,10 @@ def save_entry(findings, engine_entry, pkg_key=None):
             "location", "/virtual/javapkg/{}-{}.jar".format(pkg_name, pkg_version)
         )
 
-    findings["package_list"]["pkgs.java"]["base"][pkg_key] = engine_entry
+    if "pkgs.java" in findings.get("package_list", {}):
+        findings["package_list"]["pkgs.java"]["base"][pkg_key] = engine_entry
+    else:
+        findings["package_list"]["pkgs.java"] = {"base": {pkg_key: engine_entry}}
 
 
 def translate_and_save_entry(findings, artifact):

@@ -850,7 +850,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             return make_response_error("Image not found", in_httpcode=404), 404
 
         provider = get_vulnerabilities_provider()
-        report = provider.get_image_vulnerabilities(
+        report = provider.get_image_vulnerabilities_json(
             image=img,
             vendor_only=vendor_only,
             db_session=db,
@@ -859,7 +859,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
         )
 
         db.commit()
-        return report.to_json(), 200
+        return report, 200
 
     except HTTPException:
         db.rollback()

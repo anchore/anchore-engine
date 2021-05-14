@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.4
+
++ Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990
++ Fixed - Incorrect CPE v2.3 string construction in some cases. Fixes #959
++ Fixed - Hints behavior regression. Fixes #1006
++ Improved - Reduced false positive matches for vulnerabilities in java artifacts by update to CPE generation logic via Syft upgrade to 0.15.1
++ Improved - Better vulnerability listing performance by removing unnecessary CPE hashing
+
 ## 0.9.3
 
 + Fixed - Fixes issue where java artifacts are not being matched against records from GHSA feed - synthesize pom properties contents in syft mapper.  Fixes #950
