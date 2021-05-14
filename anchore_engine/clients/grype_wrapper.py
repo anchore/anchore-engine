@@ -10,6 +10,7 @@ import tarfile
 from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
 from anchore_engine.utils import CommandException, run_check, run_piped_command_list
+from contextlib import contextmanager
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
 from readerwriterlock import rwlock
@@ -67,17 +68,17 @@ class GrypeWrapperSingleton(object):
     METADATA_FILE_NAME = "metadata.json"
     ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE = "New grype_db archive file not found"
     MISSING_GRYPE_DB_DIR_ERROR_MESSAGE = (
-        "Cannot access missing grype_db_dir. Reinitialize grype_db."
+        "Cannot access missing grype_db dir. Reinitialize grype_db."
     )
-    MISSING_GRYPE_DB_SESSION_ERROR_MESSAGE = (
-        "Cannot access missing grype_db_session. Reinitialize grype_db."
+    MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE = (
+        "Cannot access missing grype_db session maker. Reinitialize grype_db."
     )
 
     def __new__(cls):
         if cls._grype_wrapper_instance is None:
             cls._grype_wrapper_instance = super(GrypeWrapperSingleton, cls).__new__(cls)
             cls._grype_db_dir_internal = None
-            cls._grype_db_session_internal = None
+            cls._grype_db_session_maker_internal = None
             cls._grype_db_lock = rwlock.RWLockWrite()
         return cls._grype_wrapper_instance
 
@@ -108,15 +109,68 @@ class GrypeWrapperSingleton(object):
         self._grype_db_dir_internal = _grype_db_dir_internal
 
     @property
-    def _grype_db_session(self):
-        if self._grype_db_session_internal is None:
-            raise ValueError(self.MISSING_GRYPE_DB_SESSION_ERROR_MESSAGE)
+    def _grype_db_session_maker(self):
+        if self._grype_db_session_maker_internal is None:
+            raise ValueError(self.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE)
         else:
-            return self._grype_db_session_internal
+            return self._grype_db_session_maker_internal
 
-    @_grype_db_session.setter
-    def _grype_db_session(self, _grype_db_session_internal):
-        self._grype_db_session_internal = _grype_db_session_internal
+    @_grype_db_session_maker.setter
+    def _grype_db_session_maker(self, _grype_db_session_maker_internal):
+        self._grype_db_session_maker_internal = _grype_db_session_maker_internal
+
+    @contextmanager
+    def read_lock_access(self):
+        """
+        Get read access to the reader writer lock. Releases the lock after exit the
+        context. Any exceptions are passed up.
+        """
+        logger.debug("Getting read access for the grype_db lock")
+        read_lock = self._grype_db_lock.gen_rlock()
+
+        try:
+            yield read_lock.acquire(blocking=False, timeout=60)
+        except Exception as exception:
+            raise exception
+        finally:
+            logger.debug("Releasing read access for the grype_db lock")
+            read_lock.release()
+
+    @contextmanager
+    def write_lock_access(self):
+        """
+        Get read access to the reader writer lock. Releases the lock after exit the
+        context. y exceptions are passed up.
+        """
+        logger.debug("Getting write access for the grype_db lock")
+        write_lock = self._grype_db_lock.gen_wlock()
+
+        try:
+            yield write_lock.acquire(blocking=True, timeout=60)
+        except Exception as exception:
+            raise exception
+        finally:
+            logger.debug("Releasing write access for the grype_db lock")
+            write_lock.release()
+
+    @contextmanager
+    def grype_session_scope(self):
+        """
+        Provides simplified session scope management around the currently configured grype db. Grype
+        wrapper only reads from this db (writes only ever happen upstream when the db file is created!)
+        so there's no need for normal transaction management as there will never be changes to commit.
+        This context manager primarily ensures the session is closed after use.
+        """
+        session = self._grype_db_session_maker()
+
+        logger.debug("Opening grype_db session: " + str(session))
+        try:
+            yield session
+        except Exception as exception:
+            raise exception
+        finally:
+            logger.debug("Closing grype_db session: " + str(session))
+            session.close()
 
     def get_current_grype_db_checksum(self):
         """
@@ -253,32 +307,31 @@ class GrypeWrapperSingleton(object):
         latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
         return latest_grype_db_engine
 
-    def _init_latest_grype_db_session(self, grype_db_engine):
+    def _init_latest_grype_db_session_maker(self, grype_db_engine):
         """
-        Create and return the db session
+        Create and return the db session maker
         """
         logger.info(
-            "Creating new grype_db session from engine based on %s", grype_db_engine.url
+            "Creating new grype_db session maker from engine based on %s",
+            grype_db_engine.url,
         )
-        SessionMaker = sessionmaker(bind=grype_db_engine)
-        grype_db_session = SessionMaker()
-        return grype_db_session
+        return sessionmaker(bind=grype_db_engine)
 
     def _init_latest_grype_db(self, lastest_grype_db_archive: str, version_name: str):
         """
-        Write the db string to file, create the engine, and create the session
-        Return the file and session
+        Write the db string to file, create the engine, and create the session maker
+        Return the file and session maker
         """
         latest_grype_db_dir = self._move_and_open_grype_db_archive(
             lastest_grype_db_archive, version_name
         )
         latest_grype_db_engine = self._init_latest_grype_db_engine(latest_grype_db_dir)
-        latest_grype_db_session = self._init_latest_grype_db_session(
+        latest_grype_db_session_maker = self._init_latest_grype_db_session_maker(
             latest_grype_db_engine
         )
 
-        # Return the dir, file, and engine
-        return latest_grype_db_dir, latest_grype_db_session
+        # Return the dir and session maker
+        return latest_grype_db_dir, latest_grype_db_session_maker
 
     def _remove_local_grype_db(self, grype_db_dir):
         """
@@ -306,29 +359,25 @@ class GrypeWrapperSingleton(object):
             grype_db_archive_local_file_location,
         )
 
-        write_lock = self._grype_db_lock.gen_wlock()
-        if write_lock.acquire(blocking=True, timeout=60):
-            try:
-                # Store the db locally and
-                # Create the sqlalchemy engine for the new db
-                (
-                    latest_grype_db_dir,
-                    latest_grype_db_session,
-                ) = self._init_latest_grype_db(
-                    grype_db_archive_local_file_location, version_name
-                )
+        with self.write_lock_access():
+            # Store the db locally and
+            # Create the sqlalchemy engine for the new db
+            (
+                latest_grype_db_dir,
+                latest_grype_db_session_maker,
+            ) = self._init_latest_grype_db(
+                grype_db_archive_local_file_location, version_name
+            )
 
-                # Store the dir and session variables globally
-                # For use during reads and to remove in the next update
-                old_grype_db_dir = self._grype_db_dir
-                self._grype_db_dir = latest_grype_db_dir
-                self._grype_db_session = latest_grype_db_session
+            # Store the dir and session variables globally
+            # For use during reads and to remove in the next update
+            old_grype_db_dir = self._grype_db_dir
+            self._grype_db_dir = latest_grype_db_dir
+            self._grype_db_session_maker = latest_grype_db_session_maker
 
-                # Remove the old local db only if it's not the current db
-                if old_grype_db_dir and old_grype_db_dir != self._grype_db_dir:
-                    self._remove_local_grype_db(old_grype_db_dir)
-            finally:
-                write_lock.release()
+            # Remove the old local db only if it's not the current db
+            if old_grype_db_dir and old_grype_db_dir != self._grype_db_dir:
+                self._remove_local_grype_db(old_grype_db_dir)
 
     def get_current_grype_db_metadata(self) -> json:
         """
@@ -372,40 +421,36 @@ class GrypeWrapperSingleton(object):
         Use grype to scan the provided sbom for vulnerabilites.
         """
         # Get the read lock
-        read_lock = self._grype_db_lock.gen_rlock()
-        if read_lock.acquire(blocking=False, timeout=60):
+        with self.read_lock_access():
+            # Get env variables to run the grype scan with
+            proc_env = self._get_proc_env()
+
+            # Format and run the command. Grype supports piping in an sbom string, so we need to this in two steps.
+            # 1) Echo the sbom string to std_out
+            # 2) Pipe that into grype
+            pipe_sub_cmd = "echo '{sbom}'".format(
+                sbom=grype_sbom,
+            )
+            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_CMD)]
+
+            logger.debug(
+                "Running grype with command: %s | %s",
+                pipe_sub_cmd,
+                self.GRYPE_SUB_CMD,
+            )
+
+            stdout = None
+            err = None
             try:
-                # Get env variables to run the grype scan with
-                proc_env = self._get_proc_env()
-
-                # Format and run the command. Grype supports piping in an sbom string, so we need to this in two steps.
-                # 1) Echo the sbom string to std_out
-                # 2) Pipe that into grype
-                pipe_sub_cmd = "echo '{sbom}'".format(
-                    sbom=grype_sbom,
-                )
-                full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_CMD)]
-
-                logger.debug(
-                    "Running grype with command: %s | %s",
+                _, stdout, _ = run_piped_command_list(full_cmd, env=proc_env)
+            except CommandException as exc:
+                logger.error(
+                    "Exception running command: %s | %s, stderr: %s",
                     pipe_sub_cmd,
                     self.GRYPE_SUB_CMD,
+                    exc.stderr,
                 )
-
-                stdout = None
-                err = None
-                try:
-                    _, stdout, _ = run_piped_command_list(full_cmd, env=proc_env)
-                except CommandException as exc:
-                    logger.error(
-                        "Exception running command: %s | %s, stderr: %s",
-                        pipe_sub_cmd,
-                        self.GRYPE_SUB_CMD,
-                        exc.stderr,
-                    )
-                    raise exc
-            finally:
-                read_lock.release()
+                raise exc
 
             # Return the output as json
             return json.loads(stdout.decode("utf-8"))
@@ -415,32 +460,28 @@ class GrypeWrapperSingleton(object):
         Use grype to scan the provided sbom for vulnerabilites.
         """
         # Get the read lock
-        read_lock = self._grype_db_lock.gen_rlock()
-        if read_lock.acquire(blocking=False, timeout=60):
+        with self.read_lock_access():
+            # Get env variables to run the grype scan with
+            proc_env = self._get_proc_env()
+
+            # Format and run the command
+            cmd = "{grype_sub_command} sbom:{sbom}".format(
+                grype_sub_command=self.GRYPE_SUB_CMD, sbom=grype_sbom_file
+            )
+
+            logger.debug("Running grype with command: %s", cmd)
+
+            stdout = None
+            err = None
             try:
-                # Get env variables to run the grype scan with
-                proc_env = self._get_proc_env()
-
-                # Format and run the command
-                cmd = "{grype_sub_command} sbom:{sbom}".format(
-                    grype_sub_command=self.GRYPE_SUB_CMD, sbom=grype_sbom_file
+                stdout, _ = run_check(shlex.split(cmd), env=proc_env)
+            except CommandException as exc:
+                logger.error(
+                    "Exception running command: %s, stderr: %s",
+                    cmd,
+                    exc.stderr,
                 )
-
-                logger.debug("Running grype with command: %s", cmd)
-
-                stdout = None
-                err = None
-                try:
-                    stdout, _ = run_check(shlex.split(cmd), env=proc_env)
-                except CommandException as exc:
-                    logger.error(
-                        "Exception running command: %s, stderr: %s",
-                        cmd,
-                        exc.stderr,
-                    )
-                    raise exc
-            finally:
-                read_lock.release()
+                raise exc
 
             # Return the output as json
             return json.loads(stdout)
@@ -457,23 +498,22 @@ class GrypeWrapperSingleton(object):
         header of the existing function this is meant to replace.
         """
         # Get and release read locks
-        read_lock = self._grype_db_lock.gen_rlock()
-        if read_lock.acquire(blocking=False, timeout=60):
-            try:
-                if type(vuln_id) == str:
-                    vuln_id = [vuln_id]
+        with self.read_lock_access():
+            if type(vuln_id) == str:
+                vuln_id = [vuln_id]
 
-                if type(namespace) == str:
-                    namespace = [namespace]
+            if type(namespace) == str:
+                namespace = [namespace]
 
-                logger.debug(
-                    "Querying grype_db for vuln_id: %s, namespace: %s, affected_package: %s",
-                    vuln_id,
-                    namespace,
-                    affected_package,
-                )
+            logger.debug(
+                "Querying grype_db for vuln_id: %s, namespace: %s, affected_package: %s",
+                vuln_id,
+                namespace,
+                affected_package,
+            )
 
-                query = self._grype_db_session.query(GrypeVulnerability).join(
+            with self.grype_session_scope() as session:
+                query = session.query(GrypeVulnerability).join(
                     GrypeVulnerabilityMetadata,
                     GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
                 )
@@ -488,23 +528,19 @@ class GrypeWrapperSingleton(object):
                     )
 
                 return query.all()
-            finally:
-                read_lock.release()
 
     def query_record_source_counts(self):
         """
         Query the current feed group counts for all current vulnerabilities.
         """
         # Get and release read locks
-        read_lock = self.grype_db_lock.gen_rlock()
-        if read_lock.acquire(blocking=False, timeout=60):
-            try:
-                logger.debug("Querying grype_db for feed group counts")
+        with self.read_lock_access():
+            logger.debug("Querying grype_db for feed group counts")
 
-                # Get the counts for each record source
+            # Get the counts for each record source
+            with self.grype_session_scope() as session:
                 results = (
-                    self._get_grype_db_session()
-                    .query(
+                    session.query(
                         GrypeVulnerability.record_source,
                         func.count(GrypeVulnerability.record_source).label("count"),
                     )
@@ -538,6 +574,3 @@ class GrypeWrapperSingleton(object):
 
                 # Return the results
                 return output
-
-            finally:
-                read_lock.release()

@@ -89,10 +89,11 @@ def test_get_missing_grype_db_session():
 
     with pytest.raises(ValueError) as error:
         # Function under test
-        grype_wrapper._grype_db_session
+        grype_wrapper._grype_db_session_maker
 
     assert (
-        str(error.value) is GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_ERROR_MESSAGE
+        str(error.value)
+        is GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE
     )
 
 
@@ -212,7 +213,7 @@ def test_init_grype_db_session(grype_db_dir):
     assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
 
     # Function under test
-    latest_grype_db_session = grype_wrapper._init_latest_grype_db_session(
+    latest_grype_db_session = grype_wrapper._init_latest_grype_db_session_maker(
         latest_grype_db_engine
     )
 
@@ -272,7 +273,7 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
     assert os.path.exists(grype_wrapper._grype_db_dir)
     assert grype_wrapper._grype_db_dir == expected_output_dir
 
-    assert grype_wrapper._grype_db_session is not None
+    assert grype_wrapper._grype_db_session_maker is not None
     assert os.path.exists(expected_output_file)
 
     assert not os.path.exists(old_grype_db_dir)
@@ -497,8 +498,8 @@ def test_query_vulnerabilities(
 
     # Setup the sqlalchemy artifacts on the test grype db
     test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
-    grype_wrapper._grype_db_session = grype_wrapper._init_latest_grype_db_session(
-        test_grype_db_engine
+    grype_wrapper._grype_db_session_maker = (
+        grype_wrapper._init_latest_grype_db_session_maker(test_grype_db_engine)
     )
 
     # Test and validate the query param combinations
@@ -528,7 +529,8 @@ def test_query_vulnerabilities_missing_session():
 
     # Validate result
     assert (
-        str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_ERROR_MESSAGE
+        str(error.value)
+        == GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE
     )
 
 
