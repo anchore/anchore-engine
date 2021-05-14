@@ -371,7 +371,7 @@ paths:
         200:
           description: "Vulnerability listing"
           schema:
-            $ref: "#/definitions/ImageVulnerabilityListing"
+            $ref: "#/definitions/ImageVulnerabilitiesReport"
         404:
           description: "Image not found"
         500:
@@ -1049,8 +1049,6 @@ definitions:
         - accepted
         - failed
         - loaded
-      vulnerability_report:
-        $ref: "#/definitions/ImageVulnerabilityListing"
       problems:
         type: array
         description: list of error objects indicating errors encountered during vulnerability scan
@@ -1358,3 +1356,114 @@ definitions:
           schema_version:
             type: string
             description: Semantic version of the db schema
+  CVSSScore:
+    type: object
+    properties:
+      base_score:
+        type: number
+      exploitability_score:
+        type: number
+      impact_score:
+        type: number
+  VulnerabilityCVSSScore:
+    type: object
+    properties:
+      id:
+        type: string
+      cvss_v2:
+        $ref: "#/definitions/CVSSScore"
+      cvss_v3:
+        $ref: "#/definitions/CVSSScore"
+  VulnerabilityMatch:
+    type: object
+    properties:
+      vulnerability:
+        type: object
+        properties:
+          vulnerability_id:
+            type: string
+          description:
+            type: string
+          severity:
+            type: string
+          link:
+            type: string
+          feed:
+            type: string
+          feed_group:
+            type: string
+          cvss_scores_nvd:
+            type: array
+            items:
+              $ref: "#/definitions/VulnerabilityCVSSScore"
+          cvss_scores_vendor:
+            type: array
+            items:
+              $ref: "#/definitions/VulnerabilityCVSSScore"
+          created_at:
+            type: string
+            format: "date-time"
+          last_modified:
+            type: string
+            format: "date-time"
+      artifact:
+        type: object
+        properties:
+          name:
+            type: string
+          version:
+            type: string
+          pkg_type:
+            type: string
+          pkg_path:
+            type: string
+          cpe:
+            type: string
+          cpe23:
+            type: string
+      fixes:
+        type: array
+        items:
+          type: object
+          properties:
+            version:
+              type: string
+            wont_fix:
+              type: boolean
+            observed_at:
+              type: string
+              format: "date-time"
+      match:
+        type: object
+        properties:
+          observed_at:
+            type: string
+            format: "date-time"
+  VulnerabilitiesReportMetadata:
+    type: object
+    properties:
+      uuid:
+        type: string
+      generated_at:
+        type: string
+        format: "date-time"
+      generated_by:
+        type: object
+  ImageVulnerabilitiesReport:
+    type: object
+    description: "Wrapper for image vulnerabilities and metadata for the generated report"
+    properties:
+      account_id:
+        type: string
+      image_id:
+        type: string
+      results:
+        type: array
+        items:
+          $ref: "#/definitions/VulnerabilityMatch"
+      problems:
+        type: array
+        items:
+          $ref: "#/definitions/VulnerabilityScanProblem"
+      metadata:
+        $ref: "#/definitions/VulnerabilitiesReportMetadata"

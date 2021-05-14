@@ -10,11 +10,19 @@ Generally, this code has a lot of comments to help explain things since it can b
 work the way they do and often the behavior is a result of the range of cleanliness of the data itself.
 
 """
+import datetime
+import hashlib
+import json
+import re
 import time
 
 from sqlalchemy import or_
 
-from anchore_engine.db import DistroNamespace, get_thread_scoped_session
+from anchore_engine.db import (
+    DistroNamespace,
+    get_thread_scoped_session,
+    db_catalog_image,
+)
 from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
 from anchore_engine.common import nonos_package_types
 import threading
@@ -529,3 +537,57 @@ def rescan_namespace(db, namespace_name: str):
         logger.info(
             "Completed {} of {} updates for {}".format(i, total_vulns, namespace_name)
         )
+
+
+def get_imageId_to_record(userId, dbsession=None):
+    imageId_to_record = {}
+
+    tag_re = re.compile("([^/]+)/([^:]+):(.*)")
+
+    imagetags = db_catalog_image.get_all_tagsummary(userId, session=dbsession)
+    fulltags = {}
+    tag_history = {}
+    for x in imagetags:
+        if x["imageId"] not in tag_history:
+            tag_history[x["imageId"]] = []
+
+        registry, repo, tag = tag_re.match(x["fulltag"]).groups()
+
+        if x["tag_detected_at"]:
+            tag_detected_at = (
+                datetime.datetime.utcfromtimestamp(
+                    float(int(x["tag_detected_at"]))
+                ).isoformat()
+                + "Z"
+            )
+        else:
+            tag_detected_at = 0
+
+        tag_el = {
+            "registry": registry,
+            "repo": repo,
+            "tag": tag,
+            "fulltag": x["fulltag"],
+            "tag_detected_at": tag_detected_at,
+        }
+        tag_history[x["imageId"]].append(tag_el)
+
+        if x["imageId"] not in imageId_to_record:
+            if x["analyzed_at"]:
+                analyzed_at = (
+                    datetime.datetime.utcfromtimestamp(
+                        float(int(x["analyzed_at"]))
+                    ).isoformat()
+                    + "Z"
+                )
+            else:
+                analyzed_at = 0
+
+            imageId_to_record[x["imageId"]] = {
+                "imageDigest": x["imageDigest"],
+                "imageId": x["imageId"],
+                "analyzed_at": analyzed_at,
+                "tag_history": tag_history[x["imageId"]],
+            }
+
+    return imageId_to_record

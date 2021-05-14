@@ -45,7 +45,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.14.0
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.15.1
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -61,7 +61,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.9.3"
+ARG ANCHORE_ENGINE_VERSION="0.9.4"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -127,7 +127,8 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
     AUTHLIB_INSECURE_TRANSPORT=true \
-    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1
+    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
+    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180
 
 # Insecure transport required in case for things like tls sidecars
 

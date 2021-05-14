@@ -14,7 +14,10 @@ def save_entry(findings, engine_entry, pkg_key=None):
             "/virtual/pypkg/site-packages/{}-{}".format(pkg_name, pkg_version),
         )
 
-    findings["package_list"]["pkgs.python"]["base"][pkg_key] = engine_entry
+    if "pkgs.python" in findings.get("package_list", {}):
+        findings["package_list"]["pkgs.python"]["base"][pkg_key] = engine_entry
+    else:
+        findings["package_list"]["pkgs.python"] = {"base": {pkg_key: engine_entry}}
 
 
 def translate_and_save_entry(findings, artifact):
