@@ -63,6 +63,7 @@ class RecordSource:
 class GrypeWrapperSingleton(object):
     _grype_wrapper_instance = None
 
+    # These values should be treated as constants, and will not be changed by the functions below
     LOCK_READ_ACCESS_TIMEOUT = 60
     LOCK_WRITE_ACCESS_TIMEOUT = 60
     GRYPE_SUB_CMD = "grype -vv -o json"
@@ -79,10 +80,16 @@ class GrypeWrapperSingleton(object):
     def __new__(cls):
         # If the singleton has not been initialized yet, do so with the instance variables below
         if cls._grype_wrapper_instance is None:
+            # The singleton instance, only instantiated once outside of testing
             cls._grype_wrapper_instance = super(GrypeWrapperSingleton, cls).__new__(cls)
+
+            # These variables are mutable, their state can be changed when grype_db is updated
             cls._grype_db_dir_internal = None
             cls._grype_db_session_maker_internal = None
+
+            # The reader-writer lock for this class
             cls._grype_db_lock = rwlock.RWLockWrite()
+
         # Return the singleton instance
         return cls._grype_wrapper_instance
 
