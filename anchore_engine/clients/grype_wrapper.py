@@ -93,14 +93,6 @@ class GrypeWrapperSingleton(object):
         """
         return GrypeWrapperSingleton()
 
-    @classmethod
-    def _get_test_instance(cls):
-        """
-        Returns a new instance of this class. This method is not intended for use outside of tests.
-        """
-        cls._grype_wrapper_instance = None
-        return GrypeWrapperSingleton()
-
     @property
     def _grype_db_dir(self):
         if self._grype_db_dir_internal is None:
