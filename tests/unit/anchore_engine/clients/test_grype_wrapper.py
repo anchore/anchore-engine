@@ -543,11 +543,15 @@ def test_query_vulnerabilities_missing_session():
     ],
 )
 def test_query_record_source_counts(grype_db_dir, expected_group, expected_count):
+    # Create grype_wrapper instance
+    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+
     # Setup the grype_db_dir state and the sqlalchemy artifacts on the test grype db
-    grype_wrapper._set_grype_db_dir(grype_db_dir)
+    grype_wrapper._grype_db_dir = grype_db_dir
     test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
-    grype_wrapper._set_grype_db_session(
-        grype_wrapper._init_latest_grype_db_session(test_grype_db_engine)
+
+    grype_wrapper._grype_db_session_maker = (
+        grype_wrapper._init_latest_grype_db_session_maker(test_grype_db_engine)
     )
 
     # Function under test
