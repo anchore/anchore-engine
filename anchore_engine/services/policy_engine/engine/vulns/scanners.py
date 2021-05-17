@@ -4,7 +4,7 @@ A scanner may use persistence context or an external tool to match image content
 """
 import json
 
-from anchore_engine.clients import grype_wrapper
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db.entities.policy_engine import ImageCpe
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.subsys import logger
@@ -152,4 +152,6 @@ class GrypeVulnScanner:
         with open(file_path, "w") as fp:
             json.dump(sbom, fp, indent=2)
 
-        return grype_wrapper.get_vulnerabilities_for_sbom_file(file_path)
+        return GrypeWrapperSingleton.get_instance().get_vulnerabilities_for_sbom_file(
+            file_path
+        )
