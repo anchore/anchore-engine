@@ -438,6 +438,21 @@ def test_get_proc_env_missing_dir():
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
+# This test will not pass on the CI because that machine does not have grype installed.
+# I am leaving it for now, but commented out. It is useful for local dev and will
+# pass if you have grype installed.
+# def test_get_grype_version():
+#     # Create grype_wrapper_singleton instance
+#     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+#
+#     # Function under test
+#     result = grype_wrapper_singleton.get_grype_version()
+#
+#     # Validate results
+#     assert result["application"] == "grype"
+#     assert result["version"] is not None
+
+
 # TODO Replace this with a functional test against the API that calls the function under test.
 # This test will not pass on the CI because that machine does not have grype installed.
 # I am leaving it for now, but commented out. It is useful for local dev and will

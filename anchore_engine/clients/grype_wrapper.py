@@ -66,7 +66,8 @@ class GrypeWrapperSingleton(object):
     # These values should be treated as constants, and will not be changed by the functions below
     LOCK_READ_ACCESS_TIMEOUT = 60
     LOCK_WRITE_ACCESS_TIMEOUT = 60
-    GRYPE_SUB_CMD = "grype -vv -o json"
+    GRYPE_SUB_COMMAND = "grype -vv -o json"
+    GRYPE_VERSION_COMMAND = "grype version -o json"
     VULNERABILITY_FILE_NAME = "vulnerability.db"
     METADATA_FILE_NAME = "metadata.json"
     ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE = "New grype_db archive file not found"
@@ -413,17 +414,47 @@ class GrypeWrapperSingleton(object):
                     )
                     return None
 
-    def _get_proc_env(self):
+    def _get_proc_env(self, include_grype_db=True):
         # Set grype env variables, including the grype db location
         grype_env = {
             "GRYPE_CHECK_FOR_APP_UPDATE": "0",
             "GRYPE_LOG_STRUCTURED": "1",
             "GRYPE_DB_AUTO_UPDATE": "0",
-            "GRYPE_DB_CACHE_DIR": "{}".format(self._grype_db_dir),
         }
+        if include_grype_db:
+            grype_env["GRYPE_DB_CACHE_DIR"] = self._grype_db_dir
+
         proc_env = os.environ.copy()
         proc_env.update(grype_env)
         return proc_env
+
+    def get_grype_version(self) -> json:
+        """
+        Return version information for grype
+        """
+        with self.read_lock_access():
+            proc_env = self._get_proc_env(include_grype_db=False)
+
+            logger.debug(
+                "Getting grype version with command: %s", self.GRYPE_VERSION_COMMAND
+            )
+
+            stdout = None
+            err = None
+            try:
+                stdout, _ = run_check(
+                    shlex.split(self.GRYPE_VERSION_COMMAND), env=proc_env
+                )
+            except CommandException as exc:
+                logger.error(
+                    "Exception running command: %s, stderr: %s",
+                    self.GRYPE_VERSION_COMMAND,
+                    exc.stderr,
+                )
+                raise exc
+
+            # Return the output as json
+            return json.loads(stdout)
 
     def get_vulnerabilities_for_sbom(self, grype_sbom: str) -> json:
         """
@@ -440,12 +471,12 @@ class GrypeWrapperSingleton(object):
             pipe_sub_cmd = "echo '{sbom}'".format(
                 sbom=grype_sbom,
             )
-            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_CMD)]
+            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_COMMAND)]
 
             logger.debug(
                 "Running grype with command: %s | %s",
                 pipe_sub_cmd,
-                self.GRYPE_SUB_CMD,
+                self.GRYPE_SUB_COMMAND,
             )
 
             stdout = None
@@ -456,7 +487,7 @@ class GrypeWrapperSingleton(object):
                 logger.error(
                     "Exception running command: %s | %s, stderr: %s",
                     pipe_sub_cmd,
-                    self.GRYPE_SUB_CMD,
+                    self.GRYPE_SUB_COMMAND,
                     exc.stderr,
                 )
                 raise exc
@@ -475,7 +506,7 @@ class GrypeWrapperSingleton(object):
 
             # Format and run the command
             cmd = "{grype_sub_command} sbom:{sbom}".format(
-                grype_sub_command=self.GRYPE_SUB_CMD, sbom=grype_sbom_file
+                grype_sub_command=self.GRYPE_SUB_COMMAND, sbom=grype_sbom_file
             )
 
             logger.debug("Running grype with command: %s", cmd)
