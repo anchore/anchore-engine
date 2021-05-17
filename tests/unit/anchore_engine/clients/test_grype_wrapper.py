@@ -4,7 +4,6 @@ import pytest
 import shutil
 import sqlalchemy
 
-from anchore_engine.clients import grype_wrapper
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 
 TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
@@ -73,23 +72,23 @@ def old_grype_db_dir(tmp_path):
 
 
 def test_get_missing_grype_db_dir():
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     with pytest.raises(ValueError) as error:
         # Function under test
-        grype_wrapper._grype_db_dir
+        grype_wrapper_singleton._grype_db_dir
 
     assert str(error.value) is GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 def test_get_missing_grype_db_session():
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     with pytest.raises(ValueError) as error:
         # Function under test
-        grype_wrapper._grype_db_session_maker
+        grype_wrapper_singleton._grype_db_session_maker
 
     assert (
         str(error.value)
@@ -98,11 +97,11 @@ def test_get_missing_grype_db_session():
 
 
 def test_get_default_cache_dir_from_config(grype_db_parent_dir, tmp_path):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
-    local_db_dir = grype_wrapper._get_default_grype_db_dir_from_config()
+    local_db_dir = grype_wrapper_singleton._get_default_grype_db_dir_from_config()
 
     # Validate the grype db dir exists and is in the correct location
     assert os.path.exists(local_db_dir)
@@ -110,16 +109,16 @@ def test_get_default_cache_dir_from_config(grype_db_parent_dir, tmp_path):
 
 
 def test_move_grype_db_archive(tmp_path, grype_db_archive):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup the output dir to be copied into
     output_dir = os.path.join(tmp_path, "output")
     os.mkdir(output_dir)
 
     # Function under test
-    grype_db_archive_copied_file_location = grype_wrapper._move_grype_db_archive(
-        grype_db_archive, output_dir
+    grype_db_archive_copied_file_location = (
+        grype_wrapper_singleton._move_grype_db_archive(grype_db_archive, output_dir)
     )
 
     # Validate archive was copied and to the correct location
@@ -130,8 +129,8 @@ def test_move_grype_db_archive(tmp_path, grype_db_archive):
 
 
 def test_move_missing_grype_db_archive(tmp_path):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup non-existent input archive and real output dir
     missing_output_archive = "/does/not/exist.tar.gz"
@@ -140,35 +139,40 @@ def test_move_missing_grype_db_archive(tmp_path):
 
     with pytest.raises(FileNotFoundError) as error:
         # Function under test
-        grype_wrapper._move_grype_db_archive(missing_output_archive, output_dir)
+        grype_wrapper_singleton._move_grype_db_archive(
+            missing_output_archive, output_dir
+        )
 
     # Validate error message
-    assert error.value.strerror == grype_wrapper.ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE
+    assert (
+        error.value.strerror
+        == grype_wrapper_singleton.ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE
+    )
     assert error.value.filename == missing_output_archive
 
 
 def test_move_grype_db_archive_to_missing_dir(tmp_path, grype_db_archive):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Create a var for the output dir, but don't actually create it
     output_dir = os.path.join(tmp_path, "output")
 
     with pytest.raises(FileNotFoundError) as error:
         # Function under test
-        grype_wrapper._move_grype_db_archive(grype_db_archive, output_dir)
+        grype_wrapper_singleton._move_grype_db_archive(grype_db_archive, output_dir)
 
 
 def test_open_grype_db_archive(grype_db_archive):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup expected output vars
     parent_dir = os.path.abspath(os.path.join(grype_db_archive, os.pardir))
     expected_grype_db_file = os.path.join(parent_dir, NEW_VERSION_NAME)
 
     # Function under test
-    latest_grype_db_dir = grype_wrapper._open_grype_db_archive(
+    latest_grype_db_dir = grype_wrapper_singleton._open_grype_db_archive(
         grype_db_archive, parent_dir, NEW_VERSION_NAME
     )
 
@@ -176,45 +180,58 @@ def test_open_grype_db_archive(grype_db_archive):
     assert os.path.exists(expected_grype_db_file)
     assert latest_grype_db_dir == os.path.join(parent_dir, NEW_VERSION_NAME)
     assert os.path.exists(
-        os.path.join(latest_grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
+        os.path.join(
+            latest_grype_db_dir, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
+        )
     )
 
 
 def test_remove_grype_db_archive(grype_db_archive):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
-    grype_wrapper._remove_grype_db_archive(grype_db_archive)
+    grype_wrapper_singleton._remove_grype_db_archive(grype_db_archive)
 
     # Validate
     assert not os.path.exists(grype_db_archive)
 
 
 def test_init_grype_db_engine(grype_db_dir):
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
+
     # Setup output var
-    vuln_file_path = os.path.join(grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
+    vuln_file_path = os.path.join(
+        grype_db_dir, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
+    )
 
     # Function under test
-    latest_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
+    latest_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
+        grype_db_dir
+    )
 
     # Validate expected output
     assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
 
 
 def test_init_grype_db_session(grype_db_dir):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup db engine
-    vuln_file_path = os.path.join(grype_db_dir, grype_wrapper.VULNERABILITY_FILE_NAME)
+    vuln_file_path = os.path.join(
+        grype_db_dir, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
+    )
     db_connect = "sqlite:///{}".format(vuln_file_path)
     latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
     assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
 
     # Function under test
-    latest_grype_db_session = grype_wrapper._init_latest_grype_db_session_maker(
-        latest_grype_db_engine
+    latest_grype_db_session = (
+        grype_wrapper_singleton._init_latest_grype_db_session_maker(
+            latest_grype_db_engine
+        )
     )
 
     # Validate output
@@ -222,17 +239,20 @@ def test_init_grype_db_session(grype_db_dir):
 
 
 def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup out vars
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
     expected_output_file = os.path.join(
-        expected_output_dir, grype_wrapper.VULNERABILITY_FILE_NAME
+        expected_output_dir, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
     )
 
     # Function under test
-    latest_grype_db_dir, latest_grype_db_session = grype_wrapper._init_latest_grype_db(
+    (
+        latest_grype_db_dir,
+        latest_grype_db_session,
+    ) = grype_wrapper_singleton._init_latest_grype_db(
         grype_db_archive, NEW_VERSION_NAME
     )
 
@@ -245,49 +265,49 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
 
 
 def test_remove_local_grype_db(old_grype_db_dir):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
-    grype_wrapper._remove_local_grype_db(old_grype_db_dir)
+    grype_wrapper_singleton._remove_local_grype_db(old_grype_db_dir)
 
     # Validate output
     assert not os.path.exists(old_grype_db_dir)
 
 
 def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_archive):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup
-    grype_wrapper._grype_db_dir = old_grype_db_dir
+    grype_wrapper_singleton._grype_db_dir = old_grype_db_dir
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
     expected_output_file = os.path.join(
         expected_output_dir, GrypeWrapperSingleton.VULNERABILITY_FILE_NAME
     )
 
     # Function under test
-    grype_wrapper.init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
+    grype_wrapper_singleton.init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
 
     # Validate output
-    assert os.path.exists(grype_wrapper._grype_db_dir)
-    assert grype_wrapper._grype_db_dir == expected_output_dir
+    assert os.path.exists(grype_wrapper_singleton._grype_db_dir)
+    assert grype_wrapper_singleton._grype_db_dir == expected_output_dir
 
-    assert grype_wrapper._grype_db_session_maker is not None
+    assert grype_wrapper_singleton._grype_db_session_maker is not None
     assert os.path.exists(expected_output_file)
 
     assert not os.path.exists(old_grype_db_dir)
 
 
 def test_get_current_grype_db_metadata(grype_db_dir):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup test input
-    grype_wrapper._grype_db_dir = grype_db_dir
+    grype_wrapper_singleton._grype_db_dir = grype_db_dir
 
     # Function under test
-    result = grype_wrapper.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton.get_current_grype_db_metadata()
 
     # Validate result
     assert (
@@ -297,55 +317,55 @@ def test_get_current_grype_db_metadata(grype_db_dir):
 
 
 def test_get_current_grype_db_metadata_missing_dir():
-    # Create grype_wrapper instance, with no grype_db_dir set
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance, with no grype_db_dir set
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper.get_current_grype_db_metadata()
+        grype_wrapper_singleton.get_current_grype_db_metadata()
 
     # Validate result
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 def test_get_current_grype_db_metadata_missing_file(tmp_path):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup test input
-    grype_wrapper._grype_db_dir = os.path.join(tmp_path)
+    grype_wrapper_singleton._grype_db_dir = os.path.join(tmp_path)
 
     # Function under test
-    result = grype_wrapper.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton.get_current_grype_db_metadata()
 
     # Validate result
     assert result is None
 
 
 def test_get_current_grype_db_metadata_bad_file(tmp_path):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup test input
     tmp_path.joinpath("metadata.json").touch()
-    grype_wrapper._grype_db_dir = os.path.join(tmp_path)
+    grype_wrapper_singleton._grype_db_dir = os.path.join(tmp_path)
 
     # Function under test
-    result = grype_wrapper.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton.get_current_grype_db_metadata()
 
     # Validate result
     assert result is None
 
 
 def test_get_proc_env(grype_db_dir):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup test input
-    grype_wrapper._grype_db_dir = grype_db_dir
+    grype_wrapper_singleton._grype_db_dir = grype_db_dir
 
     # Function under test
-    result = grype_wrapper._get_proc_env()
+    result = grype_wrapper_singleton._get_proc_env()
 
     # Validate result
     assert result["GRYPE_CHECK_FOR_APP_UPDATE"] == "0"
@@ -355,12 +375,12 @@ def test_get_proc_env(grype_db_dir):
 
 
 def test_get_proc_env_missing_dir():
-    # Create grype_wrapper instance, with no grype_db_dir set
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance, with no grype_db_dir set
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper._get_proc_env()
+        grype_wrapper_singleton._get_proc_env()
 
     # Validate result
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
@@ -375,15 +395,15 @@ def test_get_proc_env_missing_dir():
 #     [("sbom-ubuntu-20.04--pruned.json", "ubuntu")],
 # )
 # def test_get_vulnerabilities_for_sbom(grype_db_dir, sbom_file_name, expected_output):
-#     # Create grype_wrapper instance
-#     grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+#     # Create grype_wrapper_singleton instance
+#     grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 #
 #     # Setup test inputs
-#     grype_wrapper._grype_db_dir = grype_db_dir
+#     grype_wrapper_singleton._grype_db_dir = grype_db_dir
 #     test_sbom = get_test_sbom(sbom_file_name).replace("<", "").replace(">", "")
 #
 #     # Function under test
-#     result = grype_wrapper.get_vulnerabilities_for_sbom(test_sbom)
+#     result = grype_wrapper_singleton.get_vulnerabilities_for_sbom(test_sbom)
 #
 #     # Validate results
 #     assert result["distro"]["name"] == expected_output
@@ -400,39 +420,39 @@ def test_get_proc_env_missing_dir():
 # def test_get_vulnerabilities_for_sbom_file(
 #     grype_db_dir, sbom_file_name, expected_output
 # ):
-#     # Create grype_wrapper instance
-#     grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+#     # Create grype_wrapper_singleton instance
+#     grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 #
 #     # Setup test inputs
-#     grype_wrapper._grype_db_dir = grype_db_dir
+#     grype_wrapper_singleton._grype_db_dir = grype_db_dir
 #     test_sbom_file = get_test_sbom_file(sbom_file_name)
 #
 #     # Function under test
-#     result = grype_wrapper.get_vulnerabilities_for_sbom_file(test_sbom_file)
+#     result = grype_wrapper_singleton.get_vulnerabilities_for_sbom_file(test_sbom_file)
 #
 #     # Validate results
 #     assert result["distro"]["name"] == expected_output
 
 
 def test_get_vulnerabilities_for_sbom_missing_session():
-    # Create grype_wrapper instance, with no grype_db_dir set
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance, with no grype_db_dir set
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper.get_vulnerabilities_for_sbom(None)
+        grype_wrapper_singleton.get_vulnerabilities_for_sbom(None)
 
     # Validate result
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 def test_get_vulnerabilities_for_sbom_file_missing_session():
-    # Create grype_wrapper instance, with no grype_db_dir set
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance, with no grype_db_dir set
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper.get_vulnerabilities_for_sbom_file(None)
+        grype_wrapper_singleton.get_vulnerabilities_for_sbom_file(None)
 
     # Validate result
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
@@ -493,17 +513,21 @@ def test_query_vulnerabilities(
     expected_result_length,
     expected_output,
 ):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup the sqlalchemy artifacts on the test grype db
-    test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
-    grype_wrapper._grype_db_session_maker = (
-        grype_wrapper._init_latest_grype_db_session_maker(test_grype_db_engine)
+    test_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
+        grype_db_dir
+    )
+    grype_wrapper_singleton._grype_db_session_maker = (
+        grype_wrapper_singleton._init_latest_grype_db_session_maker(
+            test_grype_db_engine
+        )
     )
 
     # Test and validate the query param combinations
-    results = grype_wrapper.query_vulnerabilities(
+    results = grype_wrapper_singleton.query_vulnerabilities(
         vuln_id=vuln_id,
         affected_package=affected_package,
         namespace=namespace,
@@ -516,12 +540,12 @@ def test_query_vulnerabilities(
 
 
 def test_query_vulnerabilities_missing_session():
-    # Create grype_wrapper instance, with no grype_db_dir set
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance, with no grype_db_dir set
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper.query_vulnerabilities(
+        grype_wrapper_singleton.query_vulnerabilities(
             vuln_id=None,
             affected_package=None,
             namespace=None,
@@ -543,19 +567,23 @@ def test_query_vulnerabilities_missing_session():
     ],
 )
 def test_query_record_source_counts(grype_db_dir, expected_group, expected_count):
-    # Create grype_wrapper instance
-    grype_wrapper = GrypeWrapperSingleton._get_test_instance()
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = GrypeWrapperSingleton._get_test_instance()
 
     # Setup the grype_db_dir state and the sqlalchemy artifacts on the test grype db
-    grype_wrapper._grype_db_dir = grype_db_dir
-    test_grype_db_engine = grype_wrapper._init_latest_grype_db_engine(grype_db_dir)
+    grype_wrapper_singleton._grype_db_dir = grype_db_dir
+    test_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
+        grype_db_dir
+    )
 
-    grype_wrapper._grype_db_session_maker = (
-        grype_wrapper._init_latest_grype_db_session_maker(test_grype_db_engine)
+    grype_wrapper_singleton._grype_db_session_maker = (
+        grype_wrapper_singleton._init_latest_grype_db_session_maker(
+            test_grype_db_engine
+        )
     )
 
     # Function under test
-    results = grype_wrapper.query_record_source_counts()
+    results = grype_wrapper_singleton.query_record_source_counts()
 
     # Validate output
     filtered_result = next(
