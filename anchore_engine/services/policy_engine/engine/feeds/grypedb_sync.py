@@ -110,18 +110,36 @@ class GrypeDBSyncManager:
         return grype_wrapper.get_current_grype_db_checksum()
 
     @classmethod
-    def _check_sync_necessary(cls):
+    def _get_active_grypedb_if_sync_necessary(cls) -> Optional[GrypeDBMetadata]:
+        """
+        Return the GrypeDBMetadata for the currently active GrypeDB IF a sync is necessary. Return None otherwise.
+        :return: GrypeDBMetadata if sync is necessary or None if sync is not necessary
+        :rtype: Optional[GrypeDBMetadata]
+        """
         active_grypedb = cls._get_active_grypedb()
-        if not active_grypedb:
-            logger.info("No active grypedb available in the system to sync")
-            return cls.SyncNecessaryResp(False)
+        if active_grypedb:
+            if cls._check_sync_necessary(active_grypedb.checksum):
+                return active_grypedb
+        return None
 
+    @classmethod
+    def _check_sync_necessary(cls, active_grypedb_checksum: str) -> bool:
+        """
+        Check if a sync is necessary
+
+        :param active_grypedb_checksum: Checksum of currently active Grype DB
+        :type active_grypedb_checksum: str
+        :return: true if sync is necessary, false if not
+        :rtype: bool
+        """
         local_grypedb_checksum = cls._get_local_grypedb_checksum()
+        sync_needed = local_grypedb_checksum != active_grypedb_checksum
+        if not sync_needed:
+            logger.info("No Grype DB sync needed at this time")
+        else:
+            logger.info("Grype DB sync is required.")
 
-        sync_needed = local_grypedb_checksum != active_grypedb.checksum
-        logger.info("No grypedb sync needed at this time")
-
-        return cls.SyncNecessaryResp(sync_needed, active_grypedb)
+        return sync_needed
 
     @classmethod
     def _update_grypedb(
@@ -166,16 +184,14 @@ class GrypeDBSyncManager:
         rtype: bool
         """
         # Do an initial check outside of lock to determine if sync is necessary
-        # Helps ensure that synchronous processes are slowed by lock
-        if not cls._check_sync_necessary().sync_necessary:
+        # Helps ensure that synchronous processes are not slowed by lock
+        if not cls._get_active_grypedb_if_sync_necessary():
             return False
-
         with GrypeDBSyncLock(LOCK_AQUISITION_TIMEOUT):
-            sync_necessary_resp = cls._check_sync_necessary()
-
-            if sync_necessary_resp.sync_necessary:
+            active_grypedb = cls._get_active_grypedb_if_sync_necessary()
+            if active_grypedb:
                 cls._update_grypedb(
-                    active_grypedb=sync_necessary_resp.active_grypedb,
+                    active_grypedb=active_grypedb,
                     grypedb_file_path=grypedb_file_path,
                 )
                 return True

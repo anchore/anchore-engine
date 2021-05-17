@@ -23,7 +23,6 @@ from anchore_engine.configuration import localconfig
 from anchore_engine.db import FeedGroupMetadata, FeedMetadata
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
-from anchore_engine.services.policy_engine.engine.feeds.client import get_client
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_all_feeds,
     get_all_feeds_detached,
@@ -35,6 +34,7 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     FeedSyncResult,
     GroupSyncResult,
+    GrypeDBFeed,
     NvdV2Feed,
     PackagesFeed,
     VulnDBFeed,
@@ -94,7 +94,7 @@ def get_feeds_config(full_config):
     return c if c is not None else {}
 
 
-def get_selected_feeds_to_sync(config):
+def get_selected_feeds_to_sync_legacy(config):
     """
     Given a configuration dict, determine which feeds should be synced.
 
@@ -118,6 +118,72 @@ def get_selected_feeds_to_sync(config):
     else:
         # Selective disabled... sync only 'vulnerabilities' and 'nvdv2' per semantics in previous version
         return [VulnerabilityFeed.__feed_name__, NvdV2Feed.__feed_name__]
+
+
+def get_selected_feeds_to_sync(config):
+    """
+    Returns the feeds to be synced based on the configuration.
+    Handles both legacy (top-level) and vulnerabilities provider (policy-engine) configurations
+
+    :param config: dict that is the system configuration
+    :return: list of strings of feed names to sync
+    """
+
+    # check for the vulnerabilities provider section first
+    provider_config = (
+        config.get("services", {}).get("policy_engine", {}).get("vulnerabilities", {})
+    )
+
+    if provider_config:  # new config added for grype integration found
+        logger.debug("Found a vulnerabilities provider configuration")
+        return get_feeds_to_sync_for_vulnerabilities_provider(provider_config)
+    else:  # fall back to older configuration
+        logger.debug("Falling back to legacy feeds configuration")
+        return get_selected_feeds_to_sync_legacy(config)
+
+
+def get_feeds_to_sync_for_vulnerabilities_provider(provider_config):
+    """
+    Expects a vulnerability provider config dictionary and returns the list of data feeds to sync
+
+    Example input:
+    {
+        "provider": "grype",
+        "feeds": {
+            "sync_enabled": True,
+            "ssl_verify": True,
+            "connection_timeout_seconds": 3,
+            "read_timeout_seconds": 60,
+            "data": {
+                "grypedb": {
+                    "enabled": True,
+                    "url": "https://toolbox-data.anchore.io/grype/databases/listing.json",
+                },
+                "packages": {
+                    "enabled": False,
+                    "anonymous_user_username": "anon@ancho.re",
+                    "anonymous_user_password": "pbiU2RYZ2XrmYQ",
+                    "url": "https://ancho.re/v1/service/feeds",
+                    "client_url": "https://ancho.re/v1/account/users",
+                    "token_url": "https://ancho.re/oauth/token",
+                },
+            },
+        },
+    }
+
+    Returns [grypedb]
+
+    """
+    logger.debug("Searching for data feeds to be synced in {}".format(provider_config))
+    data_configs = provider_config.get("feeds", {}).get("data", {})
+    feeds_to_be_synced = [
+        feed_name
+        for feed_name, feed_config in data_configs.items()
+        if feed_config.get("enabled", True)
+    ]
+    logger.info("Data feeds to be synced: {}".format(feeds_to_be_synced))
+
+    return feeds_to_be_synced
 
 
 class DataFeeds(object):
@@ -403,10 +469,10 @@ class DataFeeds(object):
 
     @staticmethod
     def sync(
+        feed_client,
         to_sync=None,
         full_flush=False,
         catalog_client=None,
-        feed_client=None,
         operation_id=None,
     ) -> List[FeedSyncResult]:
         """
@@ -415,9 +481,6 @@ class DataFeeds(object):
         """
 
         result = []
-
-        if not feed_client:
-            feed_client = get_client()
 
         logger.info(
             "Performing sync of feeds: {} (operation_id={})".format(
@@ -504,9 +567,6 @@ class DataFeeds(object):
                 )
 
         logger.debug("Groups to download {}".format(groups_to_download))
-
-        if not feed_client:
-            feed_client = get_client()
 
         base_dir = (
             DataFeeds.__scratch_dir__
@@ -638,7 +698,7 @@ class DataFeeds(object):
                             feed_data_repo = None
 
                 except Exception:
-                    logger.error(
+                    logger.exception(
                         "Error syncing {} (operation_id={})".format(f, operation_id)
                     )
 
@@ -719,8 +779,10 @@ def _sync_order(feed_name: str) -> int:
 
     # Later will want to generalize this and add sync order as property of the feed class
 
-    if feed_name == VulnerabilityFeed.__feed_name__:
+    if feed_name == GrypeDBFeed.__feed_name__:
         return 0
+    if feed_name == VulnerabilityFeed.__feed_name__:
+        return 1
     if feed_name == VulnDBFeed.__feed_name__:
         return 10
     if feed_name == NvdV2Feed.__feed_name__:
