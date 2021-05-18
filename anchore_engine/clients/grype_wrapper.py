@@ -181,11 +181,10 @@ class GrypeWrapperSingleton(object):
 
     def get_current_grype_db_checksum(self):
         """
-        Return the checksum for the in-use version of grype db
+        Return the checksum for the in-use version of grype db from the dir base name
         """
-        grype_db_dir = self._get_grype_db_dir()
-        if grype_db_dir and os.path.exists(grype_db_dir):
-            grype_db_checksum = os.path.basename(grype_db_dir)
+        if self._grype_db_dir and os.path.exists(self._grype_db_dir):
+            grype_db_checksum = os.path.basename(self._grype_db_dir)
         else:
             grype_db_checksum = None
         logger.info("Returning current grype_db checksum: %s", grype_db_checksum)
