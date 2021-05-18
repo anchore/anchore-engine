@@ -117,7 +117,11 @@ class GrypeDBSyncManager:
         rtype: str
         """
         # get local grypedb checksum
-        return GrypeWrapperSingleton.get_instance().get_current_grype_db_checksum()
+        # Wrapper raises ValueError if grypedb has not been initialized
+        try:
+            return GrypeWrapperSingleton.get_instance().get_current_grype_db_checksum()
+        except ValueError:
+            return None
 
     @classmethod
     def _update_grypedb(
