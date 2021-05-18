@@ -148,6 +148,9 @@ class TestGrypeDBSyncTask:
 
         assert sync_ran is True
 
+    def test_uninitialized_grype_wrapper(self):
+        assert GrypeDBSyncManager._get_local_grypedb_checksum() is None
+
     def test_class_lock_called(self, mock_calls_for_sync, monkeypatch):
         """
         Verfies that the lock enter and exit methods are called to ensure that the lock is being used correctly
