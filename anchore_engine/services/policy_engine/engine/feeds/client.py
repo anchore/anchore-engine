@@ -423,8 +423,16 @@ class FeedServiceClient(IFeedSource):
         return next_token, response_text, count
 
 
+class GrypeDBUnavailable(FeedClientError):
+    def __init__(self, db_version: str):
+        super().__init__(
+            f"No valid Grype DBs matching version {db_version} are available on the upstream service."
+        )
+
+
 class GrypeDBServiceClient(IFeedSource):
     RETRY_COUNT = 3
+    REQUIRED_GRYPEDB_VERSION = "1"
 
     def __init__(
         self,
@@ -466,7 +474,12 @@ class GrypeDBServiceClient(IFeedSource):
         if not listing_response.success:
             raise HTTPStatusException(listing_response)
         listings_json = json.loads(listing_response.content.decode("utf-8"))
-        db_listing = listings_json.get("available").get("2")[0]
+        available_dbs = listings_json.get("available").get(
+            self.REQUIRED_GRYPEDB_VERSION
+        )
+        if len(available_dbs) < 1:
+            raise GrypeDBUnavailable(self.REQUIRED_GRYPEDB_VERSION)
+        db_listing = available_dbs[0]
         logger.info("Found relevant grypedb listing: {}".format(db_listing))
         grype_db_url = db_listing.get("url")
         logger.info("Downloading grypedb {}".format(grype_db_url))
