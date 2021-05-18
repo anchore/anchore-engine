@@ -16,6 +16,7 @@ from anchore_engine.common.schemas import (
     LocalFeedDataRepoMetadata,
 )
 from anchore_engine.services.policy_engine.engine.feeds.client import get_feeds_client
+from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.utils import ensure_bytes, timer
 
 init_test_logging(level="debug")
@@ -50,10 +51,14 @@ def test_feed_downloader():
     data_repo = None
     try:
         client = get_feeds_client(
-            ANCHOREIO_URI,
-            user=("something", "something"),
-            conn_timeout=1,
-            read_timeout=30,
+            SyncConfig(
+                enabled=True,
+                url=ANCHOREIO_URI,
+                username="something",
+                password="something",
+                connection_timeout_seconds=1,
+                read_timeout_seconds=30,
+            )
         )
         fetcher = FeedDownloader(
             download_root_dir=tmpdir, config=dl_conf, client=client, fetch_all=False
