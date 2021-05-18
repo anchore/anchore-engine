@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.9.4
+
++ Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990
++ Fixed - Incorrect CPE v2.3 string construction in some cases. Fixes #959
++ Fixed - Hints behavior regression. Fixes #1006
++ Improved - Reduced false positive matches for vulnerabilities in java artifacts by update to CPE generation logic via Syft upgrade to 0.15.1
++ Improved - Better vulnerability listing performance by removing unnecessary CPE hashing
+
+## 0.9.3
+
++ Fixed - Fixes issue where java artifacts are not being matched against records from GHSA feed - synthesize pom properties contents in syft mapper.  Fixes #950
++ Fixed - Updates syft to 0.14.0 to fix missing java elements from image SBOM, for embedded java artifacts combined with malformed pom.properties metadata (see https://github.com/anchore/syft Issue #349)
+
 ## 0.9.2
 
 + Fixed - Fixes empty string value for "metadata" field which should be empty array in response for GET /images/{digest}/metadata/dockerfile when no actual dockerfile is presented. Fixes #937

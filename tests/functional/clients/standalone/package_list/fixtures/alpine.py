@@ -56,7 +56,11 @@ pkgs_allinfo = {
         "name": "alpine-baselayout",
         "cpes": [
             "cpe:2.3:a:alpine-baselayout:alpine-baselayout:3.2.0-r6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:alpine_baselayout:alpine-baselayout:3.2.0-r6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:alpine-baselayout:alpine_baselayout:3.2.0-r6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:alpine_baselayout:alpine_baselayout:3.2.0-r6:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:alpine-baselayout:3.2.0-r6:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:alpine_baselayout:3.2.0-r6:*:*:*:*:*:*:*",
         ],
         "files": [
             "/dev",
@@ -169,7 +173,11 @@ pkgs_allinfo = {
         "name": "alpine-keys",
         "cpes": [
             "cpe:2.3:a:alpine-keys:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+            "cpe:2.3:a:alpine_keys:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+            "cpe:2.3:a:alpine-keys:alpine_keys:2.2-r0:*:*:*:*:*:*:*",
+            "cpe:2.3:a:alpine_keys:alpine_keys:2.2-r0:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:alpine_keys:2.2-r0:*:*:*:*:*:*:*",
         ],
         "files": [
             "/etc",
@@ -265,7 +273,11 @@ pkgs_allinfo = {
         "name": "ca-certificates-bundle",
         "cpes": [
             "cpe:2.3:a:ca-certificates-bundle:ca-certificates-bundle:20191127-r2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:ca_certificates_bundle:ca-certificates-bundle:20191127-r2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:ca-certificates-bundle:ca_certificates_bundle:20191127-r2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:ca_certificates_bundle:ca_certificates_bundle:20191127-r2:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:ca-certificates-bundle:20191127-r2:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:ca_certificates_bundle:20191127-r2:*:*:*:*:*:*:*",
         ],
         "files": [
             "/etc",
@@ -325,7 +337,11 @@ pkgs_allinfo = {
         "name": "libtls-standalone",
         "cpes": [
             "cpe:2.3:a:libtls-standalone:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libtls_standalone:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libtls-standalone:libtls_standalone:2.9.1-r1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:libtls_standalone:libtls_standalone:2.9.1-r1:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:libtls_standalone:2.9.1-r1:*:*:*:*:*:*:*",
         ],
         "files": [
             "/usr",
@@ -362,7 +378,11 @@ pkgs_allinfo = {
         "name": "musl-utils",
         "cpes": [
             "cpe:2.3:a:musl-utils:musl-utils:1.1.24-r8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:musl_utils:musl-utils:1.1.24-r8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:musl-utils:musl_utils:1.1.24-r8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:musl_utils:musl_utils:1.1.24-r8:*:*:*:*:*:*:*",
             "cpe:2.3:a:*:musl-utils:1.1.24-r8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:musl_utils:1.1.24-r8:*:*:*:*:*:*:*",
         ],
         "files": [
             "/sbin/ldconfig",

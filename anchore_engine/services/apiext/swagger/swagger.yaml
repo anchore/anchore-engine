@@ -1161,11 +1161,6 @@ paths:
           type: boolean
           description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
           required: false
-        - name: 'lookuptag'
-          in: query
-          type: string
-          description: "use specified existing tag to perform repo scan (default is 'latest')"
-          required: false
         - name: 'dryrun'
           in: query
           type: boolean
@@ -2418,9 +2413,7 @@ paths:
           in: path
       responses:
         200:
-          description: Archive transition rule
-          schema:
-            $ref: "#/definitions/AnalysisArchiveTransitionRule"
+          description: Analysis archive rule succesfuly deleted
         500:
           description: Internal error
           schema:
@@ -2524,9 +2517,7 @@ paths:
           type: boolean
       responses:
         200:
-          description: ArchivdImageAnalysis record but with status 'deleted'
-          schema:
-            $ref: "#/definitions/ArchivedAnalysis"
+          description: ArchivdImageAnalysis successfully deleted
         500:
           description: Internal error
           schema:

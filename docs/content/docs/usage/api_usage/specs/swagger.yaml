@@ -1191,11 +1191,6 @@ paths:
         type: boolean
         description: "flag to enable/disable auto tag_update activation when new images from a repo are added"
         required: false
-      - name: 'lookuptag'
-        in: query
-        type: string
-        description: "use specified existing tag to perform repo scan (default is 'latest')"
-        required: false
       - name: 'dryrun'
         in: query
         type: boolean
@@ -3676,7 +3671,7 @@ definitions:
         description: Error code name
       description:
         type: string
-        description: Description of the error code 
+        description: Description of the error code
   GateSpec:
     type: object
     description: A description of the set of gates available in this engine and the triggers and parameters supported

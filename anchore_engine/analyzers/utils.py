@@ -1,13 +1,19 @@
-from functools import lru_cache
+import base64
+import binascii
+import collections
+import copy
+import hashlib
+import json
 import logging
 import os
-import re
-import hashlib
-import yaml
 import random
-import json
+import re
+import shutil
+import subprocess
 import tarfile
-import collections
+from functools import lru_cache
+
+import yaml
 
 import anchore_engine.utils
 
@@ -801,6 +807,532 @@ def make_anchoretmpdir(tmproot):
         return tmpdir
     except:
         return False
+
+
+def apk_prepdb_from_squashtar(unpackdir, squashtar):
+    apktmpdir = os.path.join(unpackdir, "apktmp")
+    if not os.path.exists(apktmpdir):
+        try:
+            os.makedirs(apktmpdir)
+        except Exception as err:
+            raise err
+
+    ret = os.path.join(apktmpdir, "rootfs")
+
+    if not os.path.exists(os.path.join(ret, "lib", "apk", "db", "installed")):
+        with tarfile.open(squashtar, mode="r", format=tarfile.PAX_FORMAT) as tfl:
+            tarfilenames = tfl.getnames()
+            apkdbfile = _search_tarfilenames_for_file(
+                tarfilenames, "lib/apk/db/installed"
+            )
+
+            apkmembers = []
+
+            member = tfl.getmember(apkdbfile)
+            if member.mode == 0:
+                member.mode = 0o755
+            apkmembers.append(member)
+
+            tfl.extractall(path=os.path.join(apktmpdir, "rootfs"), members=apkmembers)
+        ret = os.path.join(apktmpdir, "rootfs")
+
+    return ret
+
+
+def dpkg_prepdb_from_squashtar(unpackdir, squashtar):
+    dpkgtmpdir = os.path.join(unpackdir, "dpkgtmp")
+    if not os.path.exists(dpkgtmpdir):
+        try:
+            os.makedirs(dpkgtmpdir)
+        except Exception as err:
+            raise err
+
+    ret = os.path.join(dpkgtmpdir, "rootfs")
+
+    if not os.path.exists(os.path.join(ret, "var", "lib", "dpkg")):
+
+        with tarfile.open(squashtar, mode="r", format=tarfile.PAX_FORMAT) as tfl:
+            dpkgmembers = []
+            for member in tfl.getmembers():
+                filename = member.name
+                filename = re.sub(r"^\./|^/", "", filename)
+                if filename.startswith("var/lib/dpkg") or filename.startswith(
+                    "usr/share/doc"
+                ):
+                    if member.mode == 0:
+                        member.mode = 0o755
+                    dpkgmembers.append(member)
+            tfl.extractall(path=os.path.join(dpkgtmpdir, "rootfs"), members=dpkgmembers)
+
+        ret = os.path.join(dpkgtmpdir, "rootfs")
+
+    return ret
+
+
+def rpm_prepdb_from_squashtar(unpackdir, squashtar):
+    rpmtmpdir = os.path.join(unpackdir, "rpmtmp")
+    if not os.path.exists(rpmtmpdir):
+        try:
+            os.makedirs(rpmtmpdir)
+        except Exception as err:
+            raise err
+
+    ret = os.path.join(rpmtmpdir, "rpmdbfinal")
+
+    if not os.path.exists(os.path.join(ret, "var", "lib", "rpm")):
+        with tarfile.open(squashtar, mode="r", format=tarfile.PAX_FORMAT) as tfl:
+            rpmmembers = []
+            for member in tfl.getmembers():
+                filename = member.name
+                filename = re.sub(r"^\./|^/", "", filename)
+                if filename.startswith("var/lib/rpm"):
+                    if member.mode == 0:
+                        member.mode = 0o755
+                    rpmmembers.append(member)
+
+            tfl.extractall(path=os.path.join(rpmtmpdir, "rootfs"), members=rpmmembers)
+
+        rc = rpm_prepdb(rpmtmpdir)
+        ret = os.path.join(rpmtmpdir, "rpmdbfinal")  # , "var", "lib", "rpm")
+
+    return ret
+
+
+def rpm_prepdb(unpackdir):
+    origrpmdir = os.path.join(unpackdir, "rootfs", "var", "lib", "rpm")
+    ret = origrpmdir
+
+    print("prepping rpmdb {}".format(origrpmdir))
+
+    if os.path.exists(origrpmdir):
+        newrpmdirbase = os.path.join(unpackdir, "rpmdbfinal")
+        if not os.path.exists(newrpmdirbase):
+            os.makedirs(newrpmdirbase)
+        newrpmdir = os.path.join(newrpmdirbase, "var", "lib", "rpm")
+        try:
+            shutil.copytree(origrpmdir, newrpmdir)
+            sout = subprocess.check_output(
+                [
+                    "rpmdb",
+                    "--root=" + newrpmdirbase,
+                    "--dbpath=/var/lib/rpm",
+                    "--rebuilddb",
+                ]
+            )
+            ret = newrpmdir
+        except:
+            pass
+
+    return ret
+
+
+def rpm_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
+    # derived from rpm source code rpmpgp.h
+    rpm_digest_algo_map = {
+        1: "md5",
+        2: "sha1",
+        3: "ripemd160",
+        5: "md2",
+        6: "tiger192",
+        7: "haval5160",
+        8: "sha256",
+        9: "sha384",
+        10: "sha512",
+        11: "sha224",
+    }
+
+    record_template = {
+        "digest": None,
+        "digestalgo": None,
+        "mode": None,
+        "group": None,
+        "user": None,
+        "size": None,
+        "package": None,
+        "conffile": False,
+    }
+
+    result = {}
+
+    rpm_db_base_dir = rpm_prepdb_from_squashtar(unpackdir, squashtar)
+    rpmdbdir = os.path.join(rpm_db_base_dir, "var", "lib", "rpm")
+
+    cmdstr = (
+        "rpm --dbpath="
+        + rpmdbdir
+        + " -qa --queryformat [%{FILENAMES}|ANCHORETOK|%{FILEDIGESTS}|ANCHORETOK|%{FILEMODES:octal}|ANCHORETOK|%{FILEGROUPNAME}|ANCHORETOK|%{FILEUSERNAME}|ANCHORETOK|%{FILESIZES}|ANCHORETOK|%{=NAME}|ANCHORETOK|%{FILEFLAGS:fflags}|ANCHORETOK|%{=FILEDIGESTALGO}\\n]"
+    )
+    cmd = cmdstr.split()
+    print("{} - {}".format(rpmdbdir, cmd))
+    try:
+        pipes = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        o, e = pipes.communicate()
+        exitcode = pipes.returncode
+        soutput = o
+        serror = e
+
+        if exitcode == 0:
+            for l in soutput.splitlines():
+                l = str(l.strip(), "utf8")
+                if l:
+                    try:
+                        (
+                            fname,
+                            fdigest,
+                            fmode,
+                            fgroup,
+                            fuser,
+                            fsize,
+                            fpackage,
+                            fflags,
+                            fdigestalgonum,
+                        ) = l.split("|ANCHORETOK|")
+                        fname = re.sub('""', "", fname)
+                        cfile = False
+                        if "c" in str(fflags):
+                            cfile = True
+
+                        try:
+                            fdigestalgo = rpm_digest_algo_map[int(fdigestalgonum)]
+                        except:
+                            fdigestalgo = "unknown"
+
+                        if fname not in result:
+                            result[fname] = []
+
+                        el = copy.deepcopy(record_template)
+                        el.update(
+                            {
+                                "digest": fdigest or None,
+                                "digestalgo": fdigestalgo or None,
+                                "mode": fmode or None,
+                                "group": fgroup or None,
+                                "user": fuser or None,
+                                "size": fsize or None,
+                                "package": fpackage or None,
+                                "conffile": cfile,
+                            }
+                        )
+                        result[fname].append(el)
+                    except Exception as err:
+                        print("WARN: unparsable output line - exception: " + str(err))
+                        raise err
+        else:
+            raise Exception(
+                "rpm file metadata command failed with exitcode ("
+                + str(exitcode)
+                + ") - stdoutput: "
+                + str(soutput)
+                + " : stderr: "
+                + str(serror)
+            )
+
+    except Exception as err:
+        raise Exception(
+            "WARN: distro package metadata gathering failed - exception: " + str(err)
+        )
+
+    return result
+
+
+def dpkg_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
+
+    result = {}
+    record_template = {
+        "digest": None,
+        "digestalgo": None,
+        "mode": None,
+        "group": None,
+        "user": None,
+        "size": None,
+        "package": None,
+        "conffile": False,
+    }
+
+    conffile_csums = {}
+
+    dpkg_db_base_dir = dpkg_prepdb_from_squashtar(unpackdir, squashtar)
+    dpkgdbdir = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg")
+    dpkgdocsdir = os.path.join(dpkg_db_base_dir, "usr", "share", "doc")
+    statuspath = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg", "status")
+
+    try:
+        if os.path.exists(statuspath):
+            buf = None
+            try:
+                with open(statuspath, "r") as FH:
+                    buf = FH.read()
+            except Exception as err:
+                buf = None
+                print("WARN: cannot read status file - exception: " + str(err))
+
+            if buf:
+                for line in buf.splitlines():
+                    # line = str(line.strip(), 'utf8')
+                    line = line.strip()
+                    if re.match("^Conffiles:.*", line):
+                        fmode = True
+                    elif re.match("^.*:.*", line):
+                        fmode = False
+                    else:
+                        if fmode:
+                            try:
+                                (fname, csum) = line.split()
+                                conffile_csums[fname] = csum
+                            except Exception as err:
+                                print(
+                                    "WARN: bad line in status for conffile line - exception: "
+                                    + str(err)
+                                )
+
+    except Exception as err:
+        import traceback
+
+        traceback.print_exc()
+        raise Exception(
+            "WARN: could not parse dpkg status file, looking for conffiles checksums - exception: "
+            + str(err)
+        )
+
+    metafiles = {}
+    conffiles = {}
+    metapath = os.path.join(dpkg_db_base_dir, "var", "lib", "dpkg", "info")
+    try:
+        if os.path.exists(metapath):
+            for f in os.listdir(metapath):
+                patt = re.match(r"(.*)\.md5sums", f)
+                if patt:
+                    pkgraw = patt.group(1)
+                    patt = re.match("(.*):.*", pkgraw)
+                    if patt:
+                        pkg = patt.group(1)
+                    else:
+                        pkg = pkgraw
+
+                    metafiles[pkg] = os.path.join(metapath, f)
+
+                patt = re.match(r"(.*)\.conffiles", f)
+                if patt:
+                    pkgraw = patt.group(1)
+                    patt = re.match("(.*):.*", pkgraw)
+                    if patt:
+                        pkg = patt.group(1)
+                    else:
+                        pkg = pkgraw
+
+                    conffiles[pkg] = os.path.join(metapath, f)
+        else:
+            raise Exception("no dpkg info path found in image: " + str(metapath))
+
+        for pkg in list(metafiles.keys()):
+            dinfo = None
+            try:
+                with open(metafiles[pkg], "r") as FH:
+                    dinfo = FH.read()
+            except Exception as err:
+                print("WARN: could not open/read metafile - exception: " + str(err))
+
+            if dinfo:
+                for line in dinfo.splitlines():
+                    # line = str(line.strip(), 'utf8')
+                    line = line.strip()
+                    try:
+                        (csum, fname) = line.split()
+                        fname = "/" + fname
+                        fname = re.sub(r"\/\/", r"\/", fname)
+
+                        if fname not in result:
+                            result[fname] = []
+
+                        el = copy.deepcopy(record_template)
+                        el.update(
+                            {
+                                "package": pkg or None,
+                                "digest": csum or None,
+                                "digestalgo": "md5",
+                                "conffile": False,
+                            }
+                        )
+                        result[fname].append(el)
+                    except Exception as err:
+                        print(
+                            "WARN: problem parsing line from dpkg info file - exception: "
+                            + str(err)
+                        )
+
+        for pkg in list(conffiles.keys()):
+            cinfo = None
+            try:
+                with open(conffiles[pkg], "r") as FH:
+                    cinfo = FH.read()
+            except Exception as err:
+                cinfo = None
+                print("WARN: could not open/read conffile - exception: " + str(err))
+
+            if cinfo:
+                for line in cinfo.splitlines():
+                    # line = str(line.strip(), 'utf8')
+                    line = line.strip()
+                    try:
+                        fname = line
+                        if fname in conffile_csums:
+                            csum = conffile_csums[fname]
+                            if fname not in result:
+                                result[fname] = []
+                            el = copy.deepcopy(record_template)
+                            el.update(
+                                {
+                                    "package": pkg or None,
+                                    "digest": csum or None,
+                                    "digestalgo": "md5",
+                                    "conffile": True,
+                                }
+                            )
+                            result[fname].append(el)
+                    except Exception as err:
+                        print(
+                            "WARN: problem parsing line from dpkg conffile file - exception: "
+                            + str(err)
+                        )
+
+    except Exception as err:
+        import traceback
+
+        traceback.print_exc()
+        raise Exception(
+            "WARN: could not find/parse dpkg info metadata files - exception: "
+            + str(err)
+        )
+
+    return result
+
+
+def apk_get_file_package_metadata_from_squashtar(unpackdir, squashtar):
+    # derived from alpine apk checksum logic
+    #
+    # a = "Q1XxRCAhhQ6eotekmwp6K9/4+DLwM="
+    # sha1sum = a[2:].decode('base64').encode('hex')
+    #
+
+    result = {}
+    record_template = {
+        "digest": None,
+        "digestalgo": None,
+        "mode": None,
+        "group": None,
+        "user": None,
+        "size": None,
+        "package": None,
+        "conffile": False,
+    }
+
+    apk_db_base_dir = apk_prepdb_from_squashtar(unpackdir, squashtar)
+    apkdbpath = os.path.join(apk_db_base_dir, "lib", "apk", "db", "installed")
+
+    try:
+        if os.path.exists(apkdbpath):
+            buf = None
+            try:
+                with open(apkdbpath, "r") as FH:
+                    buf = FH.read()
+
+            except Exception as err:
+                buf = None
+                print("WARN: cannot read apk DB file - exception: " + str(err))
+
+            if buf:
+                fmode = (
+                    raw_csum
+                ) = (
+                    uid
+                ) = gid = sha1sum = fname = therealfile_apk = therealfile_fs = None
+                for line in buf.splitlines():
+                    # line = str(line.strip(), 'utf8')
+                    line = line.strip()
+                    patt = re.match("(.):(.*)", line)
+                    if patt:
+                        atype = patt.group(1)
+                        aval = patt.group(2)
+
+                        if atype == "P":
+                            pkg = aval
+                        elif atype == "F":
+                            fpath = aval
+                        elif atype == "R":
+                            fname = aval
+                        elif atype == "a":
+                            vvals = aval.split(":")
+                            try:
+                                uid = vvals[0]
+                            except:
+                                uid = None
+                            try:
+                                gid = vvals[1]
+                            except:
+                                gid = None
+                            try:
+                                fmode = vvals[2]
+                            except:
+                                fmode = None
+                        elif atype == "Z":
+                            raw_csum = aval
+                            fname = "/".join(["/" + fpath, fname])
+                            therealfile_apk = re.sub(
+                                r"\/+", "/", "/".join([unpackdir, "rootfs", fname])
+                            )
+                            therealfile_fs = os.path.realpath(therealfile_apk)
+                            if therealfile_apk == therealfile_fs:
+                                try:
+                                    # sha1sum = raw_csum[2:].decode('base64').encode('hex')
+                                    sha1sum = str(
+                                        binascii.hexlify(
+                                            base64.decodebytes(raw_csum[2:])
+                                        ),
+                                        "utf-8",
+                                    )
+                                except:
+                                    sha1sum = None
+                            else:
+                                sha1sum = None
+
+                            if fmode:
+                                fmode = fmode.zfill(4)
+
+                            if fname not in result:
+                                result[fname] = []
+
+                            el = copy.deepcopy(record_template)
+                            el.update(
+                                {
+                                    "package": pkg or None,
+                                    "digest": sha1sum or None,
+                                    "digestalgo": "sha1",
+                                    "mode": fmode or None,
+                                    "group": gid or None,
+                                    "user": uid or None,
+                                }
+                            )
+                            result[fname].append(el)
+                            fmode = (
+                                raw_csum
+                            ) = (
+                                uid
+                            ) = (
+                                gid
+                            ) = (
+                                sha1sum
+                            ) = fname = therealfile_apk = therealfile_fs = None
+
+    except Exception as err:
+        import traceback
+
+        traceback.print_exc()
+        raise Exception(
+            "WARN: could not parse apk DB file, looking for file checksums - exception: "
+            + str(err)
+        )
+
+    return result
 
 
 ##### File IO helpers

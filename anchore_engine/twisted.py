@@ -346,7 +346,11 @@ class WsgiApiServiceMaker(object):
         )
 
         # Build the main site server
-        site = server.Site(root)
+        server_request_timeout_seconds = self.service_config.get(
+            "server_request_timeout_seconds",
+            self.global_configuration.get("server_request_timeout_seconds", 180),
+        )
+        site = server.Site(root, timeout=server_request_timeout_seconds)
         listen = self.anchore_service.configuration["listen"]
 
         # Disable the twisted access logging by overriding the log function as it uses a raw 'write' and cannot otherwise be disabled, iff enable_access_logging is set to False in either the service or global config

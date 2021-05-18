@@ -1,0 +1,77 @@
+{
+  "type": "array",
+  "$id": "feeds_get.schema.json",
+  "definitions": {
+    "group": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "last_sync": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "record_count": {
+          "type": "integer"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_at",
+        "enabled",
+        "last_sync",
+        "name",
+        "record_count",
+        "updated_at"
+      ]
+    },
+    "feed": {
+      "type": "object",
+      "properties": {
+        "created_at": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/group"
+          }
+        },
+        "last_full_sync": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_at",
+        "enabled",
+        "groups",
+        "last_full_sync",
+        "name",
+        "updated_at"
+      ]
+    }
+  },
+  "minItems": 3,
+  "items": {
+    "$ref": "#/definitions/feed"
+  }
+}
+
+

@@ -7,7 +7,7 @@ ARG CLI_COMMIT
 ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
 ENV GOPATH=/go
-ENV SKOPEO_VERSION=v0.1.41
+ENV SKOPEO_VERSION=v1.2.1
 
 COPY . /buildsource
 WORKDIR /buildsource
@@ -39,14 +39,13 @@ RUN set -ex && \
     echo "installing Skopeo" && \
     git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
     cd ${GOPATH}/src/github.com/containers/skopeo && \
-    make binary-local DISABLE_CGO=1 && \
-    make install-binary && \
+    make install-binary DISABLE_CGO=1 && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.13.1
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.15.1
 
 # stage RPM dependency binaries
 RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -62,7 +61,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.9.2"
+ARG ANCHORE_ENGINE_VERSION="0.9.4"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -128,7 +127,8 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
     AUTHLIB_INSECURE_TRANSPORT=true \
-    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1
+    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
+    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180
 
 # Insecure transport required in case for things like tls sidecars
 
