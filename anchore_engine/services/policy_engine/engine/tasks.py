@@ -17,7 +17,6 @@ import requests
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
-from anchore_engine.configuration import localconfig
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import Image, end_session
@@ -34,8 +33,11 @@ from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
     DataFeeds,
-    get_selected_feeds_to_sync,
     notify_event,
+)
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    get_section_for_vulnerabilities,
+    compute_selected_configs_to_sync,
 )
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
@@ -160,15 +162,20 @@ class FeedsUpdateTask(IAsyncTask):
         :return:
         """
         try:
+            vulnerabilities_provider = get_vulnerabilities_provider()
 
-            feeds = get_selected_feeds_to_sync(localconfig.get_config())
+            sync_configs = compute_selected_configs_to_sync(
+                vulnerabilities_provider.get_config_name(),
+                get_section_for_vulnerabilities(),
+                vulnerabilities_provider.get_default_sync_config(),
+            )
             if json_obj:
                 task = cls.from_json(json_obj)
                 if not task:
                     return None
-                task.feeds = feeds
+                task.sync_configs = sync_configs
             else:
-                task = FeedsUpdateTask(feeds_to_sync=feeds, flush=force_flush)
+                task = FeedsUpdateTask(sync_configs=sync_configs, flush=force_flush)
 
             result = []
             if cls.locking_enabled:
@@ -189,14 +196,14 @@ class FeedsUpdateTask(IAsyncTask):
             logger.exception("Error executing feeds update")
             raise
 
-    def __init__(self, feeds_to_sync=None, flush=False):
-        self.feeds = feeds_to_sync
+    def __init__(self, sync_configs=None, flush=False):
+        self.sync_configs = sync_configs
         self.created_at = datetime.datetime.utcnow()
         self.full_flush = flush
         self.uuid = uuid.uuid4().hex
 
     def is_full_sync(self):
-        return self.feeds is None
+        return self.sync_configs is None
 
     def execute(self) -> List[FeedSyncResult]:
         logger.info("Starting feed sync. (operation_id={})".format(self.uuid))
@@ -212,7 +219,11 @@ class FeedsUpdateTask(IAsyncTask):
 
         try:
             notify_event(
-                FeedSyncTaskStarted(groups=self.feeds if self.feeds else "all"),
+                FeedSyncTaskStarted(
+                    groups=list(self.sync_configs.keys())
+                    if self.sync_configs
+                    else "all"
+                ),
                 catalog_client,
                 self.uuid,
             )
@@ -228,22 +239,36 @@ class FeedsUpdateTask(IAsyncTask):
             start_time = datetime.datetime.utcnow()
 
             updated_data_feeds = list()
-            if "grypedb" in self.feeds:
-                updated_data_feeds += DataFeeds.sync(
-                    get_grype_db_client(),
-                    to_sync=["grypedb"],
-                    full_flush=self.full_flush,
-                    catalog_client=catalog_client,
-                    operation_id=self.uuid,
+            grype_db_sync_config = self.sync_configs.get("grype")
+            if grype_db_sync_config:
+                updated_data_feeds.extend(
+                    DataFeeds.sync(
+                        get_grype_db_client(grype_db_sync_config),
+                        to_sync=["grypedb"],
+                        full_flush=self.full_flush,
+                        catalog_client=catalog_client,
+                        operation_id=self.uuid,
+                    )
                 )
 
-            updated_data_feeds += DataFeeds.sync(
-                get_feeds_client(),
-                to_sync=[x for x in self.feeds if x != "grypedb"],
-                full_flush=self.full_flush,
-                catalog_client=catalog_client,
-                operation_id=self.uuid,
-            )
+            other_sync_configs = {
+                feed_name: sync_config
+                for feed_name, sync_config in self.sync_configs.items()
+                if feed_name != "grypedb"
+            }
+            if other_sync_configs:
+                # using the same sync config for all feeds
+                sync_config = list(other_sync_configs.values())[0]
+                updated_data_feeds.extend(
+                    DataFeeds.sync(
+                        get_feeds_client(sync_config),
+                        to_sync=list(other_sync_configs.keys()),
+                        full_flush=self.full_flush,
+                        catalog_client=catalog_client,
+                        operation_id=self.uuid,
+                    )
+                )
+
             logger.info("Feed sync complete (operation_id={})".format(self.uuid))
             return updated_data_feeds
         except Exception as e:
@@ -261,7 +286,10 @@ class FeedsUpdateTask(IAsyncTask):
                 if error:
                     notify_event(
                         FeedSyncTaskFailed(
-                            groups=self.feeds if self.feeds else "all", error=error
+                            groups=list(self.sync_configs.keys())
+                            if self.sync_configs
+                            else "all",
+                            error=error,
                         ),
                         catalog_client,
                         self.uuid,
@@ -269,7 +297,9 @@ class FeedsUpdateTask(IAsyncTask):
                 else:
                     notify_event(
                         FeedSyncTaskCompleted(
-                            groups=self.feeds if self.feeds else "all"
+                            groups=list(self.sync_configs.keys())
+                            if self.sync_configs
+                            else "all"
                         ),
                         catalog_client,
                         self.uuid,
