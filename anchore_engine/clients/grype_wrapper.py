@@ -377,7 +377,10 @@ class GrypeWrapperSingleton(object):
 
             # Store the dir and session variables globally
             # For use during reads and to remove in the next update
-            old_grype_db_dir = self._grype_db_dir
+            try:
+                old_grype_db_dir = self._grype_db_dir
+            except ValueError:
+                old_grype_db_dir = None
             self._grype_db_dir = latest_grype_db_dir
             self._grype_db_session_maker = latest_grype_db_session_maker
 
