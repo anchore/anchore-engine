@@ -239,7 +239,7 @@ class FeedsUpdateTask(IAsyncTask):
             start_time = datetime.datetime.utcnow()
 
             updated_data_feeds = list()
-            grype_db_sync_config = self.sync_configs.get("grype")
+            grype_db_sync_config = self.sync_configs.get("grypedb")
             if grype_db_sync_config:
                 updated_data_feeds.extend(
                     DataFeeds.sync(
