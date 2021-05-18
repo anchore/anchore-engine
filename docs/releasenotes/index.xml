@@ -28,6 +28,25 @@
 &lt;h3 id="upgrading">Upgrading&lt;/h3>
 &lt;ul>
 &lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.9.4</title><link>/docs/releasenotes/094/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/094/</guid><description>
+&lt;h2 id="anchore-engine-094">Anchore Engine 0.9.4&lt;/h2>
+&lt;p>Anchore Engine 0.9.4 bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;h2 id="changes-of-note">Changes of Note&lt;/h2>
+&lt;h3 id="fixed">Fixed&lt;/h3>
+&lt;ul>
+&lt;li>Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990&lt;/li>
+&lt;li>Fixed - Incorrect CPE v2.3 string construction in some cases. Fixes #959&lt;/li>
+&lt;li>Fixed - Hints behavior regression. Fixes #1006&lt;/li>
+&lt;/ul>
+&lt;h3 id="improved">Improved&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Reduced false positive matches for vulnerabilities in java artifacts by update to CPE generation logic via Syft upgrade to 0.15.1&lt;/li>
+&lt;li>Improved - Better vulnerability listing performance by removing unnecessary CPE hashing&lt;/li>
+&lt;/ul>
+&lt;p>Additional minor fixes and enhancements&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
 &lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.9.1</title><link>/docs/releasenotes/091/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/091/</guid><description>
 &lt;h2 id="anchore-engine-091">Anchore Engine 0.9.1&lt;/h2>
 &lt;p>Anchore Engine 0.9.1 bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
