@@ -25,6 +25,11 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_registry,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    is_sync_enabled,
+    get_section_for_vulnerabilities,
+    get_provider_name,
+)
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
@@ -70,50 +75,6 @@ except ValueError:
     feed_config_check_backoff = 5
 
 # service funcs (must be here)
-
-
-def _check_feed_client_credentials():
-    from anchore_engine.services.policy_engine.engine.feeds.client import (
-        get_feeds_client,
-    )
-
-    sleep_time = feed_config_check_backoff
-    last_ex = None
-
-    for i in range(feed_config_check_retries):
-        if i > 0:
-            logger.info(
-                "Waiting for {} seconds to try feeds client config check again".format(
-                    sleep_time
-                )
-            )
-            time.sleep(sleep_time)
-            sleep_time += feed_config_check_backoff
-
-        try:
-            logger.info(
-                "Checking feeds client credentials. Attempt {} of {}".format(
-                    i + 1, feed_config_check_retries
-                )
-            )
-            client = get_feeds_client()
-            client = None
-            logger.info("Feeds client credentials ok")
-            return True
-        except Exception as e:
-            logger.warn(
-                "Could not verify feeds endpoint and/or config. Got exception: {}".format(
-                    e
-                )
-            )
-            last_ex = e
-    else:
-        if last_ex:
-            raise last_ex
-        else:
-            raise Exception(
-                "Exceeded retries for feeds client config check. Failing check"
-            )
 
 
 def _system_creds():
@@ -218,17 +179,10 @@ def do_feed_sync(msg):
     if "FeedsUpdateTask" not in locals():
         from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 
-    if "get_selected_feeds_to_sync" not in locals():
-        from anchore_engine.services.policy_engine.engine.feeds.sync import (
-            get_selected_feeds_to_sync,
-        )
-
     handler_success = False
     timer = time.time()
     logger.info("FIRING: feed syncer")
     try:
-        feeds = get_selected_feeds_to_sync(localconfig.get_config())
-        logger.info("Syncing configured feeds: {}".format(feeds))
         result = FeedsUpdateTask.run_feeds_update(json_obj=msg.get("data"))
 
         if result is not None:
@@ -270,8 +224,8 @@ def handle_feed_sync(*args, **kwargs):
     cycle_time = kwargs["mythread"]["cycle_timer"]
 
     while True:
-        config = localconfig.get_config()
-        feed_sync_enabled = config.get("feeds", {}).get("sync_enabled", True)
+        config = get_section_for_vulnerabilities()
+        feed_sync_enabled = is_sync_enabled(config)
         if feed_sync_enabled:
             logger.info("Feed sync task executor activated")
             try:
@@ -281,7 +235,7 @@ def handle_feed_sync(*args, **kwargs):
             finally:
                 logger.info("Feed sync task executor complete")
         else:
-            logger.info("sync_enabled is set to false in config - skipping feed sync")
+            logger.info("sync enabled is set to false in config - skipping feed sync")
 
         time.sleep(cycle_time)
 
@@ -331,8 +285,8 @@ def handle_feed_sync_trigger(*args, **kwargs):
     cycle_time = kwargs["mythread"]["cycle_timer"]
 
     while True:
-        config = localconfig.get_config()
-        feed_sync_enabled = config.get("feeds", {}).get("sync_enabled", True)
+        config = get_section_for_vulnerabilities()
+        feed_sync_enabled = is_sync_enabled(config)
         if feed_sync_enabled:
             logger.info("Feed Sync task creator activated")
             try:
@@ -376,15 +330,22 @@ def handle_grypedb_sync(*args, **kwargs):
     cycle_time = kwargs["mythread"]["cycle_timer"]
 
     while True:
-        try:
-            result = GrypeDBSyncTask().execute()
+        provider = get_provider_name(get_section_for_vulnerabilities())
+        if provider == "grype":  # TODO fix this
+            try:
+                result = GrypeDBSyncTask().execute()
 
-            if result:
-                logger.info("Grype DB synced to local instance via handler")
-        #         TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
-        except Exception:
-            logger.exception(
-                "Error encountered when running GrypeDBSyncTask from async monitor"
+                if result:
+                    logger.info("Grype DB synced to local instance via handler")
+            #         TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
+            except Exception:
+                logger.exception(
+                    "Error encountered when running GrypeDBSyncTask from async monitor"
+                )
+        else:
+            logger.debug(
+                "Grype DB sync not supported for vulnerabilities provider %s, skipping",
+                provider,
             )
         time.sleep(cycle_time)
     return True

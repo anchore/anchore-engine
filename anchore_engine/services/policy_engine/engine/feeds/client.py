@@ -11,13 +11,13 @@ import requests
 import requests.exceptions
 
 from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
-from anchore_engine.configuration import localconfig
 from anchore_engine.services.policy_engine.engine.feeds import (
     FeedGroupList,
     FeedList,
     GroupData,
     IFeedSource,
 )
+from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.subsys import logger
 from anchore_engine.utils import AnchoreException, ensure_bytes, ensure_str
 
@@ -503,101 +503,34 @@ class GrypeDBServiceClient(IFeedSource):
             raise e
 
 
-def get_feeds_client(
-    feeds_url=None, user=None, conn_timeout=None, read_timeout=None, ssl_verify=None
-):
+def get_feeds_client(sync_config: SyncConfig):
     """
-    Returns a configured client based on the local config. Reads configuration from the loaded system configuration.
-
-    Uses the admin user's credentials for the feed service if they are available in the external_service_auths/anchoreio/anchorecli/auth json path of the config file. If no specific user credentials are found then the anonymous user credentials are used.
+    Returns a configured client based on the provided config
 
     :return: initialize AnchoreIOFeedClient
     """
 
     logger.debug(
-        "Initializing a feeds client: url={}, user={}, conn_timeout={}, read_timeout={}".format(
-            feeds_url,
-            user
-            if user is None or type(user) not in [tuple, list] or len(user) == 0
-            else (user[0], "***redacted**"),
-            conn_timeout,
-            read_timeout,
-        )
-    )
-
-    if not (feeds_url and user and conn_timeout and read_timeout):
-        conf = localconfig.get_config()
-        if not conf:
-            logger.error("No configuration available. Cannot initialize feed client")
-            raise ValueError("None for local config")
-    else:
-        conf = {
-            "feeds": {
-                "connection_timeout_seconds": conn_timeout,
-                "read_timeout_seconds": read_timeout,
-                "url": feeds_url,
-                "ssl_verify": ssl_verify,
-            }
-        }
-
-    if not conn_timeout:
-        conn_timeout = conf.get("feeds", {}).get("connection_timeout_seconds")
-
-    if not read_timeout:
-        read_timeout = conf.get("feeds", {}).get("read_timeout_seconds")
-
-    if not feeds_url:
-        feeds_url = conf.get("feeds", {}).get("url")
-
-    if not feeds_url:
-        raise ValueError("no feed service url available")
-
-    verify = conf.get("feeds", {}).get("ssl_verify", True)
-
-    password = None
-
-    if not user:
-        try:
-            admin_usr = (
-                conf.get("credentials", {})
-                .get("users", {})
-                .get("admin", {})
-                .get("external_service_auths", {})
-                .get("anchoreio", {})
-                .get("anchorecli", {})
-                .get("auth")
-            )
-            if admin_usr:
-                user, password = admin_usr.split(":")
-        except AttributeError:
-            # Something isn't found or was set to None.
-            pass
-    else:
-        user, password = user[0], user[1]
-
-    if not user:
-        user = conf.get("feeds", {}).get("anonymous_user_username")
-        password = conf.get("feeds", {}).get("anonymous_user_password")
-
-    logger.debug("using values: " + str([feeds_url, user, conn_timeout, read_timeout]))
-
-    http_client = HTTPBasicAuthClient(
-        username=user,
-        password=password,
-        connect_timeout=conn_timeout,
-        read_timeout=read_timeout,
-        verify=verify,
+        "Initializing a feeds client: url=%s, user=%s, conn_timeout=%s, read_timeout=%s",
+        sync_config.url,
+        sync_config.username,
+        sync_config.connection_timeout_seconds,
+        sync_config.read_timeout_seconds,
     )
 
     return FeedServiceClient(
-        feeds_endpoint=feeds_url,
-        http_client=http_client,
+        feeds_endpoint=sync_config.url,
+        http_client=HTTPBasicAuthClient(
+            username=sync_config.username,
+            password=sync_config.password,
+            connect_timeout=sync_config.connection_timeout_seconds,
+            read_timeout=sync_config.read_timeout_seconds,
+            verify=sync_config.ssl_verify,
+        ),
     )
 
 
-def get_grype_db_client(
-    grype_db_url=None, conn_timeout=None, read_timeout=None, ssl_verify: bool = True
-):
+def get_grype_db_client(sync_config: SyncConfig):
     """
     Returns a configured client based on the local config. Reads configuration from the loaded system configuration.
 
@@ -607,53 +540,20 @@ def get_grype_db_client(
     """
 
     logger.debug(
-        "Initializing a feeds client: url={}, conn_timeout={}, read_timeout={}".format(
-            grype_db_url,
-            conn_timeout,
-            read_timeout,
+        "Initializing a grype db client: url={}, conn_timeout={}, read_timeout={}".format(
+            sync_config.url,
+            sync_config.connection_timeout_seconds,
+            sync_config.read_timeout_seconds,
         )
-    )
-
-    if not (grype_db_url and conn_timeout and read_timeout):
-        feeds_config = (
-            localconfig.get_config()
-            .get("services", {})
-            .get("policy_engine", {})
-            .get("vulnerabilities", {})
-            .get("feeds", {})
-        )
-
-        if not feeds_config:
-            logger.error("No configuration available. Cannot initialize feed client")
-            raise ValueError("None for local config")
-
-        if not conn_timeout:
-            conn_timeout = feeds_config.get("connection_timeout_seconds")
-
-        if not read_timeout:
-            read_timeout = feeds_config.get("read_timeout_seconds")
-
-        if not grype_db_url:
-            grype_db_url = feeds_config.get("data", {}).get("grypedb", {}).get("url")
-
-        verify = feeds_config.get("ssl_verify", ssl_verify)
-
-    logger.debug(
-        "Using values: Grype DB Url: %s, Connection Timeout: %d, Read Timeout: %d",
-        grype_db_url,
-        conn_timeout,
-        read_timeout,
-    )
-
-    unauthenticated_http_client = HTTPBasicAuthClient(
-        username=None,
-        password=None,
-        connect_timeout=conn_timeout,
-        read_timeout=read_timeout,
-        verify=verify,
     )
 
     return GrypeDBServiceClient(
-        grype_db_endpoint=grype_db_url,
-        http_client=unauthenticated_http_client,
+        grype_db_endpoint=sync_config.url,
+        http_client=HTTPBasicAuthClient(
+            username=None,
+            password=None,
+            connect_timeout=sync_config.connection_timeout_seconds,
+            read_timeout=sync_config.read_timeout_seconds,
+            verify=sync_config.ssl_verify,
+        ),
     )
