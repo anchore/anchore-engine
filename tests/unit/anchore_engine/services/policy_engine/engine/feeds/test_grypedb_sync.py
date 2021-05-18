@@ -3,12 +3,14 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+import sqlalchemy
 
 from anchore_engine.db import GrypeDBMetadata
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncLock,
     GrypeDBSyncLockAquisitionTimeout,
     GrypeDBSyncManager,
+    NoActiveGrypeDB,
     TooManyActiveGrypeDBs,
 )
 
@@ -71,7 +73,7 @@ class TestGrypeDBSyncTask:
         )
 
         # mock initial state so execution occurs
-        mock_calls_for_sync([GrypeDBMetadata(checksum=old_checksum)], "")
+        mock_calls_for_sync(GrypeDBMetadata(checksum=old_checksum), "")
 
         # Mock the update_grypedb method for task to sleep and update mocks for active and local grype dbs
         def _mock_update_grypedb_for_thread1(
@@ -82,7 +84,7 @@ class TestGrypeDBSyncTask:
 
             # mock the returns to mimic persistent change of active grypedb local and global
             # This in effect mocks the actual execution for the first thread
-            mock_calls_for_sync([GrypeDBMetadata(checksum=new_checksum)], new_checksum)
+            mock_calls_for_sync(GrypeDBMetadata(checksum=new_checksum), new_checksum)
 
         monkeypatch.setattr(
             GrypeDBSyncManager, "_update_grypedb", _mock_update_grypedb_for_thread1
@@ -90,16 +92,22 @@ class TestGrypeDBSyncTask:
 
     def test_no_active_grypedb(self, mock_calls_for_sync):
         mock_calls_for_sync(
-            mock_active_dbs=[],
+            mock_active_dbs=None,
             mock_local_checksum="eef3b1bcd5728346cb1b30eae09647348bacfbde3ba225d70cb0374da249277c",
         )
-        result = GrypeDBSyncManager.run_grypedb_sync()
 
-        assert result is False
+        with pytest.raises(NoActiveGrypeDB):
+            GrypeDBSyncManager.run_grypedb_sync()
 
-    def test_too_many_active_grypedbs(self, mock_query_active_dbs_with_data):
-        active_dbs = [GrypeDBMetadata(active=True), GrypeDBMetadata(active=True)]
-        mock_query_active_dbs_with_data(active_dbs)
+    def test_too_many_active_grypedbs(self, monkeypatch):
+        def _raise_multiple_results_found():
+            raise sqlalchemy.orm.exc.MultipleResultsFound
+
+        monkeypatch.setattr(
+            GrypeDBSyncManager,
+            "_query_active_dbs",
+            _raise_multiple_results_found,
+        )
 
         with pytest.raises(TooManyActiveGrypeDBs):
             GrypeDBSyncManager.run_grypedb_sync()
@@ -107,7 +115,7 @@ class TestGrypeDBSyncTask:
     def test_matching_checksums(self, mock_calls_for_sync):
         checksum = "eef3b1bcd5728346cb1b30eae09647348bacfbde3ba225d70cb0374da249277c"
         mock_calls_for_sync(
-            mock_active_dbs=[GrypeDBMetadata(checksum=checksum)],
+            mock_active_dbs=GrypeDBMetadata(checksum=checksum),
             mock_local_checksum=checksum,
         )
 
@@ -124,7 +132,7 @@ class TestGrypeDBSyncTask:
         )
 
         mock_calls_for_sync(
-            mock_active_dbs=[GrypeDBMetadata(checksum=global_checksum)],
+            mock_active_dbs=GrypeDBMetadata(checksum=global_checksum),
             mock_local_checksum=local_checksum,
         )
 
@@ -149,7 +157,7 @@ class TestGrypeDBSyncTask:
         mock_lock = MagicMock()
         monkeypatch.setattr(GrypeDBSyncLock, "_lock", mock_lock)
         mock_calls_for_sync(
-            mock_active_dbs=[GrypeDBMetadata(checksum=checksum)],
+            mock_active_dbs=GrypeDBMetadata(checksum=checksum),
             mock_local_checksum="",
         )
 
