@@ -136,7 +136,9 @@ class GrypeDBSyncManager:
         try:
             if grypedb_file_path:
                 GrypeWrapperSingleton.get_instance().init_grype_db_engine(
-                    grypedb_file_path, active_grypedb.checksum
+                    grypedb_file_path,
+                    active_grypedb.checksum,
+                    active_grypedb.schema_version,
                 )
             else:
                 catalog_client = internal_client_for(CatalogClient, userId=None)
@@ -149,7 +151,9 @@ class GrypeDBSyncManager:
                     with grypedb_file.create_file(active_grypedb.checksum) as f:
                         f.write(grypedb_document)
                     GrypeWrapperSingleton.get_instance().init_grype_db_engine(
-                        grypedb_file.path, active_grypedb.checksum
+                        grypedb_file.path,
+                        active_grypedb.checksum,
+                        active_grypedb.schema_version,
                     )
         except Exception as e:
             logger.exception("GrypeDBSyncTask failed to sync")
