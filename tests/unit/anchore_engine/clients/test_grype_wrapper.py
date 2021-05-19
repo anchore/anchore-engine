@@ -416,36 +416,59 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
     assert not os.path.exists(old_grype_db_dir)
 
 
-def test_get_current_grype_db_metadata(grype_db_dir):
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata(grype_db_dir, metadata_file_name):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
     # Setup test input
     grype_wrapper_singleton._grype_db_dir = grype_db_dir
 
+    # Setup expected output
+    metadata_file_path = os.path.join(grype_db_dir, metadata_file_name)
+    with open(metadata_file_path, "r") as read_file:
+        expected_metadata = json.load(read_file)
+
     # Function under test
-    result = grype_wrapper_singleton.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate result
-    assert (
-        result["checksum"]
-        == "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
-    )
+    assert result == expected_metadata
 
 
-def test_get_current_grype_db_metadata_missing_dir():
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata_missing_dir(metadata_file_name):
     # Create grype_wrapper_singleton instance, with no grype_db_dir set
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper_singleton.get_current_grype_db_metadata()
+        grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate error message
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
-def test_get_current_grype_db_metadata_missing_file(tmp_path):
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata_missing_file(tmp_path, metadata_file_name):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
@@ -453,13 +476,20 @@ def test_get_current_grype_db_metadata_missing_file(tmp_path):
     grype_wrapper_singleton._grype_db_dir = os.path.join(tmp_path)
 
     # Function under test
-    result = grype_wrapper_singleton.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate result
     assert result is None
 
 
-def test_get_current_grype_db_metadata_bad_file(tmp_path):
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata_bad_file(tmp_path, metadata_file_name):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
@@ -468,7 +498,7 @@ def test_get_current_grype_db_metadata_bad_file(tmp_path):
     grype_wrapper_singleton._grype_db_dir = os.path.join(tmp_path)
 
     # Function under test
-    result = grype_wrapper_singleton.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate result
     assert result is None

@@ -443,30 +443,42 @@ class GrypeWrapperSingleton(object):
             if old_grype_db_dir and old_grype_db_dir != self._grype_db_dir:
                 self._remove_local_grype_db(old_grype_db_dir)
 
-    def get_current_grype_db_metadata(self) -> json:
+    def _get_metadata_file_contents(self, metadata_file_name) -> json:
         """
-        Return the json contents of the metadata file for the in-use version of grype db
+        Return the json contents of one of the metadata files for the in-use version of grype db
         """
-        # Get the path to the latest grype_db metadata file
-        latest_grype_db_metadata_file = os.path.join(
-            self._grype_db_dir, self.METADATA_FILE_NAME
-        )
+        # Get the path to the latest metadata file
+        latest_metadata_file = os.path.join(self._grype_db_dir, metadata_file_name)
 
         # Ensure the file exists
-        if not os.path.exists(latest_grype_db_metadata_file):
+        if not os.path.exists(latest_metadata_file):
             # If not, return None
             return None
         else:
             # Get the contents of the file
-            with open(latest_grype_db_metadata_file) as read_file:
+            with open(latest_metadata_file) as read_file:
                 try:
                     return json.load(read_file)
                 except JSONDecodeError:
                     logger.error(
-                        "Unable to decode grype_db metadata file into json: %s",
+                        "Unable to decode metadata file into json: %s",
                         read_file,
                     )
                     return None
+
+    def get_current_grype_db_metadata(self) -> json:
+        """
+        Return the json contents of the current grype_db metadata file.
+        This file contains metadata specific to grype about the current grype_db instance.
+        """
+        return self._get_metadata_file_contents(self.METADATA_FILE_NAME)
+
+    def get_current_grype_db_engine_metadata(self) -> json:
+        """
+        Return the json contents of the current grype_db engine metadata file.
+        This file contains metadata specific to engine about the current grype_db instance.
+        """
+        return self._get_metadata_file_contents(self.ENGINE_METADATA_FILE_NAME)
 
     def _get_proc_env(self, include_grype_db=True):
         # Set grype env variables, including the grype db location
