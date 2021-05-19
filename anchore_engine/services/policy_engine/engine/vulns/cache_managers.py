@@ -1,22 +1,18 @@
-import dataclasses
 import datetime
 import enum
-import hashlib
-import json
+from dataclasses import dataclass
+from typing import Dict
 
-from anchore_engine import utils
+from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services import internal_client_for, catalog
 from anchore_engine.db import (
     Image,
     get_thread_scoped_session as get_session,
     CachedVulnerabilities,
 )
-from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
-from anchore_engine.subsys import logger as log, metrics
-from anchore_engine.apis.context import ApiRequestContextProxy
-from dataclasses import dataclass
-from typing import Dict, List
 from anchore_engine.services.policy_engine.api.models import ImageVulnerabilitiesReport
+from anchore_engine.subsys import logger as log
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 
 # Disabled by default, can be set in config file. Seconds for connection to cache
 DEFAULT_CACHE_CONN_TIMEOUT = -1
@@ -134,8 +130,9 @@ class GrypeCacheManager:
         Decodes the cache key into elements capturing state of the system at the time of report generation and compares
         them to the current current state of the system.
         """
-        # TODO polish this
-        report_metadata = GrypeMetadata.from_dict(cache_record.cache_key.get("grype"))
+        # TODO implement this correctly
+        # report_metadata = GrypeMetadata.from_dict(cache_record.cache_key.get("grype"))
+        report_metadata = cache_record.cache_key
 
         current_metadata = self._get_current_grype_metadata()
 
@@ -150,7 +147,11 @@ class GrypeCacheManager:
         TODO Invoke the grype_wrapper and generate a grype metadata object, work with dspalmer
         """
 
-        return GrypeMetadata("foo", "bar", "sha256:blah")
+        # return GrypeMetadata("", "", "")
+        archive_checksum = (
+            GrypeWrapperSingleton.get_instance().get_current_grype_db_checksum()
+        )
+        return {"checksum": archive_checksum}
 
     def _delete_entry(self, entry):
         session = get_session()
@@ -201,8 +202,9 @@ class GrypeCacheManager:
         """
         Parse the report for grype metadata and generate GrypeMetadata object
         """
-        # TODO implement this
-        return GrypeMetadata("foo", "bar", "sha256:blah").to_dict()
+        # TODO implement this after grype starts presenting checksums and versions correctly
+        # return GrypeMetadata("", "", "").to_dict()
+        return self._get_current_grype_metadata()
 
     def save(self, report: ImageVulnerabilitiesReport):
         """
@@ -216,7 +218,7 @@ class GrypeCacheManager:
         cache_entry = CachedVulnerabilities()
         cache_entry.account_id = self.image.user_id
         cache_entry.image_digest = self.image.digest
-        cache_entry.cache_key = {"grype": self._get_cache_key_from_report(report)}
+        cache_entry.cache_key = self._get_cache_key_from_report(report)
 
         # save it to db instead of object storage to be able to excute other queries over the data
         cache_entry.add_raw_result(report.to_json())

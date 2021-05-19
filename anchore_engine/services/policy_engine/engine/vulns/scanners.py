@@ -12,6 +12,13 @@ from anchore_engine.utils import timer
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
 )
+import os
+from anchore_engine.configuration import localconfig
+
+# debug option for saving image sbom
+save_image_sbom = (
+    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_IMAGE_SBOM", "true").lower() == "true"
+)
 
 
 class LegacyScanner:
@@ -144,11 +151,14 @@ class GrypeVulnScanner:
 
     def get_vulnerabilities(self, image_id, sbom):
 
+        # check and run grype sync if necessary
         GrypeDBSyncManager.run_grypedb_sync()
 
-        # TODO saving sbom for debugging purposes, remove this
-        file_path = "/tmp/e2g_sbom_{}".format(image_id)
-        logger.info("Writing grype sbom to {}".format(image_id))
+        # if save_image_sbom:  #TODO uncomment this after grype wrapper starts working correctly for string sbom
+        file_path = "{}/sbom_{}.json".format(
+            localconfig.get_config().get("tmp_dir", "/tmp"), image_id
+        )
+        logger.debug("Writing image sbom for %s to %s", image_id, file_path)
         with open(file_path, "w") as fp:
             json.dump(sbom, fp, indent=2)
 
