@@ -728,7 +728,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         """
         results = db.query(GrypeDBMetadata)
         if checksum:
-            results = results.filter(GrypeDBMetadata.checksum == checksum)
+            results = results.filter(GrypeDBMetadata.archive_checksum == checksum)
         if not isinstance(active, type(None)):
             results = results.filter(GrypeDBMetadata.active == active)
         return results
@@ -764,7 +764,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
         records = self._find_match(db)
         for record in records.all():
-            catalog_client.delete_document(record.group_name, record.checksum)
+            catalog_client.delete_document(record.group_name, record.archive_checksum)
         records.delete(synchronize_session="evaluate")
         group_obj.last_sync = None  # Null the update timestamp to reflect the flush
         group_obj.count = 0
@@ -820,7 +820,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         inactive_records = self._find_match(db, active=False)
         for inactive_record in inactive_records.all():
             catalog_client.delete_document(
-                inactive_record.group_name, inactive_record.checksum
+                inactive_record.group_name, inactive_record.archive_checksum
             )
         inactive_records.delete(synchronize_session="evaluate")
         # search for active and mark inactive
@@ -833,7 +833,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         )
         date_generated = rfc3339str_to_datetime(record.metadata["built"])
         grypedb_meta = GrypeDBMetadata(
-            checksum=checksum,
+            archive_checksum=checksum,
             schema_version=record.metadata["version"],
             feed_name=GrypeDBFeed.__feed_name__,
             group_name=group_download_result.group,

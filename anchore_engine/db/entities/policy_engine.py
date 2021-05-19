@@ -146,9 +146,9 @@ class GrypeDBMetadata(Base):
 
     __tablename__ = "grype_db_metadata"
 
-    checksum = Column(String, primary_key=True)
+    archive_checksum = Column(String, primary_key=True)
     schema_version = Column(String, nullable=False)
-    feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
+    feed_name = Column(String, nullable=False)
     group_name = Column(String, nullable=False)
     date_generated = Column(DateTime, nullable=False)
     object_url = Column(String, nullable=False)
@@ -156,13 +156,6 @@ class GrypeDBMetadata(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_update = Column(
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
-    )
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            columns=(feed_name, group_name),
-            refcolumns=(FeedGroupMetadata.feed_name, FeedGroupMetadata.name),
-        ),
     )
 
 

@@ -137,7 +137,7 @@ class GrypeDBSyncManager:
             if grypedb_file_path:
                 GrypeWrapperSingleton.get_instance().init_grype_db_engine(
                     grypedb_file_path,
-                    active_grypedb.checksum,
+                    active_grypedb.archive_checksum,
                     active_grypedb.schema_version,
                 )
             else:
@@ -146,13 +146,15 @@ class GrypeDBSyncManager:
                 grypedb_document = catalog_client.get_raw_object(bucket, archive_id)
 
                 # verify integrity of data, create tempfile, and pass path to facade
-                GrypeDBFile.verify_integrity(grypedb_document, active_grypedb.checksum)
+                GrypeDBFile.verify_integrity(
+                    grypedb_document, active_grypedb.archive_checksum
+                )
                 with GrypeDBStorage() as grypedb_file:
-                    with grypedb_file.create_file(active_grypedb.checksum) as f:
+                    with grypedb_file.create_file(active_grypedb.archive_checksum) as f:
                         f.write(grypedb_document)
                     GrypeWrapperSingleton.get_instance().init_grype_db_engine(
                         grypedb_file.path,
-                        active_grypedb.checksum,
+                        active_grypedb.archive_checksum,
                         active_grypedb.schema_version,
                     )
         except Exception as e:
@@ -167,8 +169,8 @@ class GrypeDBSyncManager:
         Returns bool based upon comparisons between the active grype db and the local checksum passed to the function
         """
         if (
-            not active_grypedb.checksum
-            or local_grypedb_checksum == active_grypedb.checksum
+            not active_grypedb.archive_checksum
+            or local_grypedb_checksum == active_grypedb.archive_checksum
         ):
             logger.info("No Grype DB sync needed at this time")
             return False
@@ -207,7 +209,7 @@ class GrypeDBSyncManager:
             if is_sync_necessary:
                 logger.info(
                     "Grypedb sync is needed to replace local db with checksum %s with current active db with checksum %s",
-                    active_grypedb.checksum,
+                    active_grypedb.archive_checksum,
                     local_grypedb_checksum,
                 )
                 cls._update_grypedb(
