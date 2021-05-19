@@ -790,7 +790,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         force_refresh: bool = False,
         cache: bool = True,
     ) -> json:
-        report = self._load_cache_or_create_new_image_vulnerabilities_report(
+        report = self._load_from_cache_or_create_new_report(
             image, db_session, vendor_only, force_refresh, cache
         )
         if isinstance(report, ImageVulnerabilitiesReport):
@@ -806,7 +806,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         force_refresh: bool = False,
         cache: bool = True,
     ) -> ImageVulnerabilitiesReport:
-        report = self._load_cache_or_create_new_image_vulnerabilities_report(
+        report = self._load_from_cache_or_create_new_report(
             image, db_session, vendor_only, force_refresh, cache
         )
         if isinstance(report, ImageVulnerabilitiesReport):
@@ -815,7 +815,7 @@ class GrypeProvider(VulnerabilitiesProvider):
             report = ImageVulnerabilitiesReport.from_json(report)
             return report
 
-    def _load_cache_or_create_new_image_vulnerabilities_report(
+    def _load_from_cache_or_create_new_report(
         self,
         image: Image,
         db_session,
@@ -939,10 +939,9 @@ class GrypeProvider(VulnerabilitiesProvider):
             problems=[],
         )
 
-    @staticmethod
-    def _get_report_metadata(grype_response):
+    def _get_report_metadata(self, grype_response):
         return {
-            "name": GrypeProvider.__class__.__name__,
+            "name": self.get_config_name(),
             "version": grype_response.get("descriptor").get("version"),
         }
 

@@ -161,23 +161,22 @@ services:
     cycle_timers:
       feed_sync: ${ANCHORE_FEED_SYNC_INTERVAL_SEC} # 6 hours between feed syncs
       feed_sync_checker: 3600 # 1 hour between checks to see if there needs to be a task queued
+      grypedb_sync: 60 # 1 minute between checks to verify local grype-db is up to date
     vulnerabilities:
-      # Available providers are legacy and grype. Legacy provider offers the same matching logic as previous versions <= 0.9.4.
-      # grype is a new provider introduced in 1.0.0 and it uses the grype tool for all things vulnerabilities.
-      # If grype is chose as the provider, uncomment the grypedb data feed in the section below
-      provider: legacy
+      # Available providers are legacy and grype. Legacy provider offers the same matching logic as previous versions of anchore-engine (<= 0.9.4)
+      # grype is a new provider that was introduced in 1.0.0, it uses the grype tool for all things vulnerabilities
+      provider: ${ANCHORE_VULNERABILITIES_PROVIDER}
       sync:
         enabled: ${ANCHORE_FEEDS_ENABLED}
         ssl_verify: ${ANCHORE_FEEDS_SSL_VERIFY}
         connection_timeout_seconds: 3
         read_timeout_seconds: 60
         data:
-          # Uncomment if the provider is set to grype. If packages feed was enabled and necessary leave it uncommented.
-          # All remaining feeds can be commented out
-          #grypedb:
-          #  enabled: true
-          #  url: ${ANCHORE_GRYPE_DB_URL}
-          # The following feeds except packages are required only for legacy provider. Comment them out if the provider is set to grype
+          # grypedb feed is synced if the provider is set to grype. All the remaining feeds except for packages are ignored even if they are enabled
+          grypedb:
+            enabled: true
+            url: ${ANCHORE_GRYPE_DB_URL}
+          # The following feeds are synced if provider is set to legacy
           vulnerabilities:
             enabled: true
             url: ${ANCHORE_FEEDS_URL}
@@ -193,6 +192,7 @@ services:
           #  url: ${ANCHORE_FEEDS_URL}
           # Warning: enabling the packages and nvd sync causes the service to require much
           #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
+          # packages feed is synced if it is enabled regardless of the provider
           #packages:
           #  enabled: true
           #  url: ${ANCHORE_FEEDS_URL}

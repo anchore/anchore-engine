@@ -1,10 +1,9 @@
 import datetime
-import json
-from collections import defaultdict
-from anchore_engine.db import Image, ImageCpe, ImagePackage
-from typing import List, Dict
 import uuid
-from anchore_engine.subsys import logger as log
+from collections import defaultdict
+from typing import List, Dict
+
+from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.api.models import (
     VulnerabilityMatch,
     Artifact,
@@ -14,6 +13,7 @@ from anchore_engine.services.policy_engine.api.models import (
     Match,
     FixedArtifact,
 )
+from anchore_engine.subsys import logger as log
 
 
 class DistroMapper:
@@ -21,13 +21,10 @@ class DistroMapper:
     grype_os = None
     grype_like_os = None
 
-    @staticmethod
-    def for_engine(distro: str):
-        return ENGINE_DISTRO_MAPPERS.get(distro)
-
-    @staticmethod
-    def for_grype(distro: str):
-        return GRYPE_DISTRO_MAPPERS.get(distro)
+    def __init__(self, engine_distro, grype_os, grype_like_os):
+        self.engine_distro = engine_distro
+        self.grype_os = grype_os
+        self.grype_like_os = grype_like_os
 
     def to_grype_distro(self, version):
         return {
@@ -37,57 +34,61 @@ class DistroMapper:
         }
 
 
-class RhelMapper(DistroMapper):
-    engine_distro = "rhel"
-    grype_os = "redhat"
-    grype_like_os = "fedora"
+# key is the engine distro
+ENGINE_DISTRO_MAPPERS = {
+    "rhel": DistroMapper(
+        engine_distro="rhel", grype_os="redhat", grype_like_os="fedora"
+    ),
+    "debian": DistroMapper(
+        engine_distro="debian", grype_os="debian", grype_like_os="debian"
+    ),
+    "ubuntu": DistroMapper(
+        engine_distro="ubuntu", grype_os="ubuntu", grype_like_os="debian"
+    ),
+    "alpine": DistroMapper(
+        engine_distro="alpine", grype_os="alpine", grype_like_os="alpine"
+    ),
+    "ol": DistroMapper(  # TODO check with toolbox
+        engine_distro="ol", grype_os="oraclelinux", grype_like_os="fedora"
+    ),
+    "amzn": DistroMapper(  # TODO check with toolbox
+        engine_distro="amzn", grype_os="amazonlinux", grype_like_os="fedora"
+    ),
+    "centos": DistroMapper(  # TODO check with toolbox
+        engine_distro="centos", grype_os="centos", grype_like_os="fedora"
+    ),
+}
 
-
-class DebianMapper(DistroMapper):
-    engine_distro = "debian"
-    grype_os = "debian"
-    grype_like_os = "debian"
-
-
-class UbuntuMapper(DistroMapper):
-    engine_distro = "ubuntu"
-    grype_os = "ubuntu"
-    grype_like_os = "debian"
-
-
-class AlpineMapper(DistroMapper):
-    engine_distro = "alpine"
-    grype_os = "alpine"
-    grype_like_os = "alpine"
-
-
-class CentOSMapper(DistroMapper):
-    engine_distro = "centos"
-    grype_os = "centos"
-    grype_like_os = "fedora"  # TODO check with toolbox
-
-
-class OracleLinuxMapper(DistroMapper):
-    engine_distro = "ol"
-    engine_like_distro = "fedora"
-    grype_os = "oraclelinux"
-    grype_like_os = "fedora"  # TODO check with toolbox
-
-
-class AmazonLinuxMapper(DistroMapper):
-    engine_distro = "amzn"
-    engine_like_distro = "fedora"
-    grype_os = "amazonlinux"
-    grype_like_os = "fedora"  # TODO check with toolbox
+# key is the grype distro
+GRYPE_DISTRO_MAPPERS = {
+    "redhat": DistroMapper(
+        engine_distro="rhel", grype_os="redhat", grype_like_os="fedora"
+    ),
+    "debian": DistroMapper(
+        engine_distro="debian", grype_os="debian", grype_like_os="debian"
+    ),
+    "ubuntu": DistroMapper(
+        engine_distro="ubuntu", grype_os="ubuntu", grype_like_os="debian"
+    ),
+    "alpine": DistroMapper(
+        engine_distro="alpine", grype_os="alpine", grype_like_os="alpine"
+    ),
+    "oraclelinux": DistroMapper(  # TODO check with toolbox
+        engine_distro="ol", grype_os="oraclelinux", grype_like_os="fedora"
+    ),
+    "amazonlinux": DistroMapper(  # TODO check with toolbox
+        engine_distro="amzn", grype_os="amazonlinux", grype_like_os="fedora"
+    ),
+    "centos": DistroMapper(  # TODO check with toolbox
+        engine_distro="centos", grype_os="centos", grype_like_os="fedora"
+    ),
+}
 
 
 class PackageMapper:
-    engine_type = None
-    grype_type = None
-
-    @staticmethod
-    def for_engine(pkg_type: str):
-        return ENGINE_PACKAGE_MAPPERS.get(pkg_type)
+    def __init__(self, engine_type, grype_type):
+        self.engine_type = engine_type
+        self.grype_type = grype_type
 
     def to_grype_artifact(
         self,
@@ -211,8 +212,8 @@ class PackageMapper:
 
 
 class RpmMapper(PackageMapper):
-    engine_type = "rpm"
-    grype_type = "rpm"
+    def __init__(self):
+        super(RpmMapper, self).__init__(engine_type="rpm", grype_type="rpm")
 
     def to_grype_artifact(
         self,
@@ -233,20 +234,20 @@ class RpmMapper(PackageMapper):
         }
         """
         distro = distro_dict.get("type")
-        if distro.lower() in [RhelMapper.grype_os, CentOSMapper.grype_os]:
-            distro = RhelMapper.engine_distro
-        elif distro.lower() == OracleLinuxMapper.grype_os:
-            distro = OracleLinuxMapper.engine_distro
-        elif distro.lower() == AmazonLinuxMapper.grype_os:
-            distro = AmazonLinuxMapper.engine_distro
+        if distro.lower() in ["redhat", "centos"]:
+            distro = "rhel"
+        elif distro.lower() == "oraclelinux":
+            distro = "ol"
+        elif distro.lower() == "amazonlinux":
+            distro = "amzn"
         else:
             raise ValueError(
                 "Expected distro to be in {} but found {}".format(
                     [
-                        RhelMapper.grype_os,
-                        CentOSMapper.grype_os,
-                        OracleLinuxMapper.grype_os,
-                        AmazonLinuxMapper.grype_os,
+                        "redhat",
+                        "centos",
+                        "oraclelinux",
+                        "amazonlinux",
                     ],
                     distro,
                 )
@@ -258,8 +259,8 @@ class RpmMapper(PackageMapper):
 
 
 class DpkgMapper(PackageMapper):
-    engine_type = "dpkg"
-    grype_type = "deb"
+    def __init__(self):
+        super(DpkgMapper, self).__init__(engine_type="dpkg", grype_type="deb")
 
     def to_grype_artifact(
         self,
@@ -280,15 +281,13 @@ class DpkgMapper(PackageMapper):
         }
         """
         distro = distro_dict.get("type")
-        if distro.lower() == UbuntuMapper.grype_os:
-            distro = UbuntuMapper.engine_distro
-        elif distro.lower() == DebianMapper.grype_os:
-            distro = DebianMapper.engine_distro
+        if distro.lower() == "ubuntu":
+            distro = "ubuntu"
+        elif distro.lower() == "debian":
+            distro = "debian"
         else:
             raise ValueError(
-                "Expected distro to be {} or {} but found {}".format(
-                    UbuntuMapper.grype_os, DebianMapper.grype_os, distro
-                )
+                "Expected distro to be ubuntu or debian but found {}".format(distro)
             )
 
         version = distro_dict.get("version")
@@ -297,8 +296,8 @@ class DpkgMapper(PackageMapper):
 
 
 class ApkgMapper(PackageMapper):
-    engine_type = "APKG"
-    grype_type = "apk"
+    def __init__(self):
+        super(ApkgMapper, self).__init__(engine_type="APKG", grype_type="apk")
 
     def to_grype_artifact(
         self,
@@ -319,14 +318,10 @@ class ApkgMapper(PackageMapper):
         }
         """
         distro = distro_dict.get("type")
-        if distro.lower() == AlpineMapper.grype_os:
-            distro = AlpineMapper.engine_distro
+        if distro.lower() == "alpine":
+            distro = "alpine"
         else:
-            raise ValueError(
-                "Expected distro to be {} but found {}".format(
-                    AlpineMapper.grype_os, distro
-                )
-            )
+            raise ValueError("Expected distro to be alpine but found {}".format(distro))
 
         version = distro_dict.get("version").split(".", 1)[0]
 
@@ -334,9 +329,6 @@ class ApkgMapper(PackageMapper):
 
 
 class CPEMapper(PackageMapper):
-    engine_type = None
-    grype_type = None
-
     def to_grype_artifact(
         self,
         image_package: ImagePackage,
@@ -368,95 +360,27 @@ class CPEMapper(PackageMapper):
         return artifact
 
 
-class PythonMapper(CPEMapper):
-    engine_type = "python"
-    grype_type = "python"
-
-    def to_grype_artifact(
-        self,
-        image_package: ImagePackage,
-        location_cpes_dict: Dict[str, List[str]] = None,
-    ):
-        return super().to_grype_artifact(image_package, location_cpes_dict)
-
-
-class JavaMapper(CPEMapper):
-    engine_type = "java"
-    grype_type = "java-archive"
-
-    def to_grype_artifact(
-        self,
-        image_package: ImagePackage,
-        location_cpes_dict: Dict[str, List[str]] = None,
-    ):
-        return super().to_grype_artifact(image_package, location_cpes_dict)
-
-
-class NpmMapper(CPEMapper):
-    engine_type = "npm"
-    grype_type = "npm"
-
-    def to_grype_artifact(
-        self,
-        image_package: ImagePackage,
-        location_cpes_dict: Dict[str, List[str]] = None,
-    ):
-        return super().to_grype_artifact(image_package, location_cpes_dict)
-
-
-class GemMapper(CPEMapper):
-    engine_type = "gem"
-    grype_type = "gem"
-
-    def to_grype_artifact(
-        self,
-        image_package: ImagePackage,
-        location_cpes_dict: Dict[str, List[str]] = None,
-    ):
-        return super().to_grype_artifact(image_package, location_cpes_dict)
-
-
-# key is the engine distro
-ENGINE_DISTRO_MAPPERS = {
-    "rhel": RhelMapper,
-    "debian": DebianMapper,
-    "ubuntu": UbuntuMapper,
-    "alpine": AlpineMapper,
-    "ol": OracleLinuxMapper,
-    "amzn": AmazonLinuxMapper,
-    "centos": CentOSMapper,
-}
-
-# key is the grype distro
-GRYPE_DISTRO_MAPPERS = {
-    "redhat": RhelMapper,
-    "ubuntu": UbuntuMapper,
-    "debian": DebianMapper,
-    "alpine": AlpineMapper,
-    "oraclelinux": OracleLinuxMapper,
-    "amazonlinux": AmazonLinuxMapper,
-    "centos": CentOSMapper,
-}
-
+# key is the engine package type
 ENGINE_PACKAGE_MAPPERS = {
-    "rpm": RpmMapper,
-    "dpkg": DpkgMapper,
-    "APKG": ApkgMapper,
-    "python": PythonMapper,
-    "npm": NpmMapper,
-    "gem": GemMapper,
-    "java": JavaMapper,
+    "rpm": RpmMapper(),
+    "dpkg": DpkgMapper(),
+    "APKG": ApkgMapper(),
+    "python": CPEMapper(engine_type="python", grype_type="python"),
+    "npm": CPEMapper(engine_type="npm", grype_type="npm"),
+    "gem": CPEMapper(engine_type="gem", grype_type="gem"),
+    "java": CPEMapper(engine_type="java", grype_type="java-archive"),
 }
 
+# key is the grype package type
 GRYPE_PACKAGE_MAPPERS = {
-    "rpm": RpmMapper,
-    "deb": DpkgMapper,
-    "apk": ApkgMapper,
-    "python": PythonMapper,
-    "npm": NpmMapper,
-    "gem": GemMapper,
-    "java-archive": JavaMapper,
-    "java-plugin": JavaMapper,
+    "rpm": RpmMapper(),
+    "deb": DpkgMapper(),
+    "apk": ApkgMapper(),
+    "python": CPEMapper(engine_type="python", grype_type="python"),
+    "npm": CPEMapper(engine_type="npm", grype_type="npm"),
+    "gem": CPEMapper(engine_type="gem", grype_type="gem"),
+    "java-archive": CPEMapper(engine_type="java", grype_type="java-archive"),
+    "java-plugin": CPEMapper(engine_type="java", grype_type="java-plugin"),
 }
 
 
@@ -470,8 +394,8 @@ class EngineGrypeMapper:
         """
         Generate grype sbom from ImagePackage artifacts
         """
-        distro_mapper_class = ENGINE_DISTRO_MAPPERS.get(image.distro_name)
-        if not distro_mapper_class:
+        distro_mapper = ENGINE_DISTRO_MAPPERS.get(image.distro_name)
+        if not distro_mapper:
             log.error(
                 "No distro mapper found for %s. Cannot generate sbom", image.distro_name
             )
@@ -480,7 +404,6 @@ class EngineGrypeMapper:
                     image.distro_name
                 )
             )
-        distro_mapper = distro_mapper_class()
 
         # map the package (location) to its list of cpes
         location_cpes_dict = defaultdict(list)
@@ -502,14 +425,17 @@ class EngineGrypeMapper:
         artifacts = []
         sbom["artifacts"] = artifacts
 
-        for pkg in image_packages:
-            pkg_mapper_class = PackageMapper.for_engine(pkg.pkg_type)
-            if not pkg_mapper_class:
+        for image_package in image_packages:
+            pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(image_package.pkg_type)
+            if not pkg_mapper:
                 log.warn(
-                    "No package mapper found for engine package type %s", pkg.pkg_type
+                    "No package mapper found for engine package type %s",
+                    image_package.pkg_type,
                 )
-            pkg_mapper = pkg_mapper_class()
-            artifacts.append(pkg_mapper.to_grype_artifact(pkg, location_cpes_dict))
+                continue
+            artifacts.append(
+                pkg_mapper.to_grype_artifact(image_package, location_cpes_dict)
+            )
 
         # log.debug("image sbom: {}".format(json.dumps(sbom, indent=2)))
 
@@ -529,24 +455,13 @@ class EngineGrypeMapper:
         for item in matches:
             artifact = item.get("artifact")
 
-            pkg_mapper_class = GRYPE_PACKAGE_MAPPERS.get(artifact.get("type"))
-            if not pkg_mapper_class:
+            pkg_mapper = GRYPE_PACKAGE_MAPPERS.get(artifact.get("type"))
+            if not pkg_mapper:
                 log.warn(
                     "No package mapper found for grype package type %s",
                     artifact.get("type"),
                 )
-            pkg_mapper = pkg_mapper_class()
 
             results.append(pkg_mapper.to_engine_vulnerability_match(item, now))
 
         return results
-
-
-# if __name__ == "__main__":
-#     a = ImagePackage()
-#     a.name = "foo"
-#     a.fullversion = "foo"
-#     a.pkg_path = "foo"
-#     a.normalized_src_pkg = "foo"
-#     b = RpmPackageMapper().to_grype(a)
-#     print(b)
