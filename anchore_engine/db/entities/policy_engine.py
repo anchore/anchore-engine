@@ -25,8 +25,8 @@ from sqlalchemy import (
     func,
     or_,
 )
-from sqlalchemy.orm import joinedload, relationship, synonym
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import joinedload, relationship, synonym
 
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
@@ -147,6 +147,7 @@ class GrypeDBMetadata(Base):
     __tablename__ = "grype_db_metadata"
 
     checksum = Column(String, primary_key=True)
+    schema_version = Column(String, nullable=False)
     feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
     group_name = Column(String, nullable=False)
     date_generated = Column(DateTime, nullable=False)

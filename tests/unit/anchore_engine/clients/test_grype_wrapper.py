@@ -1,4 +1,5 @@
 import anchore_engine.configuration.localconfig
+import json
 import os
 import pytest
 import shutil
@@ -8,10 +9,11 @@ from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 
 TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
 GRYPE_ARCHIVE_FILE_NAME = "grype_db_test_archive.tar.gz"
+GRYPE_DB_VERSION = "2"
 
 GRYPE_DB_DIR = "grype_db/"
-OLD_VERSION_NAME = "old_version"
-NEW_VERSION_NAME = "new_version"
+OLD_VERSION_MOCK_CHECKSUM = "old_version"
+NEW_VERSION_MOCK_CHECKSUM = "new_version"
 VULNERABILITIES = "vulnerabilities"
 LAST_SYNCED_TIMESTAMP = "2021-04-07T08:12:05Z"
 
@@ -66,8 +68,8 @@ def grype_db_dir(tmp_path):
     parent_dir = os.path.join(tmp_path, "input")
     if not os.path.exists(parent_dir):
         os.mkdir(parent_dir)
-    input_dir = os.path.join(parent_dir, NEW_VERSION_NAME)
-    shutil.copytree(get_test_file_path(NEW_VERSION_NAME), input_dir)
+    input_dir = os.path.join(parent_dir, NEW_VERSION_MOCK_CHECKSUM)
+    shutil.copytree(get_test_file_path(NEW_VERSION_MOCK_CHECKSUM), input_dir)
     return input_dir
 
 
@@ -76,8 +78,8 @@ def old_grype_db_dir(tmp_path):
     parent_dir = os.path.join(tmp_path, "input")
     if not os.path.exists(parent_dir):
         os.mkdir(parent_dir)
-    input_dir = os.path.join(parent_dir, OLD_VERSION_NAME)
-    shutil.copytree(get_test_file_path(OLD_VERSION_NAME), input_dir)
+    input_dir = os.path.join(parent_dir, OLD_VERSION_MOCK_CHECKSUM)
+    shutil.copytree(get_test_file_path(OLD_VERSION_MOCK_CHECKSUM), input_dir)
     return input_dir
 
 
@@ -119,7 +121,7 @@ def test_get_current_grype_db_checksum(grype_db_dir):
     result = grype_wrapper_singleton.get_current_grype_db_checksum()
 
     # Validate result
-    assert result == NEW_VERSION_NAME
+    assert result == NEW_VERSION_MOCK_CHECKSUM
 
 
 def test_get_current_grype_db_checksum_missing_db_dir_value():
@@ -219,23 +221,68 @@ def test_open_grype_db_archive(grype_db_archive):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Setup expected output vars
+    # Setup input var
     parent_dir = os.path.abspath(os.path.join(grype_db_archive, os.pardir))
-    expected_grype_db_file = os.path.join(parent_dir, NEW_VERSION_NAME)
+
+    # Setup expected output vars
+    expected_output_dir = os.path.join(parent_dir, NEW_VERSION_MOCK_CHECKSUM)
+    expected_output_file = os.path.join(
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.VULNERABILITY_FILE_NAME,
+    )
 
     # Function under test
     latest_grype_db_dir = grype_wrapper_singleton._open_grype_db_archive(
-        grype_db_archive, parent_dir, NEW_VERSION_NAME
+        grype_db_archive, parent_dir, NEW_VERSION_MOCK_CHECKSUM, GRYPE_DB_VERSION
     )
 
     # Validate expected dir contents and location
-    assert os.path.exists(expected_grype_db_file)
-    assert latest_grype_db_dir == os.path.join(parent_dir, NEW_VERSION_NAME)
+    assert os.path.exists(expected_output_dir)
+    assert latest_grype_db_dir == expected_output_dir
+    assert os.path.exists(os.path.join(expected_output_dir, GRYPE_DB_VERSION))
     assert os.path.exists(
         os.path.join(
-            latest_grype_db_dir, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
+            expected_output_dir,
+            GRYPE_DB_VERSION,
+            grype_wrapper_singleton.VULNERABILITY_FILE_NAME,
         )
     )
+
+
+def test_store_grype_db_version_to_file(grype_db_archive):
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+
+    # Setup input var and create directories
+    parent_dir = os.path.abspath(os.path.join(grype_db_archive, os.pardir))
+    latest_grype_db_dir = os.path.join(parent_dir, NEW_VERSION_MOCK_CHECKSUM)
+    versioned_dir = os.path.join(latest_grype_db_dir, GRYPE_DB_VERSION)
+    if not os.path.exists(versioned_dir):
+        os.makedirs(versioned_dir)
+
+    # Setup expected output vars
+    expected_output_file = os.path.join(
+        versioned_dir, grype_wrapper_singleton.ENGINE_METADATA_FILE_NAME
+    )
+    expected_engine_metadata = {
+        "archive_checksum": NEW_VERSION_MOCK_CHECKSUM,
+        "grype_db_version": GRYPE_DB_VERSION,
+    }
+
+    # Function under test
+    grype_wrapper_singleton._write_engine_metadata_to_file(
+        latest_grype_db_dir, NEW_VERSION_MOCK_CHECKSUM, GRYPE_DB_VERSION
+    )
+
+    # Validate output
+    assert os.path.exists(os.path.join(expected_output_file))
+
+    # Validate the contents of the engine_metadata file
+    with open(expected_output_file, "r") as read_file:
+        engine_metadata = json.load(read_file)
+
+    assert engine_metadata == expected_engine_metadata
 
 
 def test_remove_grype_db_archive(grype_db_archive):
@@ -294,10 +341,22 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Setup out vars
-    expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
-    expected_output_file = os.path.join(
-        expected_output_dir, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
+    # Setup expected output vars
+    expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_MOCK_CHECKSUM)
+    expected_output_vulnerability_file = os.path.join(
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.VULNERABILITY_FILE_NAME,
+    )
+    expected_output_metadata_file = os.path.join(
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.METADATA_FILE_NAME,
+    )
+    expected_output_engine_metadata_file = os.path.join(
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.ENGINE_METADATA_FILE_NAME,
     )
 
     # Function under test
@@ -305,7 +364,7 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
         latest_grype_db_dir,
         latest_grype_db_session,
     ) = grype_wrapper_singleton._init_latest_grype_db(
-        grype_db_archive, NEW_VERSION_NAME
+        grype_db_archive, NEW_VERSION_MOCK_CHECKSUM, GRYPE_DB_VERSION
     )
 
     # Validate expected output
@@ -313,7 +372,9 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
     assert latest_grype_db_dir == expected_output_dir
 
     assert latest_grype_db_session is not None
-    assert os.path.exists(expected_output_file)
+    assert os.path.exists(expected_output_vulnerability_file)
+    assert os.path.exists(expected_output_metadata_file)
+    assert os.path.exists(expected_output_engine_metadata_file)
 
 
 def test_remove_local_grype_db(old_grype_db_dir):
@@ -333,13 +394,17 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
 
     # Setup
     grype_wrapper_singleton._grype_db_dir = old_grype_db_dir
-    expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_NAME)
+    expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_MOCK_CHECKSUM)
     expected_output_file = os.path.join(
-        expected_output_dir, GrypeWrapperSingleton.VULNERABILITY_FILE_NAME
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        GrypeWrapperSingleton.VULNERABILITY_FILE_NAME,
     )
 
     # Function under test
-    grype_wrapper_singleton.init_grype_db_engine(grype_db_archive, NEW_VERSION_NAME)
+    grype_wrapper_singleton.init_grype_db_engine(
+        grype_db_archive, NEW_VERSION_MOCK_CHECKSUM, GRYPE_DB_VERSION
+    )
 
     # Validate output
     assert os.path.exists(grype_wrapper_singleton._grype_db_dir)
@@ -351,36 +416,59 @@ def test_init_grype_db_engine(grype_db_parent_dir, old_grype_db_dir, grype_db_ar
     assert not os.path.exists(old_grype_db_dir)
 
 
-def test_get_current_grype_db_metadata(grype_db_dir):
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata(grype_db_dir, metadata_file_name):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
     # Setup test input
     grype_wrapper_singleton._grype_db_dir = grype_db_dir
 
+    # Setup expected output
+    metadata_file_path = os.path.join(grype_db_dir, metadata_file_name)
+    with open(metadata_file_path, "r") as read_file:
+        expected_metadata = json.load(read_file)
+
     # Function under test
-    result = grype_wrapper_singleton.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate result
-    assert (
-        result["checksum"]
-        == "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
-    )
+    assert result == expected_metadata
 
 
-def test_get_current_grype_db_metadata_missing_dir():
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata_missing_dir(metadata_file_name):
     # Create grype_wrapper_singleton instance, with no grype_db_dir set
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
     # Function under test
     with pytest.raises(ValueError) as error:
-        grype_wrapper_singleton.get_current_grype_db_metadata()
+        grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate error message
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
-def test_get_current_grype_db_metadata_missing_file(tmp_path):
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata_missing_file(tmp_path, metadata_file_name):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
@@ -388,13 +476,20 @@ def test_get_current_grype_db_metadata_missing_file(tmp_path):
     grype_wrapper_singleton._grype_db_dir = os.path.join(tmp_path)
 
     # Function under test
-    result = grype_wrapper_singleton.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate result
     assert result is None
 
 
-def test_get_current_grype_db_metadata_bad_file(tmp_path):
+@pytest.mark.parametrize(
+    "metadata_file_name",
+    [
+        GrypeWrapperSingleton.METADATA_FILE_NAME,
+        GrypeWrapperSingleton.ENGINE_METADATA_FILE_NAME,
+    ],
+)
+def test_get_current_grype_db_metadata_bad_file(tmp_path, metadata_file_name):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
@@ -403,7 +498,7 @@ def test_get_current_grype_db_metadata_bad_file(tmp_path):
     grype_wrapper_singleton._grype_db_dir = os.path.join(tmp_path)
 
     # Function under test
-    result = grype_wrapper_singleton.get_current_grype_db_metadata()
+    result = grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
 
     # Validate result
     assert result is None
@@ -436,6 +531,21 @@ def test_get_proc_env_missing_dir():
 
     # Validate error message
     assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
+
+
+# This test will not pass on the CI because that machine does not have grype installed.
+# I am leaving it for now, but commented out. It is useful for local dev and will
+# pass if you have grype installed.
+# def test_get_grype_version():
+#     # Create grype_wrapper_singleton instance
+#     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+#
+#     # Function under test
+#     result = grype_wrapper_singleton.get_grype_version()
+#
+#     # Validate results
+#     assert result["application"] == "grype"
+#     assert result["version"] is not None
 
 
 # TODO Replace this with a functional test against the API that calls the function under test.

@@ -66,9 +66,11 @@ class GrypeWrapperSingleton(object):
     # These values should be treated as constants, and will not be changed by the functions below
     LOCK_READ_ACCESS_TIMEOUT = 60
     LOCK_WRITE_ACCESS_TIMEOUT = 60
-    GRYPE_SUB_CMD = "grype -vv -o json"
+    GRYPE_SUB_COMMAND = "grype -vv -o json"
+    GRYPE_VERSION_COMMAND = "grype version -o json"
     VULNERABILITY_FILE_NAME = "vulnerability.db"
     METADATA_FILE_NAME = "metadata.json"
+    ENGINE_METADATA_FILE_NAME = "engine_metadata.json"
     ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE = "New grype_db archive file not found"
     MISSING_GRYPE_DB_DIR_ERROR_MESSAGE = (
         "Cannot access missing grype_db dir. Reinitialize grype_db."
@@ -245,25 +247,59 @@ class GrypeWrapperSingleton(object):
         self,
         grype_db_archive_copied_file_location: str,
         parent_dir: str,
-        version_name: str,
+        archive_checksum: str,
+        grype_db_version: str,
     ) -> str:
-        output_dir = os.path.join(parent_dir, version_name)
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
+        grype_db_parent_dir = os.path.join(parent_dir, archive_checksum)
+        grype_db_versioned_dir = os.path.join(grype_db_parent_dir, grype_db_version)
+        if not os.path.exists(grype_db_versioned_dir):
+            os.makedirs(grype_db_versioned_dir)
 
         logger.info(
-            "Unpacking the grype_db archive at %s into %s",
+            "Unpacking the grype_db archive with checksum: %s and db version: %s at %s into %s",
+            archive_checksum,
+            grype_db_version,
             grype_db_archive_copied_file_location,
-            output_dir,
+            grype_db_parent_dir,
         )
 
-        # Put the extracted files in the same dir as the archive
+        # Put the extracted files in the versioned dir
         with tarfile.open(grype_db_archive_copied_file_location) as read_archive:
-            read_archive.extractall(output_dir)
+            read_archive.extractall(grype_db_versioned_dir)
 
-        # Return the full path to the grype_db dir
-        logger.info("Returning the unpacked grype_db dir at %s", output_dir)
-        return output_dir
+        # Return the full path to the parent grype_db dir. This is the dir we actually pass to grype,
+        # which expects the version subdirectory to be under it.
+        logger.info("Returning the unpacked grype_db dir at %s", grype_db_parent_dir)
+        return grype_db_parent_dir
+
+    def _write_engine_metadata_to_file(
+        self, latest_grype_db_dir: str, archive_checksum: str, grype_db_version: str
+    ):
+        """
+        Write engine metadata to file. This file will contain a json with the values
+        for archive_checksum and grype_db_version for the current;y configured grype_db.
+
+        This method writes that file to the same dir the grype_db archive was unpacked at
+        in _open_grype_db_archive(). This means that it assumes the dir already exists,
+        and does not check to see if it needs to be created prior to writing to it.
+        """
+
+        # Write the engine metadata file in the same dir as the ret of the grype db files
+        output_file = os.path.join(
+            latest_grype_db_dir, grype_db_version, self.ENGINE_METADATA_FILE_NAME
+        )
+
+        # Assemble the engine metadata json
+        engine_metadata = {
+            "archive_checksum": archive_checksum,
+            "grype_db_version": grype_db_version,
+        }
+
+        # Write engine_metadata to file at output_file
+        with open(output_file, "w") as write_file:
+            json.dump(engine_metadata, write_file)
+
+        return
 
     def _remove_grype_db_archive(self, grype_db_archive_local_file_location: str):
         logger.info(
@@ -273,7 +309,10 @@ class GrypeWrapperSingleton(object):
         os.remove(grype_db_archive_local_file_location)
 
     def _move_and_open_grype_db_archive(
-        self, grype_db_archive_local_file_location: str, version_name: str
+        self,
+        grype_db_archive_local_file_location: str,
+        archive_checksum: str,
+        grype_db_version: str,
     ) -> str:
         """
         This function moves a tarball containing the latest grype db from a location on the local file system
@@ -290,11 +329,19 @@ class GrypeWrapperSingleton(object):
 
         # Unpack the archive
         latest_grype_db_dir = self._open_grype_db_archive(
-            grype_db_archive_copied_file_location, local_db_dir, version_name
+            grype_db_archive_copied_file_location,
+            local_db_dir,
+            archive_checksum,
+            grype_db_version,
         )
 
         # Remove the unpacked archive
         self._remove_grype_db_archive(grype_db_archive_copied_file_location)
+
+        # Store the archive_checksum and grype_db_version version in their own metadata file
+        self._write_engine_metadata_to_file(
+            latest_grype_db_dir, archive_checksum, grype_db_version
+        )
 
         # Return the full path to the grype db file
         return latest_grype_db_dir
@@ -323,13 +370,18 @@ class GrypeWrapperSingleton(object):
         )
         return sessionmaker(bind=grype_db_engine)
 
-    def _init_latest_grype_db(self, lastest_grype_db_archive: str, version_name: str):
+    def _init_latest_grype_db(
+        self,
+        lastest_grype_db_archive: str,
+        archive_checksum: str,
+        grype_db_version: str,
+    ):
         """
         Write the db string to file, create the engine, and create the session maker
         Return the file and session maker
         """
         latest_grype_db_dir = self._move_and_open_grype_db_archive(
-            lastest_grype_db_archive, version_name
+            lastest_grype_db_archive, archive_checksum, grype_db_version
         )
         latest_grype_db_engine = self._init_latest_grype_db_engine(latest_grype_db_dir)
         latest_grype_db_session_maker = self._init_latest_grype_db_session_maker(
@@ -353,7 +405,10 @@ class GrypeWrapperSingleton(object):
         return
 
     def init_grype_db_engine(
-        self, grype_db_archive_local_file_location: str, version_name: str
+        self,
+        grype_db_archive_local_file_location: str,
+        archive_checksum: str,
+        grype_db_version: str,
     ):
         """
         Update the installed grype db with the provided definition, and remove the old grype db file.
@@ -372,7 +427,7 @@ class GrypeWrapperSingleton(object):
                 latest_grype_db_dir,
                 latest_grype_db_session_maker,
             ) = self._init_latest_grype_db(
-                grype_db_archive_local_file_location, version_name
+                grype_db_archive_local_file_location, archive_checksum, grype_db_version
             )
 
             # Store the dir and session variables globally
@@ -388,42 +443,84 @@ class GrypeWrapperSingleton(object):
             if old_grype_db_dir and old_grype_db_dir != self._grype_db_dir:
                 self._remove_local_grype_db(old_grype_db_dir)
 
-    def get_current_grype_db_metadata(self) -> json:
+    def _get_metadata_file_contents(self, metadata_file_name) -> json:
         """
-        Return the json contents of the metadata file for the in-use version of grype db
+        Return the json contents of one of the metadata files for the in-use version of grype db
         """
-        # Get the path to the latest grype_db metadata file
-        latest_grype_db_metadata_file = os.path.join(
-            self._grype_db_dir, self.METADATA_FILE_NAME
-        )
+        # Get the path to the latest metadata file
+        latest_metadata_file = os.path.join(self._grype_db_dir, metadata_file_name)
 
         # Ensure the file exists
-        if not os.path.exists(latest_grype_db_metadata_file):
+        if not os.path.exists(latest_metadata_file):
             # If not, return None
             return None
         else:
             # Get the contents of the file
-            with open(latest_grype_db_metadata_file) as read_file:
+            with open(latest_metadata_file) as read_file:
                 try:
                     return json.load(read_file)
                 except JSONDecodeError:
                     logger.error(
-                        "Unable to decode grype_db metadata file into json: %s",
+                        "Unable to decode metadata file into json: %s",
                         read_file,
                     )
                     return None
 
-    def _get_proc_env(self):
+    def get_current_grype_db_metadata(self) -> json:
+        """
+        Return the json contents of the current grype_db metadata file.
+        This file contains metadata specific to grype about the current grype_db instance.
+        """
+        return self._get_metadata_file_contents(self.METADATA_FILE_NAME)
+
+    def get_current_grype_db_engine_metadata(self) -> json:
+        """
+        Return the json contents of the current grype_db engine metadata file.
+        This file contains metadata specific to engine about the current grype_db instance.
+        """
+        return self._get_metadata_file_contents(self.ENGINE_METADATA_FILE_NAME)
+
+    def _get_proc_env(self, include_grype_db=True):
         # Set grype env variables, including the grype db location
         grype_env = {
             "GRYPE_CHECK_FOR_APP_UPDATE": "0",
             "GRYPE_LOG_STRUCTURED": "1",
             "GRYPE_DB_AUTO_UPDATE": "0",
-            "GRYPE_DB_CACHE_DIR": "{}".format(self._grype_db_dir),
         }
+        if include_grype_db:
+            grype_env["GRYPE_DB_CACHE_DIR"] = self._grype_db_dir
+
         proc_env = os.environ.copy()
         proc_env.update(grype_env)
         return proc_env
+
+    def get_grype_version(self) -> json:
+        """
+        Return version information for grype
+        """
+        with self.read_lock_access():
+            proc_env = self._get_proc_env(include_grype_db=False)
+
+            logger.debug(
+                "Getting grype version with command: %s", self.GRYPE_VERSION_COMMAND
+            )
+
+            stdout = None
+            err = None
+            try:
+                stdout, _ = run_check(
+                    shlex.split(self.GRYPE_VERSION_COMMAND), env=proc_env
+                )
+            except CommandException as exc:
+                logger.error(
+                    "Exception running command: %s, stderr: %s",
+                    self.GRYPE_VERSION_COMMAND,
+                    exc.stderr,
+                )
+                raise exc
+
+            # Return the output as json
+            return json.loads(stdout)
 
     def get_vulnerabilities_for_sbom(self, grype_sbom: str) -> json:
         """
@@ -440,12 +537,12 @@ class GrypeWrapperSingleton(object):
             pipe_sub_cmd = "echo '{sbom}'".format(
                 sbom=grype_sbom,
             )
-            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_CMD)]
+            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_COMMAND)]
 
             logger.debug(
                 "Running grype with command: %s | %s",
                 pipe_sub_cmd,
-                self.GRYPE_SUB_CMD,
+                self.GRYPE_SUB_COMMAND,
             )
 
             stdout = None
@@ -456,7 +553,7 @@ class GrypeWrapperSingleton(object):
                 logger.error(
                     "Exception running command: %s | %s, stderr: %s",
                     pipe_sub_cmd,
-                    self.GRYPE_SUB_CMD,
+                    self.GRYPE_SUB_COMMAND,
                     exc.stderr,
                 )
                 raise exc
@@ -475,7 +572,7 @@ class GrypeWrapperSingleton(object):
 
             # Format and run the command
             cmd = "{grype_sub_command} sbom:{sbom}".format(
-                grype_sub_command=self.GRYPE_SUB_CMD, sbom=grype_sbom_file
+                grype_sub_command=self.GRYPE_SUB_COMMAND, sbom=grype_sbom_file
             )
 
             logger.debug("Running grype with command: %s", cmd)
