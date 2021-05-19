@@ -69,7 +69,7 @@ from .entities.policy_engine import ImagePackageManifestEntry
 from .entities.policy_engine import CachedPolicyEvaluation
 from .entities.policy_engine import select_nvd_classes
 from .entities.policy_engine import ImageVulnerabilitiesReport
-from .entities.policy_engine import GrypeDBMetadata
+from .entities.policy_engine import GrypeDBFeedMetadata
 
 from .entities.catalog import ImageImportContent, ImageImportOperation
 

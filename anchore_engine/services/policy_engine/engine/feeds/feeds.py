@@ -19,7 +19,7 @@ from anchore_engine.db import (
     FixedArtifact,
     GemMetadata,
     GenericFeedDataRecord,
-    GrypeDBMetadata,
+    GrypeDBFeedMetadata,
     Image,
     NpmMetadata,
     NvdMetadata,
@@ -726,11 +726,11 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :return: sqlalchemy query object
         :rtype: Query
         """
-        results = db.query(GrypeDBMetadata)
+        results = db.query(GrypeDBFeedMetadata)
         if checksum:
-            results = results.filter(GrypeDBMetadata.archive_checksum == checksum)
+            results = results.filter(GrypeDBFeedMetadata.archive_checksum == checksum)
         if not isinstance(active, type(None)):
-            results = results.filter(GrypeDBMetadata.active == active)
+            results = results.filter(GrypeDBFeedMetadata.active == active)
         return results
 
     def record_count(self, group_name: str, db: Session) -> int:
@@ -825,14 +825,14 @@ class GrypeDBFeed(AnchoreServiceFeed):
         inactive_records.delete(synchronize_session="evaluate")
         # search for active and mark inactive
         self._find_match(db, active=True).update(
-            {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
+            {GrypeDBFeedMetadata.active: False}, synchronize_session="evaluate"
         )
         # insert new as active
         object_url = catalog_client.create_raw_object(
             group_download_result.group, checksum, record.data
         )
         date_generated = rfc3339str_to_datetime(record.metadata["built"])
-        grypedb_meta = GrypeDBMetadata(
+        grypedb_meta = GrypeDBFeedMetadata(
             archive_checksum=checksum,
             schema_version=record.metadata["version"],
             feed_name=GrypeDBFeed.__feed_name__,

@@ -7,7 +7,7 @@ import sqlalchemy
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.db import GrypeDBMetadata, get_thread_scoped_session
+from anchore_engine.db import GrypeDBFeedMetadata, get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBFile,
     GrypeDBStorage,
@@ -73,7 +73,7 @@ class GrypeDBSyncManager:
     lock = threading.Lock()
 
     @classmethod
-    def _get_active_grypedb(cls) -> GrypeDBMetadata:
+    def _get_active_grypedb(cls) -> GrypeDBFeedMetadata:
         """
         Returns active grypedb instance from db. Raises NoActiveGrypeDB if there are none and raises
         TooManyActiveGrypeDBs if more than one
@@ -94,7 +94,7 @@ class GrypeDBSyncManager:
         return active_grypedb
 
     @classmethod
-    def _query_active_dbs(cls) -> Optional[GrypeDBMetadata]:
+    def _query_active_dbs(cls) -> Optional[GrypeDBFeedMetadata]:
         """
         Runs query against db to get active dbs. Uses one_or_none so raises error if more than one active db
 
@@ -103,8 +103,8 @@ class GrypeDBSyncManager:
         """
         db = get_thread_scoped_session()
         return (
-            db.query(GrypeDBMetadata)
-            .filter(GrypeDBMetadata.active == True)
+            db.query(GrypeDBFeedMetadata)
+            .filter(GrypeDBFeedMetadata.active == True)
             .one_or_none()
         )
 
@@ -126,7 +126,7 @@ class GrypeDBSyncManager:
     @classmethod
     def _update_grypedb(
         cls,
-        active_grypedb: GrypeDBMetadata,
+        active_grypedb: GrypeDBFeedMetadata,
         grypedb_file_path: Optional[str] = None,
     ):
         """
@@ -163,7 +163,7 @@ class GrypeDBSyncManager:
 
     @staticmethod
     def _is_sync_necessary(
-        active_grypedb: GrypeDBMetadata, local_grypedb_checksum: str
+        active_grypedb: GrypeDBFeedMetadata, local_grypedb_checksum: str
     ) -> bool:
         """
         Returns bool based upon comparisons between the active grype db and the local checksum passed to the function

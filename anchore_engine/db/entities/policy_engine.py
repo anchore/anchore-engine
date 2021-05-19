@@ -135,7 +135,7 @@ class FeedGroupMetadata(Base, UtilMixin):
         return j
 
 
-class GrypeDBMetadata(Base):
+class GrypeDBFeedMetadata(Base):
     """
     A data model for persisting the current active grype db that the system should use across all policy-engine instances
     Each instance of policy engine witll use the active record in this table to determine the correct grype db
@@ -144,12 +144,10 @@ class GrypeDBMetadata(Base):
     There should only ever be a single active record. More than one indicates an error in the system
     """
 
-    __tablename__ = "grype_db_metadata"
+    __tablename__ = "grype_db_feed_metadata"
 
     archive_checksum = Column(String, primary_key=True)
     schema_version = Column(String, nullable=False)
-    feed_name = Column(String, nullable=False)
-    group_name = Column(String, nullable=False)
     date_generated = Column(DateTime, nullable=False)
     object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
