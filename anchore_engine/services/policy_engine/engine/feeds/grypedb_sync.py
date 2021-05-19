@@ -105,7 +105,7 @@ class GrypeDBSyncManager:
         """
         try:
             if grypedb_file_path:
-                GrypeWrapperSingleton.get_instance().init_grype_db_engine(
+                GrypeWrapperSingleton.get_instance().stage_grype_db_update(
                     grypedb_file_path,
                     active_grypedb.archive_checksum,
                     active_grypedb.schema_version,
@@ -122,7 +122,7 @@ class GrypeDBSyncManager:
                 with GrypeDBStorage() as grypedb_file:
                     with grypedb_file.create_file(active_grypedb.archive_checksum) as f:
                         f.write(grypedb_document)
-                    GrypeWrapperSingleton.get_instance().init_grype_db_engine(
+                    GrypeWrapperSingleton.get_instance().stage_grype_db_update(
                         grypedb_file.path,
                         active_grypedb.archive_checksum,
                         active_grypedb.schema_version,

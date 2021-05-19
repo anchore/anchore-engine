@@ -93,6 +93,10 @@ class GrypeWrapperSingleton(object):
             cls._grype_db_version_internal = None
             cls._grype_db_session_maker_internal = None
 
+            # These variables are also mutable. They are for staging updated grye_dbs.
+            cls._staging_grype_db_dir_internal = None
+            cls._staging_grype_db_session_maker_internal = None
+
             # The reader-writer lock for this class
             cls._grype_db_lock = rwlock.RWLockWrite()
 
@@ -138,6 +142,24 @@ class GrypeWrapperSingleton(object):
     @_grype_db_session_maker.setter
     def _grype_db_session_maker(self, _grype_db_session_maker_internal):
         self._grype_db_session_maker_internal = _grype_db_session_maker_internal
+
+    @property
+    def _staging_grype_db_dir(self):
+        return self._staging_grype_db_dir_internal
+
+    @_staging_grype_db_dir.setter
+    def _staging_grype_db_dir(self, _staging_grype_db_dir_internal):
+        self._staging_grype_db_dir_internal = _staging_grype_db_dir_internal
+
+    @property
+    def _staging_grype_db_session_maker(self):
+        return self._staging_grype_db_session_maker_internal
+
+    @_staging_grype_db_session_maker.setter
+    def _staging_grype_db_session_maker(self, _staging_grype_db_session_maker_internal):
+        self._staging_grype_db_session_maker_internal = (
+            _staging_grype_db_session_maker_internal
+        )
 
     @contextmanager
     def read_lock_access(self):
@@ -421,15 +443,16 @@ class GrypeWrapperSingleton(object):
             )
         return
 
-    def init_grype_db_engine(
+    def stage_grype_db_update(
         self,
         grype_db_archive_local_file_location: str,
         archive_checksum: str,
         grype_db_version: str,
     ):
         """
-        Update the installed grype db with the provided definition, and remove the old grype db file.
-        This method does not validation of the db, and assumes it has passed any required validation upstream
+        Stage an update to grype_db, using Update the installed grype db with the provided archive file, archive
+        checksum, and grype db version. Returns the engine metadata for upstream validation. This method has no
+        impact on the currently-in-use version of grype_db from the last sync.
         """
 
         logger.info(
@@ -447,28 +470,57 @@ class GrypeWrapperSingleton(object):
                 grype_db_archive_local_file_location, archive_checksum, grype_db_version
             )
 
-            # Store the dir and session variables globally
-            # For use during reads and to remove in the next update
-            try:
-                old_grype_db_dir = self._grype_db_dir
-            except ValueError:
-                old_grype_db_dir = None
-            self._grype_db_dir = latest_grype_db_dir
-            self._grype_db_version = grype_db_version
-            self._grype_db_session_maker = latest_grype_db_session_maker
+            # Store the staged dir and session variables
+            self._staging_grype_db_dir = latest_grype_db_dir
+            self._staging_grype_db_version = grype_db_version
+            self._staging_grype_db_session_maker = latest_grype_db_session_maker
 
-            # Remove the old local db only if it's not the current db
-            if old_grype_db_dir and old_grype_db_dir != self._grype_db_dir:
-                self._remove_local_grype_db(old_grype_db_dir)
+            # TODO return the staging engine checksum contents, as a data object
+            return self.get_current_grype_db_engine_metadata(use_staging=True)
 
-    def _get_metadata_file_contents(self, metadata_file_name) -> json:
+    def unstage_grype_db(self):
+        self._staging_grype_db_dir = None
+        self._staging_grype_db_session_maker = None
+
+        # TODO return the old engine checksum contents, as a data object
+        return self.get_current_grype_db_engine_metadata(use_staging=False)
+
+    # TODO if multiple things are trying to stage new dbs, something is eventually going to go sideways here
+    # Need to confirm that the thing we are promoting is still what the requestor previously staged
+    # Easiest way it to probably pass the metdata block back as a fake token thing and compare
+    # Or if that gets to big stick a uuid in the metadata to represent a unique metdata blob
+    def update_grype_db(self):
+        with self.write_lock_access():
+            if (
+                not self._staging_grype_db_dir
+                and not self._staging_grype_db_session_maker
+            ):
+                raise ValueError("write a real message here")
+            else:
+                self._grype_db_dir = self._staging_grype_db_dir
+                self._grype_db_session_maker = self._staging_grype_db_session_maker
+                self.unstage_grype_db()
+
+        # TODO return the new engine checksum contents, as a data object
+        return self.get_current_grype_db_engine_metadata(use_staging=False)
+
+    def _get_metadata_file_contents(
+        self, metadata_file_name, use_staging: bool = False
+    ) -> json:
         """
         Return the json contents of one of the metadata files for the in-use version of grype db
         """
-        # Get the path to the latest metadata file
-        latest_metadata_file = os.path.join(
-            self._grype_db_dir, self._grype_db_version, metadata_file_name
-        )
+        # Get the path to the latest metadata file, staging or prod
+        if use_staging:
+            latest_metadata_file = os.path.join(
+                self._staging_grype_db_dir,
+                self._staging_grype_db_version,
+                metadata_file_name,
+            )
+        else:
+            latest_metadata_file = os.path.join(
+                self._grype_db_dir, self._grype_db_version, metadata_file_name
+            )
 
         # Ensure the file exists
         if not os.path.exists(latest_metadata_file):
@@ -486,22 +538,28 @@ class GrypeWrapperSingleton(object):
                     )
                     return None
 
-    def get_current_grype_db_metadata(self) -> json:
+    def get_current_grype_db_metadata(self, use_staging: bool = False) -> json:
         """
         Return the json contents of the current grype_db metadata file.
         This file contains metadata specific to grype about the current grype_db instance.
         """
-        return self._get_metadata_file_contents(self.METADATA_FILE_NAME)
+        return self._get_metadata_file_contents(
+            self.METADATA_FILE_NAME, use_staging=use_staging
+        )
 
-    def get_current_grype_db_engine_metadata(self) -> json:
+    # TODO parameterize to go against staging db or prod
+    def get_current_grype_db_engine_metadata(self, use_staging: bool = False) -> json:
         """
         Return the json contents of the current grype_db engine metadata file.
         This file contains metadata specific to engine about the current grype_db instance.
         """
-        return self._get_metadata_file_contents(self.ENGINE_METADATA_FILE_NAME)
+        return self._get_metadata_file_contents(
+            self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
+        )
 
     def _get_proc_env(self, include_grype_db=True):
         # Set grype env variables, including the grype db location
+        # TODO make this a constant
         grype_env = {
             "GRYPE_CHECK_FOR_APP_UPDATE": "0",
             "GRYPE_LOG_STRUCTURED": "1",
