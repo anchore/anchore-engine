@@ -70,6 +70,7 @@ class GrypeWrapperSingleton(object):
     GRYPE_VERSION_COMMAND = "grype version -o json"
     VULNERABILITY_FILE_NAME = "vulnerability.db"
     METADATA_FILE_NAME = "metadata.json"
+    ENGINE_METADATA_FILE_NAME = "engine_metadata.json"
     ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE = "New grype_db archive file not found"
     MISSING_GRYPE_DB_DIR_ERROR_MESSAGE = (
         "Cannot access missing grype_db dir. Reinitialize grype_db."
@@ -271,6 +272,35 @@ class GrypeWrapperSingleton(object):
         logger.info("Returning the unpacked grype_db dir at %s", grype_db_parent_dir)
         return grype_db_parent_dir
 
+    def _write_engine_metadata_to_file(
+        self, latest_grype_db_dir: str, archive_checksum: str, grype_db_version: str
+    ):
+        """
+        Write engine metadata to file. This file will contain a json with the values
+        for archive_checksum and grype_db_version for the current;y configured grype_db.
+
+        This method writes that file to the same dir the grype_db archive was unpacked at
+        in _open_grype_db_archive(). This means that it assumes the dir already exists,
+        and does not check to see if it needs to be created prior to writing to it.
+        """
+
+        # Write the engine metadata file in the same dir as the ret of the grype db files
+        output_file = os.path.join(
+            latest_grype_db_dir, grype_db_version, self.ENGINE_METADATA_FILE_NAME
+        )
+
+        # Assemble the engine metadata json
+        engine_metadata = {
+            "archive_checksum": archive_checksum,
+            "grype_db_version": grype_db_version,
+        }
+
+        # Write engine_metadata to file at output_file
+        with open(output_file, "w") as write_file:
+            json.dump(engine_metadata, write_file)
+
+        return
+
     def _remove_grype_db_archive(self, grype_db_archive_local_file_location: str):
         logger.info(
             "Removing the now-unpacked grype_db archive at %s",
@@ -307,6 +337,11 @@ class GrypeWrapperSingleton(object):
 
         # Remove the unpacked archive
         self._remove_grype_db_archive(grype_db_archive_copied_file_location)
+
+        # Store the archive_checksum and grype_db_version version in their own metadata file
+        self._write_engine_metadata_to_file(
+            latest_grype_db_dir, archive_checksum, grype_db_version
+        )
 
         # Return the full path to the grype db file
         return latest_grype_db_dir

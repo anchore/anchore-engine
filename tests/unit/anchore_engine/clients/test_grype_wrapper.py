@@ -1,4 +1,5 @@
 import anchore_engine.configuration.localconfig
+import json
 import os
 import pytest
 import shutil
@@ -249,6 +250,41 @@ def test_open_grype_db_archive(grype_db_archive):
     )
 
 
+def test_store_grype_db_version_to_file(grype_db_archive):
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+
+    # Setup input var and create directories
+    parent_dir = os.path.abspath(os.path.join(grype_db_archive, os.pardir))
+    latest_grype_db_dir = os.path.join(parent_dir, NEW_VERSION_MOCK_CHECKSUM)
+    versioned_dir = os.path.join(latest_grype_db_dir, GRYPE_DB_VERSION)
+    if not os.path.exists(versioned_dir):
+        os.makedirs(versioned_dir)
+
+    # Setup expected output vars
+    expected_output_file = os.path.join(
+        versioned_dir, grype_wrapper_singleton.ENGINE_METADATA_FILE_NAME
+    )
+    expected_engine_metadata = {
+        "archive_checksum": NEW_VERSION_MOCK_CHECKSUM,
+        "grype_db_version": GRYPE_DB_VERSION,
+    }
+
+    # Function under test
+    grype_wrapper_singleton._write_engine_metadata_to_file(
+        latest_grype_db_dir, NEW_VERSION_MOCK_CHECKSUM, GRYPE_DB_VERSION
+    )
+
+    # Validate output
+    assert os.path.exists(os.path.join(expected_output_file))
+
+    # Validate the contents of the engine_metadata file
+    with open(expected_output_file, "r") as read_file:
+        engine_metadata = json.load(read_file)
+
+    assert engine_metadata == expected_engine_metadata
+
+
 def test_remove_grype_db_archive(grype_db_archive):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
@@ -307,10 +343,20 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
 
     # Setup expected output vars
     expected_output_dir = os.path.join(grype_db_parent_dir, NEW_VERSION_MOCK_CHECKSUM)
-    expected_output_file = os.path.join(
+    expected_output_vulnerability_file = os.path.join(
         expected_output_dir,
         GRYPE_DB_VERSION,
         grype_wrapper_singleton.VULNERABILITY_FILE_NAME,
+    )
+    expected_output_metadata_file = os.path.join(
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.METADATA_FILE_NAME,
+    )
+    expected_output_engine_metadata_file = os.path.join(
+        expected_output_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.ENGINE_METADATA_FILE_NAME,
     )
 
     # Function under test
@@ -326,7 +372,9 @@ def test_init_grype_db(grype_db_parent_dir, grype_db_archive):
     assert latest_grype_db_dir == expected_output_dir
 
     assert latest_grype_db_session is not None
-    assert os.path.exists(expected_output_file)
+    assert os.path.exists(expected_output_vulnerability_file)
+    assert os.path.exists(expected_output_metadata_file)
+    assert os.path.exists(expected_output_engine_metadata_file)
 
 
 def test_remove_local_grype_db(old_grype_db_dir):
