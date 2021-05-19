@@ -246,25 +246,30 @@ class GrypeWrapperSingleton(object):
         self,
         grype_db_archive_copied_file_location: str,
         parent_dir: str,
-        version_name: str,
+        archive_checksum: str,
+        grype_db_version: str,
     ) -> str:
-        output_dir = os.path.join(parent_dir, version_name)
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
+        grype_db_parent_dir = os.path.join(parent_dir, archive_checksum)
+        grype_db_versioned_dir = os.path.join(grype_db_parent_dir, grype_db_version)
+        if not os.path.exists(grype_db_versioned_dir):
+            os.makedirs(grype_db_versioned_dir)
 
         logger.info(
-            "Unpacking the grype_db archive at %s into %s",
+            "Unpacking the grype_db archive with checksum: %s and db version: %s at %s into %s",
+            archive_checksum,
+            grype_db_version,
             grype_db_archive_copied_file_location,
-            output_dir,
+            grype_db_parent_dir,
         )
 
-        # Put the extracted files in the same dir as the archive
+        # Put the extracted files in the versioned dir
         with tarfile.open(grype_db_archive_copied_file_location) as read_archive:
-            read_archive.extractall(output_dir)
+            read_archive.extractall(grype_db_versioned_dir)
 
-        # Return the full path to the grype_db dir
-        logger.info("Returning the unpacked grype_db dir at %s", output_dir)
-        return output_dir
+        # Return the full path to the parent grype_db dir. This is the dir we actually pass to grype,
+        # which expects the version subdirectory to be under it.
+        logger.info("Returning the unpacked grype_db dir at %s", grype_db_parent_dir)
+        return grype_db_parent_dir
 
     def _remove_grype_db_archive(self, grype_db_archive_local_file_location: str):
         logger.info(
@@ -274,7 +279,10 @@ class GrypeWrapperSingleton(object):
         os.remove(grype_db_archive_local_file_location)
 
     def _move_and_open_grype_db_archive(
-        self, grype_db_archive_local_file_location: str, version_name: str
+        self,
+        grype_db_archive_local_file_location: str,
+        archive_checksum: str,
+        grype_db_version: str,
     ) -> str:
         """
         This function moves a tarball containing the latest grype db from a location on the local file system
@@ -291,7 +299,10 @@ class GrypeWrapperSingleton(object):
 
         # Unpack the archive
         latest_grype_db_dir = self._open_grype_db_archive(
-            grype_db_archive_copied_file_location, local_db_dir, version_name
+            grype_db_archive_copied_file_location,
+            local_db_dir,
+            archive_checksum,
+            grype_db_version,
         )
 
         # Remove the unpacked archive
@@ -324,13 +335,18 @@ class GrypeWrapperSingleton(object):
         )
         return sessionmaker(bind=grype_db_engine)
 
-    def _init_latest_grype_db(self, lastest_grype_db_archive: str, version_name: str):
+    def _init_latest_grype_db(
+        self,
+        lastest_grype_db_archive: str,
+        archive_checksum: str,
+        grype_db_version: str,
+    ):
         """
         Write the db string to file, create the engine, and create the session maker
         Return the file and session maker
         """
         latest_grype_db_dir = self._move_and_open_grype_db_archive(
-            lastest_grype_db_archive, version_name
+            lastest_grype_db_archive, archive_checksum, grype_db_version
         )
         latest_grype_db_engine = self._init_latest_grype_db_engine(latest_grype_db_dir)
         latest_grype_db_session_maker = self._init_latest_grype_db_session_maker(
@@ -354,7 +370,10 @@ class GrypeWrapperSingleton(object):
         return
 
     def init_grype_db_engine(
-        self, grype_db_archive_local_file_location: str, version_name: str
+        self,
+        grype_db_archive_local_file_location: str,
+        archive_checksum: str,
+        grype_db_version: str,
     ):
         """
         Update the installed grype db with the provided definition, and remove the old grype db file.
@@ -373,7 +392,7 @@ class GrypeWrapperSingleton(object):
                 latest_grype_db_dir,
                 latest_grype_db_session_maker,
             ) = self._init_latest_grype_db(
-                grype_db_archive_local_file_location, version_name
+                grype_db_archive_local_file_location, archive_checksum, grype_db_version
             )
 
             # Store the dir and session variables globally
