@@ -15,6 +15,8 @@ WORKDIR /buildsource
 RUN set -ex && \
     mkdir -p /build_output /build_output/deps /build_output/configs /build_output/wheels
 
+RUN yum install -y http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libgomp-8.4.1-1.el8.x86_64.rpm http://mirror.centos.org/centos/8-stream/BaseOS/x86_64/os/Packages/libgcc-8.4.1-1.el8.x86_64.rpm
+
 RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
