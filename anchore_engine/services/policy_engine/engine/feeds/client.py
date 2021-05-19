@@ -173,12 +173,15 @@ class HTTPBasicAuthClient(IAuthenticatedHTTPClientBase):
             count += 1
             logger.debug("get attempt " + str(count) + " of " + str(retries))
             try:
-                auth = (self.user, self.password)
                 logger.debug(
                     "making authenticated request (user={}, conn_timeout={}, read_timeout={}, verify={}) to url {}".format(
                         str(self.user), conn_timeout, read_timeout, verify, str(url)
                     )
                 )
+                # TODO: move un-authed requests to new class or rename this class
+                auth = None
+                if self.user or self.password:
+                    auth = (self.user, self.password)
                 r = method(
                     url, auth=auth, timeout=(conn_timeout, read_timeout), verify=verify
                 )
