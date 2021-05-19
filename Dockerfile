@@ -98,7 +98,6 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_WEBHOOK_DESTINATION_URL=null \
     ANCHORE_HINTS_ENABLED=false \
     ANCHORE_FEEDS_ENABLED=true \
-    ANCHORE_FEEDS_SELECTIVE_ENABLED=true \
     ANCHORE_FEEDS_SSL_VERIFY=true \
     ANCHORE_ENDPOINT_HOSTNAME=localhost \
     ANCHORE_EVENTS_NOTIFICATIONS_ENABLED=false \
@@ -133,7 +132,9 @@ ENV ANCHORE_CONFIG_DIR=/config \
     AUTHLIB_INSECURE_TRANSPORT=true \
     ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
     ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180 \
+    ANCHORE_VULNERABILITIES_PROVIDER="legacy" \
     ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json"
+
 
 # Insecure transport required in case for things like tls sidecars
 
