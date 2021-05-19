@@ -10,6 +10,7 @@ import ijson
 import requests
 import requests.exceptions
 
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
 from anchore_engine.services.policy_engine.engine.feeds import (
     FeedGroupList,
@@ -19,7 +20,12 @@ from anchore_engine.services.policy_engine.engine.feeds import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.subsys import logger
-from anchore_engine.utils import AnchoreException, ensure_bytes, ensure_str
+from anchore_engine.utils import (
+    AnchoreException,
+    CommandException,
+    ensure_bytes,
+    ensure_str,
+)
 
 FEED_DATA_ITEMS_PATH = "data.item"
 FEED_DATA_NEXT_TOKEN_PATH = "next_token"
@@ -430,9 +436,19 @@ class GrypeDBUnavailable(FeedClientError):
         )
 
 
+class GrypeVersionCommandError(FeedClientError):
+    pass
+
+
+class InvalidGrypeVersionResponse(GrypeVersionCommandError):
+    def __init__(self, response_string: str):
+        super().__init__(
+            f"The 'grype version' command did not return the expected response. Response: {response_string}"
+        )
+
+
 class GrypeDBServiceClient(IFeedSource):
     RETRY_COUNT = 3
-    REQUIRED_GRYPEDB_VERSION = "1"
 
     def __init__(
         self,
@@ -464,6 +480,18 @@ class GrypeDBServiceClient(IFeedSource):
             ]
         )
 
+    @staticmethod
+    def _get_supported_grype_db_version():
+        grype_wrapper = GrypeWrapperSingleton.get_instance()
+        try:
+            version_response = grype_wrapper.get_grype_version()
+        except CommandException as exc:
+            raise GrypeVersionCommandError() from exc
+        try:
+            return str(version_response["supportedDbSchema"])
+        except KeyError as exc:
+            raise InvalidGrypeVersionResponse(json.dumps(version_response)) from exc
+
     def _get_raw_feed_group_data(
         self,
     ) -> Tuple[Dict, HTTPClientResponse]:
@@ -474,11 +502,10 @@ class GrypeDBServiceClient(IFeedSource):
         if not listing_response.success:
             raise HTTPStatusException(listing_response)
         listings_json = json.loads(listing_response.content.decode("utf-8"))
-        available_dbs = listings_json.get("available").get(
-            self.REQUIRED_GRYPEDB_VERSION
-        )
-        if len(available_dbs) < 1:
-            raise GrypeDBUnavailable(self.REQUIRED_GRYPEDB_VERSION)
+        required_grype_db_version = self._get_supported_grype_db_version()
+        available_dbs = listings_json.get("available").get(required_grype_db_version)
+        if not available_dbs:
+            raise GrypeDBUnavailable(required_grype_db_version)
         db_listing = available_dbs[0]
         logger.info("Found relevant grypedb listing: {}".format(db_listing))
         grype_db_url = db_listing.get("url")
@@ -507,8 +534,9 @@ class GrypeDBServiceClient(IFeedSource):
                 since=since,
                 record_count=1,
                 response_metadata={
-                    "Checksum": listing_json.get("checksum"),
-                    "Date-Created": listing_json.get("built"),
+                    "checksum": listing_json.get("checksum"),
+                    "built": listing_json.get("built"),
+                    "version": listing_json.get("version"),
                 },
             )
         except (HTTPStatusException, json.JSONDecodeError, UnicodeDecodeError) as e:

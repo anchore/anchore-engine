@@ -831,9 +831,10 @@ class GrypeDBFeed(AnchoreServiceFeed):
         object_url = catalog_client.create_raw_object(
             group_download_result.group, checksum, record.data
         )
-        date_generated = rfc3339str_to_datetime(record.metadata["Date-Created"])
+        date_generated = rfc3339str_to_datetime(record.metadata["built"])
         grypedb_meta = GrypeDBMetadata(
             checksum=checksum,
+            schema_version=record.metadata["version"],
             feed_name=GrypeDBFeed.__feed_name__,
             group_name=group_download_result.group,
             date_generated=date_generated,
@@ -890,7 +891,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             if total_records_updated >= 1:
                 raise UnexpectedRawGrypeDBFile()
             # Check that the data that we downloaded matches the checksum provided
-            checksum = record.metadata["Checksum"]
+            checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
             # If there aren't any other database files with the same checksum, then this is a new database file.
             if self._find_match(db, checksum).count() == 0:
