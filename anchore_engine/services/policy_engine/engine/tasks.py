@@ -27,17 +27,18 @@ from anchore_engine.services.policy_engine.engine.feeds.client import (
     get_feeds_client,
     get_grype_db_client,
 )
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    compute_selected_configs_to_sync,
+    get_section_for_vulnerabilities,
+)
 from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedSyncResult
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
+    NoActiveGrypeDB,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
     DataFeeds,
     notify_event,
-)
-from anchore_engine.services.policy_engine.engine.feeds.config import (
-    get_section_for_vulnerabilities,
-    compute_selected_configs_to_sync,
 )
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
@@ -671,5 +672,7 @@ class GrypeDBSyncTask(IAsyncTask):
         """
         try:
             return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
+        except NoActiveGrypeDB:
+            logger.info("Grype DB not yet initialized. Waiting for initial sync...")
         finally:
             end_session()
