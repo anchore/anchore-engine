@@ -418,7 +418,7 @@ class PolicyEngineService(ApiService):
             "args": [],
             "cycle_timer": 60,
             "min_cycle_timer": 60,
-            "max_cycle_timer": 60,
+            "max_cycle_timer": 3600,
             "last_queued": 0,
             "last_return": False,
             "initialized": False,
