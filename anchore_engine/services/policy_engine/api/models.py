@@ -164,9 +164,9 @@ class Image(JsonSerializable):
 
 class CvssScore(JsonSerializable):
     class CvssScoreV1Schema(Schema):
-        base_score = fields.Float(default=-1.0)
-        exploitability_score = fields.Float(default=-1.0)
-        impact_score = fields.Float(default=-1.0)
+        base_score = fields.Float(default=-1.0, missing=-1.0)
+        exploitability_score = fields.Float(default=-1.0, missing=-1.0)
+        impact_score = fields.Float(default=-1.0, missing=-1.0)
 
         @post_load
         def make(self, data, **kwargs):

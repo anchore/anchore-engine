@@ -2,11 +2,8 @@ import pytest
 import datetime
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
-    get_selected_feeds_to_sync,
-    get_feeds_config,
     DataFeeds,
     FeedMetadata,
-    VulnDBFeed,
     VulnerabilityFeed,
     NvdV2Feed,
     PackagesFeed,
@@ -29,34 +26,6 @@ def feed_db_records():
         recs[r].groups = []
 
     return recs
-
-
-def test_get_feeds_config():
-    matrix = [
-        ({}, {}),
-        ({"something": {"feeds": {"nothing": True}}}, {}),
-        ({"feeds": {}}, {}),
-        ({"feeds": {"something": "somevalue"}}, {"something": "somevalue"}),
-    ]
-
-    for input, output in matrix:
-        assert get_feeds_config(input) == output
-
-
-def test_get_selected_feeds_to_sync():
-    default_result = ["vulnerabilities", "nvdv2"]
-
-    matrix = [
-        ({}, default_result),
-        ({"feeds": {}}, default_result),
-        ({"feeds": None}, default_result),
-        ({"feeds": {"selective_sync": {}}}, default_result),
-        ({"feeds": {"selective_sync": None}}, default_result),
-        ({"feeds": {"selective_sync": {"enabled": False}}}, default_result),
-    ]
-
-    for input, output in matrix:
-        assert get_selected_feeds_to_sync(input) == output
 
 
 def test_pivot_and_filter_feeds_by_config(feed_db_records):

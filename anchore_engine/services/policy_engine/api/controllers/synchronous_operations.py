@@ -65,7 +65,9 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
+
 from anchore_engine.subsys import logger as log
+
 
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
@@ -87,6 +89,11 @@ feed_sync_locking_enabled = True
 
 evaluation_cache_enabled = (
     os.getenv("ANCHORE_POLICY_ENGINE_EVALUATION_CACHE_ENABLED", "true").lower()
+    == "true"
+)
+
+vulnerabilities_cache_enabled = (
+    os.getenv("ANCHORE_POLICY_ENGINE_VULNERABILITIES_CACHE_ENABLED", "true").lower()
     == "true"
 )
 

@@ -1,25 +1,21 @@
-import json
-import enum
-import os
 import datetime
+import enum
+import json
+import os
 import shutil
-import typing
+from dataclasses import dataclass
+from typing import Dict, Generator, Tuple
 
-from anchore_engine.utils import mapped_parser_item_iterator
-from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.common.schemas import (
-    LocalFeedDataRepoMetadata,
     DownloadOperationConfiguration,
     DownloadOperationResult,
     GroupDownloadOperationConfiguration,
-    FeedAPIGroupRecord,
-    FeedAPIRecord,
     GroupDownloadResult,
+    LocalFeedDataRepoMetadata,
 )
-
+from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.subsys import logger
-
-from anchore_engine.utils import ensure_bytes, timer
+from anchore_engine.utils import ensure_bytes, mapped_parser_item_iterator, timer
 
 FEED_DATA_ITEMS_PATH = "data.item"
 
@@ -127,8 +123,60 @@ class LocalFeedDataRepo(object):
         ]
         return FileListJsonIterator(files, start_index)
 
+    def _get_group_metadata(self, feed, group):
+        for results in self.metadata.download_result.results:
+            if results.feed == feed and results.group == group:
+                return results.group_metadata
+
+    def read_files(self, feed, group):
+        files = [
+            os.path.join(self.root_dir, feed, group, x)
+            for x in os.listdir(os.path.join(self.root_dir, feed, group))
+        ]
+        group_metadata = self._get_group_metadata(feed, group)
+        return FileListIterator(files, group_metadata)
+
     def teardown(self):
         shutil.rmtree(self.root_dir)
+
+
+@dataclass
+class FileData:
+    data: bytes
+    metadata: Dict[str, str]
+
+
+class FileListIterator(object):
+    """
+    Iterator that will return a FileData object from files listed in order handling the open/close between files.
+    """
+
+    def __init__(
+        self, ordered_path_list: list, group_metadata: Dict[str, Dict[str, str]]
+    ):
+        self.files = [
+            file_path for file_path in ordered_path_list if os.path.isfile(file_path)
+        ]
+        self.file_metadata = group_metadata
+        self.current_file_index = 0
+
+    def __iter__(self):
+        return self
+
+    def _read_file(self, file) -> FileData:
+        name = os.path.split(file)[1]
+        with open(file, "rb") as f:
+            return FileData(f.read(), self.file_metadata[name])
+
+    def _get_currentfile(self):
+        return self.files[self.current_file_index]
+
+    def __next__(self) -> FileData:
+        if self.current_file_index < len(self.files):
+            file_data = self._read_file(self._get_currentfile())
+            self.current_file_index += 1
+            return file_data
+        raise StopIteration()
 
 
 class FeedDataFileJsonIterator(object):
@@ -241,6 +289,7 @@ def _group_download_start_metadata(group: GroupDownloadOperationConfiguration):
         total_records=0,
         status=FeedDownloader.State.in_progress.value,
         started=datetime.datetime.utcnow(),
+        group_metadata={},
     )
 
 
@@ -358,9 +407,10 @@ class FeedDownloader(object):
                         "data download for group {}/{}".format(group.feed, group.group),
                         log_level="info",
                     ):
-                        for count in self._fetch_group_data(group):
+                        for count, group_metadata in self._fetch_group_data(group):
                             record_count += count
                             meta.total_records = record_count
+                            meta.group_metadata.update(group_metadata)
                             self.local_repo.flush_metadata()
 
                     _update_download_complete(meta, record_count)
@@ -404,12 +454,14 @@ class FeedDownloader(object):
 
     def _fetch_group_data(
         self, group: GroupDownloadOperationConfiguration
-    ) -> typing.Iterable:
+    ) -> Generator[Tuple[int, Dict[str, Dict[str, str]]], None, None]:
         """
         Execute the download and write the data into the local repo location for the group
 
-        :param group:
+        :param group: group download op configuration
+        :type group: GroupDownloadOperationConfiguration
         :return: generator for the record count of each chunk as it is downloaded
+        :rtype: Generator[Tuple[int, Dict[str, Dict[str, str]]], None, None]
         """
 
         get_next = True
@@ -430,12 +482,13 @@ class FeedDownloader(object):
             get_next = bool(group_data.next_token)
             next_token = group_data.next_token
             count += group_data.record_count
+            group_metadata = {str(chunk_number): group_data.response_metadata}
             if group_data.data is not None:
                 self.local_repo.write_data(
                     group.feed, group.group, chunk_number, ensure_bytes(group_data.data)
                 )
             chunk_number += 1
-            yield group_data.record_count
+            yield group_data.record_count, group_metadata
 
         logger.info(
             "Completed data download of for feed group: {}/{}. Total pages: {}".format(

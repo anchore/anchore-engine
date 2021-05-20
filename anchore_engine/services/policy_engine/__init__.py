@@ -1,28 +1,34 @@
-import time
-import sys
-import pkg_resources
 import os
-import retrying
+import sys
+import time
 
+import pkg_resources
+import retrying
 from sqlalchemy.exc import IntegrityError
 
 # anchore modules
 import anchore_engine.clients.services.common
-import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.metrics
-from anchore_engine.subsys import logger
-from anchore_engine.configuration import localconfig
-from anchore_engine.clients.services import simplequeue, internal_client_for
+import anchore_engine.subsys.servicestatus
+from anchore_engine.clients.services import internal_client_for, simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    VulnerabilityFeed,
+    GithubFeed,
+    GrypeDBFeed,
+    NvdFeed,
     NvdV2Feed,
     PackagesFeed,
     VulnDBFeed,
-    GithubFeed,
+    VulnerabilityFeed,
     feed_registry,
-    NvdFeed,
+)
+from anchore_engine.subsys import logger
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    is_sync_enabled,
+    get_section_for_vulnerabilities,
+    get_provider_name,
 )
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
@@ -71,48 +77,6 @@ except ValueError:
 # service funcs (must be here)
 
 
-def _check_feed_client_credentials():
-    from anchore_engine.services.policy_engine.engine.feeds.client import get_client
-
-    sleep_time = feed_config_check_backoff
-    last_ex = None
-
-    for i in range(feed_config_check_retries):
-        if i > 0:
-            logger.info(
-                "Waiting for {} seconds to try feeds client config check again".format(
-                    sleep_time
-                )
-            )
-            time.sleep(sleep_time)
-            sleep_time += feed_config_check_backoff
-
-        try:
-            logger.info(
-                "Checking feeds client credentials. Attempt {} of {}".format(
-                    i + 1, feed_config_check_retries
-                )
-            )
-            client = get_client()
-            client = None
-            logger.info("Feeds client credentials ok")
-            return True
-        except Exception as e:
-            logger.warn(
-                "Could not verify feeds endpoint and/or config. Got exception: {}".format(
-                    e
-                )
-            )
-            last_ex = e
-    else:
-        if last_ex:
-            raise last_ex
-        else:
-            raise Exception(
-                "Exceeded retries for feeds client config check. Failing check"
-            )
-
-
 def _system_creds():
     global system_user_auth
 
@@ -145,7 +109,7 @@ def process_preflight():
 
 
 def _init_distro_mappings():
-    from anchore_engine.db import session_scope, DistroMapping
+    from anchore_engine.db import DistroMapping, session_scope
 
     initial_mappings = [
         DistroMapping(from_distro="alpine", to_distro="alpine", flavor="ALPINE"),
@@ -205,6 +169,7 @@ def init_feed_registry():
         (PackagesFeed, False),
         (GithubFeed, False),
         (NvdFeed, False),
+        (GrypeDBFeed, True),
     ]:
         logger.info("Registering feed handler {}".format(cls_tuple[0].__feed_name__))
         feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
@@ -214,17 +179,10 @@ def do_feed_sync(msg):
     if "FeedsUpdateTask" not in locals():
         from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 
-    if "get_selected_feeds_to_sync" not in locals():
-        from anchore_engine.services.policy_engine.engine.feeds.sync import (
-            get_selected_feeds_to_sync,
-        )
-
     handler_success = False
     timer = time.time()
     logger.info("FIRING: feed syncer")
     try:
-        feeds = get_selected_feeds_to_sync(localconfig.get_config())
-        logger.info("Syncing configured feeds: {}".format(feeds))
         result = FeedsUpdateTask.run_feeds_update(json_obj=msg.get("data"))
 
         if result is not None:
@@ -266,8 +224,8 @@ def handle_feed_sync(*args, **kwargs):
     cycle_time = kwargs["mythread"]["cycle_timer"]
 
     while True:
-        config = localconfig.get_config()
-        feed_sync_enabled = config.get("feeds", {}).get("sync_enabled", True)
+        config = get_section_for_vulnerabilities()
+        feed_sync_enabled = is_sync_enabled(config)
         if feed_sync_enabled:
             logger.info("Feed sync task executor activated")
             try:
@@ -277,7 +235,7 @@ def handle_feed_sync(*args, **kwargs):
             finally:
                 logger.info("Feed sync task executor complete")
         else:
-            logger.info("sync_enabled is set to false in config - skipping feed sync")
+            logger.info("sync enabled is set to false in config - skipping feed sync")
 
         time.sleep(cycle_time)
 
@@ -327,8 +285,8 @@ def handle_feed_sync_trigger(*args, **kwargs):
     cycle_time = kwargs["mythread"]["cycle_timer"]
 
     while True:
-        config = localconfig.get_config()
-        feed_sync_enabled = config.get("feeds", {}).get("sync_enabled", True)
+        config = get_section_for_vulnerabilities()
+        feed_sync_enabled = is_sync_enabled(config)
         if feed_sync_enabled:
             logger.info("Feed Sync task creator activated")
             try:
@@ -347,6 +305,49 @@ def handle_feed_sync_trigger(*args, **kwargs):
 
         time.sleep(cycle_time)
 
+    return True
+
+
+def handle_grypedb_sync(*args, **kwargs):
+    """
+    Calls function to run GrypeDBSyncTask
+
+    :param args:
+    :param kwargs:
+    :return:
+    """
+    # import code in function so that it is not imported to all contexts that import policy engine
+    # this is an issue caused by these handlers being declared within the __init__.py file
+    # See https://github.com/anchore/anchore-engine/issues/991
+    from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
+    from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+        GrypeDBSyncError,
+    )
+
+    system_user = _system_creds()
+
+    logger.info("init args: {}".format(kwargs))
+    cycle_time = kwargs["mythread"]["cycle_timer"]
+
+    while True:
+        provider = get_provider_name(get_section_for_vulnerabilities())
+        if provider == "grype":  # TODO fix this
+            try:
+                result = GrypeDBSyncTask().execute()
+
+                if result:
+                    logger.info("Grype DB synced to local instance via handler")
+            #         TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
+            except Exception:
+                logger.exception(
+                    "Error encountered when running GrypeDBSyncTask from async monitor"
+                )
+        else:
+            logger.debug(
+                "Grype DB sync not supported for vulnerabilities provider %s, skipping",
+                provider,
+            )
+        time.sleep(cycle_time)
     return True
 
 
@@ -407,6 +408,17 @@ class PolicyEngineService(ApiService):
             "cycle_timer": 3600,
             "min_cycle_timer": 1800,
             "max_cycle_timer": 100000,
+            "last_queued": 0,
+            "last_return": False,
+            "initialized": False,
+        },
+        "grypedb_sync": {
+            "handler": handle_grypedb_sync,
+            "taskType": "handle_grypedb_sync",
+            "args": [],
+            "cycle_timer": 60,
+            "min_cycle_timer": 60,
+            "max_cycle_timer": 3600,
             "last_queued": 0,
             "last_return": False,
             "initialized": False,
