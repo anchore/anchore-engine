@@ -831,15 +831,15 @@ class GrypeDBFeed(AnchoreServiceFeed):
         object_url = catalog_client.create_raw_object(
             group_download_result.group, checksum, record.data
         )
-        date_generated = rfc3339str_to_datetime(record.metadata["built"])
+        built_at = rfc3339str_to_datetime(record.metadata["built"])
         grypedb_meta = GrypeDBFeedMetadata(
             archive_checksum=checksum,
+            metadata_checksum=None,
             schema_version=record.metadata["version"],
-            feed_name=GrypeDBFeed.__feed_name__,
-            group_name=group_download_result.group,
-            date_generated=date_generated,
             object_url=object_url,
             active=True,
+            built_at=built_at,
+            synced_at=None,
         )
         db.add(grypedb_meta)
 
