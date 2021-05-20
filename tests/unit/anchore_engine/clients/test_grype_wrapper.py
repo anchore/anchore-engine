@@ -1,3 +1,5 @@
+from sqlalchemy.orm import sessionmaker
+
 import anchore_engine.configuration.localconfig
 import json
 import os
@@ -161,6 +163,18 @@ def production_grype_db_dir_no_engine_metadata(tmp_path):
     Returns the path to the grype_db dir
     """
     return mock_synced_dir(tmp_path, PRODUCTION_VERSION_MOCK_CHECKSUM, False)
+
+
+@pytest.fixture
+def mock_grype_db_session_maker():
+    """
+    Returns an instantiated (but not functional) sqlalchemy sessionmake object for use in tests.
+    This object can be used in tests and parameterized to test methods that require it, but cannot
+    actually be successfully queried for data because it is not backed by a real database file.
+    """
+    db_connect = GrypeWrapperSingleton.SQL_LITE_URL_TEMPLATE.format("/does/not/exist")
+    mock_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
+    return sessionmaker(bind=mock_grype_db_engine)
 
 
 def test_get_missing_grype_db_dir():
@@ -396,9 +410,9 @@ def test_init_grype_db_engine(staging_grype_db_dir):
     )
 
     # Validate expected output
-    assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(
-        expected_output_path
-    )
+    assert str(
+        latest_grype_db_engine.url
+    ) == GrypeWrapperSingleton.SQL_LITE_URL_TEMPLATE.format(expected_output_path)
 
 
 def test_init_latest_grype_db_engine(grype_db_dir):
@@ -430,9 +444,11 @@ def test_init_latest_grype_db_session_maker(staging_grype_db_dir):
         GRYPE_DB_VERSION,
         grype_wrapper_singleton.VULNERABILITY_FILE_NAME,
     )
-    db_connect = "sqlite:///{}".format(vuln_file_path)
+    db_connect = GrypeWrapperSingleton.SQL_LITE_URL_TEMPLATE.format(vuln_file_path)
     latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
-    assert str(latest_grype_db_engine.url) == "sqlite:///{}".format(vuln_file_path)
+    assert str(
+        latest_grype_db_engine.url
+    ) == GrypeWrapperSingleton.SQL_LITE_URL_TEMPLATE.format(vuln_file_path)
 
     # Function under test
     latest_grype_db_session = (
@@ -499,7 +515,10 @@ def test_remove_local_grype_db(production_grype_db_dir):
 
 
 def test_stage_grype_db_update(
-    grype_db_parent_dir, production_grype_db_dir, grype_db_archive
+    grype_db_parent_dir,
+    production_grype_db_dir,
+    mock_grype_db_session_maker,
+    grype_db_archive,
 ):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
@@ -507,9 +526,7 @@ def test_stage_grype_db_update(
     # Setup
     # Simulate an existing grype_db
     grype_wrapper_singleton._grype_db_dir = production_grype_db_dir
-    grype_wrapper_singleton._grype_db_session_maker = (
-        {}
-    )  # TODO Make a dummy fixture for this
+    grype_wrapper_singleton._grype_db_session_maker = mock_grype_db_session_maker
 
     # Setup expected output vars
     expected_staging_output_dir = os.path.join(
@@ -539,7 +556,9 @@ def test_stage_grype_db_update(
     # Validate output
     # First assert the production grype_db is unchanged
     assert grype_wrapper_singleton._grype_db_dir == production_grype_db_dir
-    assert grype_wrapper_singleton._grype_db_session_maker == {}
+    assert (
+        grype_wrapper_singleton._grype_db_session_maker == mock_grype_db_session_maker
+    )
 
     # Next assert the staging grype_db exists
     assert grype_wrapper_singleton._staging_grype_db_dir == expected_staging_output_dir
@@ -562,12 +581,14 @@ def test_unstage_grype_db(
     grype_wrapper_singleton._grype_db_dir = production_grype_db_dir_no_engine_metadata
     grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
     # TODO also need a mock for this here
-    grype_wrapper_singleton._grype_db_session_maker = {}
+    grype_wrapper_singleton._grype_db_session_maker = mock_grype_db_session_maker
     grype_wrapper_singleton._staging_grype_db_dir = (
         staging_grype_db_dir_no_engine_metadata
     )
     grype_wrapper_singleton._staging_grype_db_version = GRYPE_DB_VERSION
-    grype_wrapper_singleton._staging_grype_db_session_maker = {}
+    grype_wrapper_singleton._staging_grype_db_session_maker = (
+        mock_grype_db_session_maker
+    )
 
     grype_wrapper_singleton._write_engine_metadata_to_file(
         production_grype_db_dir_no_engine_metadata,
@@ -599,7 +620,9 @@ def test_unstage_grype_db(
         == production_grype_db_dir_no_engine_metadata
     )
     assert grype_wrapper_singleton._grype_db_version == GRYPE_DB_VERSION
-    assert grype_wrapper_singleton._grype_db_session_maker == {}
+    assert (
+        grype_wrapper_singleton._grype_db_session_maker == mock_grype_db_session_maker
+    )
     assert grype_wrapper_singleton._staging_grype_db_dir is None
     assert grype_wrapper_singleton._staging_grype_db_version is None
     assert grype_wrapper_singleton._staging_grype_db_session_maker is None
@@ -614,13 +637,14 @@ def test_update_grype_db(
     # Setup test inputs
     grype_wrapper_singleton._grype_db_dir = production_grype_db_dir_no_engine_metadata
     grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
-    # TODO also need a mock for this here
-    grype_wrapper_singleton._grype_db_session_maker = {}
+    grype_wrapper_singleton._grype_db_session_maker = mock_grype_db_session_maker
     grype_wrapper_singleton._staging_grype_db_dir = (
         staging_grype_db_dir_no_engine_metadata
     )
     grype_wrapper_singleton._staging_grype_db_version = GRYPE_DB_VERSION
-    grype_wrapper_singleton._staging_grype_db_session_maker = {}
+    grype_wrapper_singleton._staging_grype_db_session_maker = (
+        mock_grype_db_session_maker
+    )
 
     grype_wrapper_singleton._write_engine_metadata_to_file(
         production_grype_db_dir_no_engine_metadata,
@@ -651,7 +675,9 @@ def test_update_grype_db(
         grype_wrapper_singleton._grype_db_dir == staging_grype_db_dir_no_engine_metadata
     )
     assert grype_wrapper_singleton._grype_db_version == GRYPE_DB_VERSION
-    assert grype_wrapper_singleton._grype_db_session_maker == {}
+    assert (
+        grype_wrapper_singleton._grype_db_session_maker == mock_grype_db_session_maker
+    )
     assert grype_wrapper_singleton._staging_grype_db_dir is None
     assert grype_wrapper_singleton._staging_grype_db_version is None
     assert grype_wrapper_singleton._staging_grype_db_session_maker is None

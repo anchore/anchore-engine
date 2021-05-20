@@ -94,6 +94,7 @@ class GrypeWrapperSingleton(object):
     # These values should be treated as constants, and will not be changed by the functions below
     LOCK_READ_ACCESS_TIMEOUT = 60
     LOCK_WRITE_ACCESS_TIMEOUT = 60
+    SQL_LITE_URL_TEMPLATE = "sqlite:///{}"
     GRYPE_SUB_COMMAND = "grype -vv -o json"
     GRYPE_VERSION_COMMAND = "grype version -o json"
     VULNERABILITY_FILE_NAME = "vulnerability.db"
@@ -465,7 +466,7 @@ class GrypeWrapperSingleton(object):
         latest_grype_db_file = os.path.join(
             latest_grype_db_dir, grype_db_version, self.VULNERABILITY_FILE_NAME
         )
-        db_connect = "sqlite:///{}".format(latest_grype_db_file)
+        db_connect = self.SQL_LITE_URL_TEMPLATE.format(latest_grype_db_file)
         latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
         return latest_grype_db_engine
 
