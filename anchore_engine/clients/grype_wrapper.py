@@ -547,7 +547,7 @@ class GrypeWrapperSingleton(object):
             self._staging_grype_db_version = grype_db_version
             self._staging_grype_db_session_maker = latest_grype_db_session_maker
 
-            # TODO return the staging engine checksum contents, as a data object
+            # Return the staging engine metadata as a data object
             return self.get_grype_db_engine_metadata(use_staging=True)
 
     def unstage_grype_db(self):
@@ -559,7 +559,7 @@ class GrypeWrapperSingleton(object):
         self._staging_grype_db_version = None
         self._staging_grype_db_session_maker = None
 
-        # TODO return the old engine checksum contents, as a data object
+        # Return the existing, production engine metadata as a data object
         try:
             return self.get_grype_db_engine_metadata(use_staging=False)
         except ValueError as error:
@@ -595,7 +595,7 @@ class GrypeWrapperSingleton(object):
                 # Unstage the previously-staged grype_db
                 self.unstage_grype_db()
 
-        # TODO Return the new engine metadata, as a data object
+        # Return the new production engine metadata as a data object
         return self.get_grype_db_engine_metadata(use_staging=False)
 
     def _get_metadata_file_contents(
@@ -621,27 +621,25 @@ class GrypeWrapperSingleton(object):
 
     def get_grype_db_metadata(self, use_staging: bool = False) -> GrypeDBMetadata:
         """
-        Return the json contents of the current grype_db metadata file.
+        Return the contents of the current grype_db metadata file as a data object.
         This file contains metadata specific to grype about the current grype_db instance.
+        This call can be parameterized to return either the production or staging metadata.
         """
-
-        # TODO account for exception if no current grype_db is initialized
         return GrypeDBMetadata.to_object(
             self._get_metadata_file_contents(
                 self.METADATA_FILE_NAME, use_staging=use_staging
             )
         )
 
-    # TODO parameterize to go against staging db or prod
     def get_grype_db_engine_metadata(
         self, use_staging: bool = False
     ) -> GrypeEngineMetadata:
         """
-        Return the json contents of the current grype_db engine metadata file.
+        Return the contents of the current grype_db engine metadata file as a data object.
         This file contains metadata specific to engine about the current grype_db instance.
+        This call can be parameterized to return either the production or staging metadata.
         """
 
-        # TODO account for exception if no current grype_db is initialized
         return GrypeEngineMetadata.to_object(
             self._get_metadata_file_contents(
                 self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
