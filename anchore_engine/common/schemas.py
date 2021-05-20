@@ -3,7 +3,7 @@ Shared global location for all JSON serialization schemas. They should only refe
 can import cleanly into any service or module.
 """
 import datetime
-from typing import Dict
+from typing import Dict, Optional
 
 import marshmallow
 from marshmallow import Schema, fields, post_load
@@ -415,11 +415,34 @@ class ImportQueueMessage(JsonSerializable):
         self.type = type
 
 
+class GrypeDBListing(JsonSerializable):
+    class GrypeDBListingV1Schema(Schema):
+        built = fields.DateTime()
+        version = fields.Int()
+        url = fields.Str()
+        checksum = fields.Str()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return GrypeDBListing(**data)
+
+    __schema__ = GrypeDBListingV1Schema()
+
+    def __init__(self, built, version, url, checksum):
+        self.built = built
+        self.version = version
+        self.url = url
+        self.checksum = checksum
+
+
 class FeedAPIGroupRecord(JsonSerializable):
     class FeedAPIGroupV1Schema(Schema):
         name = fields.Str()
         access_tier = fields.Int()
         description = fields.Str()
+        grype_listing = fields.Nested(
+            GrypeDBListing.GrypeDBListingV1Schema, allow_none=True
+        )
 
         @post_load
         def make(self, data, **kwargs):
@@ -427,10 +450,17 @@ class FeedAPIGroupRecord(JsonSerializable):
 
     __schema__ = FeedAPIGroupV1Schema()
 
-    def __init__(self, name="", access_tier=0, description=""):
+    def __init__(
+        self,
+        name="",
+        access_tier=0,
+        description="",
+        grype_listing: Optional[GrypeDBListing] = None,
+    ):
         self.name = name
         self.access_tier = access_tier
         self.description = description
+        self.grype_listing = grype_listing
 
 
 class FeedAPIRecord(JsonSerializable):

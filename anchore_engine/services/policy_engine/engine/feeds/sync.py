@@ -122,8 +122,39 @@ class DataFeeds(object):
         return {x.name: x for x in db_found if x.name in available}
 
     @staticmethod
-    def sync_metadata(
+    def get_feed_group_information(
         feed_client: IFeedSource,
+        to_sync: list = None,
+    ):
+        if not to_sync:
+            return {}
+
+        source_resp = feed_client.list_feeds()
+        if to_sync:
+            feeds = filter(lambda x: x.name in to_sync, source_resp.feeds)
+        else:
+            feeds = []
+        source_feeds = {
+            x.name: {
+                "meta": x,
+                "groups": feed_client.list_feed_groups(x.name).groups,
+            }
+            for x in feeds
+        }
+        logger.debug("Upstream feeds available: %s", source_feeds)
+        return source_feeds
+
+
+
+    @staticmethod
+    def get_grypedb_listing(feed_group_information, grypedb_feed_name):
+        for feed_name, feed_api_record in feed_group_information.items():
+            if feed_name == grypedb_feed_name:
+                return next(group.grype_listing for group in feed_api_record["groups"])
+
+    @staticmethod
+    def sync_metadata(
+        source_feeds,
         to_sync: list = None,
         operation_id: Optional[str] = None,
     ) -> tuple:
@@ -148,22 +179,7 @@ class DataFeeds(object):
                     operation_id
                 )
             )
-
-            source_resp = feed_client.list_feeds()
-            if to_sync:
-                feeds = filter(lambda x: x.name in to_sync, source_resp.feeds)
-            else:
-                feeds = []
-
             failed = []
-            source_feeds = {
-                x.name: {
-                    "meta": x,
-                    "groups": feed_client.list_feed_groups(x.name).groups,
-                }
-                for x in feeds
-            }
-            logger.debug("Upstream feeds available: %s", source_feeds)
             db_feeds = DataFeeds._pivot_and_filter_feeds_by_config(
                 to_sync, list(source_feeds.keys()), get_all_feeds(db)
             )
@@ -677,8 +693,6 @@ def _sync_order(feed_name: str) -> int:
 
     # Later will want to generalize this and add sync order as property of the feed class
 
-    if feed_name == GrypeDBFeed.__feed_name__:
-        return 0
     if feed_name == VulnerabilityFeed.__feed_name__:
         return 1
     if feed_name == VulnDBFeed.__feed_name__:

@@ -11,7 +11,12 @@ import requests
 import requests.exceptions
 
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
-from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
+from anchore_engine.common.schemas import (
+    FeedAPIGroupRecord,
+    FeedAPIRecord,
+    GrypeDBListing,
+)
+from anchore_engine.configuration import localconfig
 from anchore_engine.services.policy_engine.engine.feeds import (
     FeedGroupList,
     FeedList,
@@ -25,6 +30,7 @@ from anchore_engine.utils import (
     CommandException,
     ensure_bytes,
     ensure_str,
+    rfc3339str_to_datetime,
 )
 
 FEED_DATA_ITEMS_PATH = "data.item"
@@ -473,12 +479,27 @@ class GrypeDBServiceClient(IFeedSource):
         )
 
     def list_feed_groups(self, feed: str) -> FeedGroupList:
+        logger.info("Downloading grypedb listing.json from {}".format(self.feed_url))
+        listing_response = self.http_client.execute_request(
+            requests.get, self.feed_url, retries=self.RETRY_COUNT
+        )
+        if not listing_response.success:
+            raise HTTPStatusException(listing_response)
+        listings_json = json.loads(listing_response.content.decode("utf-8"))
+        required_grype_db_version = self._get_supported_grype_db_version()
+        available_dbs = listings_json.get("available").get(required_grype_db_version)
+        if not available_dbs:
+            raise GrypeDBUnavailable(required_grype_db_version)
+        raw_db_listing = available_dbs[0]
+        logger.info("Found relevant grypedb listing: {}".format(raw_db_listing))
+        raw_db_listing["built"] = rfc3339str_to_datetime(raw_db_listing["built"])
         return FeedGroupList(
             groups=[
                 FeedAPIGroupRecord(
                     name="grypedb:vulnerabilities",
                     description="grypedb:vulnerabilities group",
                     access_tier="0",
+                    grype_listing=GrypeDBListing(**raw_db_listing),
                 )
             ]
         )
