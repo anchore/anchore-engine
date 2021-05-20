@@ -53,6 +53,34 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
 
 
 @dataclass
+class GrypeDBMetadata:
+    built: str
+    version: str
+    checksum: str
+
+    @staticmethod
+    def to_object(db_metadata: {}):
+        """
+        Convert a dict object into a GrypeDBMetadata
+        """
+        return GrypeDBMetadata(**db_metadata)
+
+
+@dataclass
+class GrypeEngineMetadata:
+    db_checksum: str
+    archive_checksum: str
+    grype_db_version: str
+
+    @staticmethod
+    def to_object(engine_metadata: {}):
+        """
+        Convert a dict object into a GrypeEngineMetadata
+        """
+        return GrypeEngineMetadata(**engine_metadata)
+
+
+@dataclass
 class RecordSource:
     count: int
     feed: str
@@ -95,6 +123,7 @@ class GrypeWrapperSingleton(object):
 
             # These variables are also mutable. They are for staging updated grye_dbs.
             cls._staging_grype_db_dir_internal = None
+            cls._staging_grype_db_version_internal = None
             cls._staging_grype_db_session_maker_internal = None
 
             # The reader-writer lock for this class
@@ -150,6 +179,14 @@ class GrypeWrapperSingleton(object):
     @_staging_grype_db_dir.setter
     def _staging_grype_db_dir(self, _staging_grype_db_dir_internal):
         self._staging_grype_db_dir_internal = _staging_grype_db_dir_internal
+
+    @property
+    def _staging_grype_db_version(self):
+        return self._staging_grype_db_version_internal
+
+    @_staging_grype_db_version.setter
+    def _staging_grype_db_version(self, _staging_grype_db_version_internal):
+        self._staging_grype_db_version_internal = _staging_grype_db_version_internal
 
     @property
     def _staging_grype_db_session_maker(self):
@@ -217,6 +254,32 @@ class GrypeWrapperSingleton(object):
         finally:
             logger.debug("Closing grype_db session: " + str(session))
             session.close()
+
+    @staticmethod
+    def read_file_to_json(file_path):
+        """
+        Static helper function that accepts a file path, ensures it exists, and then reads the contents as json.
+        This logs an error and returns None if the file does not exist or cannot be parsed into json, otherwise
+        it returns the json.
+        """
+        # If the file does not exist, log an error and return None
+        if not os.path.exists(file_path):
+            logger.error(
+                "Unable to read non-exists file at %s to json.",
+                file_path,
+            )
+            return None
+        else:
+            # Get the contents of the file
+            with open(file_path) as read_file:
+                try:
+                    return json.load(read_file)
+                except JSONDecodeError:
+                    logger.error(
+                        "Unable to parse file at %s into json.",
+                        file_path,
+                    )
+                    return None
 
     def get_current_grype_db_checksum(self):
         """
@@ -320,6 +383,12 @@ class GrypeWrapperSingleton(object):
         in _open_grype_db_archive(). This means that it assumes the dir already exists,
         and does not check to see if it needs to be created prior to writing to it.
         """
+        # Get the db checksum and add it below
+        metadata_file = os.path.join(
+            latest_grype_db_dir, grype_db_version, self.METADATA_FILE_NAME
+        )
+        metadata = self.read_file_to_json(metadata_file)
+        db_checksum = metadata["checksum"]
 
         # Write the engine metadata file in the same dir as the ret of the grype db files
         output_file = os.path.join(
@@ -329,6 +398,7 @@ class GrypeWrapperSingleton(object):
         # Assemble the engine metadata json
         engine_metadata = {
             "archive_checksum": archive_checksum,
+            "db_checksum": db_checksum,
             "grype_db_version": grype_db_version,
         }
 
@@ -383,7 +453,9 @@ class GrypeWrapperSingleton(object):
         # Return the full path to the grype db file
         return latest_grype_db_dir
 
-    def _init_latest_grype_db_engine(self, latest_grype_db_dir, grype_db_version):
+    def _init_latest_grype_db_engine(
+        self, latest_grype_db_dir: str, grype_db_version: str
+    ) -> sqlalchemy.engine:
         """
         Create and return the sqlalchemy engine object
         """
@@ -476,33 +548,55 @@ class GrypeWrapperSingleton(object):
             self._staging_grype_db_session_maker = latest_grype_db_session_maker
 
             # TODO return the staging engine checksum contents, as a data object
-            return self.get_current_grype_db_engine_metadata(use_staging=True)
+            return self.get_grype_db_engine_metadata(use_staging=True)
 
     def unstage_grype_db(self):
+        """
+        Unstages the staged grype_db. This method returns the production grype_db engine metadata, if a production
+        grype_db has been set. Otherwise it returns None.
+        """
         self._staging_grype_db_dir = None
+        self._staging_grype_db_version = None
         self._staging_grype_db_session_maker = None
 
         # TODO return the old engine checksum contents, as a data object
-        return self.get_current_grype_db_engine_metadata(use_staging=False)
+        try:
+            return self.get_grype_db_engine_metadata(use_staging=False)
+        except ValueError as error:
+            logger.warn(
+                "Cannot return production grype_db engine metadata, as none has been set."
+            )
+            return None
 
     # TODO if multiple things are trying to stage new dbs, something is eventually going to go sideways here
     # Need to confirm that the thing we are promoting is still what the requestor previously staged
     # Easiest way it to probably pass the metdata block back as a fake token thing and compare
     # Or if that gets to big stick a uuid in the metadata to represent a unique metdata blob
     def update_grype_db(self):
+        """
+        Checks to ensure a new grype_db has been staged, and raises a ValueError if it has not. Otherwise
+        this promotes the staged grype_db to the production grype_db, and unstages the previously-staged
+        grype_db.
+        """
         with self.write_lock_access():
+            # Ensure a grype_db has been staged, and raise an error if not.
             if (
                 not self._staging_grype_db_dir
+                and not self._staging_grype_db_version
                 and not self._staging_grype_db_session_maker
             ):
                 raise ValueError("write a real message here")
             else:
+                # Promote the staged grype_db to production
                 self._grype_db_dir = self._staging_grype_db_dir
+                self._grype_db_version = self._staging_grype_db_version
                 self._grype_db_session_maker = self._staging_grype_db_session_maker
+
+                # Unstage the previously-staged grype_db
                 self.unstage_grype_db()
 
-        # TODO return the new engine checksum contents, as a data object
-        return self.get_current_grype_db_engine_metadata(use_staging=False)
+        # TODO Return the new engine metadata, as a data object
+        return self.get_grype_db_engine_metadata(use_staging=False)
 
     def _get_metadata_file_contents(
         self, metadata_file_name, use_staging: bool = False
@@ -523,38 +617,35 @@ class GrypeWrapperSingleton(object):
             )
 
         # Ensure the file exists
-        if not os.path.exists(latest_metadata_file):
-            # If not, return None
-            return None
-        else:
-            # Get the contents of the file
-            with open(latest_metadata_file) as read_file:
-                try:
-                    return json.load(read_file)
-                except JSONDecodeError:
-                    logger.error(
-                        "Unable to decode metadata file into json: %s",
-                        read_file,
-                    )
-                    return None
+        return self.read_file_to_json(latest_metadata_file)
 
-    def get_current_grype_db_metadata(self, use_staging: bool = False) -> json:
+    def get_grype_db_metadata(self, use_staging: bool = False) -> GrypeDBMetadata:
         """
         Return the json contents of the current grype_db metadata file.
         This file contains metadata specific to grype about the current grype_db instance.
         """
-        return self._get_metadata_file_contents(
-            self.METADATA_FILE_NAME, use_staging=use_staging
+
+        # TODO account for exception if no current grype_db is initialized
+        return GrypeDBMetadata.to_object(
+            self._get_metadata_file_contents(
+                self.METADATA_FILE_NAME, use_staging=use_staging
+            )
         )
 
     # TODO parameterize to go against staging db or prod
-    def get_current_grype_db_engine_metadata(self, use_staging: bool = False) -> json:
+    def get_grype_db_engine_metadata(
+        self, use_staging: bool = False
+    ) -> GrypeEngineMetadata:
         """
         Return the json contents of the current grype_db engine metadata file.
         This file contains metadata specific to engine about the current grype_db instance.
         """
-        return self._get_metadata_file_contents(
-            self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
+
+        # TODO account for exception if no current grype_db is initialized
+        return GrypeEngineMetadata.to_object(
+            self._get_metadata_file_contents(
+                self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
+            )
         )
 
     def _get_proc_env(self, include_grype_db=True):
@@ -730,8 +821,8 @@ class GrypeWrapperSingleton(object):
                 )
 
                 # Get the timestamp from the current metadata file
-                metadata = self.get_current_grype_db_metadata()
-                last_synced = metadata["built"]
+                db_metadata = self.get_grype_db_metadata()
+                last_synced = db_metadata.built
 
                 # Transform the results along with the last_synced timestamp for each result
                 output = []
