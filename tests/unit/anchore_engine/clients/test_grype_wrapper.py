@@ -167,27 +167,25 @@ def test_get_missing_grype_db_dir():
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError, match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
+    ):
         # Function under test
         grype_wrapper_singleton._grype_db_dir
-
-    # Validate error message
-    assert str(error.value) is GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 def test_get_missing_grype_db_session():
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE,
+    ):
         # Function under test
         grype_wrapper_singleton._grype_db_session_maker
-
-    # Validate error message
-    assert (
-        str(error.value)
-        is GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE
-    )
 
 
 def test_get_current_grype_db_checksum(staging_grype_db_dir):
@@ -222,12 +220,13 @@ def test_get_current_grype_db_checksum_missing_db_dir():
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE,
+    ):
         # Function under test
-        result = grype_wrapper_singleton.get_current_grype_db_checksum()
-
-    # Validate error message
-    assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
+        grype_wrapper_singleton.get_current_grype_db_checksum()
 
 
 def test_get_default_cache_dir_from_config(grype_db_parent_dir, tmp_path):
@@ -271,17 +270,17 @@ def test_move_missing_grype_db_archive(tmp_path):
     output_dir = os.path.join(tmp_path, "output")
     os.mkdir(output_dir)
 
-    with pytest.raises(FileNotFoundError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        FileNotFoundError,
+        match=grype_wrapper_singleton.ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE,
+    ) as error:
         # Function under test
         grype_wrapper_singleton._move_grype_db_archive(
             missing_output_archive, output_dir
         )
 
-    # Validate error message
-    assert (
-        error.value.strerror
-        == grype_wrapper_singleton.ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE
-    )
+    # Validate error value
     assert error.value.filename == missing_output_archive
 
 
@@ -292,6 +291,7 @@ def test_move_grype_db_archive_to_missing_dir(tmp_path, grype_db_archive):
     # Create a var for the output dir, but don't actually create it
     output_dir = os.path.join(tmp_path, "output")
 
+    # Expect exception
     with pytest.raises(FileNotFoundError) as error:
         # Function under test
         grype_wrapper_singleton._move_grype_db_archive(grype_db_archive, output_dir)
@@ -786,12 +786,13 @@ def test_get_grype_db_metadata_missing_dir(metadata_file_name):
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
     grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
 
-    # Function under test
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE,
+    ):
+        # Function under test
         grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
-
-    # Validate error message
-    assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 @pytest.mark.parametrize(
@@ -806,15 +807,13 @@ def test_get_grype_db_metadata_missing_version(metadata_file_name):
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
     grype_wrapper_singleton._grype_db_dir = "dummy_version"
 
-    # Function under test
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_VERSION_ERROR_MESSAGE,
+    ):
+        # Function under test
         grype_wrapper_singleton._get_metadata_file_contents(metadata_file_name)
-
-    # TODO include the error check in raises throughout these tests
-    # Validate error message
-    assert (
-        str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_VERSION_ERROR_MESSAGE
-    )
 
 
 @pytest.mark.parametrize(
@@ -883,12 +882,13 @@ def test_get_proc_env_missing_dir():
     # Create grype_wrapper_singleton instance, with no grype_db_dir set
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Function under test
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE,
+    ):
+        # Function under test
         grype_wrapper_singleton._get_proc_env()
-
-    # Validate error message
-    assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 # This test will not pass on the CI because that machine does not have grype installed.
@@ -964,24 +964,26 @@ def test_get_vulnerabilities_for_sbom_missing_dir():
     # Create grype_wrapper_singleton instance, with no grype_db_dir set
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Function under test
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE,
+    ):
+        # Function under test
         grype_wrapper_singleton.get_vulnerabilities_for_sbom(None)
-
-    # Validate error message
-    assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 def test_get_vulnerabilities_for_sbom_file_missing_dir():
     # Create grype_wrapper_singleton instance, with no grype_db_dir set
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Function under test
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE,
+    ):
+        # Function under test
         grype_wrapper_singleton.get_vulnerabilities_for_sbom_file(None)
-
-    # Validate error message
-    assert str(error.value) == GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE
 
 
 @pytest.mark.parametrize(
@@ -1069,19 +1071,17 @@ def test_query_vulnerabilities_missing_session():
     # Create grype_wrapper_singleton instance, with no grype_db_dir set
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Function under test
-    with pytest.raises(ValueError) as error:
+    # Expect exception and validate message
+    with pytest.raises(
+        ValueError,
+        match=GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE,
+    ):
+        # Function under test
         grype_wrapper_singleton.query_vulnerabilities(
             vuln_id=None,
             affected_package=None,
             namespace=None,
         )
-
-    # Validate error message
-    assert (
-        str(error.value)
-        == GrypeWrapperSingleton.MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE
-    )
 
 
 @pytest.mark.parametrize(
