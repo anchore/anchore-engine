@@ -101,6 +101,11 @@ class GrypeWrapperSingleton(object):
     METADATA_FILE_NAME = "metadata.json"
     ENGINE_METADATA_FILE_NAME = "engine_metadata.json"
     ARCHIVE_FILE_NOT_FOUND_ERROR_MESSAGE = "New grype_db archive file not found"
+    GRYPE_BASE_ENV_VARS = {
+        "GRYPE_CHECK_FOR_APP_UPDATE": "0",
+        "GRYPE_LOG_STRUCTURED": "1",
+        "GRYPE_DB_AUTO_UPDATE": "0",
+    }
     MISSING_GRYPE_DB_DIR_ERROR_MESSAGE = (
         "Cannot access missing grype_db dir. Reinitialize grype_db."
     )
@@ -647,16 +652,14 @@ class GrypeWrapperSingleton(object):
             )
         )
 
-    def _get_proc_env(self, include_grype_db=True):
-        # Set grype env variables, including the grype db location
-        # TODO make this a constant
-        grype_env = {
-            "GRYPE_CHECK_FOR_APP_UPDATE": "0",
-            "GRYPE_LOG_STRUCTURED": "1",
-            "GRYPE_DB_AUTO_UPDATE": "0",
-        }
+    def _get_proc_env(self, include_grype_db: bool = True, use_staging: bool = False):
+        # Set grype env variables, optionally including the grype db location
+        grype_env = self.GRYPE_BASE_ENV_VARS.copy()
         if include_grype_db:
-            grype_env["GRYPE_DB_CACHE_DIR"] = self._grype_db_dir
+            if use_staging:
+                grype_env["GRYPE_DB_CACHE_DIR"] = self._staging_grype_db_dir
+            else:
+                grype_env["GRYPE_DB_CACHE_DIR"] = self._grype_db_dir
 
         proc_env = os.environ.copy()
         proc_env.update(grype_env)

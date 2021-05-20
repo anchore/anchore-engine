@@ -887,12 +887,31 @@ def test_get_current_grype_db_metadata_bad_file(tmp_path, metadata_file_name):
     assert result is None
 
 
-def test_get_proc_env(staging_grype_db_dir):
+def test_get_staging_proc_env(production_grype_db_dir, staging_grype_db_dir):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
     # Setup test input
-    grype_wrapper_singleton._grype_db_dir = staging_grype_db_dir
+    grype_wrapper_singleton._grype_db_dir = production_grype_db_dir
+    grype_wrapper_singleton._staging_grype_db_dir = staging_grype_db_dir
+
+    # Function under test
+    result = grype_wrapper_singleton._get_proc_env(use_staging=True)
+
+    # Validate result
+    assert result["GRYPE_CHECK_FOR_APP_UPDATE"] == "0"
+    assert result["GRYPE_LOG_STRUCTURED"] == "1"
+    assert result["GRYPE_DB_AUTO_UPDATE"] == "0"
+    assert result["GRYPE_DB_CACHE_DIR"] == staging_grype_db_dir
+
+
+def test_get_production_proc_env(production_grype_db_dir, staging_grype_db_dir):
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+
+    # Setup test input
+    grype_wrapper_singleton._grype_db_dir = production_grype_db_dir
+    grype_wrapper_singleton._staging_grype_db_dir = staging_grype_db_dir
 
     # Function under test
     result = grype_wrapper_singleton._get_proc_env()
@@ -901,7 +920,7 @@ def test_get_proc_env(staging_grype_db_dir):
     assert result["GRYPE_CHECK_FOR_APP_UPDATE"] == "0"
     assert result["GRYPE_LOG_STRUCTURED"] == "1"
     assert result["GRYPE_DB_AUTO_UPDATE"] == "0"
-    assert result["GRYPE_DB_CACHE_DIR"] == staging_grype_db_dir
+    assert result["GRYPE_DB_CACHE_DIR"] == production_grype_db_dir
 
 
 def test_get_proc_env_missing_dir():
