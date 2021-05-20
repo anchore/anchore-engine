@@ -652,7 +652,9 @@ class GrypeWrapperSingleton(object):
             )
         )
 
-    def _get_proc_env(self, include_grype_db: bool = True, use_staging: bool = False):
+    def _get_env_variables(
+        self, include_grype_db: bool = True, use_staging: bool = False
+    ):
         # Set grype env variables, optionally including the grype db location
         grype_env = self.GRYPE_BASE_ENV_VARS.copy()
         if include_grype_db:
@@ -661,16 +663,16 @@ class GrypeWrapperSingleton(object):
             else:
                 grype_env["GRYPE_DB_CACHE_DIR"] = self._grype_db_dir
 
-        proc_env = os.environ.copy()
-        proc_env.update(grype_env)
-        return proc_env
+        env_variables = os.environ.copy()
+        env_variables.update(grype_env)
+        return env_variables
 
     def get_grype_version(self) -> json:
         """
         Return version information for grype
         """
         with self.read_lock_access():
-            proc_env = self._get_proc_env(include_grype_db=False)
+            proc_env = self._get_env_variables(include_grype_db=False)
 
             logger.debug(
                 "Getting grype version with command: %s", self.GRYPE_VERSION_COMMAND
@@ -700,7 +702,7 @@ class GrypeWrapperSingleton(object):
         # Get the read lock
         with self.read_lock_access():
             # Get env variables to run the grype scan with
-            proc_env = self._get_proc_env()
+            proc_env = self._get_env_variables()
 
             # Format and run the command. Grype supports piping in an sbom string
             cmd = "{}".format(self.GRYPE_SUB_COMMAND)
@@ -736,7 +738,7 @@ class GrypeWrapperSingleton(object):
         # Get the read lock
         with self.read_lock_access():
             # Get env variables to run the grype scan with
-            proc_env = self._get_proc_env()
+            proc_env = self._get_env_variables()
 
             # Format and run the command
             cmd = "{grype_sub_command} sbom:{sbom}".format(

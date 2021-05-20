@@ -896,7 +896,7 @@ def test_get_staging_proc_env(production_grype_db_dir, staging_grype_db_dir):
     grype_wrapper_singleton._staging_grype_db_dir = staging_grype_db_dir
 
     # Function under test
-    result = grype_wrapper_singleton._get_proc_env(use_staging=True)
+    result = grype_wrapper_singleton._get_env_variables(use_staging=True)
 
     # Validate result
     assert result["GRYPE_CHECK_FOR_APP_UPDATE"] == "0"
@@ -914,7 +914,7 @@ def test_get_production_proc_env(production_grype_db_dir, staging_grype_db_dir):
     grype_wrapper_singleton._staging_grype_db_dir = staging_grype_db_dir
 
     # Function under test
-    result = grype_wrapper_singleton._get_proc_env()
+    result = grype_wrapper_singleton._get_env_variables()
 
     # Validate result
     assert result["GRYPE_CHECK_FOR_APP_UPDATE"] == "0"
@@ -933,7 +933,7 @@ def test_get_proc_env_missing_dir():
         match=GrypeWrapperSingleton.MISSING_GRYPE_DB_DIR_ERROR_MESSAGE,
     ):
         # Function under test
-        grype_wrapper_singleton._get_proc_env()
+        grype_wrapper_singleton._get_env_variables()
 
 
 # This test will not pass on the CI because that machine does not have grype installed.
@@ -989,13 +989,13 @@ def test_get_proc_env_missing_dir():
 #     ],
 # )
 # def test_get_vulnerabilities_for_sbom_file(
-#     grype_db_dir, sbom_file_name, expected_output
+#     staging_grype_db_dir, sbom_file_name, expected_output
 # ):
 #     # Create grype_wrapper_singleton instance
 #     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 #
 #     # Setup test inputs
-#     grype_wrapper_singleton._grype_db_dir = grype_db_dir
+#     grype_wrapper_singleton._grype_db_dir = staging_grype_db_dir
 #     test_sbom_file = get_test_sbom_file(sbom_file_name)
 #
 #     # Function under test
