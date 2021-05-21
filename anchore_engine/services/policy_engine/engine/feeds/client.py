@@ -478,7 +478,7 @@ class GrypeDBServiceClient(IFeedSource):
             ]
         )
 
-    def list_feed_groups(self, feed: str) -> FeedGroupList:
+    def _list_feed_groups(self):
         logger.info("Downloading grypedb listing.json from {}".format(self.feed_url))
         listing_response = self.http_client.execute_request(
             requests.get, self.feed_url, retries=self.RETRY_COUNT
@@ -492,14 +492,19 @@ class GrypeDBServiceClient(IFeedSource):
             raise GrypeDBUnavailable(required_grype_db_version)
         raw_db_listing = available_dbs[0]
         logger.info("Found relevant grypedb listing: {}".format(raw_db_listing))
-        raw_db_listing["built"] = rfc3339str_to_datetime(raw_db_listing["built"])
+        return raw_db_listing
+
+    def list_feed_groups(self, feed: str) -> FeedGroupList:
+        raw_db_listing = self._list_feed_groups()
+        grype_db_listing = dict(raw_db_listing)
+        grype_db_listing["built"] = rfc3339str_to_datetime(raw_db_listing["built"])
         return FeedGroupList(
             groups=[
                 FeedAPIGroupRecord(
                     name="grypedb:vulnerabilities",
                     description="grypedb:vulnerabilities group",
                     access_tier="0",
-                    grype_listing=GrypeDBListing(**raw_db_listing),
+                    grype_listing=GrypeDBListing(**grype_db_listing),
                 )
             ]
         )
@@ -516,30 +521,16 @@ class GrypeDBServiceClient(IFeedSource):
         except KeyError as exc:
             raise InvalidGrypeVersionResponse(json.dumps(version_response)) from exc
 
-    def _get_raw_feed_group_data(
-        self,
-    ) -> Tuple[Dict, HTTPClientResponse]:
-        logger.info("Downloading grypedb listing.json from {}".format(self.feed_url))
-        listing_response = self.http_client.execute_request(
-            requests.get, self.feed_url, retries=self.RETRY_COUNT
-        )
-        if not listing_response.success:
-            raise HTTPStatusException(listing_response)
-        listings_json = json.loads(listing_response.content.decode("utf-8"))
-        required_grype_db_version = self._get_supported_grype_db_version()
-        available_dbs = listings_json.get("available").get(required_grype_db_version)
-        if not available_dbs:
-            raise GrypeDBUnavailable(required_grype_db_version)
-        db_listing = available_dbs[0]
-        logger.info("Found relevant grypedb listing: {}".format(db_listing))
-        grype_db_url = db_listing.get("url")
+    def _get_feed_group_data(self) -> Tuple[Dict, HTTPClientResponse]:
+        grype_db_listing = self._list_feed_groups()
+        grype_db_url = grype_db_listing["url"]
         logger.info("Downloading grypedb {}".format(grype_db_url))
         grype_db_download_response = self.http_client.execute_request(
             requests.get, grype_db_url, retries=self.RETRY_COUNT
         )
         if not grype_db_download_response.success:
             raise HTTPStatusException(grype_db_download_response)
-        return db_listing, grype_db_download_response
+        return grype_db_listing, grype_db_download_response
 
     def get_feed_group_data(
         self,
@@ -549,7 +540,7 @@ class GrypeDBServiceClient(IFeedSource):
         next_token: str = None,
     ):
         try:
-            listing_json, record = self._get_raw_feed_group_data()
+            listing_json, record = self._get_feed_group_data()
             if record.content_type != "application/x-tar":
                 raise UnexpectedMIMEType(record.content_type)
             return GroupData(
