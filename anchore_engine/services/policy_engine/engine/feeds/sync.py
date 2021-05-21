@@ -685,8 +685,12 @@ class DataFeeds(object):
             )
         )
 
-        source_feeds = DataFeeds.get_feed_group_information(feed_client, [GRYPE_DB_FEED])
-        updated, failed = DataFeeds.sync_metadata(source_feeds, [GRYPE_DB_FEED], operation_id, groups=False)
+        source_feeds = DataFeeds.get_feed_group_information(
+            feed_client, [GRYPE_DB_FEED]
+        )
+        updated, failed = DataFeeds.sync_metadata(
+            source_feeds, [GRYPE_DB_FEED], operation_id, groups=False
+        )
         logger.info(f"{updated}")
         if failed:
             return failed
@@ -697,13 +701,13 @@ class DataFeeds(object):
         api_feed_group = source_feeds[GRYPE_DB_FEED]["groups"][0]
         feed_metadata = updated[GRYPE_DB_FEED]
         group_to_download = FeedGroupMetadata(
-                    name=api_feed_group.name,
-                    feed_name=feed_metadata.name,
-                    description=api_feed_group.description,
-                    access_tier=api_feed_group.access_tier,
-                    feed=feed_metadata,
-                    enabled=True,
-                )
+            name=api_feed_group.name,
+            feed_name=feed_metadata.name,
+            description=api_feed_group.description,
+            access_tier=api_feed_group.access_tier,
+            feed=feed_metadata,
+            enabled=True,
+        )
         logger.info(
             "Initialized feed to sync: {} (operation_id={})".format(
                 feed_to_sync.__feed_name__, operation_id
