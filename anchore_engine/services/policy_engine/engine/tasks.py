@@ -243,9 +243,8 @@ class FeedsUpdateTask(IAsyncTask):
             grype_db_sync_config = self.sync_configs.get("grypedb")
             if grype_db_sync_config:
                 updated_data_feeds.extend(
-                    DataFeeds.sync(
+                    DataFeeds.sync_grypedb(
                         get_grype_db_client(grype_db_sync_config),
-                        to_sync=["grypedb"],
                         full_flush=self.full_flush,
                         catalog_client=catalog_client,
                         operation_id=self.uuid,
