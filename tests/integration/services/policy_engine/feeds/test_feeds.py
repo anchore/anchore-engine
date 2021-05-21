@@ -4,7 +4,6 @@ import pytest
 
 from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
-from anchore_engine.common.schemas import LocalFeedDataRepoMetadata
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )

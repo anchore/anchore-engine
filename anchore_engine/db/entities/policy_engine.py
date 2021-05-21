@@ -2,40 +2,37 @@ import datetime
 import hashlib
 import json
 import re
-import time
 import zlib
 from collections import namedtuple
 
 from sqlalchemy import (
-    Column,
+    JSON,
     BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
     Integer,
     LargeBinary,
-    Float,
-    Boolean,
-    String,
-    ForeignKey,
-    Enum,
-    ForeignKeyConstraint,
-    DateTime,
-    types,
-    Text,
-    Index,
-    JSON,
-    or_,
-    and_,
     Sequence,
-    func,
+    String,
+    Text,
     event,
+    func,
+    or_,
 )
-from sqlalchemy.orm import relationship, synonym, joinedload
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import joinedload, relationship, synonym
 
-from anchore_engine.utils import ensure_str, ensure_bytes
-
-from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
-from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
+from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
+from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
+from anchore_engine.utils import ensure_bytes, ensure_str
 
 try:
     from anchore_engine.subsys import logger as log
@@ -45,9 +42,7 @@ except:
     logger = logging.getLogger(__name__)
     log = logger
 
-from .common import Base, UtilMixin, StringJSON
-from .common import get_thread_scoped_session
-
+from .common import Base, StringJSON, UtilMixin, get_thread_scoped_session
 
 DistroTuple = namedtuple("DistroTuple", ["distro", "version", "flavor"])
 
@@ -138,6 +133,37 @@ class FeedGroupMetadata(Base, UtilMixin):
             j["feed"] = None  # Ensure no non-serializable stuff
 
         return j
+
+
+class GrypeDBMetadata(Base):
+    """
+    A data model for persisting the current active grype db that the system should use across all policy-engine instances
+    Each instance of policy engine witll use the active record in this table to determine the correct grype db
+    Primary key is checksum, which refers to the checksum of the tar file
+    The object url points to the location in object storage that the tar file is stored. This is used by processes that sync
+    There should only ever be a single active record. More than one indicates an error in the system
+    """
+
+    __tablename__ = "grype_db_metadata"
+
+    checksum = Column(String, primary_key=True)
+    schema_version = Column(String, nullable=False)
+    feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
+    group_name = Column(String, nullable=False)
+    date_generated = Column(DateTime, nullable=False)
+    object_url = Column(String, nullable=False)
+    active = Column(Boolean, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    last_update = Column(
+        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            columns=(feed_name, group_name),
+            refcolumns=(FeedGroupMetadata.feed_name, FeedGroupMetadata.name),
+        ),
+    )
 
 
 class GenericFeedDataRecord(Base):
@@ -2961,42 +2987,13 @@ class DistroNamespace(object):
         ]
 
 
-class CachedPolicyEvaluation(Base):
-    __tablename__ = "policy_engine_evaluation_cache"
-
-    user_id = Column(String, primary_key=True)
-    image_id = Column(String, primary_key=True)
-    eval_tag = Column(String, primary_key=True)
-    bundle_id = Column(
-        String, primary_key=True
-    )  # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
-    bundle_digest = Column(String, primary_key=True)
-
-    result = Column(
-        StringJSON, nullable=False
-    )  # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
-
-    created_at = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
-    last_modified = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
-        nullable=False,
-    )
+class CacheInterface(object):
+    """
+    Interface for a cached obect in policy engine stored in persistence. Expects a member/column called result
+    """
 
     def key_tuple(self):
-        return (
-            self.user_id,
-            self.image_id,
-            self.eval_tag,
-            self.bundle_id,
-            self.bundle_digest,
-        )
+        raise NotImplementedError()
 
     def _constuct_raw_result(self, result_json):
         return {"type": "direct", "result": result_json}
@@ -3041,6 +3038,68 @@ class CachedPolicyEvaluation(Base):
             return bucket, key
         else:
             raise ValueError("Result type is not an archive")
+
+
+class CachedVulnerabilities(Base, CacheInterface):
+    __tablename__ = "policy_engine_vulnerabilities_cache"
+
+    account_id = Column(String, primary_key=True)
+    image_digest = Column(String, primary_key=True)
+    # defining a very generic cache key on purpose to allow whatever is necessary based on the engine vs enterprise
+    cache_key = Column(JSONB, nullable=False)
+    result = Column(JSONB, nullable=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+    def key_tuple(self):
+        return (
+            self.account_id,
+            self.image_digest,
+            self.cache_key,
+        )
+
+
+class CachedPolicyEvaluation(Base, CacheInterface):
+    __tablename__ = "policy_engine_evaluation_cache"
+
+    user_id = Column(String, primary_key=True)
+    image_id = Column(String, primary_key=True)
+    eval_tag = Column(String, primary_key=True)
+    bundle_id = Column(
+        String, primary_key=True
+    )  # Need both id and digest to differentiate a new bundle vs update to bundle that requires a flush of the old record
+    bundle_digest = Column(String, primary_key=True)
+
+    result = Column(
+        StringJSON, nullable=False
+    )  # Result struct, based on the 'type' inside, may be literal content or a reference to the archive
+
+    created_at = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+    last_modified = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
+        onupdate=datetime.datetime.utcnow,
+        nullable=False,
+    )
+
+    def key_tuple(self):
+        return (
+            self.user_id,
+            self.image_id,
+            self.eval_tag,
+            self.bundle_id,
+            self.bundle_digest,
+        )
 
 
 def select_nvd_classes(db=None):
