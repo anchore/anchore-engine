@@ -233,7 +233,7 @@ class DataFeeds(object):
         source_feeds,
         to_sync: list = None,
         operation_id: Optional[str] = None,
-        groups: bool = False,
+        groups: bool = True,
     ) -> tuple:
         """
         Get metadata from source and sync db metadata records to that (e.g. add any new groups or feeds)
@@ -428,9 +428,8 @@ class DataFeeds(object):
             )
         )
 
-        updated, failed = DataFeeds.sync_feed_metadata(
-            feed_client=feed_client, to_sync=to_sync, operation_id=operation_id
-        )
+        source_feeds = DataFeeds.get_feed_group_information(feed_client, to_sync)
+        updated, failed = DataFeeds.sync_metadata(source_feeds, to_sync, operation_id)
         updated_names = set(updated.keys())
 
         # Feeds configured to sync but that were not on the upstream source at all
@@ -686,14 +685,25 @@ class DataFeeds(object):
             )
         )
 
-        source_feeds = DataFeeds.get_feed_group_information()
-        DataFeeds.sync_metadata(source_feeds, [GRYPE_DB_FEED], operation_id, groups=False)
-
+        source_feeds = DataFeeds.get_feed_group_information(feed_client, [GRYPE_DB_FEED])
+        updated, failed = DataFeeds.sync_metadata(source_feeds, [GRYPE_DB_FEED], operation_id, groups=False)
+        logger.info(f"{updated}")
+        if failed:
+            return failed
         # Build the list of feed instances to execute the syncs on
         feed_to_sync = GrypeDBFeed()
 
         # Do the fetches
-        group_to_download = source_feeds["groups"][0]
+        api_feed_group = source_feeds[GRYPE_DB_FEED]["groups"][0]
+        feed_metadata = updated[GRYPE_DB_FEED]
+        group_to_download = FeedGroupMetadata(
+                    name=api_feed_group.name,
+                    feed_name=feed_metadata.name,
+                    description=api_feed_group.description,
+                    access_tier=api_feed_group.access_tier,
+                    feed=feed_metadata,
+                    enabled=True,
+                )
         logger.info(
             "Initialized feed to sync: {} (operation_id={})".format(
                 feed_to_sync.__feed_name__, operation_id
