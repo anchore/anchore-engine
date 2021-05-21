@@ -126,14 +126,20 @@ def test_run_sanitize_bad_input(input):
 
 
 @pytest.mark.parametrize(
-    "cmds_list, expected_return_code, expected_stdout, expected_stderr",
-    [([["pwd"], ["wc", "-l"]], 0, "1", b"")],
+    "cmds_list, sanitize_input, expected_return_code, expected_stdout, expected_stderr",
+    [
+        ([["pwd"], ["wc", "-l"]], True, 0, "1", b""),
+        ([["pwd"], ["wc", "-l"]], False, 0, "1", b""),
+        ([["echo", ";&<>"]], False, 0, ";&<>", b""),
+    ],
 )
 def test_run_piped_command(
-    cmds_list, expected_return_code, expected_stdout, expected_stderr
+    cmds_list, sanitize_input, expected_return_code, expected_stdout, expected_stderr
 ):
     # Function under test
-    return_code, stdout, stderr = run_piped_command_list(cmds_list)
+    return_code, stdout, stderr = run_piped_command_list(
+        cmds_list, sanitize_input=sanitize_input
+    )
 
     # Binary string returned in different environments can be padded with different amounts of whitespace
     # So convert it to utf-8 and trim it so we get a clean, reliable comparison

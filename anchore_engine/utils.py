@@ -221,7 +221,11 @@ def run_sanitize(cmd_list):
 
 
 def run_piped_command_list(
-    cmd_lists, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
+    cmd_lists,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    sanitize_input=True,
+    **kwargs
 ):
     """
     Executes a series of subcommands from cmd_lists, the stdout result of each being piped stdin for the next.
@@ -234,7 +238,8 @@ def run_piped_command_list(
     else:
         output = None
         for cmd_list in cmd_lists:
-            run_sanitize(cmd_list)
+            if sanitize_input:
+                run_sanitize(cmd_list)
             if output is None:
                 output = subprocess.Popen(
                     cmd_list, stdout=stdout, stderr=stderr, **kwargs
