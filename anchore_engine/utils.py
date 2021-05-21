@@ -232,6 +232,10 @@ def run_piped_command_list(
     For example, the command: 'echo {}' | grype
     cmd_lists should be passed as: [['echo', '{}'], ['grype']]
     Do not include the actual pipe symbol, it is inferred from the data structure.
+
+    If sanitize_input is passed as true, the command input to this function will not be filtered on the characters
+    disallowed by run_sanitize(). This parameter should not be used in the general case, but is needed for things
+    like grype sbom analysis, where part of the command is a functionally-arbitrary string, already wrapped in quotes.
     """
     if not cmd_lists:
         raise ValueError(PIPED_CMD_VALUE_ERROR_MESSAGE)
