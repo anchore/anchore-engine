@@ -580,7 +580,6 @@ def test_unstage_grype_db(
     # Setup test inputs
     grype_wrapper_singleton._grype_db_dir = production_grype_db_dir_no_engine_metadata
     grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
-    # TODO also need a mock for this here
     grype_wrapper_singleton._grype_db_session_maker = mock_grype_db_session_maker
     grype_wrapper_singleton._staging_grype_db_dir = (
         staging_grype_db_dir_no_engine_metadata
@@ -665,7 +664,7 @@ def test_update_grype_db(
     )
 
     # Method under test
-    result = grype_wrapper_singleton.update_grype_db()
+    result = grype_wrapper_singleton.update_grype_db(STAGED_VERSION_MOCK_CHECKSUM)
 
     # Validate response
     assert result == expected_metadata
@@ -681,6 +680,68 @@ def test_update_grype_db(
     assert grype_wrapper_singleton._staging_grype_db_dir is None
     assert grype_wrapper_singleton._staging_grype_db_version is None
     assert grype_wrapper_singleton._staging_grype_db_session_maker is None
+
+
+def test_update_grype_db_invalid_checksum(
+    production_grype_db_dir_no_engine_metadata, staging_grype_db_dir_no_engine_metadata
+):
+    # Create grype_wrapper_singleton instance
+    grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+
+    # Setup test inputs
+    grype_wrapper_singleton._grype_db_dir = production_grype_db_dir_no_engine_metadata
+    grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
+    grype_wrapper_singleton._grype_db_session_maker = mock_grype_db_session_maker
+    grype_wrapper_singleton._staging_grype_db_dir = (
+        staging_grype_db_dir_no_engine_metadata
+    )
+    grype_wrapper_singleton._staging_grype_db_version = GRYPE_DB_VERSION
+    grype_wrapper_singleton._staging_grype_db_session_maker = (
+        mock_grype_db_session_maker
+    )
+
+    grype_wrapper_singleton._write_engine_metadata_to_file(
+        production_grype_db_dir_no_engine_metadata,
+        PRODUCTION_VERSION_MOCK_CHECKSUM,
+        GRYPE_DB_VERSION,
+    )
+
+    grype_wrapper_singleton._write_engine_metadata_to_file(
+        staging_grype_db_dir_no_engine_metadata,
+        STAGED_VERSION_MOCK_CHECKSUM,
+        GRYPE_DB_VERSION,
+    )
+
+    expected_metadata = GrypeEngineMetadata(
+        db_checksum=MOCK_DB_CHECKSUM,
+        archive_checksum=STAGED_VERSION_MOCK_CHECKSUM,
+        grype_db_version=GRYPE_DB_VERSION,
+    )
+
+    # Method under test
+    result = grype_wrapper_singleton.update_grype_db(None)
+
+    # Validate response
+    assert result is expected_metadata
+
+    # Validate grype wrapper state
+    assert (
+        grype_wrapper_singleton._grype_db_dir
+        == production_grype_db_dir_no_engine_metadata
+    )
+    assert grype_wrapper_singleton._grype_db_version == GRYPE_DB_VERSION
+    assert (
+        grype_wrapper_singleton._grype_db_session_maker == mock_grype_db_session_maker
+    )
+    assert (
+        grype_wrapper_singleton._staging_grype_db_dir
+        == staging_grype_db_dir_no_engine_metadata
+    )
+    assert grype_wrapper_singleton._staging_grype_db_version == GRYPE_DB_VERSION
+    assert (
+        grype_wrapper_singleton._staging_grype_db_session_maker
+        == mock_grype_db_session_maker
+    )
 
 
 def test_convert_grype_db_metadata(production_grype_db_dir):
