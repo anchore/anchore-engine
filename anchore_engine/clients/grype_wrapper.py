@@ -575,10 +575,6 @@ class GrypeWrapperSingleton(object):
             )
             return None
 
-    # TODO if multiple things are trying to stage new dbs, something is eventually going to go sideways here
-    # Need to confirm that the thing we are promoting is still what the requestor previously staged
-    # Easiest way it to probably pass the metdata block back as a fake token thing and compare
-    # Or if that gets to big stick a uuid in the metadata to represent a unique metdata blob
     def update_grype_db(self, archive_checksum: str):
         """
         Checks to ensure a new grype_db has been staged, and raises a ValueError if it has not. Otherwise

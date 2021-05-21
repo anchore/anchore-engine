@@ -722,7 +722,7 @@ def test_update_grype_db_invalid_checksum(
     result = grype_wrapper_singleton.update_grype_db(None)
 
     # Validate response
-    assert result is expected_metadata
+    assert result == expected_metadata
 
     # Validate grype wrapper state
     assert (
