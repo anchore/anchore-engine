@@ -2201,16 +2201,57 @@ class ImageCpe(Base):
             final_cpe[4] = self.name
             final_cpe[5] = self.version
             final_cpe[6] = self.update
-            # final_cpe[7] = self.edition
+            final_cpe[7] = self.meta
             # final_cpe[8] = self.language
             # final_cpe[9] = self.sw_edition
             # final_cpe[10] = self.target_sw
             # final_cpe[11] = self.target_hw
-            final_cpe[12] = self.meta
+            # final_cpe[12] = self.other
             ret = ":".join(final_cpe)
         except:
             ret = None
         return ret
+
+    def get_cpe23_fs_for_sbom(self):
+        """
+        Returns the formatted string representation of 2.3 CPE for use in sbom constructed for Grype
+
+        A 2.3 CPE is in the format
+        cpe:2.3:part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other
+
+        The value '-' for a CPE component means the field is not applicable. Component comparison results in not-equal
+        if one CPE has the component set (to value other than * or -) and another CPE indicates the same component is not applicable (-)
+        Grype uses all the CPE components for finding a match against the CPEs provided by the vulnerability data.
+        Anchore engine does not currently record the last 5 components and thereby defaults them to '-'.
+        But that runs the risk of missed matches because of Grype's matching logic as explained above.
+        This function is at the other end of the spectrum where it defaults all missing components to the wild character.
+        While more matches are found this way, this approach runs the risk of finding false positives.
+        Considering the components in play here, there may be a very small chance of such false positives since not many CPEs make use of them
+        """
+        cpe_components = [
+            "cpe",
+            "2.3",
+            "-",  # part
+            "-",  # vendor
+            "-",  # product
+            "-",  # version
+            "-",  # update
+            "-",  # edition
+            # '*' for all components currently unknown to engine to enable matching in grype.
+            "*",  # language
+            "*",  # sw_edition
+            "*",  # target_sw
+            "*",  # target_hw
+            "*",  # other
+        ]
+        cpe_components[2] = self.cpetype
+        cpe_components[3] = self.vendor
+        cpe_components[4] = self.name
+        cpe_components[5] = self.version
+        cpe_components[6] = self.update
+        cpe_components[7] = self.meta
+
+        return ":".join(cpe_components)
 
 
 class FilesystemAnalysis(Base):
