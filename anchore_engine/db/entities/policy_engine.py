@@ -3028,13 +3028,10 @@ class DistroNamespace(object):
         ]
 
 
-class CacheInterface(object):
+class StorageInterface(object):
     """
-    Interface for a cached obect in policy engine stored in persistence. Expects a member/column called result
+    Interface for a stored object in policy engine stored in persistence. Expects a member/column called result in the implementation
     """
-
-    def key_tuple(self):
-        raise NotImplementedError()
 
     def _constuct_raw_result(self, result_json):
         return {"type": "direct", "result": result_json}
@@ -3081,31 +3078,23 @@ class CacheInterface(object):
             raise ValueError("Result type is not an archive")
 
 
-class CachedVulnerabilities(Base, CacheInterface):
-    __tablename__ = "policy_engine_vulnerabilities_cache"
+class ImageVulnerabilitiesReport(Base, StorageInterface):
+    __tablename__ = "image_vulnerabilities_reports"
 
     account_id = Column(String, primary_key=True)
     image_digest = Column(String, primary_key=True)
-    # defining a very generic cache key on purpose to allow whatever is necessary based on the engine vs enterprise
-    cache_key = Column(JSONB, nullable=False)
-    result = Column(JSONB, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    # defining a very generic report key on purpose to allow whatever is necessary based on the engine vs enterprise
+    report_key = Column(JSONB, nullable=False)
+    result = Column(JSONB)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_modified = Column(
         DateTime,
         default=datetime.datetime.utcnow,
         onupdate=datetime.datetime.utcnow,
-        nullable=False,
     )
 
-    def key_tuple(self):
-        return (
-            self.account_id,
-            self.image_digest,
-            self.cache_key,
-        )
 
-
-class CachedPolicyEvaluation(Base, CacheInterface):
+class CachedPolicyEvaluation(Base, StorageInterface):
     __tablename__ = "policy_engine_evaluation_cache"
 
     user_id = Column(String, primary_key=True)

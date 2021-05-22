@@ -5,13 +5,17 @@ from anchore_engine.services.policy_engine.api.models import (
     Vulnerability,
     Artifact,
     CvssCombined,
+    Match,
 )
 from anchore_engine.services.policy_engine.engine.vulns.dedup import (
     ImageVulnerabilitiesDeduplicator,
     VulnerabilityIdentity,
     RankedVulnerabilityMatch,
     FeedGroupRank,
+    transfer_vulnerability_timestamps,
 )
+import datetime
+import copy
 
 
 class TestFeedGroupRank:
@@ -571,3 +575,135 @@ class TestImageVulnerabilitiesDeduplicator:
             ImageVulnerabilitiesDeduplicator(FeedGroupRank()).execute(test_input)
             == list()
         )
+
+
+class TestTimestampMerger:
+    @pytest.mark.parametrize(
+        "test_source, test_destination, expected",
+        [
+            pytest.param([], [], [], id="empty"),
+            pytest.param(None, None, [], id="none"),
+            pytest.param([], None, [], id="destination-none"),
+            pytest.param(None, [], [], id="source-none"),
+        ],
+    )
+    def test_transfer_vulnerability_timestamps_invalid_input(
+        self, test_source, test_destination, expected
+    ):
+        assert (
+            transfer_vulnerability_timestamps(
+                source=test_source, destination=test_destination
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "test_source, test_destination",
+        [
+            pytest.param(
+                datetime.datetime.utcnow(),
+                datetime.datetime.utcnow() + datetime.timedelta(days=1),
+                id="source-behind-destination",
+            ),
+            pytest.param(
+                datetime.datetime.utcnow() + datetime.timedelta(days=1),
+                datetime.datetime.utcnow(),
+                id="source-ahead-destination",
+            ),
+        ],
+    )
+    def test_transfer_vulnerability_timestamps_single(
+        self, test_source, test_destination
+    ):
+        random = VulnerabilityMatch(
+            artifact=Artifact(
+                name="blah",
+                pkg_path="/usr/local/java/blah",
+                pkg_type="java",
+                version="1.2.3maven",
+            ),
+            vulnerability=Vulnerability(
+                feed="vulnerabilities",
+                feed_group="whatever:hello",
+                vulnerability_id="meh",
+            ),
+        )
+
+        source = copy.deepcopy(random)
+        source.match = Match(detected_at=test_source)
+
+        destination = copy.deepcopy(random)
+        destination.match = Match(detected_at=test_destination)
+
+        results = transfer_vulnerability_timestamps(
+            source=[source], destination=[destination]
+        )
+
+        assert results and len(results) == 1
+        assert results[0].match.detected_at == test_source
+
+    def test_transfer_vulnerability_timestamps_multiple(self):
+        dest_ts = datetime.datetime.utcnow()
+        src_ts = datetime.datetime.utcnow() - datetime.timedelta(days=1)
+
+        destination = [
+            VulnerabilityMatch(
+                artifact=Artifact(
+                    name="blah",
+                    pkg_path="/usr/local/java/blah",
+                    pkg_type="java",
+                    version="1.2.3maven",
+                ),
+                vulnerability=Vulnerability(
+                    feed="vulnerabilities",
+                    feed_group="whatever:hello",
+                    vulnerability_id="meh",
+                ),
+                match=Match(detected_at=dest_ts),
+            ),
+            VulnerabilityMatch(
+                artifact=Artifact(
+                    name="blah",
+                    pkg_path="/usr/local/java/blah",
+                    pkg_type="java",
+                    version="1.2.3maven",
+                ),
+                vulnerability=Vulnerability(
+                    feed="vulnerabilities",
+                    feed_group="whatever:hello",
+                    vulnerability_id="foo",
+                ),
+                match=Match(detected_at=dest_ts),
+            ),
+        ]
+
+        source = [
+            VulnerabilityMatch(
+                artifact=Artifact(
+                    name="blah",
+                    pkg_path="/usr/local/java/blah",
+                    pkg_type="java",
+                    version="1.2.3maven",
+                ),
+                vulnerability=Vulnerability(
+                    feed="vulnerabilities",
+                    feed_group="whatever:hello",
+                    vulnerability_id="meh",
+                ),
+                match=Match(detected_at=src_ts),
+            )
+        ]
+
+        results = transfer_vulnerability_timestamps(
+            source=source, destination=destination
+        )
+
+        assert results and len(results) == 2
+        for result in results:
+            if (
+                result.vulnerability.vulnerability_id
+                == source[0].vulnerability.vulnerability_id
+            ):
+                assert result.match.detected_at == src_ts
+            else:
+                assert result.match.detected_at == dest_ts

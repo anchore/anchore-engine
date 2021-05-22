@@ -862,7 +862,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             vendor_only=vendor_only,
             db_session=db,
             force_refresh=force_refresh,
-            cache=True,
+            use_store=True,
         )
 
         db.commit()
