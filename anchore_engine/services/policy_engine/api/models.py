@@ -710,6 +710,16 @@ class VulnerabilityMatch(JsonSerializable):
         self.fixes = fixes
         self.match = match
 
+    def identity_tuple(self):
+        return (
+            self.vulnerability.vulnerability_id,
+            self.vulnerability.feed_group,
+            self.artifact.name,
+            self.artifact.version,
+            self.artifact.pkg_type,
+            self.artifact.pkg_path,
+        )
+
 
 class VulnerabilitiesReportMetadata(JsonSerializable):
     class VulnerabilitiesReportMetadataV1Schema(Schema):
