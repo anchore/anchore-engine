@@ -221,20 +221,29 @@ def run_sanitize(cmd_list):
 
 
 def run_piped_command_list(
-    cmd_lists, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
+    cmd_lists,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    sanitize_input=True,
+    **kwargs
 ):
     """
     Executes a series of subcommands from cmd_lists, the stdout result of each being piped stdin for the next.
     For example, the command: 'echo {}' | grype
     cmd_lists should be passed as: [['echo', '{}'], ['grype']]
     Do not include the actual pipe symbol, it is inferred from the data structure.
+
+    If sanitize_input is passed as true, the command input to this function will not be filtered on the characters
+    disallowed by run_sanitize(). This parameter should not be used in the general case, but is needed for things
+    like grype sbom analysis, where part of the command is a functionally-arbitrary string, already wrapped in quotes.
     """
     if not cmd_lists:
         raise ValueError(PIPED_CMD_VALUE_ERROR_MESSAGE)
     else:
         output = None
         for cmd_list in cmd_lists:
-            run_sanitize(cmd_list)
+            if sanitize_input:
+                run_sanitize(cmd_list)
             if output is None:
                 output = subprocess.Popen(
                     cmd_list, stdout=stdout, stderr=stderr, **kwargs

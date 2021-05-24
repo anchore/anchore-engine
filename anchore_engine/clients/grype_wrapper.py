@@ -568,7 +568,9 @@ class GrypeWrapperSingleton(object):
             stdout = None
             err = None
             try:
-                _, stdout, _ = run_piped_command_list(full_cmd, env=proc_env)
+                _, stdout, _ = run_piped_command_list(
+                    full_cmd, env=proc_env, sanitize_input=False
+                )
             except CommandException as exc:
                 logger.error(
                     "Exception running command: %s | %s, stderr: %s",
