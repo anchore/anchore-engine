@@ -689,7 +689,7 @@ class GrypeWrapperSingleton(object):
         Return version information for grype
         """
         with self.read_lock_access():
-            proc_env = self._get_env_variables(include_grype_db=False)
+            env_variables = self._get_env_variables(include_grype_db=False)
 
             logger.debug(
                 "Getting grype version with command: %s", self.GRYPE_VERSION_COMMAND
@@ -699,7 +699,7 @@ class GrypeWrapperSingleton(object):
             err = None
             try:
                 stdout, _ = run_check(
-                    shlex.split(self.GRYPE_VERSION_COMMAND), env=proc_env
+                    shlex.split(self.GRYPE_VERSION_COMMAND), env=env_variables
                 )
             except CommandException as exc:
                 logger.error(
@@ -719,7 +719,7 @@ class GrypeWrapperSingleton(object):
         # Get the read lock
         with self.read_lock_access():
             # Get env variables to run the grype scan with
-            proc_env = self._get_env_variables()
+            env_variables = self._get_env_variables()
 
             # Format and run the command. Grype supports piping in an sbom string
             cmd = "{}".format(self.GRYPE_SUB_COMMAND)
@@ -755,7 +755,7 @@ class GrypeWrapperSingleton(object):
         # Get the read lock
         with self.read_lock_access():
             # Get env variables to run the grype scan with
-            proc_env = self._get_env_variables()
+            env_variables = self._get_env_variables()
 
             # Format and run the command
             cmd = "{grype_sub_command} sbom:{sbom}".format(
