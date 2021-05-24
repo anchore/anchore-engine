@@ -832,16 +832,15 @@ class GrypeDBFeed(AnchoreServiceFeed):
             group_download_result.group, checksum, record.data
         )
         built_at = rfc3339str_to_datetime(record.metadata["built"])
-        grypedb_meta = GrypeDBFeedMetadata(
+        self.grypedb_meta = GrypeDBFeedMetadata(
             archive_checksum=checksum,
             metadata_checksum=None,
-            schema_version=record.metadata["version"],
+            schema_version=str(record.metadata["version"]),
             object_url=object_url,
             active=True,
             built_at=built_at,
-            synced_at=None,
         )
-        db.add(grypedb_meta)
+        db.add(self.grypedb_meta)
 
     @staticmethod
     def _run_grypedb_sync_task(checksum: str, grype_db_data: bytes) -> None:
@@ -894,7 +893,8 @@ class GrypeDBFeed(AnchoreServiceFeed):
             checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
             # If there aren't any other database files with the same checksum, then this is a new database file.
-            if self._find_match(db, checksum).count() == 0:
+            matches = self._find_match(db, checksum).all()
+            if len(matches) == 0:
                 # Update the database and the catalog with the new Grype DB file.
                 self._switch_active_grypedb(
                     db,
@@ -924,6 +924,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         ),
                     )
                 )
+            else:
+                # If checksum already exists and  updating, assign to instance variable so timestamps can be updated
+                self.grypedb_meta = matches[0]
         else:
             group_obj.count = self.record_count(group_obj.name, db)
             db.commit()
@@ -942,6 +945,27 @@ class GrypeDBFeed(AnchoreServiceFeed):
         )
         self._enqueue_refresh_tasks(db)
         return total_records_updated
+
+    def _update_last_full_sync_timestamp(self) -> None:
+        """
+        Overrides the base class update function to update both the feed last sync, the grype db metadata record, and its groups
+        """
+        super()._update_last_full_sync_timestamp()
+        last_sync = self.metadata.last_full_sync
+
+        db = get_session()
+
+        try:
+            if self.grypedb_meta:
+                db.refresh(self.grypedb_meta)
+            else:
+                logger.error("No grypedb meta found to update last sync timestamp")
+                raise ValueError("Grype DB Meta not found")
+
+            self.grypedb_meta.synced_at = last_sync
+            db.commit()
+        finally:
+            db.rollback()
 
     def sync(
         self,
