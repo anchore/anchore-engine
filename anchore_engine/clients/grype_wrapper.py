@@ -67,7 +67,7 @@ class GrypeDBMetadata:
 
 
 @dataclass
-class GrypeEngineMetadata:
+class GrypeDBEngineMetadata:
     db_checksum: str
     archive_checksum: str
     grype_db_version: str
@@ -77,7 +77,7 @@ class GrypeEngineMetadata:
         """
         Convert a dict object into a GrypeEngineMetadata
         """
-        return GrypeEngineMetadata(**engine_metadata)
+        return GrypeDBEngineMetadata(**engine_metadata)
 
 
 @dataclass
@@ -656,14 +656,14 @@ class GrypeWrapperSingleton(object):
 
     def get_grype_db_engine_metadata(
         self, use_staging: bool = False
-    ) -> GrypeEngineMetadata:
+    ) -> GrypeDBEngineMetadata:
         """
         Return the contents of the current grype_db engine metadata file as a data object.
         This file contains metadata specific to engine about the current grype_db instance.
         This call can be parameterized to return either the production or staging metadata.
         """
 
-        return GrypeEngineMetadata.to_object(
+        return GrypeDBEngineMetadata.to_object(
             self._get_metadata_file_contents(
                 self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
             )

@@ -9,7 +9,7 @@ import sqlalchemy
 
 from anchore_engine.clients.grype_wrapper import (
     GrypeWrapperSingleton,
-    GrypeEngineMetadata,
+    GrypeDBEngineMetadata,
     GrypeDBMetadata,
 )
 
@@ -601,7 +601,7 @@ def test_unstage_grype_db(
         GRYPE_DB_VERSION,
     )
 
-    expected_metadata = GrypeEngineMetadata(
+    expected_metadata = GrypeDBEngineMetadata(
         db_checksum=MOCK_DB_CHECKSUM,
         archive_checksum=PRODUCTION_VERSION_MOCK_CHECKSUM,
         grype_db_version=GRYPE_DB_VERSION,
@@ -657,7 +657,7 @@ def test_update_grype_db(
         GRYPE_DB_VERSION,
     )
 
-    expected_metadata = GrypeEngineMetadata(
+    expected_metadata = GrypeDBEngineMetadata(
         db_checksum=MOCK_DB_CHECKSUM,
         archive_checksum=STAGED_VERSION_MOCK_CHECKSUM,
         grype_db_version=GRYPE_DB_VERSION,
@@ -712,7 +712,7 @@ def test_update_grype_db_invalid_checksum(
         GRYPE_DB_VERSION,
     )
 
-    expected_metadata = GrypeEngineMetadata(
+    expected_metadata = GrypeDBEngineMetadata(
         db_checksum=MOCK_DB_CHECKSUM,
         archive_checksum=STAGED_VERSION_MOCK_CHECKSUM,
         grype_db_version=GRYPE_DB_VERSION,
@@ -779,7 +779,7 @@ def test_convert_grype_db_engine_metadata(production_grype_db_dir_no_engine_meta
     )
 
     # Setup expected output
-    expected_output = GrypeEngineMetadata(
+    expected_output = GrypeDBEngineMetadata(
         db_checksum=MOCK_DB_CHECKSUM,
         archive_checksum=STAGED_VERSION_MOCK_CHECKSUM,
         grype_db_version=GRYPE_DB_VERSION,
