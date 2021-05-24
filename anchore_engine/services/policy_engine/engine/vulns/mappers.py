@@ -106,7 +106,7 @@ class PackageMapper:
                     "path": image_package.pkg_path,
                 }
             ],
-            # TODO check with alex on how to format source package and version. Override this method in individual mappers
+            # Package type specific mappers add metadata attribute
         }
 
         return artifact
@@ -220,9 +220,20 @@ class RpmMapper(PackageMapper):
         image_package: ImagePackage,
         location_cpes_dict: Dict[str, List[str]] = None,
     ):
+        """
+        Adds the source package information to grype sbom
+
+        Source package has already been through 2 transformations before this point
+        1. From syft sbom to analyzer manifest in anchore_engine/analyzers/syft/handlers/rpm.py
+        2. From analyzer manifest to policy-engine ImagePackage in anchore_engine/services/policy_engine/engine/loaders.py
+
+        After the above transformations ImagePackage.src_pkg is the equivalent of syft/grype sourceRpm
+
+        """
         artifact = super().to_grype_artifact(image_package, location_cpes_dict)
         if image_package.normalized_src_pkg != "N/A":
-            artifact["metadata"] = {"sourceRpm": image_package.normalized_src_pkg}
+            artifact["metadataType"] = "RpmdbMetadata"
+            artifact["metadata"] = {"sourceRpm": image_package.src_pkg}
         return artifact
 
     def get_feed_group_from_grype_match_distro(self, distro_dict):
@@ -267,14 +278,46 @@ class DpkgMapper(PackageMapper):
         image_package: ImagePackage,
         location_cpes_dict: Dict[str, List[str]] = None,
     ):
+        """
+        Adds the source package information to grype sbom
+
+        Source package has already been through 2 transformations before this point. These transformations make the final result more error prone unlike rpm
+        1. From syft sbom to analyzer manifest in anchore_engine/analyzers/syft/handlers/debian.py. combines source package and source/package version into one value
+        2. From analyzer manifest to policy-engine ImagePackage in anchore_engine/services/policy_engine/engine/loaders.py. attempts to split the source package and version
+
+        After the above transformations ImagePackage.normalized_src_pkg is the closest approximation to syft/grype source.
+        Closest because the corner cases are not handled correctly by the above transformations
+
+        Example of not-working case
+        Syft output of bsdutils package
+        {
+           "name": "bsdutils",
+           "version": "1:2.20.1-5.3",
+           "type": "deb",
+           "foundBy": "dpkgdb-cataloger",
+           "metadataType": "DpkgMetadata",
+           "metadata": {
+            "package": "bsdutils",
+            "source": "util-linux",
+            "version": "1:2.20.1-5.3",
+            "sourceVersion": "2.20.1-5.3",
+            ...
+
+        Notice version and sourceVersion are different because of the epoch
+        - Step 1 processes this into sourcepkg=util-linux-2.20.1-5.3
+        - Step 2 falters in it's processing because of the epoch difference and saves util-linux-2.20.1-5.3 to both
+        ImagePackage.src_pkg and ImagePackage.normalized_src_pkg. The correct value for normalized_src_pkg is util-linux
+
+        """
         artifact = super().to_grype_artifact(image_package, location_cpes_dict)
-        # TODO
-        # if image_package.normalized_src_pkg != "N/A":
-        #     artifact["metadata"] = {"sourceRpm": image_package.normalized_src_pkg}
+        if image_package.normalized_src_pkg != "N/A":
+            artifact["metadataType"] = "DpkgMetadata"
+            artifact["metadata"] = {"source": image_package.normalized_src_pkg}
         return artifact
 
     def get_feed_group_from_grype_match_distro(self, distro_dict):
         """
+        TODO This tries to map the feed group from grype match. Replace it with feed group from grype
         {
          "type": "ubuntu",
          "version": "8.3"
@@ -299,21 +342,11 @@ class ApkgMapper(PackageMapper):
     def __init__(self):
         super(ApkgMapper, self).__init__(engine_type="APKG", grype_type="apk")
 
-    def to_grype_artifact(
-        self,
-        image_package: ImagePackage,
-        location_cpes_dict: Dict[str, List[str]] = None,
-    ):
-        artifact = super().to_grype_artifact(image_package, location_cpes_dict)
-        # TODO
-        # if image_package.normalized_src_pkg != "N/A":
-        #     artifact["metadata"] = {"sourceRpm": image_package.normalized_src_pkg}
-        return artifact
-
     def get_feed_group_from_grype_match_distro(self, distro_dict):
         """
+        TODO This tries to map the feed group from grype match. Replace it with feed group from grype
         {
-         "type": "redhat",
+         "type": "alpine",
          "version": "8.3"
         }
         """
@@ -332,28 +365,11 @@ class CPEMapper(PackageMapper):
     def to_grype_artifact(
         self,
         image_package: ImagePackage,
-        location_cpes_dict: Dict[str, List[str]] = None,
+        location_cpes_dict: Dict[str, List[ImageCpe]] = None,
     ):
         artifact = super().to_grype_artifact(image_package)
         artifact["cpes"] = [
-            # cpe : 2.3 : part : vendor : product : version : update : edition : language : sw_edition : target_sw : target_hw : other
-            "cpe:2.3:{}".format(
-                ":".join(
-                    [
-                        item.cpetype,  # part
-                        item.vendor,  # vendor
-                        item.name,  # product
-                        item.version,  # version
-                        item.update,  # update
-                        item.meta,  # edition
-                        "-",  # language
-                        "-",  # sw_edition
-                        "-",  # target_sw
-                        "-",  # target_hw
-                        "-",  # other
-                    ]
-                )
-            )
+            item.get_cpe23_fs_for_sbom()
             for item in location_cpes_dict.get(image_package.pkg_path)
         ]
 
@@ -380,7 +396,7 @@ GRYPE_PACKAGE_MAPPERS = {
     "npm": CPEMapper(engine_type="npm", grype_type="npm"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem"),
     "java-archive": CPEMapper(engine_type="java", grype_type="java-archive"),
-    "java-plugin": CPEMapper(engine_type="java", grype_type="java-plugin"),
+    "jenkins-plugin": CPEMapper(engine_type="java", grype_type="jenkins-plugin"),
 }
 
 

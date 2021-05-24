@@ -75,6 +75,9 @@ class GrypeWrapperSingleton(object):
     MISSING_GRYPE_DB_DIR_ERROR_MESSAGE = (
         "Cannot access missing grype_db dir. Reinitialize grype_db."
     )
+    MISSING_GRYPE_DB_VERSION_ERROR_MESSAGE = (
+        "Cannot access missing grype_db version. Reinitialize grype_db."
+    )
     MISSING_GRYPE_DB_SESSION_MAKER_ERROR_MESSAGE = (
         "Cannot access missing grype_db session maker. Reinitialize grype_db."
     )
@@ -87,6 +90,7 @@ class GrypeWrapperSingleton(object):
 
             # These variables are mutable, their state can be changed when grype_db is updated
             cls._grype_db_dir_internal = None
+            cls._grype_db_version_internal = None
             cls._grype_db_session_maker_internal = None
 
             # The reader-writer lock for this class
@@ -112,6 +116,17 @@ class GrypeWrapperSingleton(object):
     @_grype_db_dir.setter
     def _grype_db_dir(self, _grype_db_dir_internal):
         self._grype_db_dir_internal = _grype_db_dir_internal
+
+    @property
+    def _grype_db_version(self):
+        if self._grype_db_version_internal is None:
+            raise ValueError(self.MISSING_GRYPE_DB_VERSION_ERROR_MESSAGE)
+        else:
+            return self._grype_db_version_internal
+
+    @_grype_db_version.setter
+    def _grype_db_version(self, _grype_db_version_internal):
+        self._grype_db_version_internal = _grype_db_version_internal
 
     @property
     def _grype_db_session_maker(self):
@@ -346,7 +361,7 @@ class GrypeWrapperSingleton(object):
         # Return the full path to the grype db file
         return latest_grype_db_dir
 
-    def _init_latest_grype_db_engine(self, latest_grype_db_dir):
+    def _init_latest_grype_db_engine(self, latest_grype_db_dir, grype_db_version):
         """
         Create and return the sqlalchemy engine object
         """
@@ -354,7 +369,7 @@ class GrypeWrapperSingleton(object):
             "Creating new db engine based on the grype_db at %s", latest_grype_db_dir
         )
         latest_grype_db_file = os.path.join(
-            latest_grype_db_dir, self.VULNERABILITY_FILE_NAME
+            latest_grype_db_dir, grype_db_version, self.VULNERABILITY_FILE_NAME
         )
         db_connect = "sqlite:///{}".format(latest_grype_db_file)
         latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
@@ -383,7 +398,9 @@ class GrypeWrapperSingleton(object):
         latest_grype_db_dir = self._move_and_open_grype_db_archive(
             lastest_grype_db_archive, archive_checksum, grype_db_version
         )
-        latest_grype_db_engine = self._init_latest_grype_db_engine(latest_grype_db_dir)
+        latest_grype_db_engine = self._init_latest_grype_db_engine(
+            latest_grype_db_dir, grype_db_version
+        )
         latest_grype_db_session_maker = self._init_latest_grype_db_session_maker(
             latest_grype_db_engine
         )
@@ -437,6 +454,7 @@ class GrypeWrapperSingleton(object):
             except ValueError:
                 old_grype_db_dir = None
             self._grype_db_dir = latest_grype_db_dir
+            self._grype_db_version = grype_db_version
             self._grype_db_session_maker = latest_grype_db_session_maker
 
             # Remove the old local db only if it's not the current db
@@ -448,7 +466,9 @@ class GrypeWrapperSingleton(object):
         Return the json contents of one of the metadata files for the in-use version of grype db
         """
         # Get the path to the latest metadata file
-        latest_metadata_file = os.path.join(self._grype_db_dir, metadata_file_name)
+        latest_metadata_file = os.path.join(
+            self._grype_db_dir, self._grype_db_version, metadata_file_name
+        )
 
         # Ensure the file exists
         if not os.path.exists(latest_metadata_file):
@@ -548,7 +568,9 @@ class GrypeWrapperSingleton(object):
             stdout = None
             err = None
             try:
-                _, stdout, _ = run_piped_command_list(full_cmd, env=proc_env)
+                _, stdout, _ = run_piped_command_list(
+                    full_cmd, env=proc_env, sanitize_input=False
+                )
             except CommandException as exc:
                 logger.error(
                     "Exception running command: %s | %s, stderr: %s",
