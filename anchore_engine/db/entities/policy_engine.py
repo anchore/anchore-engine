@@ -156,6 +156,7 @@ class GrypeDBFeedMetadata(Base):
     built_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     synced_at = Column(DateTime, nullable=True)
+    groups = Column(JSONB)
 
 
 class GenericFeedDataRecord(Base):
