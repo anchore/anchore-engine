@@ -715,7 +715,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
     ) -> Query:
         """
-        Utility Method, queries GrypeDBMetadata and optionally filters on checksum or active attribute.
+        Utility Method, queries GrypeDBFeedMetadata and optionally filters on checksum or active attribute.
 
         :param db: sqlalchemy database session
         :type db: Session
@@ -735,7 +735,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
     def record_count(self, group_name: str, db: Session) -> int:
         """
-        Returns number of records present in the database for a given group (GrypeDBMetadata records)
+        Returns number of records present in the database for a given group (GrypeDBFeedMetadata records)
 
         :param group_name: name of the group
         :type group_name: str
@@ -803,8 +803,8 @@ class GrypeDBFeed(AnchoreServiceFeed):
         checksum: str,
     ) -> None:
         """
-        Inserts a new active GrypeDBMetadata record. Before doing so, it deletes all inactive records and then
-        marks the currently active record as inactive. No more than two GrypeDBMetadata records are persisted at once.
+        Inserts a new active GrypeDBFeedMetadata record. Before doing so, it deletes all inactive records and then
+        marks the currently active record as inactive. No more than two GrypeDBFeedMetadata records are persisted at once.
 
         :param db: sqlalchemy database session
         :type db: Session

@@ -78,8 +78,8 @@ class GrypeDBSyncManager:
         Returns active grypedb instance from db. Raises NoActiveGrypeDB if there are none and raises
         TooManyActiveGrypeDBs if more than one
 
-        return: Active GrypeDBMetadata
-        rtype: GrypeDBMetadata
+        return: Active GrypeDBFeedMetadata
+        rtype: GrypeDBFeedMetadata
         """
         try:
             active_grypedb = cls._query_active_dbs()
@@ -98,8 +98,8 @@ class GrypeDBSyncManager:
         """
         Runs query against db to get active dbs. Uses one_or_none so raises error if more than one active db
 
-        return: Instance of GrypeDBMetadata or None
-        rtype: GrypeDBMetadata
+        return: Instance of GrypeDBFeedMetadata or None
+        rtype: GrypeDBFeedMetadata
         """
         db = get_thread_scoped_session()
         return (
