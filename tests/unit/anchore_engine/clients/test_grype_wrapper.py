@@ -415,18 +415,20 @@ def test_init_grype_db_engine(staging_grype_db_dir):
     ) == GrypeWrapperSingleton.SQL_LITE_URL_TEMPLATE.format(expected_output_path)
 
 
-def test_init_latest_grype_db_engine(grype_db_dir):
+def test_init_latest_grype_db_engine(staging_grype_db_dir):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
     # Setup expected output var
     expected_output = os.path.join(
-        grype_db_dir, GRYPE_DB_VERSION, grype_wrapper_singleton.VULNERABILITY_FILE_NAME
+        staging_grype_db_dir,
+        GRYPE_DB_VERSION,
+        grype_wrapper_singleton.VULNERABILITY_FILE_NAME,
     )
 
     # Function under test
     latest_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
-        grype_db_dir,
+        staging_grype_db_dir,
         GRYPE_DB_VERSION,
     )
 
