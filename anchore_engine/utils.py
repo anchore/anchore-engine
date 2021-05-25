@@ -310,7 +310,7 @@ def run_check(cmd, log_spew_stdout_stderr=False, **kwargs):
         for line in stdout_stream:
             logger.spew("stdout: %s", line)
         for line in stderr_stream:
-            logger.debug("stderr: %s", line)
+            logger.spew("stderr: %s", line)
     else:
         for line in stdout_stream:
             logger.debug("stdout: %s", line)
