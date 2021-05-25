@@ -9,6 +9,7 @@ from anchore_engine.apis.exceptions import (
     BadRequest,
     ConflictingRequest,
     ResourceNotFound,
+    UnprocessableEntityError,
 )
 from anchore_engine.clients.services.simplequeue import (
     LeaseAcquisitionFailedError,
@@ -34,7 +35,6 @@ def list_feeds(refresh_counts=False):
     """
     GET /feeds
 
-    :param include_counts (ignored since counts are handled in the record now)
     :param refresh_counts: forcibly update the group counts (not normally necessary)
     :return:
     """
@@ -214,6 +214,11 @@ def delete_feed(feed):
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_group(feed, group):
     session = db.get_session()
+    if feed == "grypedb":
+        raise UnprocessableEntityError(
+            message="Cannot delete individual groups for grypedb feed. Must delete entire feed.",
+            detail={},
+        )
     try:
         f = db.lookup_feed_group(db_session=session, feed_name=feed, group_name=group)
         if not f:

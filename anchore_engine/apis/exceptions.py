@@ -64,6 +64,10 @@ class BadGatewayError(AnchoreApiError):
     __response_code__ = 502
 
 
+class UnprocessableEntityError(AnchoreApiError):
+    __response_code__ = 422
+
+
 class MissingRequiredField(BadRequest):
     def __init__(self, required_property, because_of_properties=None):
         if because_of_properties:
