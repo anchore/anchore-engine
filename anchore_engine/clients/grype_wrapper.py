@@ -521,7 +521,7 @@ class GrypeWrapperSingleton(object):
         with self.read_lock_access():
             proc_env = self._get_proc_env(include_grype_db=False)
 
-            logger.debug(
+            logger.spew(
                 "Getting grype version with command: %s", self.GRYPE_VERSION_COMMAND
             )
 
@@ -559,7 +559,7 @@ class GrypeWrapperSingleton(object):
             )
             full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_COMMAND)]
 
-            logger.debug(
+            logger.spew(
                 "Running grype with command: %s | %s",
                 pipe_sub_cmd,
                 self.GRYPE_SUB_COMMAND,
@@ -597,7 +597,7 @@ class GrypeWrapperSingleton(object):
                 grype_sub_command=self.GRYPE_SUB_COMMAND, sbom=grype_sbom_file
             )
 
-            logger.debug("Running grype with command: %s", cmd)
+            logger.spew("Running grype with command: %s", cmd)
 
             stdout = None
             err = None
@@ -633,7 +633,7 @@ class GrypeWrapperSingleton(object):
             if type(namespace) == str:
                 namespace = [namespace]
 
-            logger.debug(
+            logger.spew(
                 "Querying grype_db for vuln_id: %s, namespace: %s, affected_package: %s",
                 vuln_id,
                 namespace,
@@ -663,7 +663,7 @@ class GrypeWrapperSingleton(object):
         """
         # Get and release read locks
         with self.read_lock_access():
-            logger.debug("Querying grype_db for feed group counts")
+            logger.spew("Querying grype_db for feed group counts")
 
             # Get the counts for each record source
             with self.grype_session_scope() as session:
