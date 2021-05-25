@@ -713,7 +713,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
     @staticmethod
     def _find_match(
         db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
-    ) -> list:
+    ) -> List[GrypeDBFeedMetadata]:
         """
         Utility Method, queries GrypeDBFeedMetadata and optionally filters on checksum or active attribute.
 
@@ -724,7 +724,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :param active: whether or not to filter on the active record
         :type active: Optional[bool], defaults to None
         :return: list of GrypeDBFeedMetadata
-        :rtype: list
+        :rtype: List[GrypeDBFeedMetadata]
         """
         # sort by created at so the first index would be the correct active one if more than one returned
         results = db.query(GrypeDBFeedMetadata).order_by(
