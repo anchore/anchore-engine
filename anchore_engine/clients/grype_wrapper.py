@@ -603,7 +603,7 @@ class GrypeWrapperSingleton(object):
             err = None
             try:
                 stdout, _ = run_check(
-                    shlex.split(cmd), log_spew_stdout=True, env=proc_env
+                    shlex.split(cmd), log_spew_stdout_stderr=True, env=proc_env
                 )
             except CommandException as exc:
                 logger.error(
