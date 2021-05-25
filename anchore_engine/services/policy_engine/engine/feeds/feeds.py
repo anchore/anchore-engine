@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
-from sqlalchemy.orm import Query
 from sqlalchemy.orm.session import Session
 
 from anchore_engine.clients.services import internal_client_for
@@ -767,7 +766,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
         records = self._find_match(db)
         for record in records:
-            catalog_client.delete_document(record.group_name, record.archive_checksum)
+            catalog_client.delete_document(self.__feed_name__, record.archive_checksum)
             db.delete(record)
         group_obj.last_sync = None  # Null the update timestamp to reflect the flush
         group_obj.count = 0
@@ -824,9 +823,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
         inactive_records = self._find_match(db, active=False)
         for inactive_record in inactive_records:
             catalog_client.delete_document(
-                inactive_record.group_name, inactive_record.archive_checksum
+                self.__feed_name__, inactive_record.archive_checksum
             )
-            db.delete(inactive_record, synchronize_session="evaluate")
+            db.delete(inactive_record)
 
         # search for active and mark inactive
         active_records = self._find_match(db, active=True)
@@ -835,7 +834,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
         # insert new as active
         object_url = catalog_client.create_raw_object(
-            group_download_result.group, checksum, record.data
+            self.__feed_name__, checksum, record.data
         )
         built_at = rfc3339str_to_datetime(record.metadata["built"])
         self.grypedb_meta = GrypeDBFeedMetadata(
