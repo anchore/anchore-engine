@@ -2,10 +2,23 @@
 Scanners are responsible for finding vulnerabilities in an image.
 A scanner may use persistence context or an external tool to match image content with vulnerability data and return those matches
 """
+import json
+
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db.entities.policy_engine import ImageCpe
+from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
-from anchore_engine.services.policy_engine.engine import vulnerabilities
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncManager,
+)
+import os
+from anchore_engine.configuration import localconfig
+
+# debug option for saving image sbom
+save_image_sbom = (
+    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_IMAGE_SBOM", "true").lower() == "true"
+)
 
 
 class LegacyScanner:
@@ -125,3 +138,30 @@ class LegacyScanner:
         final_results = list(dedup_hash.values())
 
         return final_results
+
+
+class GrypeVulnScanner:
+    """
+    The scanner sits a level above the grype_wrapper. It orchestrates dependencies such as grype-db for the wrapper
+    and interacts with the wrapper for all things vulnerabilities
+
+    Scanners are typically used by a provider to serve data They are engine-agnostic components and therefore require
+    higher order functions for transforming input/output to/from underlying tool format
+    """
+
+    def get_vulnerabilities(self, image_id, sbom):
+
+        # check and run grype sync if necessary
+        GrypeDBSyncManager.run_grypedb_sync()
+
+        # if save_image_sbom:  #TODO uncomment this after grype wrapper starts working correctly for string sbom
+        file_path = "{}/sbom_{}.json".format(
+            localconfig.get_config().get("tmp_dir", "/tmp"), image_id
+        )
+        logger.debug("Writing image sbom for %s to %s", image_id, file_path)
+        with open(file_path, "w") as fp:
+            json.dump(sbom, fp, indent=2)
+
+        return GrypeWrapperSingleton.get_instance().get_vulnerabilities_for_sbom_file(
+            file_path
+        )

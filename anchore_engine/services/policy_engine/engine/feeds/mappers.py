@@ -1,40 +1,21 @@
 import copy
 import re
+from abc import ABC, abstractmethod
+from typing import Dict, Optional, Type
 
 from anchore_engine.db import (
-    GenericFeedDataRecord,
+    CpeV2Vulnerability,
+    FixedArtifact,
     GemMetadata,
+    GenericFeedDataRecord,
     NpmMetadata,
     NvdV2Metadata,
-    CpeV2Vulnerability,
-    VulnDBMetadata,
     VulnDBCpe,
+    VulnDBMetadata,
     Vulnerability,
-    FixedArtifact,
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import CPE
-
-
-class SingleTypeMapperFactory(object):
-    def __init__(self, feed_name, mapper_clazz, common_key=None):
-        """
-        Create a single-type mapper factory that returns mappers of type <mapper_clazz>
-
-        :param feed_name: name of the feed to configure into the mapper
-        :param mapper_clazz: the class to instantiate when requested
-        :param common_key: the data key to look for in items if all groups use the same key name for data items
-        """
-
-        self.feed = feed_name
-        self.mapper_clazz = mapper_clazz
-        self.common_key = common_key
-
-    def __getitem__(self, item):
-        return self.mapper_clazz(self.feed, item, self.common_key)
-
-    def get(self, item):
-        return self.__getitem__(item)
 
 
 class FeedDataMapper(object):
@@ -42,12 +23,12 @@ class FeedDataMapper(object):
     Base interface for mapping feed records into the db
     """
 
-    def __init__(self, feed_name, group_name, keyname):
+    def __init__(self, feed_name: str, group_name: str, key_name: str):
         self.feed = feed_name
         self.group = group_name
-        self.key_item_name = keyname
+        self.key_item_name = key_name
 
-    def map(self, record_json):
+    def map(self, record_json: dict):
         """
         Entrypoint to do the mapping, a wrapper for the inner map() function to pre-process the json.
 
@@ -82,7 +63,7 @@ class GenericFeedDataMapper(KeyIDFeedDataMapper):
     def map_inner(self, key, data):
         """
         Map a single data feed record from msg to db format
-        :param record_json: data record deserialized from json (dict) to map
+        :param data: data record deserialized from json (dict) to map
         :return: a DB entity that can be added to a session/persisted
         """
 
@@ -92,6 +73,64 @@ class GenericFeedDataMapper(KeyIDFeedDataMapper):
         db_rec.id = key
         db_rec.data = data
         return db_rec
+
+
+class MapperFactory(ABC):
+    @abstractmethod
+    def __getitem__(self, item: str) -> FeedDataMapper:
+        ...
+
+    @abstractmethod
+    def get(self, item: str) -> FeedDataMapper:
+        ...
+
+
+class MultiTypeMapperFactory(MapperFactory):
+    def __init__(
+        self,
+        feed_name: Optional[str],
+        mappers_dict: Dict[str, Type[FeedDataMapper]],
+        common_key: Optional[str] = None,
+    ):
+        if feed_name is None:
+            raise TypeError("feed_name must be a string and cannot be type(None)")
+        self.feed_name: str = feed_name
+        self.mapper_store = mappers_dict
+        self.common_key: Optional[str] = common_key
+
+    def __getitem__(self, item: str) -> FeedDataMapper:
+        if item in self.mapper_store:
+            return self.mapper_store[item](self.feed_name, item, self.common_key)
+        return GenericFeedDataMapper(self.feed_name, item, self.common_key)
+
+    def get(self, item: str) -> FeedDataMapper:
+        return self.__getitem__(item)
+
+
+class SingleTypeMapperFactory(MapperFactory):
+    def __init__(
+        self,
+        feed_name: str,
+        mapper_clazz: Type[FeedDataMapper],
+        common_key: Optional[str] = None,
+    ):
+        """
+        Create a single-type mapper factory that returns mappers of type <mapper_clazz>
+
+        :param feed_name: name of the feed to configure into the mapper
+        :param mapper_clazz: the class to instantiate when requested
+        :param common_key: the data key to look for in items if all groups use the same key name for data items
+        """
+
+        self.feed: str = feed_name
+        self.mapper_clazz: Type[FeedDataMapper] = mapper_clazz
+        self.common_key: str = common_key
+
+    def __getitem__(self, item: str) -> FeedDataMapper:
+        return self.mapper_clazz(self.feed, item, self.common_key)
+
+    def get(self, item: str) -> FeedDataMapper:
+        return self.__getitem__(item)
 
 
 class GemPackageDataMapper(KeyIDFeedDataMapper):

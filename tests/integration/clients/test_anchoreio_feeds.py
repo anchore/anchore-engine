@@ -1,6 +1,7 @@
 import datetime
 from tests.utils import init_test_logging
-from anchore_engine.services.policy_engine.engine.feeds.client import get_client
+from anchore_engine.services.policy_engine.engine.feeds.client import get_feeds_client
+from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.subsys import logger
 
 
@@ -9,11 +10,15 @@ init_test_logging(level="info")
 
 
 def test_anon_user():
-    test_client = get_client(
-        feeds_url=feed_url,
-        user=("anon@ancho.re", "pbiU2RYZ2XrmYQ"),
-        conn_timeout=10,
-        read_timeout=30,
+    test_client = get_feeds_client(
+        SyncConfig(
+            enabled=True,
+            url=feed_url,
+            username="anon@ancho.re",
+            password="pbiU2RYZ2XrmYQ",
+            connection_timeout_seconds=10,
+            read_timeout_seconds=30,
+        )
     )
     for f in test_client.list_feeds().feeds:
         try:
@@ -37,11 +42,15 @@ def test_anon_user():
 
 
 def test_feed_sync():
-    test_client = get_client(
-        feeds_url=feed_url,
-        user=("anon@ancho.re", "pbiU2RYZ2XrmYQ"),
-        conn_timeout=10,
-        read_timeout=30,
+    test_client = get_feeds_client(
+        SyncConfig(
+            enabled=True,
+            url=feed_url,
+            username="anon@ancho.re",
+            password="pbiU2RYZ2XrmYQ",
+            connection_timeout_seconds=10,
+            read_timeout_seconds=30,
+        )
     )
     for f in test_client.list_feeds().feeds:
         try:

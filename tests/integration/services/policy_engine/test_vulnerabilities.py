@@ -66,7 +66,9 @@ def sync_feeds(test_env, up_to=None):
 
     logger.info("Syncing vuln and packages")
     DataFeeds.__scratch_dir__ = "/tmp"
-    DataFeeds.sync(["vulnerabilities", "packages"], feed_client=test_env.feed_client)
+    DataFeeds.sync(
+        feed_client=test_env.feed_client, to_sync=["vulnerabilities", "packages"]
+    )
     logger.info("Sync complete")
 
 
