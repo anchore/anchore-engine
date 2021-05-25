@@ -590,8 +590,6 @@ class Vulnerability(JsonSerializable):
         cvss_scores_vendor = fields.List(
             fields.Nested(CvssCombined.CvssCombinedV1Schema)
         )
-        created_at = RFC3339DateTime()
-        last_modified = RFC3339DateTime()
 
         @post_load
         def make(self, data, **kwargs):
@@ -609,8 +607,6 @@ class Vulnerability(JsonSerializable):
         feed_group=None,
         cvss_scores_nvd=None,
         cvss_scores_vendor=None,
-        created_at=None,
-        last_modified=None,
     ):
         self.vulnerability_id = vulnerability_id
         self.description = description
@@ -620,8 +616,6 @@ class Vulnerability(JsonSerializable):
         self.feed_group = feed_group
         self.cvss_scores_nvd = cvss_scores_nvd
         self.cvss_scores_vendor = cvss_scores_vendor
-        self.created_at = created_at
-        self.last_modified = last_modified
 
 
 class Artifact(JsonSerializable):
@@ -656,14 +650,31 @@ class Artifact(JsonSerializable):
         self.cpe23 = cpe23
 
 
+class VendorAdvisory(JsonSerializable):
+    class VendorAdvisoryV1Schema(Schema):
+        id = fields.Str()
+        link = fields.Str()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return VendorAdvisory(**data)
+
+    __schema__ = VendorAdvisoryV1Schema()
+
+    def __init__(self, id=None, link=None):
+        self.id = id
+        self.link = link
+
+
 class FixedArtifact(JsonSerializable):
     class FixedArtifactV1Schema(Schema):
-        version = fields.Str()
+        versions = fields.List(fields.Str())
         wont_fix = fields.Bool()
         observed_at = RFC3339DateTime(
             allow_none=True,
             missing=None,
         )
+        advisories = fields.List(fields.Nested(VendorAdvisory.VendorAdvisoryV1Schema))
 
         @post_load
         def make(self, data, **kwargs):
@@ -671,10 +682,11 @@ class FixedArtifact(JsonSerializable):
 
     __schema__ = FixedArtifactV1Schema()
 
-    def __init__(self, version=None, wont_fix=None, observed_at=None):
-        self.version = version
+    def __init__(self, versions=None, wont_fix=None, observed_at=None, advisories=None):
+        self.versions = versions
         self.wont_fix = wont_fix
         self.observed_at = observed_at
+        self.advisories = advisories
 
 
 class Match(JsonSerializable):
@@ -695,7 +707,7 @@ class VulnerabilityMatch(JsonSerializable):
     class VulnerabilityMatchV1Schema(Schema):
         vulnerability = fields.Nested(Vulnerability.VulnerabilityV1Schema)
         artifact = fields.Nested(Artifact.ArtifactV1Schema)
-        fixes = fields.List(fields.Nested(FixedArtifact.FixedArtifactV1Schema))
+        fix = fields.Nested(FixedArtifact.FixedArtifactV1Schema)
         match = fields.Nested(Match.MatchV1Schema)
 
         @post_load
@@ -704,10 +716,10 @@ class VulnerabilityMatch(JsonSerializable):
 
     __schema__ = VulnerabilityMatchV1Schema()
 
-    def __init__(self, vulnerability=None, artifact=None, fixes=None, match=None):
+    def __init__(self, vulnerability=None, artifact=None, fix=None, match=None):
         self.vulnerability = vulnerability
         self.artifact = artifact
-        self.fixes = fixes
+        self.fix = fix
         self.match = match
 
     def identity_tuple(self):

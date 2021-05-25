@@ -4,7 +4,7 @@ import json
 import time
 import uuid
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, List
 
 from sqlalchemy import asc, func, orm
 
@@ -25,6 +25,7 @@ from anchore_engine.services.policy_engine.api.models import (
     Vulnerability as VulnerabilityModel,
     VulnerabilityMatch,
     Artifact,
+    VendorAdvisory,
     ImageVulnerabilitiesReport,
     VulnerabilitiesReportMetadata,
     CvssCombined,
@@ -130,7 +131,6 @@ class LegacyProvider(VulnerabilitiesProvider):
             enabled=True, url="https://ancho.re/v1/service/feeds"
         ),  # for backwards selective sync compatibility
         "github": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
-        "vulndb": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
 
@@ -231,6 +231,22 @@ class LegacyProvider(VulnerabilitiesProvider):
                     for score in nvd_record.get_cvss_scores_nvd()
                 ]
 
+                advisories = []
+                if fixed_artifact.fix_metadata:
+                    vendor_advisories = fixed_artifact.fix_metadata.get(
+                        "VendorAdvisorySummary", []
+                    )
+                    if vendor_advisories:
+                        for vendor_advisory in vendor_advisories:
+                            advisory_id = vendor_advisory.get("Id")
+                            advisory_link = vendor_advisory.get("Link")
+                            if advisory_id and advisory_link:
+                                advisories.append(
+                                    VendorAdvisory(id=advisory_id, link=advisory_link)
+                                )
+
+                fixed_in = vuln.fixed_in(fixed_in=fixed_artifact)
+
                 results.append(
                     VulnerabilityMatch(
                         vulnerability=VulnerabilityModel(
@@ -242,8 +258,6 @@ class LegacyProvider(VulnerabilitiesProvider):
                             feed_group=vuln.vulnerability.namespace_name,
                             cvss_scores_nvd=nvd_scores,
                             cvss_scores_vendor=[],
-                            created_at=vuln.vulnerability.created_at,
-                            last_modified=vuln.vulnerability.updated_at,
                         ),
                         artifact=Artifact(
                             name=vuln.pkg_name,
@@ -253,17 +267,14 @@ class LegacyProvider(VulnerabilitiesProvider):
                             cpe="None",
                             cpe23="None",
                         ),
-                        fixes=[
-                            FixedArtifact(
-                                version=str(vuln.fixed_in(fixed_in=fixed_artifact)),
-                                wont_fix=vuln.fix_has_no_advisory(
-                                    fixed_in=fixed_artifact
-                                ),
-                                observed_at=fixed_artifact.fix_observed_at
-                                if fixed_artifact
-                                else None,
-                            )
-                        ],
+                        fix=FixedArtifact(
+                            versions=[fixed_in] if fixed_in else [],
+                            wont_fix=vuln.fix_has_no_advisory(fixed_in=fixed_artifact),
+                            observed_at=fixed_artifact.fix_observed_at
+                            if fixed_artifact
+                            else None,
+                            advisories=advisories,
+                        ),
                         match=Match(detected_at=vuln.created_at),
                     )
                 )
@@ -309,8 +320,6 @@ class LegacyProvider(VulnerabilitiesProvider):
                                 feed_group=vulnerability_cpe.namespace_name,
                                 cvss_scores_nvd=nvd_scores,
                                 cvss_scores_vendor=vendor_scores,
-                                created_at=vulnerability_cpe.parent.created_at,
-                                last_modified=vulnerability_cpe.parent.updated_at,
                             ),
                             artifact=Artifact(
                                 name=image_cpe.name,
@@ -320,14 +329,14 @@ class LegacyProvider(VulnerabilitiesProvider):
                                 cpe=image_cpe.get_cpestring(),
                                 cpe23=image_cpe.get_cpe23string(),
                             ),
-                            fixes=[
-                                FixedArtifact(
-                                    version=item,
-                                    wont_fix=False,
-                                    observed_at=vulnerability_cpe.created_at,
-                                )
-                                for item in vulnerability_cpe.get_fixed_in()
-                            ],
+                            fix=FixedArtifact(
+                                versions=vulnerability_cpe.get_fixed_in(),
+                                wont_fix=False,
+                                observed_at=vulnerability_cpe.created_at
+                                if vulnerability_cpe.get_fixed_in()
+                                else None,
+                                advisories=[],
+                            ),
                             # using vulnerability created_at to indicate the match timestamp for now
                             match=Match(detected_at=vulnerability_cpe.created_at),
                         )
@@ -764,14 +773,21 @@ class GrypeProvider(VulnerabilitiesProvider):
         use_store: bool = True,
     ):
         if force_refresh:
-            return self._create_new_report(image, db_session, use_store)
+            report = self._create_new_report(image, db_session, use_store)
         else:
             report = self._try_load_report_from_store(image, db_session, use_store)
 
+        if vendor_only:
+            if not isinstance(report, ImageVulnerabilitiesReport):
+                report = ImageVulnerabilitiesReport.from_json(report)
+
+            report.results = self._exclude_wont_fix(report.results)
+            report = report.to_json()
+        else:
             if isinstance(report, ImageVulnerabilitiesReport):
-                return report.to_json()
-            else:
-                return report
+                report = report.to_json()
+
+        return report
 
     def get_image_vulnerabilities(
         self,
@@ -782,14 +798,35 @@ class GrypeProvider(VulnerabilitiesProvider):
         use_store: bool = True,
     ) -> ImageVulnerabilitiesReport:
         if force_refresh:
-            return self._create_new_report(image, db_session, use_store)
+            report = self._create_new_report(image, db_session, use_store)
         else:
             report = self._try_load_report_from_store(image, db_session, use_store)
-            if isinstance(report, ImageVulnerabilitiesReport):
-                return report
-            else:
-                report = ImageVulnerabilitiesReport.from_json(report)
-                return report
+
+        if not isinstance(report, ImageVulnerabilitiesReport):
+            report = ImageVulnerabilitiesReport.from_json(report)
+
+        if vendor_only:
+            report.results = self._exclude_wont_fix(report.results)
+
+        return report
+
+    @staticmethod
+    def _exclude_wont_fix(matches: List[VulnerabilityMatch]):
+        """
+        Exclude matches that are explicitly marked wont_fix = True. Includes all other matches, wont_fix = False, None or any string which should never be the case
+        """
+        return (
+            list(
+                filter(
+                    lambda x: not (
+                        x.fix and isinstance(x.fix.wont_fix, bool) and x.fix.wont_fix
+                    ),
+                    matches,
+                )
+            )
+            if matches
+            else []
+        )
 
     def _create_new_report(
         self, image: Image, db_session, use_store: bool = True

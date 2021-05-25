@@ -117,11 +117,7 @@ class PackageMapper:
 
         vuln_id = vuln.get("id")
         fix_ver = vuln.get("fixedInVersion")
-        if fix_ver:
-            fix_observed_at = now
-        else:
-            fix_ver = "None"  # barf needed for policy evals and external api
-            fix_observed_at = None
+        fix_observed_at = now if fix_ver else None
 
         engine_nvd_scores = []
         engine_vendor_scores = []  # TODO replace with grype data when available
@@ -184,8 +180,6 @@ class PackageMapper:
                 feed_group=feed_group,
                 cvss_scores_nvd=engine_nvd_scores,
                 cvss_scores_vendor=[],
-                created_at=now,  # TODO replace with grype data when available
-                last_modified=now,  # TODO replace with grype data when available
             ),
             artifact=Artifact(
                 name=pkg_name,
@@ -195,13 +189,12 @@ class PackageMapper:
                 cpe="None",  # TODO replace with grype data when available
                 cpe23="None",  # TODO replace with grype data when available
             ),
-            fixes=[
-                FixedArtifact(
-                    version=fix_ver,
-                    wont_fix=False,  # TODO replace with grype data when available
-                    observed_at=fix_observed_at,
-                )
-            ],
+            fix=FixedArtifact(
+                versions=[fix_ver] if fix_ver else [],
+                wont_fix=False,  # TODO replace with grype data when available
+                observed_at=fix_observed_at,
+                advisories=[],  # TODO replace with grype data when available
+            ),
             match=Match(detected_at=now),
         )
 

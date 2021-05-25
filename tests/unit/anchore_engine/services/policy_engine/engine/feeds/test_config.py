@@ -124,8 +124,8 @@ def test_get_selected_configs_to_sync_defaults(provider, test_config, expected):
         pytest.param(
             LegacyProvider,
             {"provider": "legacy", "sync": {"data": {"vulndb": {"enabled": True}}}},
-            {"vulndb"},
-            id="valid-legacy-vulndb",
+            set(),
+            id="invalid-legacy-vulndb",
         ),
         pytest.param(
             GrypeProvider,
