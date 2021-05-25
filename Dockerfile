@@ -18,6 +18,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
+    yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y gcc make python38 git python38-wheel python38-devel go
 
 # create anchore binaries
@@ -147,6 +148,7 @@ EXPOSE ${ANCHORE_SERVICE_PORT}
 
 RUN set -ex && \
     yum update -y && \
+    yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y python38 python38-wheel procps psmisc
 
 # Setup container default configs and directories
