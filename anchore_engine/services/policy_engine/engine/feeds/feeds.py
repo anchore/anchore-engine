@@ -729,7 +729,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         results = db.query(GrypeDBFeedMetadata)
         if checksum:
             results = results.filter(GrypeDBFeedMetadata.archive_checksum == checksum)
-        if not isinstance(active, type(None)):
+        if isinstance(active, bool):
             results = results.filter(GrypeDBFeedMetadata.active == active)
         return results
 
