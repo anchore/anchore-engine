@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
-from sqlalchemy.orm import Query
 from sqlalchemy.orm.session import Session
 
 from anchore_engine.clients.services import internal_client_for
@@ -19,7 +18,7 @@ from anchore_engine.db import (
     FixedArtifact,
     GemMetadata,
     GenericFeedDataRecord,
-    GrypeDBMetadata,
+    GrypeDBFeedMetadata,
     Image,
     NpmMetadata,
     NvdMetadata,
@@ -713,9 +712,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
     @staticmethod
     def _find_match(
         db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
-    ) -> Query:
+    ) -> List[GrypeDBFeedMetadata]:
         """
-        Utility Method, queries GrypeDBMetadata and optionally filters on checksum or active attribute.
+        Utility Method, queries GrypeDBFeedMetadata and optionally filters on checksum or active attribute.
 
         :param db: sqlalchemy database session
         :type db: Session
@@ -723,19 +722,22 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :type checksum: Optional[str], defaults to None
         :param active: whether or not to filter on the active record
         :type active: Optional[bool], defaults to None
-        :return: sqlalchemy query object
-        :rtype: Query
+        :return: list of GrypeDBFeedMetadata
+        :rtype: List[GrypeDBFeedMetadata]
         """
-        results = db.query(GrypeDBMetadata)
+        # sort by created at so the first index would be the correct active one if more than one returned
+        results = db.query(GrypeDBFeedMetadata).order_by(
+            GrypeDBFeedMetadata.created_at.desc()
+        )
         if checksum:
-            results = results.filter(GrypeDBMetadata.checksum == checksum)
-        if not isinstance(active, type(None)):
-            results = results.filter(GrypeDBMetadata.active == active)
-        return results
+            results = results.filter(GrypeDBFeedMetadata.archive_checksum == checksum)
+        if isinstance(active, bool):
+            results = results.filter(GrypeDBFeedMetadata.active == active)
+        return results.all()
 
     def record_count(self, group_name: str, db: Session) -> int:
         """
-        Returns number of records present in the database for a given group (GrypeDBMetadata records)
+        Returns number of records present in the database for a given group (GrypeDBFeedMetadata records)
 
         :param group_name: name of the group
         :type group_name: str
@@ -744,7 +746,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :return: number of records
         :rtype: int
         """
-        return self._find_match(db).count()
+        return len(self._find_match(db))
 
     def _flush_group(self, group_obj: FeedGroupMetadata) -> None:
         """
@@ -763,12 +765,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
         )
 
         records = self._find_match(db)
-        for record in records.all():
-            catalog_client.delete_document(record.group_name, record.checksum)
-        records.delete(synchronize_session="evaluate")
+        for record in records:
+            catalog_client.delete_document(self.__feed_name__, record.archive_checksum)
+            db.delete(record)
         group_obj.last_sync = None  # Null the update timestamp to reflect the flush
         group_obj.count = 0
-        db.flush()
+        db.commit()
 
     @staticmethod
     def _enqueue_refresh_tasks(db: Session) -> None:
@@ -798,50 +800,49 @@ class GrypeDBFeed(AnchoreServiceFeed):
     def _switch_active_grypedb(
         self,
         db: Session,
-        group_download_result: GroupDownloadResult,
         record: FileData,
         checksum: str,
     ) -> None:
         """
-        Inserts a new active GrypeDBMetadata record. Before doing so, it deletes all inactive records and then
-        marks the currently active record as inactive. No more than two GrypeDBMetadata records are persisted at once.
+        Inserts a new active GrypeDBFeedMetadata record. Before doing so, it deletes all inactive records and then
+        marks the currently active record as inactive. No more than two GrypeDBFeedMetadata records are persisted at once.
 
         :param db: sqlalchemy database session
         :type db: Session
-        :param group_download_result: group download result record to update
-        :type group_download_result: GroupDownloadResult
         :param record: FileData record retrieved from download.FileListIterator
         :type record: FileData
         :param checksum: grype DB file checksum
         :type checksum: str
         """
         catalog_client = self._catalog_client
+
         # delete all records not active
         inactive_records = self._find_match(db, active=False)
-        for inactive_record in inactive_records.all():
+        for inactive_record in inactive_records:
             catalog_client.delete_document(
-                inactive_record.group_name, inactive_record.checksum
+                self.__feed_name__, inactive_record.archive_checksum
             )
-        inactive_records.delete(synchronize_session="evaluate")
+            db.delete(inactive_record)
+
         # search for active and mark inactive
-        self._find_match(db, active=True).update(
-            {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
-        )
+        active_records = self._find_match(db, active=True)
+        for active_record in active_records:
+            active_record.active = False
+
         # insert new as active
         object_url = catalog_client.create_raw_object(
-            group_download_result.group, checksum, record.data
+            self.__feed_name__, checksum, record.data
         )
-        date_generated = rfc3339str_to_datetime(record.metadata["built"])
-        grypedb_meta = GrypeDBMetadata(
-            checksum=checksum,
-            schema_version=record.metadata["version"],
-            feed_name=GrypeDBFeed.__feed_name__,
-            group_name=group_download_result.group,
-            date_generated=date_generated,
+        built_at = rfc3339str_to_datetime(record.metadata["built"])
+        self.grypedb_meta = GrypeDBFeedMetadata(
+            archive_checksum=checksum,
+            metadata_checksum=None,
+            schema_version=str(record.metadata["version"]),
             object_url=object_url,
             active=True,
+            built_at=built_at,
         )
-        db.add(grypedb_meta)
+        db.add(self.grypedb_meta)
 
     @staticmethod
     def _run_grypedb_sync_task(checksum: str, grype_db_data: bytes) -> None:
@@ -894,11 +895,11 @@ class GrypeDBFeed(AnchoreServiceFeed):
             checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
             # If there aren't any other database files with the same checksum, then this is a new database file.
-            if self._find_match(db, checksum).count() == 0:
+            matches = self._find_match(db, checksum)
+            if len(matches) == 0:
                 # Update the database and the catalog with the new Grype DB file.
                 self._switch_active_grypedb(
                     db,
-                    group_download_result,
                     record,
                     checksum,
                 )
@@ -924,6 +925,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
                         ),
                     )
                 )
+            else:
+                # If checksum already exists and  updating, assign to instance variable so timestamps can be updated
+                self.grypedb_meta = matches[0]
         else:
             group_obj.count = self.record_count(group_obj.name, db)
             db.commit()
@@ -942,6 +946,27 @@ class GrypeDBFeed(AnchoreServiceFeed):
         )
         self._enqueue_refresh_tasks(db)
         return total_records_updated
+
+    def _update_last_full_sync_timestamp(self) -> None:
+        """
+        Overrides the base class update function to update both the feed last sync, the grype db metadata record, and its groups
+        """
+        super()._update_last_full_sync_timestamp()
+        last_sync = self.metadata.last_full_sync
+
+        db = get_session()
+
+        try:
+            if self.grypedb_meta:
+                db.refresh(self.grypedb_meta)
+            else:
+                logger.error("No grypedb meta found to update last sync timestamp")
+                raise ValueError("Grype DB Meta not found")
+
+            self.grypedb_meta.synced_at = last_sync
+            db.commit()
+        finally:
+            db.rollback()
 
     def sync(
         self,

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 import sqlalchemy
 
-from anchore_engine.db import GrypeDBMetadata
+from anchore_engine.db import GrypeDBFeedMetadata
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncLock,
     GrypeDBSyncLockAquisitionTimeout,
@@ -73,7 +73,7 @@ class TestGrypeDBSyncTask:
         )
 
         # mock initial state so execution occurs
-        mock_calls_for_sync(GrypeDBMetadata(checksum=old_checksum), "")
+        mock_calls_for_sync(GrypeDBFeedMetadata(archive_checksum=old_checksum), "")
 
         # Mock the update_grypedb method for task to sleep and update mocks for active and local grype dbs
         def _mock_update_grypedb_for_thread1(
@@ -84,7 +84,9 @@ class TestGrypeDBSyncTask:
 
             # mock the returns to mimic persistent change of active grypedb local and global
             # This in effect mocks the actual execution for the first thread
-            mock_calls_for_sync(GrypeDBMetadata(checksum=new_checksum), new_checksum)
+            mock_calls_for_sync(
+                GrypeDBFeedMetadata(archive_checksum=new_checksum), new_checksum
+            )
 
         monkeypatch.setattr(
             GrypeDBSyncManager, "_update_grypedb", _mock_update_grypedb_for_thread1
@@ -115,7 +117,7 @@ class TestGrypeDBSyncTask:
     def test_matching_checksums(self, mock_calls_for_sync):
         checksum = "eef3b1bcd5728346cb1b30eae09647348bacfbde3ba225d70cb0374da249277c"
         mock_calls_for_sync(
-            mock_active_dbs=GrypeDBMetadata(checksum=checksum),
+            mock_active_dbs=GrypeDBFeedMetadata(archive_checksum=checksum),
             mock_local_checksum=checksum,
         )
 
@@ -132,7 +134,7 @@ class TestGrypeDBSyncTask:
         )
 
         mock_calls_for_sync(
-            mock_active_dbs=GrypeDBMetadata(checksum=global_checksum),
+            mock_active_dbs=GrypeDBFeedMetadata(archive_checksum=global_checksum),
             mock_local_checksum=local_checksum,
         )
 
@@ -160,7 +162,7 @@ class TestGrypeDBSyncTask:
         mock_lock = MagicMock()
         monkeypatch.setattr(GrypeDBSyncLock, "_lock", mock_lock)
         mock_calls_for_sync(
-            mock_active_dbs=GrypeDBMetadata(checksum=checksum),
+            mock_active_dbs=GrypeDBFeedMetadata(archive_checksum=checksum),
             mock_local_checksum="",
         )
 

@@ -28,6 +28,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload, relationship, synonym
 
+from anchore_engine.db.entities.common import anchore_now_datetime, anchore_uuid
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
@@ -135,7 +136,7 @@ class FeedGroupMetadata(Base, UtilMixin):
         return j
 
 
-class GrypeDBMetadata(Base):
+class GrypeDBFeedMetadata(Base):
     """
     A data model for persisting the current active grype db that the system should use across all policy-engine instances
     Each instance of policy engine witll use the active record in this table to determine the correct grype db
@@ -144,26 +145,23 @@ class GrypeDBMetadata(Base):
     There should only ever be a single active record. More than one indicates an error in the system
     """
 
-    __tablename__ = "grype_db_metadata"
+    __tablename__ = "grype_db_feed_metadata"
 
-    checksum = Column(String, primary_key=True)
+    archive_checksum = Column(String, primary_key=True)
+    metadata_checksum = Column(String, nullable=True, index=True)
     schema_version = Column(String, nullable=False)
-    feed_name = Column(String, ForeignKey(FeedMetadata.name), nullable=False)
-    group_name = Column(String, nullable=False)
-    date_generated = Column(DateTime, nullable=False)
     object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    last_update = Column(
-        DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    built_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=anchore_now_datetime, nullable=False)
+    last_updated = Column(
+        DateTime,
+        default=anchore_now_datetime,
+        onupdate=anchore_now_datetime,
+        nullable=False,
     )
-
-    __table_args__ = (
-        ForeignKeyConstraint(
-            columns=(feed_name, group_name),
-            refcolumns=(FeedGroupMetadata.feed_name, FeedGroupMetadata.name),
-        ),
-    )
+    synced_at = Column(DateTime, nullable=True)
+    groups = Column(JSONB)
 
 
 class GenericFeedDataRecord(Base):
