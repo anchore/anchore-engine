@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -18,6 +18,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
+    yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y gcc make python38 git python38-wheel python38-devel go
 
 # create anchore binaries
@@ -59,7 +60,7 @@ RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
+FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
@@ -147,6 +148,7 @@ EXPOSE ${ANCHORE_SERVICE_PORT}
 
 RUN set -ex && \
     yum update -y && \
+    yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y python38 python38-wheel procps psmisc
 
 # Setup container default configs and directories
