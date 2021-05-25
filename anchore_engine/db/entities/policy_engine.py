@@ -28,7 +28,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload, relationship, synonym
 
-from anchore_engine.db.entities.common import anchore_uuid
+from anchore_engine.db.entities.common import anchore_now_datetime, anchore_uuid
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
@@ -147,14 +147,20 @@ class GrypeDBFeedMetadata(Base):
 
     __tablename__ = "grype_db_feed_metadata"
 
-    uuid = Column(String, nullable=False, primary_key=True, default=anchore_uuid)
+    uuid = Column(String, primary_key=True, default=anchore_uuid)
     archive_checksum = Column(String, nullable=False, index=True)
     metadata_checksum = Column(String, nullable=True, index=True)
     schema_version = Column(String, nullable=False)
     object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
     built_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    created_at = Column(DateTime, default=anchore_now_datetime, nullable=False)
+    last_updated = Column(
+        DateTime,
+        default=anchore_now_datetime,
+        onupdate=anchore_now_datetime,
+        nullable=False,
+    )
     synced_at = Column(DateTime, nullable=True)
     groups = Column(JSONB)
 
