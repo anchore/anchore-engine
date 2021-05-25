@@ -2,67 +2,61 @@ import datetime
 import hashlib
 import json
 import time
-import uuid
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
-from anchore_engine import version
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
+from anchore_engine.common.models.policy_engine import (
+    Advisory,
+    Artifact,
+    FixedArtifact,
+    ImageVulnerabilitiesReport,
+    Match,
+    VulnerabilitiesReportMetadata,
+)
+from anchore_engine.common.models.policy_engine import (
+    Vulnerability as VulnerabilityModel,
+)
+from anchore_engine.common.models.policy_engine import VulnerabilityMatch
 from anchore_engine.db import (
     DistroNamespace,
     Image,
     ImageCpe,
-    VulnDBMetadata,
-    VulnDBCpe,
-    Vulnerability,
     ImagePackageVulnerability,
-    get_thread_scoped_session as get_session,
-    select_nvd_classes,
-    NvdV2Metadata,
+    VulnDBCpe,
+    VulnDBMetadata,
+    Vulnerability,
 )
-from anchore_engine.db.entities.policy_engine import (
-    cvss_v2_key,
-    cvss_v3_key,
-    exploitability_score_key,
-    base_score_key,
-    impact_score_key,
-)
-from anchore_engine.db import Vulnerability, ImagePackageVulnerability
-from anchore_engine.common.models.policy_engine import (
-    Vulnerability as VulnerabilityModel,
-    VulnerabilityMatch,
-    Artifact,
-    Advisory,
-    ImageVulnerabilitiesReport,
-    VulnerabilitiesReportMetadata,
-    CvssCombined,
-    FixedArtifact,
-    Match,
-    CVSS,
-    NVDReference,
-)
+from anchore_engine.db import get_thread_scoped_session as get_session
+from anchore_engine.db import select_nvd_classes
 from anchore_engine.services.policy_engine.engine.feeds.config import (
+    SyncConfig,
     get_provider_name,
     get_section_for_vulnerabilities,
-    SyncConfig,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     have_vulnerabilities_for,
 )
+from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
+    GrypeDBSyncUtilProvider,
+    LegacySyncUtilProvider,
+    SyncUtilProvider,
+)
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-    merge_nvd_metadata_image_packages,
-    merge_nvd_metadata,
     get_imageId_to_record,
+    merge_nvd_metadata,
+    merge_nvd_metadata_image_packages,
 )
 from anchore_engine.subsys import logger as log
 from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
+
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
-from .scanners import LegacyScanner, GrypeScanner
+from .scanners import GrypeScanner, LegacyScanner
 from .stores import ImageVulnerabilitiesStore, Status
 
 
@@ -122,6 +116,13 @@ class VulnerabilitiesProvider(ABC):
     def get_images_by_vulnerability(self, **kwargs):
         """
         Query the image set impacted by a specific vulnerability
+        """
+        ...
+
+    @abstractmethod
+    def get_sync_utils(self, sync_configs: Dict[str, SyncConfig]) -> SyncUtilProvider:
+        """
+        Get a SyncUtilProvider.
         """
         ...
 
@@ -763,6 +764,14 @@ class LegacyProvider(VulnerabilitiesProvider):
                 )
                 return "http://<valid endpoint not found>"
 
+    def get_sync_utils(
+        self, sync_configs: Dict[str, SyncConfig]
+    ) -> LegacySyncUtilProvider:
+        """
+        Get a SyncUtilProvider.
+        """
+        return LegacySyncUtilProvider(sync_configs)
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -976,6 +985,14 @@ class GrypeProvider(VulnerabilitiesProvider):
 
     def get_images_by_vulnerability(self, **kwargs):
         pass
+
+    def get_sync_utils(
+        self, sync_configs: Dict[str, SyncConfig]
+    ) -> GrypeDBSyncUtilProvider:
+        """
+        Get a SyncUtilProvider.
+        """
+        return GrypeDBSyncUtilProvider(sync_configs)
 
 
 # Override this map for associating different provider classes
