@@ -10,7 +10,7 @@ from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
 from anchore_engine import version
-from anchore_engine.clients import grype_wrapper
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.common.models.policy_engine import (
@@ -1166,13 +1166,15 @@ class GrypeProvider(VulnerabilitiesProvider):
     def get_vulnerabilities(
         self, ids, affected_package, affected_package_version, namespace, session
     ):
-        raw_results = grype_wrapper.query_vulnerabilities(
+        unmapped_results = GrypeWrapperSingleton.get_instance().query_vulnerabilities(
             vuln_id=ids,
             affected_package=affected_package,
             affected_package_version=affected_package_version,
             namespace=namespace,
         )
-        mapped_results = EngineGrypeDBMapper().to_engine_vulnerabilities(raw_results)
+        mapped_results = EngineGrypeDBMapper().to_engine_vulnerabilities(
+            unmapped_results
+        )
 
         return mapped_results
 
