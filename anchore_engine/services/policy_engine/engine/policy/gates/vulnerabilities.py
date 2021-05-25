@@ -281,7 +281,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
             for vuln_match in vuln_matches:
                 vulnerability_obj = vuln_match.vulnerability
                 artifact_obj = vuln_match.artifact
-                fix_obj_list = vuln_match.fixes
+                fix_obj = vuln_match.fix
                 match_obj = vuln_match.match
 
                 new_vuln_pkg_class = (
@@ -309,11 +309,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 parameter_data["pkg_class"] = new_vuln_pkg_class
 
                 # setting fixed_version here regardless of gate parameter,
-                fix_versions = [
-                    item.version
-                    for item in fix_obj_list
-                    if item.version and item.version != "None"
-                ]
+                fix_versions = [version for version in fix_obj.versions if version]
                 fix_available_in = ", ".join(fix_versions) if fix_versions else None
 
                 if fix_available_in:
@@ -341,7 +337,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Check vendor_only flag specified by the user in policy
                     if is_vendor_only:
-                        if any(item.wont_fix for item in fix_obj_list):
+                        if fix_obj.wont_fix:
                             logger.debug(
                                 "{} vulnerability {} for package {} is marked by vendor as won't fix, skipping".format(
                                     new_vuln_pkg_class,
@@ -363,28 +359,20 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         ] = match_obj.detected_at.date()
 
                     if is_fix_available and fix_timeallowed is not None:
-                        observed_at_list = [
-                            item.observed_at
-                            for item in fix_obj_list
-                            if item.version
-                            and item.version != "None"
-                            and item.observed_at
-                        ]
-
                         fix_observed_at = (
-                            max(observed_at_list) if observed_at_list else None
+                            fix_obj.observed_at if fix_available_in else None
                         )
 
-                        if (
-                            fix_observed_at
-                            and calendar.timegm(fix_observed_at.timetuple())
-                            > fix_timeallowed
-                        ):
-                            continue
-                        else:
-                            parameter_data[
-                                "max_days_since_fix"
-                            ] = fix_observed_at.date()
+                        if fix_observed_at:
+                            if (
+                                calendar.timegm(fix_observed_at.timetuple())
+                                > fix_timeallowed
+                            ):
+                                continue
+                            else:
+                                parameter_data[
+                                    "max_days_since_fix"
+                                ] = fix_observed_at.date()
 
                     vuln_cvss_base_score = -1.0
                     vuln_cvss_exploitability_score = -1.0
@@ -747,7 +735,7 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
             matches = context.data.get("loaded_vulnerabilities_new")
             for match in matches:
                 if is_vendor_only:
-                    if match.fixes and any(item.wont_fix for item in match.fixes):
+                    if match.wont_fix:
                         continue
                 # search for vid in all vulns
                 if vid == match.vulnerability.vulnerability_id:

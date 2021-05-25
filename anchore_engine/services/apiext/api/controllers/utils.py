@@ -311,15 +311,10 @@ def make_response_vulnerability_report(vulnerability_type, vulnerability_report)
     for vuln_match in vuln_matches:
         vulnerability_dict = vuln_match.get("vulnerability", {})
         artifact_dict = vuln_match.get("artifact", {})
-        fix_list = vuln_match.get("fixes", [])
+        fix_dict = vuln_match.get("fix", {})
         fix_versions = (
-            [
-                item["version"]
-                for item in fix_list
-                if item["version"] and item["version"] != "None"
-                for item in fix_list
-            ]
-            if fix_list
+            [item for item in fix_dict.get("versions", []) if item and item != "None"]
+            if fix_dict
             else []
         )
         fixed_in_version = ", ".join(fix_versions) if fix_versions else "None"
