@@ -800,7 +800,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
     def _switch_active_grypedb(
         self,
         db: Session,
-        group_download_result: GroupDownloadResult,
         record: FileData,
         checksum: str,
     ) -> None:
@@ -810,8 +809,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
 
         :param db: sqlalchemy database session
         :type db: Session
-        :param group_download_result: group download result record to update
-        :type group_download_result: GroupDownloadResult
         :param record: FileData record retrieved from download.FileListIterator
         :type record: FileData
         :param checksum: grype DB file checksum
@@ -903,7 +900,6 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 # Update the database and the catalog with the new Grype DB file.
                 self._switch_active_grypedb(
                     db,
-                    group_download_result,
                     record,
                     checksum,
                 )
