@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -59,7 +59,7 @@ RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
+FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
