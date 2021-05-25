@@ -87,7 +87,7 @@ class GrypeDBKey:
                 status = Status.valid
             else:
                 # active db checksum is invalid or doesn't match report's db checksum
-                status = Status.expired
+                status = Status.stale
         else:
             # report's db checksum can't be parsed, something is really weird. invalidate the report
             status = Status.invalid
