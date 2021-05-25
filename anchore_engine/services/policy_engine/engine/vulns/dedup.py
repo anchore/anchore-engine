@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 
 from anchore_engine.services.policy_engine.api.models import VulnerabilityMatch
 from anchore_engine.subsys import logger
@@ -172,3 +172,42 @@ class ImageVulnerabilitiesDeduplicator:
 
 def get_image_vulnerabilities_deduper():
     return ImageVulnerabilitiesDeduplicator(FeedGroupRank())
+
+
+def transfer_vulnerability_timestamps(
+    destination: List[VulnerabilityMatch], source: List[VulnerabilityMatch]
+) -> List[VulnerabilityMatch]:
+    """
+    Transfers the match detected at and fix observed at timestamps from the source to destination report
+
+    :param source:
+    :param destination:
+    """
+    if not source or not destination:
+        return []
+
+    destination_map = _transform_vuln_match_list_to_map(destination)
+    source_map = _transform_vuln_match_list_to_map(source)
+
+    for identity_tuple in destination_map.keys():
+        source_match = source_map.get(identity_tuple)
+        if source_match:
+            destination_match = destination_map.get(identity_tuple)
+            destination_match.match.detected_at = source_match.match.detected_at
+            # TODO something similar for fix observed at as well
+
+    return list(destination_map.values())
+
+
+def _transform_vuln_match_list_to_map(
+    vuln_matches: List[VulnerabilityMatch],
+) -> Dict[str, VulnerabilityMatch]:
+    """
+    Returns a dict from a list of VulnerabilityMatch objects where the key is a tuple representation of VulnerabilityMatch
+    Choosing a tuple over other data structures for the key as it to be the quickest in terms of instantiation
+
+    """
+    if vuln_matches:
+        return {match.identity_tuple(): match for match in vuln_matches}
+    else:
+        return {}

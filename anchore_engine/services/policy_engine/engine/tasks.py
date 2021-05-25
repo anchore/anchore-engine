@@ -540,7 +540,7 @@ class ImageLoadTask(IAsyncTask):
                     get_vulnerabilities_provider().load_image(
                         image=image_obj,
                         db_session=db,
-                        cache=True,  # save results to cache
+                        use_store=True,  # save results to cache
                     )
 
                 db.commit()

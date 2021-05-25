@@ -47,10 +47,9 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 from anchore_engine.subsys import logger as log
 from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
-from .cache_managers import GrypeCacheManager, CacheStatus
-from .dedup import get_image_vulnerabilities_deduper
-from .mappers import EngineGrypeMapper
+from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
 from .scanners import LegacyScanner, GrypeVulnScanner
+from .stores import ImageVulnerabilitiesStore, Status
 
 
 class VulnerabilitiesProvider(ABC):
@@ -61,7 +60,7 @@ class VulnerabilitiesProvider(ABC):
     """
 
     __scanner__ = None
-    __cache_manager__ = None
+    __store__ = None
     __config__name__ = None
     __default_sync_config__ = None
 
@@ -120,7 +119,7 @@ class LegacyProvider(VulnerabilitiesProvider):
     """
 
     __scanner__ = LegacyScanner
-    __cache_manager__ = None
+    __store__ = None
     __config__name__ = "legacy"
     __default_sync_config__ = {
         "vulnerabilities": SyncConfig(
@@ -135,7 +134,7 @@ class LegacyProvider(VulnerabilitiesProvider):
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
 
-    def load_image(self, image: Image, db_session, cache=False):
+    def load_image(self, image: Image, db_session, use_store=True):
         # initialize the scanner
         scanner = self.__scanner__()
 
@@ -148,10 +147,10 @@ class LegacyProvider(VulnerabilitiesProvider):
         db_session,
         vendor_only: bool = True,
         force_refresh: bool = False,
-        cache: bool = True,
+        use_store: bool = True,
     ) -> json:
         return self.get_image_vulnerabilities(
-            image, db_session, vendor_only, force_refresh, cache
+            image, db_session, vendor_only, force_refresh, use_store
         ).to_json()
 
     def get_image_vulnerabilities(
@@ -160,7 +159,7 @@ class LegacyProvider(VulnerabilitiesProvider):
         db_session,
         vendor_only: bool = True,
         force_refresh: bool = False,
-        cache: bool = True,
+        use_store: bool = True,
     ) -> ImageVulnerabilitiesReport:
         # select the nvd class once and be done
         _nvd_cls, _cpe_cls = select_nvd_classes(db_session)
@@ -694,7 +693,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
     def _get_provider_metadata(self):
         return {
-            "name": self.__class__.__name__,
+            "name": self.get_config_name(),
             "version": version.version,
             "database_version": version.db_version,
         }
@@ -743,7 +742,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeVulnScanner
-    __cache_manager__ = GrypeCacheManager
+    __store__ = ImageVulnerabilitiesStore
     __config__name__ = "grype"
     __default_sync_config__ = {
         "grypedb": SyncConfig(
@@ -753,34 +752,8 @@ class GrypeProvider(VulnerabilitiesProvider):
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
 
-    def load_image(self, image: Image, db_session, cache=False):
-        """
-        Generates a new vulnerability report using the scanner. Flushes the cache and any existing reports for the image. Does NOT merge state with previously generated reports
-
-        """
-        cache_mgr = None
-
-        if cache:
-            try:
-                cache_mgr = self.__cache_manager__(image)
-            except:
-                log.exception(
-                    "Could not initialize cache manager for vulnerabilities, skipping cache usage"
-                )
-                cache_mgr = None
-
-        report = self._generate_new_report(image, db_session)
-
-        # Never let the cache block returning results
-        try:
-            if cache_mgr:
-                cache_mgr.save(report)
-        except Exception:
-            log.exception(
-                "Failed saving vulnerabilities to cache. Skipping and continuing."
-            )
-
-        return report
+    def load_image(self, image: Image, db_session, use_store=True):
+        return self._create_new_report(image, db_session, use_store)
 
     def get_image_vulnerabilities_json(
         self,
@@ -788,15 +761,17 @@ class GrypeProvider(VulnerabilitiesProvider):
         db_session,
         vendor_only: bool = True,
         force_refresh: bool = False,
-        cache: bool = True,
-    ) -> json:
-        report = self._load_from_cache_or_create_new_report(
-            image, db_session, vendor_only, force_refresh, cache
-        )
-        if isinstance(report, ImageVulnerabilitiesReport):
-            return report.to_json()
+        use_store: bool = True,
+    ):
+        if force_refresh:
+            return self._create_new_report(image, db_session, use_store)
         else:
-            return report
+            report = self._try_load_report_from_store(image, db_session, use_store)
+
+            if isinstance(report, ImageVulnerabilitiesReport):
+                return report.to_json()
+            else:
+                return report
 
     def get_image_vulnerabilities(
         self,
@@ -804,146 +779,140 @@ class GrypeProvider(VulnerabilitiesProvider):
         db_session,
         vendor_only: bool = True,
         force_refresh: bool = False,
-        cache: bool = True,
+        use_store: bool = True,
     ) -> ImageVulnerabilitiesReport:
-        report = self._load_from_cache_or_create_new_report(
-            image, db_session, vendor_only, force_refresh, cache
-        )
-        if isinstance(report, ImageVulnerabilitiesReport):
-            return report
+        if force_refresh:
+            return self._create_new_report(image, db_session, use_store)
         else:
-            report = ImageVulnerabilitiesReport.from_json(report)
-            return report
+            report = self._try_load_report_from_store(image, db_session, use_store)
+            if isinstance(report, ImageVulnerabilitiesReport):
+                return report
+            else:
+                report = ImageVulnerabilitiesReport.from_json(report)
+                return report
 
-    def _load_from_cache_or_create_new_report(
+    def _create_new_report(
+        self, image: Image, db_session, use_store: bool = True
+    ) -> ImageVulnerabilitiesReport:
+        """
+        Generates a new vulnerability report using the scanner. Flushes the cache and any existing reports for the image.
+        Does NOT merge state with previously generated reports
+        """
+
+        new_report = self.__scanner__().scan_image_for_vulnerabilities(
+            image, db_session
+        )
+
+        # save step only if there were no problems in report generation
+        if new_report and not new_report.problems and use_store:
+            # Don't let the save block results, at worst the report will be regenerated the next time
+            try:
+                store_manager = self.__store__(image)
+                store_manager.save(new_report)
+            except Exception:
+                log.exception("Ignoring error saving vulnerabilities report to store")
+
+        return new_report
+
+    def _try_load_report_from_store(
         self,
         image: Image,
         db_session,
-        vendor_only: bool = True,
-        force_refresh: bool = False,
-        cache: bool = True,
+        use_store: bool = True,
     ):
+        """
+        Tries to load the report from the store if one is available and returns it if it's valid.
+        If the existing report in the store has expired, creates a new report and transfers some state from the old into new
+        """
+
         user_id = image.user_id
         image_id = image.id
-        cache_mgr = None
+        store_manager = None
+        existing_report = None
 
-        if cache:
+        if use_store:
             try:
-                cache_mgr = self.__cache_manager__(image)
+                store_manager = self.__store__(image)
             except:
-                log.exception(
-                    "Could not initialize cache manager for vulnerabilities, skipping cache usage"
-                )
-                cache_mgr = None
+                log.exception("Ignoring error initializing store for vulnerabilities")
+                store_manager = None
 
-        if force_refresh:
-            log.info(
-                "Forcing refresh of vulnerabilities for {}/{}".format(user_id, image_id)
-            )
-
-            report = self._generate_new_report(image, db_session)
-        else:
-            if cache_mgr:
-                timer2 = time.time()
-                try:
-                    cached_result = cache_mgr.fetch()
-                    if cached_result and cached_result.status == CacheStatus.valid:
-                        metrics.counter_inc(name="anchore_vulnerabilities_cache_hits")
-                        metrics.histogram_observe(
-                            "anchore_vulnerabilities_cache_access_latency",
-                            time.time() - timer2,
-                            status="hit",
-                        )
-                        log.info(
-                            "Vulnerabilities cache hit, returning cached report for {}/{}".format(
-                                user_id, image_id
-                            )
-                        )
-                        return cached_result.result
-                    else:
-                        metrics.counter_inc(name="anchore_vulnerabilities_cache_misses")
-                        metrics.histogram_observe(
-                            "anchore_vulnerabilities_cache_access_latency",
-                            time.time() - timer2,
-                            status="miss",
-                        )
-                        log.info(
-                            "Vulnerabilities not cached, or invalid, executing report for {}/{}".format(
-                                user_id,
-                                image_id,
-                            )
-                        )
-                except Exception as ex:
-                    log.exception(
-                        "Unexpected error operating on vulnerabilities cache. Skipping use of cache."
+        if store_manager:
+            timer2 = time.time()
+            try:
+                existing_report, report_status = store_manager.fetch()
+                if existing_report and report_status and report_status == Status.valid:
+                    metrics.counter_inc(name="anchore_vulnerabilities_cache_hits")
+                    metrics.histogram_observe(
+                        "anchore_vulnerabilities_cache_access_latency",
+                        time.time() - timer2,
+                        status="hit",
                     )
-            else:
-                log.info(
-                    "Vulnerabilities report cache disabled or cannot be initialized. Generating a new report"
+                    log.info(
+                        "Vulnerabilities cache hit, returning cached report for %s/%s",
+                        user_id,
+                        image_id,
+                    )
+                    return existing_report
+                else:
+                    metrics.counter_inc(name="anchore_vulnerabilities_cache_misses")
+                    metrics.histogram_observe(
+                        "anchore_vulnerabilities_cache_access_latency",
+                        time.time() - timer2,
+                        status="miss",
+                    )
+                    log.info(
+                        "Vulnerabilities not cached or invalid, executing report for %s/%s",
+                        user_id,
+                        image_id,
+                    )
+            except Exception:
+                log.exception(
+                    "Unexpected error with vulnerabilities store. Skipping use of cache."
                 )
-
-            # if control gets here, new report has to be generated
-            report = self._generate_new_report(image, db_session)
-
-        # Never let the cache block returning results
-        try:
-            if cache_mgr:
-                cache_mgr.save(report)
-        except Exception:
-            log.exception(
-                "Failed saving vulnerabilities to cache. Skipping and continuing."
+        else:
+            log.info(
+                "Vulnerabilities store disabled or cannot be initialized. Generating a new report"
             )
 
-        return report
-
-    def _generate_new_report(
-        self, image: Image, db_session
-    ) -> ImageVulnerabilitiesReport:
-
-        # TODO initialize the scanner and check if a grype db refresh is necessary
-        scanner = self.__scanner__()
-
-        # if image.sbom:
-        #     log.info("Found raw image sbom")
-        #     input_to_grype = image.sbom.sbom
-        # else:
-        #     log.info("Raw image sbom not found. Generating using analysis artifacts")
-
-        image_packages = image.packages
-        image_cpes = (
-            db_session.query(ImageCpe)
-            .filter(
-                ImageCpe.image_user_id == image.user_id,
-                ImageCpe.image_id == image.id,
-            )
-            .all()
+        # if control gets here, new report has to be generated
+        new_report = self.__scanner__().scan_image_for_vulnerabilities(
+            image, db_session
         )
 
-        mapper = EngineGrypeMapper()
+        # merge and save steps only if there were no problems
+        if new_report and not new_report.problems:
 
-        grype_sbom = mapper.to_grype_sbom(image, image_packages, image_cpes)
+            # transfer timestamps of previously found vulnerabilities
+            if existing_report:
+                log.debug(
+                    "Attempting to transfer timestamps from existing to the new vulnerabilities report for %s/%s",
+                    user_id,
+                    image_id,
+                )
+                try:
+                    existing_report = ImageVulnerabilitiesReport.from_json(
+                        existing_report
+                    )
+                    merged_results = transfer_vulnerability_timestamps(
+                        source=existing_report.results, destination=new_report.results
+                    )
+                    new_report.results = merged_results
+                except Exception:
+                    log.exception(
+                        "Ignoring error reconciling timestamps from an existing vulnerability report"
+                    )
 
-        grype_response = scanner.get_vulnerabilities(image.id, grype_sbom)
+            # Don't let the save block results, at worst the report will be regenerated the next time
+            if store_manager:
+                try:
+                    store_manager.save(new_report)
+                except Exception:
+                    log.exception(
+                        "Ignoring error saving vulnerabilities report to store"
+                    )
 
-        vulnerabilities = mapper.to_engine_vulnerabilities(grype_response)
-
-        return ImageVulnerabilitiesReport(
-            account_id=image.user_id,
-            image_id=image.id,
-            results=get_image_vulnerabilities_deduper().execute(vulnerabilities),
-            metadata=VulnerabilitiesReportMetadata(
-                generated_at=datetime.datetime.utcnow(),
-                uuid=str(uuid.uuid4()),
-                generated_by=self._get_report_metadata(grype_response),
-            ),
-            problems=[],
-        )
-
-    def _get_report_metadata(self, grype_response):
-        return {
-            "name": self.get_config_name(),
-            "version": grype_response.get("descriptor").get("version"),
-        }
+        return new_report
 
     def get_vulnerabilities(self, **kwargs):
         pass
