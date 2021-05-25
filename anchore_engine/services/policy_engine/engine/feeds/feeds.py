@@ -713,7 +713,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
     @staticmethod
     def _find_match(
         db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
-    ) -> Query:
+    ) -> list:
         """
         Utility Method, queries GrypeDBFeedMetadata and optionally filters on checksum or active attribute.
 
@@ -723,15 +723,18 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :type checksum: Optional[str], defaults to None
         :param active: whether or not to filter on the active record
         :type active: Optional[bool], defaults to None
-        :return: sqlalchemy query object
-        :rtype: Query
+        :return: list of GrypeDBFeedMetadata
+        :rtype: list
         """
-        results = db.query(GrypeDBFeedMetadata)
+        # sort by created at so the first index would be the correct active one if more than one returned
+        results = db.query(GrypeDBFeedMetadata).order_by(
+            GrypeDBFeedMetadata.created_at.desc()
+        )
         if checksum:
             results = results.filter(GrypeDBFeedMetadata.archive_checksum == checksum)
         if isinstance(active, bool):
             results = results.filter(GrypeDBFeedMetadata.active == active)
-        return results
+        return results.all()
 
     def record_count(self, group_name: str, db: Session) -> int:
         """
@@ -744,7 +747,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :return: number of records
         :rtype: int
         """
-        return self._find_match(db).count()
+        return len(self._find_match(db))
 
     def _flush_group(self, group_obj: FeedGroupMetadata) -> None:
         """
@@ -763,12 +766,12 @@ class GrypeDBFeed(AnchoreServiceFeed):
         )
 
         records = self._find_match(db)
-        for record in records.all():
+        for record in records:
             catalog_client.delete_document(record.group_name, record.archive_checksum)
-        records.delete(synchronize_session="evaluate")
+            db.delete(record)
         group_obj.last_sync = None  # Null the update timestamp to reflect the flush
         group_obj.count = 0
-        db.flush()
+        db.commit()
 
     @staticmethod
     def _enqueue_refresh_tasks(db: Session) -> None:
@@ -816,17 +819,20 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :type checksum: str
         """
         catalog_client = self._catalog_client
+
         # delete all records not active
         inactive_records = self._find_match(db, active=False)
-        for inactive_record in inactive_records.all():
+        for inactive_record in inactive_records:
             catalog_client.delete_document(
                 inactive_record.group_name, inactive_record.archive_checksum
             )
-        inactive_records.delete(synchronize_session="evaluate")
+            db.delete(inactive_record, synchronize_session="evaluate")
+
         # search for active and mark inactive
-        self._find_match(db, active=True).update(
-            {GrypeDBFeedMetadata.active: False}, synchronize_session="evaluate"
-        )
+        active_records = self._find_match(db, active=True)
+        for active_record in active_records:
+            active_record.active = False
+
         # insert new as active
         object_url = catalog_client.create_raw_object(
             group_download_result.group, checksum, record.data
@@ -893,7 +899,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
             checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
             # If there aren't any other database files with the same checksum, then this is a new database file.
-            matches = self._find_match(db, checksum).all()
+            matches = self._find_match(db, checksum)
             if len(matches) == 0:
                 # Update the database and the catalog with the new Grype DB file.
                 self._switch_active_grypedb(
