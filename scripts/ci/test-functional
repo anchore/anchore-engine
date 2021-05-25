@@ -19,7 +19,7 @@ for e in $(echo "${tox_env}"); do
         set -x && \
         anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system wait --feedsready '' && \
         anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system status && \
-        /home/anchore/.local/bin/tox -e '${e}' tests/functional --result-json .tox/test-reports.log ;\
+        /home/anchore/.local/bin/tox -e '${e}' -vv tests/functional --result-json .tox/test-reports.log ;\
         "
 done
 

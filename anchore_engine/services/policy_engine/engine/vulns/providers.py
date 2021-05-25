@@ -4,6 +4,7 @@ import json
 import time
 import uuid
 from abc import ABC, abstractmethod
+from typing import Dict
 
 from sqlalchemy import asc, func, orm
 
@@ -30,6 +31,11 @@ from anchore_engine.services.policy_engine.api.models import (
     FixedArtifact,
     Match,
 )
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    get_provider_name,
+    get_section_for_vulnerabilities,
+    SyncConfig,
+)
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     have_vulnerabilities_for,
 )
@@ -39,9 +45,12 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     get_imageId_to_record,
 )
 from anchore_engine.subsys import logger as log
+from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
-from .scanners import LegacyScanner
+from .cache_managers import GrypeCacheManager, CacheStatus
 from .dedup import get_image_vulnerabilities_deduper
+from .mappers import EngineGrypeMapper
+from .scanners import LegacyScanner, GrypeVulnScanner
 
 
 class VulnerabilitiesProvider(ABC):
@@ -53,6 +62,20 @@ class VulnerabilitiesProvider(ABC):
 
     __scanner__ = None
     __cache_manager__ = None
+    __config__name__ = None
+    __default_sync_config__ = None
+
+    def get_config_name(self) -> str:
+        """
+        Getter for provider's config name
+        """
+        return self.__config__name__
+
+    def get_default_sync_config(self) -> Dict[str, SyncConfig]:
+        """
+        Returns the specific feeds and their configurations to be synced for this provider
+        """
+        return self.__default_sync_config__
 
     @abstractmethod
     def load_image(self, **kwargs):
@@ -98,6 +121,19 @@ class LegacyProvider(VulnerabilitiesProvider):
 
     __scanner__ = LegacyScanner
     __cache_manager__ = None
+    __config__name__ = "legacy"
+    __default_sync_config__ = {
+        "vulnerabilities": SyncConfig(
+            enabled=True,
+            url="https://ancho.re/v1/service/feeds",
+        ),  # for backwards selective sync compatibility
+        "nvdv2": SyncConfig(
+            enabled=True, url="https://ancho.re/v1/service/feeds"
+        ),  # for backwards selective sync compatibility
+        "github": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
+        "vulndb": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
+        "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
+    }
 
     def load_image(self, image: Image, db_session, cache=False):
         # initialize the scanner
@@ -113,7 +149,7 @@ class LegacyProvider(VulnerabilitiesProvider):
         vendor_only: bool = True,
         force_refresh: bool = False,
         cache: bool = True,
-    ):
+    ) -> json:
         return self.get_image_vulnerabilities(
             image, db_session, vendor_only, force_refresh, cache
         ).to_json()
@@ -705,8 +741,244 @@ class LegacyProvider(VulnerabilitiesProvider):
                 return "http://<valid endpoint not found>"
 
 
-default_type = LegacyProvider
+class GrypeProvider(VulnerabilitiesProvider):
+    __scanner__ = GrypeVulnScanner
+    __cache_manager__ = GrypeCacheManager
+    __config__name__ = "grype"
+    __default_sync_config__ = {
+        "grypedb": SyncConfig(
+            enabled=True,
+            url="https://toolbox-data.anchore.io/grype/databases/listing.json",
+        ),
+        "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
+    }
+
+    def load_image(self, image: Image, db_session, cache=False):
+        """
+        Generates a new vulnerability report using the scanner. Flushes the cache and any existing reports for the image. Does NOT merge state with previously generated reports
+
+        """
+        cache_mgr = None
+
+        if cache:
+            try:
+                cache_mgr = self.__cache_manager__(image)
+            except:
+                log.exception(
+                    "Could not initialize cache manager for vulnerabilities, skipping cache usage"
+                )
+                cache_mgr = None
+
+        report = self._generate_new_report(image, db_session)
+
+        # Never let the cache block returning results
+        try:
+            if cache_mgr:
+                cache_mgr.save(report)
+        except Exception:
+            log.exception(
+                "Failed saving vulnerabilities to cache. Skipping and continuing."
+            )
+
+        return report
+
+    def get_image_vulnerabilities_json(
+        self,
+        image: Image,
+        db_session,
+        vendor_only: bool = True,
+        force_refresh: bool = False,
+        cache: bool = True,
+    ) -> json:
+        report = self._load_from_cache_or_create_new_report(
+            image, db_session, vendor_only, force_refresh, cache
+        )
+        if isinstance(report, ImageVulnerabilitiesReport):
+            return report.to_json()
+        else:
+            return report
+
+    def get_image_vulnerabilities(
+        self,
+        image: Image,
+        db_session,
+        vendor_only: bool = True,
+        force_refresh: bool = False,
+        cache: bool = True,
+    ) -> ImageVulnerabilitiesReport:
+        report = self._load_from_cache_or_create_new_report(
+            image, db_session, vendor_only, force_refresh, cache
+        )
+        if isinstance(report, ImageVulnerabilitiesReport):
+            return report
+        else:
+            report = ImageVulnerabilitiesReport.from_json(report)
+            return report
+
+    def _load_from_cache_or_create_new_report(
+        self,
+        image: Image,
+        db_session,
+        vendor_only: bool = True,
+        force_refresh: bool = False,
+        cache: bool = True,
+    ):
+        user_id = image.user_id
+        image_id = image.id
+        cache_mgr = None
+
+        if cache:
+            try:
+                cache_mgr = self.__cache_manager__(image)
+            except:
+                log.exception(
+                    "Could not initialize cache manager for vulnerabilities, skipping cache usage"
+                )
+                cache_mgr = None
+
+        if force_refresh:
+            log.info(
+                "Forcing refresh of vulnerabilities for {}/{}".format(user_id, image_id)
+            )
+
+            report = self._generate_new_report(image, db_session)
+        else:
+            if cache_mgr:
+                timer2 = time.time()
+                try:
+                    cached_result = cache_mgr.fetch()
+                    if cached_result and cached_result.status == CacheStatus.valid:
+                        metrics.counter_inc(name="anchore_vulnerabilities_cache_hits")
+                        metrics.histogram_observe(
+                            "anchore_vulnerabilities_cache_access_latency",
+                            time.time() - timer2,
+                            status="hit",
+                        )
+                        log.info(
+                            "Vulnerabilities cache hit, returning cached report for {}/{}".format(
+                                user_id, image_id
+                            )
+                        )
+                        return cached_result.result
+                    else:
+                        metrics.counter_inc(name="anchore_vulnerabilities_cache_misses")
+                        metrics.histogram_observe(
+                            "anchore_vulnerabilities_cache_access_latency",
+                            time.time() - timer2,
+                            status="miss",
+                        )
+                        log.info(
+                            "Vulnerabilities not cached, or invalid, executing report for {}/{}".format(
+                                user_id,
+                                image_id,
+                            )
+                        )
+                except Exception as ex:
+                    log.exception(
+                        "Unexpected error operating on vulnerabilities cache. Skipping use of cache."
+                    )
+            else:
+                log.info(
+                    "Vulnerabilities report cache disabled or cannot be initialized. Generating a new report"
+                )
+
+            # if control gets here, new report has to be generated
+            report = self._generate_new_report(image, db_session)
+
+        # Never let the cache block returning results
+        try:
+            if cache_mgr:
+                cache_mgr.save(report)
+        except Exception:
+            log.exception(
+                "Failed saving vulnerabilities to cache. Skipping and continuing."
+            )
+
+        return report
+
+    def _generate_new_report(
+        self, image: Image, db_session
+    ) -> ImageVulnerabilitiesReport:
+
+        # TODO initialize the scanner and check if a grype db refresh is necessary
+        scanner = self.__scanner__()
+
+        # if image.sbom:
+        #     log.info("Found raw image sbom")
+        #     input_to_grype = image.sbom.sbom
+        # else:
+        #     log.info("Raw image sbom not found. Generating using analysis artifacts")
+
+        image_packages = image.packages
+        image_cpes = (
+            db_session.query(ImageCpe)
+            .filter(
+                ImageCpe.image_user_id == image.user_id,
+                ImageCpe.image_id == image.id,
+            )
+            .all()
+        )
+
+        mapper = EngineGrypeMapper()
+
+        grype_sbom = mapper.to_grype_sbom(image, image_packages, image_cpes)
+
+        grype_response = scanner.get_vulnerabilities(image.id, grype_sbom)
+
+        vulnerabilities = mapper.to_engine_vulnerabilities(grype_response)
+
+        return ImageVulnerabilitiesReport(
+            account_id=image.user_id,
+            image_id=image.id,
+            results=get_image_vulnerabilities_deduper().execute(vulnerabilities),
+            metadata=VulnerabilitiesReportMetadata(
+                generated_at=datetime.datetime.utcnow(),
+                uuid=str(uuid.uuid4()),
+                generated_by=self._get_report_metadata(grype_response),
+            ),
+            problems=[],
+        )
+
+    def _get_report_metadata(self, grype_response):
+        return {
+            "name": self.get_config_name(),
+            "version": grype_response.get("descriptor").get("version"),
+        }
+
+    def get_vulnerabilities(self, **kwargs):
+        pass
+
+    def get_images_by_vulnerability(self, **kwargs):
+        pass
+
+
+# Override this map for associating different provider classes
+PROVIDER_CLASSES = [LegacyProvider, GrypeProvider]
+PROVIDER = None
+
+
+def set_provider():
+    # doesn't have to be a singleton strictly and hence getting away with globals
+    global PROVIDER
+
+    provider_name = get_provider_name(get_section_for_vulnerabilities())
+    provider_class = next(
+        (item for item in PROVIDER_CLASSES if item.__config__name__ == provider_name),
+        None,
+    )
+
+    if not provider_class:
+        log.warn(
+            "No implementation found for configured provider %s. Falling back to default",
+            provider_name,
+        )
+        provider_class = LegacyProvider
+
+    PROVIDER = provider_class()
 
 
 def get_vulnerabilities_provider():
-    return default_type()
+    if not PROVIDER:
+        set_provider()
+
+    return PROVIDER
