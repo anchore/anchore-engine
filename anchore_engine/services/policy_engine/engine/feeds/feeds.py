@@ -215,6 +215,18 @@ class DataFeed(ABC):
         ...
 
     @abstractmethod
+    def group_by_name(self, group_name: str) -> Optional[FeedGroupMetadata]:
+        """
+        Gets the metadata record for the group with the given name.
+
+        :param group_name: the name of the group for which to retreive the metadata record
+        :type group_name: str
+        :return: the metadata record if it exists
+        :rtype: Optional[FeedGroupMetadata]
+        """
+        ...
+
+    @abstractmethod
     def flush_group(self, group_name: str) -> FeedGroupMetadata:
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
@@ -752,6 +764,17 @@ class GrypeDBFeed(DataFeed):
         :rtype: FeedGroupMetadata
         """
         raise NotImplementedError
+
+    def group_by_name(self, group_name: str) -> Optional[FeedGroupMetadata]:
+        """
+        Gets the metadata record for the group with the given name.
+
+        :param group_name: the name of the group for which to retreive the metadata record
+        :type group_name: str
+        :return: the metadata record if it exists
+        :rtype: Optional[FeedGroupMetadata]
+        """
+        return None
 
     def update_counts(self) -> None:
         """
