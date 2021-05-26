@@ -34,7 +34,7 @@ from anchore_engine.db import (
 )
 
 # API models
-from anchore_engine.util.models import (
+from anchore_engine.common.models.policy_engine import (
     Image as ImageMsg,
     PolicyEvaluationProblem,
     PolicyEvaluation,

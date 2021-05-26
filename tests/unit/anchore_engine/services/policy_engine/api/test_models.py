@@ -1,5 +1,5 @@
 import datetime
-from anchore_engine.util.models import (
+from anchore_engine.common.models.policy_engine import (
     FeedMetadata,
     FeedGroupMetadata,
     Image,

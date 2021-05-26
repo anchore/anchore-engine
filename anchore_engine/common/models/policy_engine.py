@@ -1,4 +1,8 @@
-from anchore_engine.common.schemas import Schema, JsonSerializable, RFC3339DateTime
+from anchore_engine.common.models.schemas import (
+    Schema,
+    JsonSerializable,
+    RFC3339DateTime,
+)
 from marshmallow import fields, post_load
 
 

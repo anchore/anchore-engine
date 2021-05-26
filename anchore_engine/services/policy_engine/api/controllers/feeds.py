@@ -18,7 +18,7 @@ from anchore_engine.common.errors import AnchoreError
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db import FeedGroupMetadata as DbFeedGroupMetadata
 from anchore_engine.db import FeedMetadata as DbFeedMetadata
-from anchore_engine.util.models import (
+from anchore_engine.common.models.policy_engine import (
     FeedGroupMetadata,
     FeedMetadata,
 )

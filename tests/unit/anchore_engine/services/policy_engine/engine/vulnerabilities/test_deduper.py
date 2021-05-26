@@ -1,6 +1,6 @@
 import pytest
 
-from anchore_engine.util.models import (
+from anchore_engine.common.models.policy_engine import (
     VulnerabilityMatch,
     Vulnerability,
     Artifact,

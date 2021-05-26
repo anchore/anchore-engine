@@ -11,7 +11,7 @@ from typing import Callable
 
 import pytest
 
-from anchore_engine.common.schemas import (
+from anchore_engine.common.models.schemas import (
     DownloadOperationResult,
     GroupDownloadResult,
     LocalFeedDataRepoMetadata,
