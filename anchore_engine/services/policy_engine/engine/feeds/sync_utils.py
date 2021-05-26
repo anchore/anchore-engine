@@ -89,7 +89,7 @@ class LegacySyncUtilProvider(SyncUtilProvider):
                         f.__feed_name__, operation_id
                     )
                 )
-            return groups_to_download
+        return groups_to_download
 
 
 class GrypeDBSyncUtilProvider(SyncUtilProvider):
