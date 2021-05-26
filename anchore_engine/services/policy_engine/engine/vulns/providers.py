@@ -22,7 +22,7 @@ from anchore_engine.db import (
     select_nvd_classes,
 )
 from anchore_engine.db import Vulnerability, ImagePackageVulnerability
-from anchore_engine.services.policy_engine.api.models import (
+from anchore_engine.util.models import (
     Vulnerability as VulnerabilityModel,
     VulnerabilityMatch,
     Artifact,

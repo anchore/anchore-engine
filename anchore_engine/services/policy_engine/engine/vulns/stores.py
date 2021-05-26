@@ -1,4 +1,3 @@
-import datetime
 import enum
 from typing import Dict
 
@@ -10,7 +9,7 @@ from anchore_engine.db import (
     get_thread_scoped_session as get_session,
     ImageVulnerabilitiesReport as DbImageVulnerabilities,
 )
-from anchore_engine.services.policy_engine.api.models import ImageVulnerabilitiesReport
+from anchore_engine.util.models import ImageVulnerabilitiesReport
 from anchore_engine.subsys import logger as log
 
 # Disabled by default, can be set in config file. Seconds for connection to store

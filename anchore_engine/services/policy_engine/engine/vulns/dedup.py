@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Dict
 
-from anchore_engine.services.policy_engine.api.models import VulnerabilityMatch
+from anchore_engine.util.models import VulnerabilityMatch
 from anchore_engine.subsys import logger
 
 
