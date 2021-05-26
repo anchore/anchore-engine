@@ -333,11 +333,8 @@ def handle_grypedb_sync(*args, **kwargs):
         provider = get_provider_name(get_section_for_vulnerabilities())
         if provider == "grype":  # TODO fix this
             try:
-                result = GrypeDBSyncTask().execute()
-
-                if result:
-                    logger.info("Grype DB synced to local instance via handler")
-            #         TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
+                GrypeDBSyncTask().execute()
+            # TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
             except Exception:
                 logger.exception(
                     "Error encountered when running GrypeDBSyncTask from async monitor"

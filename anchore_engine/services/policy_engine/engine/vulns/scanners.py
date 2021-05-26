@@ -18,7 +18,7 @@ from anchore_engine.common.models.policy_engine import (
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
-    NoActiveGrypeDB,
+    NoActiveDBSyncError,
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
@@ -202,8 +202,8 @@ class GrypeScanner:
 
         # check and run grype sync if necessary
         try:
-            GrypeDBSyncManager.run_grypedb_sync()
-        except NoActiveGrypeDB:
+            GrypeDBSyncManager.run_grypedb_sync(db_session)
+        except NoActiveDBSyncError:
             logger.exception("Failed to initialize local vulnerability database")
             report.problems.append(
                 VulnerabilityScanProblem(
