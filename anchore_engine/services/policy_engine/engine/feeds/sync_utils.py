@@ -57,7 +57,9 @@ class LegacySyncUtilProvider(SyncUtilProvider):
     def sync_metadata(self, source_feeds, operation_id):
         return DataFeeds.sync_metadata(source_feeds, self.to_sync, operation_id)
 
-    def get_groups_to_download(self, source_feeds, updated, feeds_to_sync, operation_id):
+    def get_groups_to_download(
+        self, source_feeds, updated, feeds_to_sync, operation_id
+    ):
         # Do the fetches
         groups_to_download = []
         for f in feeds_to_sync:
@@ -95,7 +97,10 @@ class LegacySyncUtilProvider(SyncUtilProvider):
 class GrypeDBSyncUtilProvider(SyncUtilProvider):
     @staticmethod
     def _get_filtered_sync_configs(sync_configs):
-        return {GRYPE_DB_FEED_NAME: sync_configs.get(GRYPE_DB_FEED_NAME)}
+        grype_sync_config = sync_configs.get(GRYPE_DB_FEED_NAME)
+        if grype_sync_config:
+            return {GRYPE_DB_FEED_NAME: grype_sync_config}
+        return {}
 
     def get_client(self):
         grype_db_sync_config = self._sync_configs.get(GRYPE_DB_FEED_NAME)
@@ -106,7 +111,9 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
             source_feeds, self.to_sync, operation_id, groups=False
         )
 
-    def get_groups_to_download(self, source_feeds, updated, feeds_to_sync, operation_id):
+    def get_groups_to_download(
+        self, source_feeds, updated, feeds_to_sync, operation_id
+    ):
         api_feed_group = source_feeds[GRYPE_DB_FEED_NAME]["groups"][0]
         feed_metadata = updated[GRYPE_DB_FEED_NAME]
         group_to_download = FeedGroupMetadata(
