@@ -24,6 +24,9 @@ from anchore_engine.common.models.policy_engine import (
     FeedMetadata,
 )
 from anchore_engine.services.policy_engine.engine.feeds import db, sync
+from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
+    GRYPE_DB_FEED_NAME,
+)
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.subsys import logger as log
 
@@ -214,7 +217,7 @@ def delete_feed(feed):
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_group(feed, group):
     session = db.get_session()
-    if feed == "grypedb":
+    if feed == GRYPE_DB_FEED_NAME:
         raise UnprocessableEntityError(
             message="Cannot delete individual groups for grypedb feed. Must delete entire feed.",
             detail={},

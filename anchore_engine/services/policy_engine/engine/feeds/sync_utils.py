@@ -5,10 +5,11 @@ from anchore_engine.services.policy_engine.engine.feeds.client import (
     get_feeds_client,
     get_grype_db_client,
 )
+from anchore_engine.services.policy_engine.engine.feeds.feeds import GrypeDBFeed
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.subsys import logger
 
-GRYPE_DB_FEED_NAME = "grypedb"
+GRYPE_DB_FEED_NAME = GrypeDBFeed.__feed_name__
 
 
 class SyncUtilProvider(ABC):
