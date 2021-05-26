@@ -559,10 +559,10 @@ class GrypeWrapperSingleton(object):
             )
             full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_COMMAND)]
 
-            logger.debug(
-                "Running grype with command: %s | %s",
-                pipe_sub_cmd,
-                self.GRYPE_SUB_COMMAND,
+            logger.spew(
+                "Running grype with command: {} | {}".format(
+                    pipe_sub_cmd, self.GRYPE_SUB_COMMAND
+                )
             )
 
             stdout = None
@@ -602,7 +602,9 @@ class GrypeWrapperSingleton(object):
             stdout = None
             err = None
             try:
-                stdout, _ = run_check(shlex.split(cmd), env=proc_env)
+                stdout, _ = run_check(
+                    shlex.split(cmd), log_spew_stdout_stderr=True, env=proc_env
+                )
             except CommandException as exc:
                 logger.error(
                     "Exception running command: %s, stderr: %s",

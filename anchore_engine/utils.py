@@ -266,7 +266,7 @@ def run_command_list(
     cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
 ):
     """
-    Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
+    Run a command from a list with optional environment and return a tuple (rc, stdout_str, stderr_str)
     :param cmd_list: list of command e.g. ['ls', '/tmp']
     :param env: dict of env vars for the environment if desired. will replace normal env, not augment
     :return: tuple (rc_int, stdout_str, stderr_str)
@@ -279,7 +279,7 @@ def run_command_list(
     return pipes.returncode, stdout_result, stderr_result
 
 
-def run_check(cmd, **kwargs):
+def run_check(cmd, log_spew_stdout_stderr=False, **kwargs):
     """
     Run a command (input required to be a list), log the output, and raise an
     exception if a non-zero exit status code is returned.
@@ -302,12 +302,20 @@ def run_check(cmd, **kwargs):
     stdout_stream = stdout.splitlines()
     stderr_stream = stderr.splitlines()
 
-    # Always log stdout and stderr as debug
-    for line in stdout_stream:
-        logger.debug("stdout: %s", line)
-
-    for line in stderr_stream:
-        logger.debug("stderr: %s", line)
+    # Always log stdout and stderr as debug, unless otherwise parameterized
+    # in log_spew_stdout_stderr
+    if log_spew_stdout_stderr:
+        # Some commands (like grype scanning) will generate enough output here that we
+        # need to try to limit the impact of debug logging on system performance
+        for line in stdout_stream:
+            logger.spew("stdout: %s", line)
+        for line in stderr_stream:
+            logger.spew("stderr: %s", line)
+    else:
+        for line in stdout_stream:
+            logger.debug("stdout: %s", line)
+        for line in stderr_stream:
+            logger.debug("stderr: %s", line)
 
     if code != 0:
         # When non-zero exit status returns, log stderr as error, but only when
