@@ -6,7 +6,7 @@ from anchore_engine.utils import (
     parse_dockerimage_string,
     PIPED_CMD_VALUE_ERROR_MESSAGE,
     run_check,
-    run_piped_command_list,
+    run_command_list_with_piped_input,
     run_sanitize,
     SANITIZE_CMD_ERROR_MESSAGE,
 )
@@ -126,19 +126,17 @@ def test_run_sanitize_bad_input(input):
 
 
 @pytest.mark.parametrize(
-    "cmds_list, sanitize_input, expected_return_code, expected_stdout, expected_stderr",
+    "cmd_list, input_data, expected_return_code, expected_stdout, expected_stderr",
     [
-        ([["pwd"], ["wc", "-l"]], True, 0, "1", b""),
-        ([["pwd"], ["wc", "-l"]], False, 0, "1", b""),
-        ([["echo", ";&<>"]], False, 0, ";&<>", b""),
+        (["wc", "-l"], "", 0, "0", b""),
     ],
 )
-def test_run_piped_command(
-    cmds_list, sanitize_input, expected_return_code, expected_stdout, expected_stderr
+def test_run_command_list_with_piped_input(
+    cmd_list, input_data, expected_return_code, expected_stdout, expected_stderr
 ):
     # Function under test
-    return_code, stdout, stderr = run_piped_command_list(
-        cmds_list, sanitize_input=sanitize_input
+    return_code, stdout, stderr = run_command_list_with_piped_input(
+        cmd_list, input_data
     )
 
     # Binary string returned in different environments can be padded with different amounts of whitespace
@@ -152,27 +150,32 @@ def test_run_piped_command(
     assert stderr == expected_stderr
 
 
-@pytest.mark.parametrize("cmds_list", [[], None])
-def test_run_empty_piped_command(cmds_list):
-    with pytest.raises(ValueError) as error:
-        # Function under test
-        run_piped_command_list(cmds_list)
+@pytest.mark.parametrize(
+    "cmd_list, input_data, expected_stdout, expected_stderr",
+    [
+        (["wc", "-l"], "", "0", ""),
+        (["wc", "-l"], "hello\nworld", "1", ""),
+    ],
+)
+def test_run_check_with_input(cmd_list, input_data, expected_stdout, expected_stderr):
+    # Function under test
+    stdout, stderr = run_check(cmd_list, input_data)
 
-    # Validate error message
-    assert str(error.value) == PIPED_CMD_VALUE_ERROR_MESSAGE
+    # Binary string returned in different environments can be padded with different amounts of whitespace
+    # So convert it to utf-8 and trim it so we get a clean, reliable comparison
+    if stdout is not None:
+        stdout = stdout.strip()
+
+    # Validate input
+    assert stdout == expected_stdout
+    assert stderr == expected_stderr
 
 
-def test_run_invalid_piped_command():
-    # Setup input var
-    first_command = shlex.split("pwd")
-    bad_command = shlex.split("<")
-    cmds_list = [first_command, bad_command]
-
+@pytest.mark.parametrize("cmd_list", [[], None])
+def test_run_check_invalid_cmd_list(cmd_list):
     with pytest.raises(Exception) as error:
         # Function under test
-        run_piped_command_list(cmds_list)
-
-    assert str(error.value) == SANITIZE_CMD_ERROR_MESSAGE
+        run_check(cmd_list)
 
 
 # allows raising from a lambda
