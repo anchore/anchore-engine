@@ -136,7 +136,7 @@ class DataFeeds(object):
         feed_api_record,
         db_feeds,
         operation_id: Optional[str] = None,
-    ) -> None:
+    ) -> Dict[str, FeedMetadata]:
         api_feed = feed_api_record["meta"]
         db_feed = db_feeds.get(api_feed.name)
         # Do this instead of a db.merge() to ensure no timestamps are reset or overwritten
@@ -154,12 +154,14 @@ class DataFeeds(object):
             )
             db.add(db_feed)
             db.flush()
+            return {api_feed.name: db_feed}
         else:
             logger.debug(
                 "Feed metadata already in db: {} (operation_id={})".format(
                     api_feed.name, operation_id
                 )
             )
+            return db_feeds
 
     @staticmethod
     def _sync_feed_group_metadata(
@@ -242,12 +244,12 @@ class DataFeeds(object):
                             feed_name, operation_id
                         )
                     )
-                    DataFeeds._sync_feed_metadata(
+                    feed_metadata_map = DataFeeds._sync_feed_metadata(
                         db, feed_api_record, db_feeds, operation_id
                     )
                     if groups:
                         DataFeeds._sync_feed_group_metadata(
-                            db, feed_api_record, db_feeds, operation_id
+                            db, feed_api_record, feed_metadata_map, operation_id
                         )
                 except Exception as e:
                     logger.exception("Error syncing feed {}".format(feed_name))
@@ -473,7 +475,7 @@ class DataFeeds(object):
         feeds_to_sync = _ordered_feeds(feeds_to_sync)
 
         groups_to_download = sync_util_provider.get_groups_to_download(
-            source_feeds, updated, operation_id
+            source_feeds, updated, feeds_to_sync, operation_id
         )
 
         logger.debug("Groups to download {}".format(groups_to_download))
