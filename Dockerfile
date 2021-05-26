@@ -181,7 +181,8 @@ RUN set -ex && \
 RUN set -ex && \
     python3 -m venv /anchore-cli && \
     source /anchore-cli/bin/activate && \
-    pip3 install --no-index --find-links=./ /build_output/cli_wheels/*.whl
+    pip3 install --no-index --find-links=./ /build_output/cli_wheels/*.whl && \
+    deactivate
 
 # Perform the anchore-engine build and install
 
