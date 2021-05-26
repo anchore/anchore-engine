@@ -49,7 +49,7 @@ from anchore_engine.subsys import logger as log
 from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
-from .scanners import LegacyScanner, GrypeVulnScanner
+from .scanners import LegacyScanner, GrypeScanner
 from .stores import ImageVulnerabilitiesStore, Status
 
 
@@ -750,7 +750,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
 
 class GrypeProvider(VulnerabilitiesProvider):
-    __scanner__ = GrypeVulnScanner
+    __scanner__ = GrypeScanner
     __store__ = ImageVulnerabilitiesStore
     __config__name__ = "grype"
     __default_sync_config__ = {
