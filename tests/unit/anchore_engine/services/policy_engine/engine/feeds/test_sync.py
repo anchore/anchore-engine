@@ -1,14 +1,16 @@
-import pytest
 import datetime
+
+import pytest
+
+from anchore_engine.db.entities.policy_engine import FeedMetadata
+from anchore_engine.services.policy_engine import init_feed_registry
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
     DataFeeds,
-    FeedMetadata,
-    VulnerabilityFeed,
     NvdV2Feed,
     PackagesFeed,
+    VulnerabilityFeed,
 )
-from anchore_engine.services.policy_engine import init_feed_registry
 
 
 @pytest.fixture
