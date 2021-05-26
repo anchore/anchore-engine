@@ -13,7 +13,7 @@ COPY . /buildsource
 WORKDIR /buildsource
 
 RUN set -ex && \
-    mkdir -p /build_output /build_output/deps /build_output/configs /build_output/wheels
+    mkdir -p /build_output /build_output/deps /build_output/configs /build_output/wheels /build_output/cli_wheels
 
 RUN set -ex && \
     echo "installing OS dependencies" && \
@@ -25,7 +25,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "installing anchore" && \
     pip3 wheel --wheel-dir=/build_output/wheels . && \
-    pip3 wheel --wheel-dir=/build_output/wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
+    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
     cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh && \
@@ -176,6 +176,12 @@ RUN set -ex && \
 
 
 # Perform any base OS specific setup
+
+# Perform the cli install into a virtual env
+RUN set -ex && \
+    python3 -m venv /anchore-cli && \
+    source /anchore-cli/bin/activate && \
+    pip3 install --no-index --find-links=./ /build_output/cli_wheels/*.whl
 
 # Perform the anchore-engine build and install
 
