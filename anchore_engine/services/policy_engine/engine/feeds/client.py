@@ -4,7 +4,7 @@ import datetime
 import json
 from dataclasses import dataclass, field
 from io import BytesIO
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 import ijson
 import requests
@@ -456,6 +456,15 @@ class InvalidGrypeVersionResponse(GrypeVersionCommandError):
 
 
 class GrypeDBServiceClient(IFeedSource):
+    """
+    Client for upstream service (toolbox service or feeds service) serving Grype DB.
+
+    :param grype_db_endpoint: base URL of toolbox service
+    :type grype_db_endpoint: str
+    :param http_client: configured and instantiated http client to use
+    :type http_client: HTTPBasicAuthClient
+    """
+
     RETRY_COUNT = 3
 
     def __init__(
@@ -467,6 +476,16 @@ class GrypeDBServiceClient(IFeedSource):
         self.http_client = http_client
 
     def list_feeds(self) -> FeedList:
+        """
+        Returns metadata to support existing Feeds Service metadata model.
+        This is what essentially creates the FeedMetadata object for 'grypedb'.
+        Shoehorning the GrypeDB into the Feeds Service metadata model is a hack,
+        but is likely necessary evil until legacy feeds are deprecated and the model
+        can be redesigned and refactored.
+
+        :return: statically generated FeedList response model
+        :rtype: FeedList
+        """
         return FeedList(
             feeds=[
                 FeedAPIRecord(
@@ -477,7 +496,15 @@ class GrypeDBServiceClient(IFeedSource):
             ]
         )
 
-    def _list_feed_groups(self):
+    def _list_feed_groups(self) -> Dict[str, Union[int, str]]:
+        """
+        Sends HTTP request to toolbox service's listing.json endpoint.
+        loads and parses the response, returning the first result with the version that applies to the version of Grype
+        that is installed in the container.
+
+        :return: Grype DB listing.json
+        :rtype: Dict[str, Union[int, str]
+        """
         logger.info("Downloading grypedb listing.json from {}".format(self.feed_url))
         listing_response = self.http_client.execute_request(
             requests.get, self.feed_url, retries=self.RETRY_COUNT
@@ -494,6 +521,14 @@ class GrypeDBServiceClient(IFeedSource):
         return raw_db_listing
 
     def list_feed_groups(self, feed: str) -> FeedGroupList:
+        """
+        Retrieves the latest Grype DB listing.json.
+
+        :param feed:
+        :type feed: str
+        :return: FeedGroupList object, containing one FeedAPIGroupRecord that has the GrypeDBListing information
+        :rtype: FeedGroupList
+        """
         raw_db_listing = self._list_feed_groups()
         grype_db_listing = dict(raw_db_listing)
         grype_db_listing["built"] = rfc3339str_to_datetime(raw_db_listing["built"])
@@ -509,7 +544,13 @@ class GrypeDBServiceClient(IFeedSource):
         )
 
     @staticmethod
-    def _get_supported_grype_db_version():
+    def _get_supported_grype_db_version() -> str:
+        """
+        Retrieves the supported Grype DB version from the installed copy of Grype using the grype wrapper.
+
+        :return: supported grype DB version
+        :rtype: str
+        """
         grype_wrapper = GrypeWrapperSingleton.get_instance()
         try:
             version_response = grype_wrapper.get_grype_version()
@@ -521,6 +562,16 @@ class GrypeDBServiceClient(IFeedSource):
             raise InvalidGrypeVersionResponse(json.dumps(version_response)) from exc
 
     def _get_feed_group_data(self) -> Tuple[Dict, HTTPClientResponse]:
+        """
+        Sends HTTP request to toolbox service URL in listing.json to retrieve a single grype DB.
+        This is painfully written because of legacy compatibility constraints.
+        Ideally, listing.json would be passed in by download machinery. We're calling _list_feed_groups()
+        here, as changing the signature would break Liskov substitution principle and cluttering a soon-to-be
+        obsolete interface with more params is unlikely to be a productive exercise.
+
+        :return: tuple containing the raw listing.json and the HTTPClientResponse for the DB download
+        :rtype: Tuple[Dict, HTTPClientResponse]
+        """
         grype_db_listing = self._list_feed_groups()
         grype_db_url = grype_db_listing["url"]
         logger.info("Downloading grypedb {}".format(grype_db_url))
@@ -535,9 +586,23 @@ class GrypeDBServiceClient(IFeedSource):
         self,
         feed: str,
         group: str,
-        since: datetime.datetime = None,
+        since: Optional[datetime.datetime] = None,
         next_token: str = None,
-    ):
+    ) -> GroupData:
+        """
+        Retrieves a single Grype DB, storing the raw bytes in GroupData.data.
+
+        :param feed: feed name (unused)
+        :type feed: str
+        :param group: group name (unused)
+        :type group: str
+        :param since: filter for time record was created (unused)
+        :type since: Optional[datetime.datetime]
+        :param next_token: token for pagination (unused)
+        :type next_token: str
+        :return: GroupData where GroupData.data contains the raw bytes and GroupData.response_metadata contains the listing information.
+        :rtype: GroupData
+        """
         try:
             listing_json, record = self._get_feed_group_data()
             if record.content_type != "application/x-tar":
@@ -558,11 +623,14 @@ class GrypeDBServiceClient(IFeedSource):
             raise e
 
 
-def get_feeds_client(sync_config: SyncConfig):
+def get_feeds_client(sync_config: SyncConfig) -> FeedServiceClient:
     """
     Returns a configured client based on the provided config
 
-    :return: initialize AnchoreIOFeedClient
+    :param sync_config: configuration
+    :type sync_config: SyncConfig
+    :return: initialized FeedServiceClient
+    :rtype: FeedServiceClient
     """
 
     logger.debug(
@@ -585,13 +653,14 @@ def get_feeds_client(sync_config: SyncConfig):
     )
 
 
-def get_grype_db_client(sync_config: SyncConfig):
+def get_grype_db_client(sync_config: SyncConfig) -> GrypeDBServiceClient:
     """
-    Returns a configured client based on the local config. Reads configuration from the loaded system configuration.
+    Returns a configured client based on the local config.
 
-    Uses the admin user's credentials for the feed service if they are available in the external_service_auths/anchoreio/anchorecli/auth json path of the config file. If no specific user credentials are found then the anonymous user credentials are used.
-
-    :return: initialize AnchoreIOFeedClient
+    :param sync_config: configuration
+    :type sync_config: SyncConfig
+    :return: initialized GrypeDBServiceClient
+    :rtype: GrypeDBServiceClient
     """
 
     logger.debug(
