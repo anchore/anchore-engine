@@ -11,6 +11,9 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
+from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
+    MetadataSyncUtils,
+)
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging()
@@ -59,7 +62,7 @@ def test_package_sync(run_legacy_sync_for_feeds):
 
 def test_group_lookups(test_data_env):
     source_feeds = DataFeeds.get_feed_group_information(test_data_env.feed_client)
-    r = DataFeeds.sync_metadata(source_feeds=source_feeds)
+    r = MetadataSyncUtils.sync_metadata(source_feeds=source_feeds)
     assert (
         r == empty_metadata_sync_result
     ), "No metadata should be returned from sync with empty to_sync input"
@@ -67,7 +70,7 @@ def test_group_lookups(test_data_env):
     source_feeds = DataFeeds.get_feed_group_information(
         feed_client=test_data_env.feed_client, to_sync=to_sync
     )
-    r = DataFeeds.sync_metadata(source_feeds=source_feeds, to_sync=to_sync)
+    r = MetadataSyncUtils.sync_metadata(source_feeds=source_feeds, to_sync=to_sync)
     assert (
         r and len(r[0]) == 1
     ), "Metadata should be returned from sync with non-empty to_sync list"
@@ -89,16 +92,17 @@ def test_sync_repo(test_data_env, test_data_path):
         DataFeeds.sync_from_fetched(repo, catalog_client=None)
     source_feeds = DataFeeds.get_feed_group_information(test_data_env.feed_client)
     assert (
-        DataFeeds.sync_metadata(source_feeds=source_feeds) == empty_metadata_sync_result
+        MetadataSyncUtils.sync_metadata(source_feeds=source_feeds)
+        == empty_metadata_sync_result
     )
     to_sync = ["vulnerabilities"]
     source_feeds = DataFeeds.get_feed_group_information(
         feed_client=test_data_env.feed_client, to_sync=to_sync
     )
     assert (
-        DataFeeds.sync_metadata(source_feeds=source_feeds, to_sync=to_sync)[0].get(
-            "vulnerabilities"
-        )
+        MetadataSyncUtils.sync_metadata(source_feeds=source_feeds, to_sync=to_sync)[
+            0
+        ].get("vulnerabilities")
         is not None
     )
     assert DataFeeds.sync_from_fetched(repo, catalog_client=None)
@@ -106,7 +110,7 @@ def test_sync_repo(test_data_env, test_data_path):
 
 def test_metadata_sync(test_data_env):
     source_feeds = DataFeeds.get_feed_group_information(test_data_env.feed_client)
-    r = DataFeeds.sync_metadata(source_feeds=source_feeds)
+    r = MetadataSyncUtils.sync_metadata(source_feeds=source_feeds)
     assert (
         r == empty_metadata_sync_result
     ), "Expected empty dict result from metadata sync with no to_sync directive"
@@ -114,7 +118,7 @@ def test_metadata_sync(test_data_env):
     source_feeds = DataFeeds.get_feed_group_information(
         test_data_env.feed_client, to_sync=to_sync
     )
-    r = DataFeeds.sync_metadata(
+    r = MetadataSyncUtils.sync_metadata(
         source_feeds=source_feeds,
         to_sync=to_sync,
     )

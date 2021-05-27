@@ -6,10 +6,12 @@ from anchore_engine.db.entities.policy_engine import FeedMetadata
 from anchore_engine.services.policy_engine import init_feed_registry
 from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
-    DataFeeds,
     NvdV2Feed,
     PackagesFeed,
     VulnerabilityFeed,
+)
+from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
+    MetadataSyncUtils,
 )
 
 
@@ -116,7 +118,7 @@ def test_pivot_and_filter_feeds_by_config(feed_db_records):
 
     for input in matrix:
         assert (
-            DataFeeds._pivot_and_filter_feeds_by_config(
+            MetadataSyncUtils._pivot_and_filter_feeds_by_config(
                 input["to_sync"], input["source_found"], input["db_found"]
             )
             == input["expected_result"]
