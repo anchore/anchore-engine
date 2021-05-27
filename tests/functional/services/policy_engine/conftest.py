@@ -12,6 +12,7 @@ from anchore_engine.db.entities.common import (
     get_engine,
     initialize,
 )
+from anchore_engine.db.entities.upgrade import do_create_tables
 
 CURRENT_DIR = path.dirname(path.abspath(__file__))
 EXPECTED_CONTENT_FOLDER_NAME = "expected_output"
@@ -168,3 +169,31 @@ def anchore_db() -> ContextManager[bool]:
     finally:
         end_session()
         do_disconnect()
+
+
+@pytest.fixture(scope="package")
+def teardown_and_recreate_tables():
+    def _teardown_and_recreate_tables(tablenames: list):
+        tablenames_joined = ", ".join(map(str, tablenames))
+        engine = get_engine()
+        with engine.connect() as connection:
+            with connection.begin():
+                connection.execute(f"DROP TABLE {tablenames_joined} CASCADE")
+        do_create_tables()
+
+    return _teardown_and_recreate_tables
+
+
+def is_legacy_provider():
+    """
+    Returns bool based on if the running context has an env var set to indicate that its testing against legacy vuln provider
+    """
+    return os.getenv("TEST_VULNERABILITIES_PROVIDER", "legacy") == "legacy"
+
+
+@pytest.fixture()
+def is_legacy_test():
+    """
+    Consume is_legacy_provider to create a fixture that allows tests to determine if testing legacy vuln provider
+    """
+    return is_legacy_provider()
