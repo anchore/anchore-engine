@@ -9,7 +9,7 @@ import tarfile
 
 from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
-from anchore_engine.utils import CommandException, run_check, run_piped_command_list
+from anchore_engine.utils import CommandException, run_check
 from contextlib import contextmanager
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
@@ -551,37 +551,32 @@ class GrypeWrapperSingleton(object):
             # Get env variables to run the grype scan with
             proc_env = self._get_proc_env()
 
-            # Format and run the command. Grype supports piping in an sbom string, so we need to this in two steps.
-            # 1) Echo the sbom string to std_out
-            # 2) Pipe that into grype
-            pipe_sub_cmd = "echo '{sbom}'".format(
-                sbom=grype_sbom,
-            )
-            full_cmd = [shlex.split(pipe_sub_cmd), shlex.split(self.GRYPE_SUB_COMMAND)]
+            # Format and run the command. Grype supports piping in an sbom string
+            cmd = "{}".format(self.GRYPE_SUB_COMMAND)
 
             logger.spew(
                 "Running grype with command: {} | {}".format(
-                    pipe_sub_cmd, self.GRYPE_SUB_COMMAND
+                    grype_sbom, self.GRYPE_SUB_COMMAND
                 )
             )
 
-            stdout = None
-            err = None
             try:
-                _, stdout, _ = run_piped_command_list(
-                    full_cmd, env=proc_env, sanitize_input=False
+                stdout, _ = run_check(
+                    shlex.split(cmd),
+                    input_data=grype_sbom,
+                    log_level="spew",
+                    env=proc_env,
                 )
             except CommandException as exc:
                 logger.error(
-                    "Exception running command: %s | %s, stderr: %s",
-                    pipe_sub_cmd,
-                    self.GRYPE_SUB_COMMAND,
+                    "Exception running command: %s, stderr: %s",
+                    cmd,
                     exc.stderr,
                 )
                 raise exc
 
             # Return the output as json
-            return json.loads(stdout.decode("utf-8"))
+            return json.loads(stdout)
 
     def get_vulnerabilities_for_sbom_file(self, grype_sbom_file: str) -> json:
         """
@@ -602,9 +597,7 @@ class GrypeWrapperSingleton(object):
             stdout = None
             err = None
             try:
-                stdout, _ = run_check(
-                    shlex.split(cmd), log_spew_stdout_stderr=True, env=proc_env
-                )
+                stdout, _ = run_check(shlex.split(cmd), log_level="spew", env=proc_env)
             except CommandException as exc:
                 logger.error(
                     "Exception running command: %s, stderr: %s",

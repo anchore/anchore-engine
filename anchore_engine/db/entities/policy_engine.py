@@ -1282,6 +1282,8 @@ class VulnDBMetadata(Base):
             }
             result.append(score_item)
 
+        return result
+
     def get_cvss_data_nvd(self):
         return self.nvd if self.nvd else []
 

@@ -22,12 +22,13 @@ from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
+from typing import List
 from .dedup import get_image_vulnerabilities_deduper
 from .mappers import EngineGrypeMapper
 
-# debug option for saving image sbom
-save_image_sbom = (
-    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_IMAGE_SBOM", "true").lower() == "true"
+# debug option for saving image sbom, defaults to not saving
+SAVE_SBOM_TO_FILE = (
+    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "true").lower() == "true"
 )
 
 
@@ -150,7 +151,7 @@ class LegacyScanner:
         return final_results
 
 
-class GrypeVulnScanner:
+class GrypeScanner:
     """
     The scanner sits a level above the grype_wrapper. It orchestrates dependencies such as grype-db for the wrapper
     and interacts with the wrapper for all things vulnerabilities
@@ -158,21 +159,12 @@ class GrypeVulnScanner:
     Scanners are typically used by a provider to serve data
     """
 
-    def _get_image_sbom(self, image: Image, db_session):
+    def _get_image_cpes(self, image: Image, db_session) -> List[ImageCpe]:
         """
-        Prep the image for scanning by generating the sbom input from the ImagePackages. The sbom is the input to the GrypeScanner
-
-        Override this method for changing the content used to compute the image sbom
+        Helper function for returning all the cpes associated with the image. Override this function to change the image cpe content
         """
 
-        # if image.sbom:
-        #     log.info("Found raw image sbom")
-        #     input_to_grype = image.sbom.sbom
-        # else:
-        #     log.info("Raw image sbom not found. Generating using analysis artifacts")
-
-        image_packages = image.packages
-        image_cpes = (
+        return (
             db_session.query(ImageCpe)
             .filter(
                 ImageCpe.image_user_id == image.user_id,
@@ -180,12 +172,6 @@ class GrypeVulnScanner:
             )
             .all()
         )
-
-        mapper = EngineGrypeMapper()
-
-        grype_sbom = mapper.to_grype_sbom(image, image_packages, image_cpes)
-
-        return grype_sbom
 
     def _get_report_metadata(self, grype_response):
         return {
@@ -230,7 +216,9 @@ class GrypeVulnScanner:
 
         # create the image sbom
         try:
-            sbom = self._get_image_sbom(image, db_session)
+            sbom = mapper.to_grype_sbom(
+                image, image.packages, self._get_image_cpes(image, db_session)
+            )
         except Exception:
             logger.exception(
                 "Failed to create the image sbom for %s/%s", image.user_id, image.id
@@ -242,18 +230,27 @@ class GrypeVulnScanner:
 
         # submit the sbom to grype wrapper and get results
         try:
-            # if save_image_sbom:  #TODO uncomment this after grype wrapper starts working correctly for string sbom
-            file_path = "{}/sbom_{}.json".format(
-                localconfig.get_config().get("tmp_dir", "/tmp"), image.id
-            )
-            logger.debug("Writing image sbom for %s to %s", image.id, file_path)
-            with open(file_path, "w") as fp:
-                json.dump(sbom, fp, indent=2)
+            if SAVE_SBOM_TO_FILE:
+                # don't bail on errors writing to file since this is for debugging only
+                try:
+                    file_path = "{}/sbom_{}.json".format(
+                        localconfig.get_config().get("tmp_dir", "/tmp"), image.id
+                    )
+                    logger.debug("Writing image sbom for %s to %s", image.id, file_path)
+
+                    with open(file_path, "w") as fp:
+                        json.dump(sbom, fp, indent=2)
+                except Exception:
+                    logger.exception(
+                        "Ignoring error writing the image sbom to file for  %s/%s Moving on",
+                        image.user_id,
+                        image.id,
+                    )
 
             # submit the image for analysis to grype
             grype_response = (
-                GrypeWrapperSingleton.get_instance().get_vulnerabilities_for_sbom_file(
-                    file_path
+                GrypeWrapperSingleton.get_instance().get_vulnerabilities_for_sbom(
+                    json.dumps(sbom)
                 )
             )
         except Exception:

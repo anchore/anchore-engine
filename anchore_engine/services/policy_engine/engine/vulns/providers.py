@@ -6,6 +6,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Dict, List
 
+from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
 from anchore_engine import version
@@ -49,7 +50,7 @@ from anchore_engine.subsys import logger as log
 from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
-from .scanners import LegacyScanner, GrypeVulnScanner
+from .scanners import LegacyScanner, GrypeScanner
 from .stores import ImageVulnerabilitiesStore, Status
 
 
@@ -225,11 +226,19 @@ class LegacyProvider(VulnerabilitiesProvider):
                 if vendor_only and vuln.fix_has_no_advisory(fixed_in=fixed_artifact):
                     continue
 
-                nvd_scores = [
-                    CvssCombined.from_json(score)
-                    for nvd_record in nvd_records
-                    for score in nvd_record.get_cvss_scores_nvd()
-                ]
+                # Don't bail on errors building cvss scores or advisories, should never happen with the helper functions but just in case
+                try:
+                    nvd_scores = [
+                        CvssCombined.from_json(score)
+                        for nvd_record in nvd_records
+                        for score in nvd_record.get_cvss_scores_nvd()
+                    ]
+                except ValidationError:
+                    log.debug(
+                        "Ignoring error building nvd CVSS scores for %s",
+                        vuln.vulnerability_id,
+                    )
+                    nvd_scores = []
 
                 advisories = []
                 if fixed_artifact.fix_metadata:
@@ -237,13 +246,16 @@ class LegacyProvider(VulnerabilitiesProvider):
                         "VendorAdvisorySummary", []
                     )
                     if vendor_advisories:
-                        for vendor_advisory in vendor_advisories:
-                            advisory_id = vendor_advisory.get("Id")
-                            advisory_link = vendor_advisory.get("Link")
-                            if advisory_id and advisory_link:
-                                advisories.append(
-                                    VendorAdvisory(id=advisory_id, link=advisory_link)
-                                )
+                        try:
+                            advisories = [
+                                VendorAdvisory.from_json(vendor_advisory_dict)
+                                for vendor_advisory_dict in vendor_advisories
+                            ]
+                        except ValidationError:
+                            log.debug(
+                                "Ignoring error building vendor advisories for %s",
+                                vuln.vulnerability_id,
+                            )
 
                 fixed_in = vuln.fixed_in(fixed_in=fixed_artifact)
 
@@ -279,8 +291,6 @@ class LegacyProvider(VulnerabilitiesProvider):
                     )
                 )
 
-        # TODO move dedup here so api doesn't have to
-        # cpe_vuln_listing = []
         try:
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
                 all_cpe_matches = scanner.get_cpe_vulnerabilities(
@@ -299,15 +309,30 @@ class LegacyProvider(VulnerabilitiesProvider):
                             api_endpoint, vulnerability_cpe.vulnerability_id
                         )
 
-                    nvd_scores = [
-                        CvssCombined.from_json(score)
-                        for score in vulnerability_cpe.parent.get_cvss_scores_nvd()
-                    ]
+                    # Don't bail on errors building cvss scores, should never happen with the helper functions but just in case
+                    try:
+                        nvd_scores = [
+                            CvssCombined.from_json(score)
+                            for score in vulnerability_cpe.parent.get_cvss_scores_nvd()
+                        ]
+                    except ValidationError:
+                        log.debug(
+                            "Ignoring error building nvd CVSS for %s",
+                            vulnerability_cpe.vulnerability_id,
+                        )
+                        nvd_scores = []
 
-                    vendor_scores = [
-                        CvssCombined.from_json(score)
-                        for score in vulnerability_cpe.parent.get_cvss_scores_vendor()
-                    ]
+                    try:
+                        vendor_scores = [
+                            CvssCombined.from_json(score)
+                            for score in vulnerability_cpe.parent.get_cvss_scores_vendor()
+                        ]
+                    except ValidationError:
+                        log.debug(
+                            "Ignoring error building vendor CVSS scores for %s",
+                            vulnerability_cpe.vulnerability_id,
+                        )
+                        vendor_scores = []
 
                     results.append(
                         VulnerabilityMatch(
@@ -750,7 +775,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
 
 class GrypeProvider(VulnerabilitiesProvider):
-    __scanner__ = GrypeVulnScanner
+    __scanner__ = GrypeScanner
     __store__ = ImageVulnerabilitiesStore
     __config__name__ = "grype"
     __default_sync_config__ = {
