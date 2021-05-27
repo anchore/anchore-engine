@@ -85,6 +85,9 @@ def download_operation_config_factory(
     return conf
 
 
+SourceFeeds = Dict[str, Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]]]
+
+
 class DataFeeds(object):
     _proxy = None
 
@@ -287,7 +290,7 @@ class DataFeeds(object):
     def get_feed_group_information(
         feed_client: IFeedSource,
         to_sync: list = None,
-    ) -> Dict[str, Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]]]:
+    ) -> SourceFeeds:
         if not to_sync:
             return {}
 
