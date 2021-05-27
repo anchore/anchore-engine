@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 from anchore_engine.db import FeedGroupMetadata, FeedMetadata
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
@@ -83,7 +83,7 @@ class SyncUtilProvider(ABC):
     @abstractmethod
     def sync_metadata(
         self, source_feeds: SourceFeeds, operation_id: Optional[str]
-    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, BaseException]]]:
+    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]:
         """
         Wraps DataFeeds.sync_metadata so that it may be called with arguments appropriate for the provider.
 
@@ -92,7 +92,7 @@ class SyncUtilProvider(ABC):
         :param operation_id: UUID4 hexadecimal string
         :type operation_id: Optional[str]
         :return: response of DataFeeds.sync_metadata()
-        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, BaseException]]]
+        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]
         """
         ...
 
@@ -150,7 +150,7 @@ class LegacySyncUtilProvider(SyncUtilProvider):
 
     def sync_metadata(
         self, source_feeds: SourceFeeds, operation_id: Optional[str]
-    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, BaseException]]]:
+    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]:
         """
         Wraps DataFeeds.sync_metadata so that it may be called with arguments appropriate for the provider.
         In this case, we want to make sure that syncing FeedGroupMetadata is enabled for the legacy feeds.
@@ -160,7 +160,7 @@ class LegacySyncUtilProvider(SyncUtilProvider):
         :param operation_id: UUID4 hexadecimal string
         :type operation_id: Optional[str]
         :return: response of DataFeeds.sync_metadata()
-        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, BaseException]]]
+        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]
         """
         return DataFeeds.sync_metadata(source_feeds, self.to_sync, operation_id)
 
@@ -249,7 +249,7 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
 
     def sync_metadata(
         self, source_feeds: SourceFeeds, operation_id: Optional[str]
-    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, BaseException]]]:
+    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]:
         """
         Wraps DataFeeds.sync_metadata so that it may be called with arguments appropriate for the provider.
         In this case, we want to make sure that syncing FeedGroupMetadata is disabled for grypedb feed.
@@ -259,7 +259,7 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
         :param operation_id: UUID4 hexadecimal string
         :type operation_id: Optional[str]
         :return: response of DataFeeds.sync_metadata()
-        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, BaseException]]]
+        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]
         """
         return DataFeeds.sync_metadata(
             source_feeds, self.to_sync, operation_id, groups=False

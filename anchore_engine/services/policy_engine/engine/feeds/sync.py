@@ -11,7 +11,9 @@ import os
 import time
 import uuid
 from dataclasses import asdict
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Tuple, Union
+
+from sqlalchemy.orm.session import Session
 
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.common.models.schemas import (
@@ -41,6 +43,9 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     VulnDBFeed,
     VulnerabilityFeed,
     feed_instance_by_name,
+)
+from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
+    SyncUtilProvider,
 )
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.events import (
@@ -122,24 +127,40 @@ class DataFeeds(object):
     @staticmethod
     def _pivot_and_filter_feeds_by_config(
         to_sync: list, source_found: list, db_found: list
-    ):
+    ) -> Dict[str, FeedMetadata]:
         """
+        Filters FeedMetadata records to only include those that are configured
 
         :param to_sync: list of feed names requested to be synced
         :param source_found: list of feed names available as returned by the upstream source
         :param db_found: list of db records that were updated as result of upstream metadata sync (this is to handle db update failures)
-        :return:
+        :return: dict of feed names to FeedMetadata records
+        :rtype: Dict[str, FeedMetadata]
         """
         available = set(to_sync).intersection(set(source_found))
         return {x.name: x for x in db_found if x.name in available}
 
     @staticmethod
     def _sync_feed_metadata(
-        db,
-        feed_api_record,
-        db_feeds,
+        db: Session,
+        feed_api_record: Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]],
+        db_feeds: Dict[str, FeedMetadata],
         operation_id: Optional[str] = None,
     ) -> Dict[str, FeedMetadata]:
+        """
+        Add FeedMetadata records to DB if they don't already exist
+
+        :param db: database session
+        :type db: Session
+        :param feed_api_record: data from API client
+        :type feed_api_record: Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]]
+        :param db_feeds: map of feed names to FeedMetadata
+        :type db_feeds: Dict[str, FeedMetadata]
+        :param operation_id: UUID4 hexadecimal string
+        :type operation_id: Optional[str]
+        :return: map of feed names to FeedMetadata that has been updated or created in the DB
+        :rtype: Dict[str, FeedMetadata]
+        """
         api_feed = feed_api_record["meta"]
         db_feed = db_feeds.get(api_feed.name)
         # Do this instead of a db.merge() to ensure no timestamps are reset or overwritten
@@ -168,11 +189,23 @@ class DataFeeds(object):
 
     @staticmethod
     def _sync_feed_group_metadata(
-        db,
-        feed_api_record,
-        db_feeds,
+        db: Session,
+        feed_api_record: Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]],
+        db_feeds: Dict[str, FeedMetadata],
         operation_id: Optional[str] = None,
-    ):
+    ) -> None:
+        """
+        Add FeedGroupMetadata records to DB if they don't already exist
+
+        :param db: database session
+        :type db: Session
+        :param feed_api_record: data from API client
+        :type feed_api_record: Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]]
+        :param db_feeds: map of feed names to FeedMetadata tied to DB session
+        :type db_feeds: Dict[str, FeedMetadata]
+        :param operation_id: UUID4 hexadecimal string
+        :type operation_id: Optional[str]
+        """
         api_feed = feed_api_record["meta"]
         db_feed = db_feeds.get(api_feed.name)
         # Check for any update
@@ -210,19 +243,27 @@ class DataFeeds(object):
 
     @staticmethod
     def sync_metadata(
-        source_feeds,
-        to_sync: list = None,
+        source_feeds: SourceFeeds,
+        to_sync: List[str] = None,
         operation_id: Optional[str] = None,
         groups: bool = True,
-    ) -> tuple:
+    ) -> Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]]:
         """
         Get metadata from source and sync db metadata records to that (e.g. add any new groups or feeds)
         Executes as a unit-of-work for db, so will commit result and returns the records found on upstream source.
 
         If a record exists in db but was not found upstream, it is not returned
 
+        :param source_feeds: mapping containing FeedAPIRecord and FeedAPIGroupRecord
+        :type source_feeds: SourceFeeds
         :param to_sync: list of string feed names to sync metadata on
+        :type to_sync: List[str]
+        :param operation_id: UUID4 hexadecimal string
+        :type operation_id: Optional[str]
+        :param groups: whether or not to sync group metadata (defaults to True, which will sync group metadata)
+        :type groups: bool
         :return: tuple, first element: dict of names mapped to db records post-sync only including records successfully updated by upstream, second element is a list of tuples where each tuple is (failed_feed_name, error_obj)
+        :rtype: Tuple[Dict[str, FeedMetadata], List[Tuple[str, Union[str, BaseException]]]
         """
 
         if not to_sync:
@@ -289,8 +330,18 @@ class DataFeeds(object):
     @staticmethod
     def get_feed_group_information(
         feed_client: IFeedSource,
-        to_sync: list = None,
+        to_sync: List[str] = None,
     ) -> SourceFeeds:
+        """
+        Uses API client to populate a mapping.
+
+        :param feed_client: feed client to download from
+        :type feed_client: IFeedSource
+        :param to_sync: list of feed names to download
+        :type to_sync: List[str]
+        :return: mapping containing API response
+        :rtype: SourceFeeds
+        """
         if not to_sync:
             return {}
 
@@ -412,14 +463,24 @@ class DataFeeds(object):
 
     @staticmethod
     def sync(
-        sync_util_provider,
-        full_flush=False,
-        catalog_client=None,
-        operation_id=None,
+        sync_util_provider: SyncUtilProvider,
+        full_flush: bool = False,
+        catalog_client: CatalogClient = None,
+        operation_id: Optional[str] = None,
     ) -> List[FeedSyncResult]:
         """
         Sync all feeds.
-        :return:
+
+        :param sync_util_provider: provider for sync utils (switches logic for legacy / grypedb feeds)
+        :type sync_util_provider: SyncUtilProvider
+        :param full_flush: whether not not to flush out the existing records before sync
+        :type full_flush: bool
+        :param catalog_client: catalog client
+        :type catalog_client: CatalogClient
+        :param operation_id: UUID4 hexadecimal string representing this operation
+        :type operation_id: Optional[str]
+        :return: list of FeedSyncResult
+        :rtype: List[FeedSyncResult]
         """
         result = []
         to_sync = sync_util_provider.to_sync
