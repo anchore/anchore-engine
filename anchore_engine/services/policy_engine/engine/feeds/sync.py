@@ -478,7 +478,7 @@ class DataFeeds(object):
         feeds_to_sync = _ordered_feeds(feeds_to_sync)
 
         groups_to_download = sync_util_provider.get_groups_to_download(
-            source_feeds, updated, feeds_to_sync, operation_id
+            source_feeds, feeds_to_sync, operation_id
         )
 
         logger.debug("Groups to download {}".format(groups_to_download))

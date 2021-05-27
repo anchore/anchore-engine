@@ -97,7 +97,6 @@ class SyncUtilProvider(ABC):
     @staticmethod
     def get_groups_to_download(
         source_feeds: SourceFeeds,
-        updated: Dict[str, FeedMetadata],
         feeds_to_sync: List[DataFeed],
         operation_id: str,
     ) -> List[FeedGroupMetadata]:
@@ -106,8 +105,6 @@ class SyncUtilProvider(ABC):
 
         :param source_feeds: mapping containing FeedAPIRecord and FeedAPIGroupRecord
         :type source_feeds: SourceFeeds
-        :param updated: dict of names mapped to db records post-sync only including records successfully updated by upstream
-        :type updated: Dict[str, FeedMetadata]
         :param feeds_to_sync: ordered list of DataFeed(s) to sync
         :type feeds_to_sync: List[DataFeed]
         :param operation_id: UUID4 hexadecimal string
@@ -168,7 +165,6 @@ class LegacySyncUtilProvider(SyncUtilProvider):
     @staticmethod
     def get_groups_to_download(
         source_feeds: SourceFeeds,
-        updated: Dict[str, FeedMetadata],
         feeds_to_sync: List[DataFeed],
         operation_id: str,
     ) -> List[FeedGroupMetadata]:
@@ -178,8 +174,6 @@ class LegacySyncUtilProvider(SyncUtilProvider):
 
         :param source_feeds: mapping containing FeedAPIRecord and FeedAPIGroupRecord
         :type source_feeds: SourceFeeds
-        :param updated: dict of names mapped to db records post-sync only including records successfully updated by upstream
-        :type updated: Dict[str, FeedMetadata]
         :param feeds_to_sync: ordered list of DataFeed(s) to sync
         :type feeds_to_sync: List[DataFeed]
         :param operation_id: UUID4 hexadecimal string
@@ -272,26 +266,25 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
     @staticmethod
     def get_groups_to_download(
         source_feeds: SourceFeeds,
-        updated: Dict[str, FeedMetadata],
         feeds_to_sync: List[DataFeed],
         operation_id: str,
     ) -> List[FeedGroupMetadata]:
         """
         Creates a FeedGroupMetadata record that is never added to the database. We purposefully avoid adding the feed
         attribute to the record so that this record does not get created implicitly by sqlalchemy back-population.
+        Uses FeedMetadata from feeds_to_sync. Expects only one record is present for grypedb.
 
         :param source_feeds: mapping containing FeedAPIRecord and FeedAPIGroupRecord
         :type source_feeds: SourceFeeds
-        :param updated: dict of names mapped to db records post-sync only including records successfully updated by upstream
-        :type updated: Dict[str, FeedMetadata]
         :param feeds_to_sync: ordered list of DataFeed(s) to sync
         :type feeds_to_sync: List[DataFeed]
         :param operation_id: UUID4 hexadecimal string
         :type operation_id: Optional[str]
         :return:
         """
+        # TODO consider throwing exceptions if length is not 1 for these
         api_feed_group = source_feeds[GRYPE_DB_FEED_NAME]["groups"][0]
-        feed_metadata = updated[GRYPE_DB_FEED_NAME]
+        feed_metadata = feeds_to_sync[0].metadata
         group_to_download = FeedGroupMetadata(
             name=api_feed_group.name,
             feed_name=feed_metadata.name,
