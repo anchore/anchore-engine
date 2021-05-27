@@ -395,7 +395,9 @@ class GrypeWrapperSingleton(object):
             latest_grype_db_dir, grype_db_version, self.METADATA_FILE_NAME
         )
         metadata = self.read_file_to_json(metadata_file)
-        db_checksum = metadata["checksum"]
+        db_checksum = (
+            metadata["checksum"] if metadata and "checksum" in metadata else None
+        )
 
         # Write the engine metadata file in the same dir as the ret of the grype db files
         output_file = os.path.join(
@@ -648,11 +650,15 @@ class GrypeWrapperSingleton(object):
         This file contains metadata specific to grype about the current grype_db instance.
         This call can be parameterized to return either the production or staging metadata.
         """
-        return GrypeDBMetadata.to_object(
-            self._get_metadata_file_contents(
-                self.METADATA_FILE_NAME, use_staging=use_staging
-            )
+
+        db_metadata = self._get_metadata_file_contents(
+            self.METADATA_FILE_NAME, use_staging=use_staging
         )
+
+        if db_metadata:
+            return GrypeDBMetadata.to_object(db_metadata)
+        else:
+            return None
 
     def get_grype_db_engine_metadata(
         self, use_staging: bool = False
@@ -663,11 +669,14 @@ class GrypeWrapperSingleton(object):
         This call can be parameterized to return either the production or staging metadata.
         """
 
-        return GrypeDBEngineMetadata.to_object(
-            self._get_metadata_file_contents(
-                self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
-            )
+        engine_metadata = self._get_metadata_file_contents(
+            self.ENGINE_METADATA_FILE_NAME, use_staging=use_staging
         )
+
+        if engine_metadata:
+            return GrypeDBEngineMetadata.to_object(engine_metadata)
+        else:
+            return None
 
     def _get_env_variables(
         self, include_grype_db: bool = True, use_staging: bool = False
