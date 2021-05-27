@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Tuple
 from anchore_engine.db import FeedGroupMetadata, FeedMetadata
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource
 from anchore_engine.services.policy_engine.engine.feeds.client import (
+    FeedServiceClient,
+    GrypeDBServiceClient,
     get_feeds_client,
     get_grype_db_client,
 )
@@ -136,12 +138,12 @@ class LegacySyncUtilProvider(SyncUtilProvider):
             if feed_name != GRYPE_DB_FEED_NAME
         }
 
-    def get_client(self) -> IFeedSource:
+    def get_client(self) -> FeedServiceClient:
         """
         Instantiates the FeedServiceClient
 
         :return: instance of FeedServiceClient
-        :rtype: IFeedSource
+        :rtype: FeedServiceClient
         """
         sync_config = list(self._sync_configs.values())[0]
         return get_feeds_client(sync_config)
@@ -235,12 +237,12 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
             return {GRYPE_DB_FEED_NAME: grype_sync_config}
         return {}
 
-    def get_client(self) -> IFeedSource:
+    def get_client(self) -> GrypeDBServiceClient:
         """
         Instantiates the GrypeDBServiceClient
 
         :return: instance of GrypeDBServiceClient
-        :rtype: IFeedSource
+        :rtype: GrypeDBServiceClient
         """
         grype_db_sync_config = self._sync_configs.get(GRYPE_DB_FEED_NAME)
         return get_grype_db_client(grype_db_sync_config)
