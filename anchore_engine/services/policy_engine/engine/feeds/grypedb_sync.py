@@ -123,8 +123,10 @@ class GrypeDBSyncManager:
             logger.exception("GrypeDBSyncTask failed to sync")
             raise GrypeDBSyncError(str(e)) from e
 
-    @classmethod
-    def _stage_and_update_grypedb(cls, active_grypedb, grypedb_file_path):
+    @staticmethod
+    def _stage_and_update_grypedb(
+        active_grypedb: GrypeDBMetadata, grypedb_file_path: Optional[str] = None
+    ):
         # Stage the new grype_db
         engine_metadata = GrypeWrapperSingleton.get_instance().stage_grype_db_update(
             grypedb_file_path,
@@ -134,12 +136,11 @@ class GrypeDBSyncManager:
         archive_checksum = engine_metadata.archive_checksum
 
         # Verify that the checksum matches what was expected
-        # TODO Discuss what else to check here
         if archive_checksum == active_grypedb.checksum:
             # If so, Promote
             GrypeWrapperSingleton.get_instance().update_grype_db(archive_checksum)
         else:
-            # Otherwise unstage TODO: and log and retry? Need to discuss
+            # Otherwise unstage
             GrypeWrapperSingleton.get_instance().unstage_grype_db()
 
     @staticmethod

@@ -59,7 +59,7 @@ class GrypeDBMetadata:
     checksum: str
 
     @staticmethod
-    def to_object(db_metadata: {}):
+    def to_object(db_metadata: dict):
         """
         Convert a dict object into a GrypeDBMetadata
         """
@@ -73,7 +73,7 @@ class GrypeDBEngineMetadata:
     grype_db_version: str
 
     @staticmethod
-    def to_object(engine_metadata: {}):
+    def to_object(engine_metadata: dict):
         """
         Convert a dict object into a GrypeEngineMetadata
         """
@@ -154,8 +154,8 @@ class GrypeWrapperSingleton(object):
             return self._grype_db_dir_internal
 
     @_grype_db_dir.setter
-    def _grype_db_dir(self, _grype_db_dir_internal):
-        self._grype_db_dir_internal = _grype_db_dir_internal
+    def _grype_db_dir(self, grype_db_dir_internal):
+        self._grype_db_dir_internal = grype_db_dir_internal
 
     @property
     def _grype_db_version(self):
@@ -165,8 +165,8 @@ class GrypeWrapperSingleton(object):
             return self._grype_db_version_internal
 
     @_grype_db_version.setter
-    def _grype_db_version(self, _grype_db_version_internal):
-        self._grype_db_version_internal = _grype_db_version_internal
+    def _grype_db_version(self, grype_db_version_internal):
+        self._grype_db_version_internal = grype_db_version_internal
 
     @property
     def _grype_db_session_maker(self):
@@ -176,33 +176,33 @@ class GrypeWrapperSingleton(object):
             return self._grype_db_session_maker_internal
 
     @_grype_db_session_maker.setter
-    def _grype_db_session_maker(self, _grype_db_session_maker_internal):
-        self._grype_db_session_maker_internal = _grype_db_session_maker_internal
+    def _grype_db_session_maker(self, grype_db_session_maker_internal):
+        self._grype_db_session_maker_internal = grype_db_session_maker_internal
 
     @property
     def _staging_grype_db_dir(self):
         return self._staging_grype_db_dir_internal
 
     @_staging_grype_db_dir.setter
-    def _staging_grype_db_dir(self, _staging_grype_db_dir_internal):
-        self._staging_grype_db_dir_internal = _staging_grype_db_dir_internal
+    def _staging_grype_db_dir(self, staging_grype_db_dir_internal):
+        self._staging_grype_db_dir_internal = staging_grype_db_dir_internal
 
     @property
     def _staging_grype_db_version(self):
         return self._staging_grype_db_version_internal
 
     @_staging_grype_db_version.setter
-    def _staging_grype_db_version(self, _staging_grype_db_version_internal):
-        self._staging_grype_db_version_internal = _staging_grype_db_version_internal
+    def _staging_grype_db_version(self, staging_grype_db_version_internal):
+        self._staging_grype_db_version_internal = staging_grype_db_version_internal
 
     @property
     def _staging_grype_db_session_maker(self):
         return self._staging_grype_db_session_maker_internal
 
     @_staging_grype_db_session_maker.setter
-    def _staging_grype_db_session_maker(self, _staging_grype_db_session_maker_internal):
+    def _staging_grype_db_session_maker(self, staging_grype_db_session_maker_internal):
         self._staging_grype_db_session_maker_internal = (
-            _staging_grype_db_session_maker_internal
+            staging_grype_db_session_maker_internal
         )
 
     @contextmanager
@@ -263,7 +263,7 @@ class GrypeWrapperSingleton(object):
             session.close()
 
     @staticmethod
-    def read_file_to_json(file_path):
+    def read_file_to_json(file_path: str) -> json:
         """
         Static helper function that accepts a file path, ensures it exists, and then reads the contents as json.
         This logs an error and returns None if the file does not exist or cannot be parsed into json, otherwise
@@ -529,9 +529,9 @@ class GrypeWrapperSingleton(object):
         grype_db_version: str,
     ):
         """
-        Stage an update to grype_db, using Update the installed grype db with the provided archive file, archive
-        checksum, and grype db version. Returns the engine metadata for upstream validation. This method has no
-        impact on the currently-in-use version of grype_db from the last sync.
+        Stage an update to grype_db, using the provided archive file, archive checksum, and grype db version.
+        Returns the engine metadata for upstream validation. This method has no impact on the currently-in-use
+        version of grype_db from the last sync.
         """
 
         logger.info(
@@ -575,7 +575,7 @@ class GrypeWrapperSingleton(object):
             )
             return None
 
-    def update_grype_db(self, archive_checksum: str):
+    def update_grype_db(self, archive_checksum: str) -> GrypeDBEngineMetadata:
         """
         Checks to ensure a new grype_db has been staged, and raises a ValueError if it has not. Otherwise
         this promotes the staged grype_db to the production grype_db, and unstages the previously-staged
