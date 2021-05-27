@@ -10,6 +10,7 @@ from anchore_engine.clients.grype_wrapper import (
     GrypeDBEngineMetadata,
     GrypeDBMetadata,
     GrypeWrapperSingleton,
+    RecordSource,
 )
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
@@ -958,26 +959,89 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         )
         db.add(self.grypedb_meta)
 
-    def _process_group_file_records(
+    @staticmethod
+    def _run_grypedb_sync_task(
+        db: Session, checksum: str, grype_db_data: bytes
+    ) -> None:
+        """
+        Write the Grype DB to a tar.gz in a temporary directory and pass to GrypeDBSyncManager.
+        The GrypeDBSyncManager updates the working copy of GrypeDB on this instance of policy engine.
+
+        :param checksum: grype DB file checksum
+        :type checksum: str
+        :param grype_db_data: raw tar.gz file data
+        :type grype_db_data: bytes
+        """
+        with GrypeDBStorage() as grypedb_file:
+            with grypedb_file.create_file(checksum) as f:
+                f.write(grype_db_data)
+            GrypeDBSyncManager.run_grypedb_sync(db, grypedb_file.path)
+
+    def _set_group_counts(self, db, source_counts: List[RecordSource]) -> None:
+        """
+        Uses grype wrapper to query the source counts in the grypedb
+        casts these source counts to FeedGroupMetadata and saves it to GrypeDBFeedMetadata groups column
+        certain timestamps like the last_sync are not set in this process the first time around because it has not yet
+        been set on the GrypeDBFeedMetadata object
+        """
+        groups = []
+
+        for source in source_counts:
+            logger.debug(
+                "Adding group %s consisting of %d vulns to GrypeDBFeedMetadata record",
+                source.group,
+                source.count,
+            )
+            groups.append(
+                FeedGroupMetadata(
+                    name=source.group,
+                    feed_name=self.__feed_name__,
+                    description="Upstream source of grype db vulnerability",
+                    access_tier=0,
+                    last_sync=self.grypedb_meta.synced_at,
+                    created_at=self.grypedb_meta.created_at,
+                    last_update=self.grypedb_meta.last_updated,
+                    enabled=True,
+                    count=source.count,
+                ).to_json()
+            )
+
+        self.grypedb_meta.groups = groups
+        db.flush()
+
+    def _update_group_timestamps(self, db):
+        """
+        Updates the tiemstamps
+        """
+        groups = [FeedGroupMetadata(**group) for group in self.grypedb_meta.groups]
+
+        for group in groups:
+            group.last_sync = self.grypedb_meta.synced_at
+            group.last_update = self.grypedb_meta.last_updated
+
+        groups = [group.to_json() for group in groups]
+        self.grypedb_meta.groups = groups
+
+        db.flush()
+
+    def _process_grype_file_records(
         self,
         db: Session,
         group_download_result: GroupDownloadResult,
         local_repo: Optional[LocalFeedDataRepo],
-    ) -> int:
+    ) -> bool:
         """
         Convert the download results for Grype DB into database records and write to the database session.
-        While transactions are batched by the integer specified in AnchoreServiceFeed.RECORDS_PER_CHUNK, we are only
-        expecting a single Grype DB file to be downloaded at any one point in time, so there should only be one
-        transaction. The transaction can be rolled back in _sync_group() if an exception is encountered.
+        Returns true or false based upon whether downloaded db is new or not
         :param db: sqlalchemy database session
         :type db: Session
         :param group_download_result: group download result record to update
         :type group_download_result: GroupDownloadResult
         :param local_repo: LocalFeedDataRepo (disk cache for download results)
         :type local_repo: Optional[LocalFeedDataRepo], defaults to None
-        :return: int
-        :rtype: total number of records updated
+        :return: True if new grypedb, false if existing one
         """
+        is_new = False
         total_records_updated = 0
         for record in local_repo.read_files(
             group_download_result.feed, group_download_result.group
@@ -997,6 +1061,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                     with grypedb_file.create_file(checksum) as f:
                         f.write(record.data)
                     logger.info("Staging new Grype DB file for update.")
+
                     # Call grype-wrapper to stage a db update. Wrapper responds with object containing archive and db checksums.
                     engine_metadata = (
                         GrypeWrapperSingleton.get_instance().stage_grype_db_update(
@@ -1010,7 +1075,18 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                             use_staging=True
                         )
                     )
+
+                    # get source counts on grypedb syncing for use upstream. Raise error if it fails
+                    self.source_counts = (
+                        GrypeWrapperSingleton.get_instance().query_record_source_counts(
+                            use_staging=True
+                        )
+                    )
+                    if not self.source_counts:
+                        raise GrypeDBStagingFailure(engine_metadata, db_metadata)
+
                     GrypeWrapperSingleton.get_instance().unstage_grype_db()
+
                     if engine_metadata and db_metadata:
                         logger.info(
                             "Staging Grype DB was successful. Switching active Grype DB file to new DB."
@@ -1020,6 +1096,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                         self._switch_active_grypedb(
                             db, record, engine_metadata, db_metadata
                         )
+                        is_new = True
                         # Changes are unstaged to allow GrypeDBSyncTask to control swapping of working copy.
                         # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
                         # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
@@ -1065,16 +1142,16 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                 )
             )
 
-        return total_records_updated
+        return is_new
 
-    def _sync_group(
+    def _sync_grype_groups(
         self,
         group_download_result: GroupDownloadResult,
         full_flush=False,
         local_repo=None,
-    ) -> GroupSyncResult:
+    ) -> List[GroupSyncResult]:
         """
-        Sync data from a single group and return the data. Transactions are batched.
+        Sync data from download file and update group data
 
         :param group_download_result: group download result record to update
         :type group_download_result: GroupDownloadResult
@@ -1085,7 +1162,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         :return: GroupSyncResult as a dict
         :rtype: dict
         """
-        result = GroupSyncResult(group=group_download_result.group)
+        results = []
 
         db = get_session()
 
@@ -1111,17 +1188,28 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                     % group_download_result.total_records,
                 )
             )
-            result.updated_record_count = self._process_group_file_records(
+            is_new = self._process_grype_file_records(
                 db, group_download_result, local_repo
             )
-            # db = get_session()
 
             logger.debug(
                 self._log_context.format_msg(
                     "Updating last sync timestamp to %s" % download_started,
                 )
             )
-            # There is potential failures that could happen when downloading,
+
+            # process group logic for grype db if it is a new record. Set on metadata record if it is a new record
+            # If not new, use grype wrapper to get source counts for existing db
+            if is_new:
+                source_counts = self.source_counts
+                self._set_group_counts(db, source_counts)
+            else:
+                source_counts = (
+                    GrypeWrapperSingleton.get_instance().query_record_source_counts()
+                )
+
+            db.commit()
+            # There is potential failure-s that could happen when downloading,
             # skipping updating the `last_sync` allows the system to retry
             # if group_download_result.status == "complete":
             #     group_db_obj.last_sync = download_started
@@ -1139,7 +1227,21 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             raise e
         finally:
             sync_time = time.time() - sync_started
-            result.total_time_seconds = time.time() - download_started.timestamp()
+            total_time_seconds = time.time() - download_started.timestamp()
+            for source in source_counts:
+                if is_new:
+                    updated_count = source.count
+                else:
+                    updated_count = 0
+
+                results.append(
+                    GroupSyncResult(
+                        group=source.group,
+                        updated_record_count=updated_count,
+                        total_time_seconds=total_time_seconds,
+                        status="success",
+                    )
+                )
             logger.info(
                 self._log_context.format_msg(
                     "Sync to db duration: %d sec" % sync_time,
@@ -1147,13 +1249,13 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             )
             logger.info(
                 self._log_context.format_msg(
-                    "Total sync, including download, duration: %d sec"
-                    % result.total_time_seconds,
+                    "Total sync, including download, duration: {} sec".format(
+                        total_time_seconds
+                    ),
                 )
             )
 
-        result.status = "success"
-        return result
+        return results
 
     def _update_last_full_sync_timestamp(self) -> None:
         """
@@ -1172,6 +1274,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                 raise ValueError("Grype DB Meta not found")
 
             self.grypedb_meta.synced_at = last_sync
+            self._update_group_timestamps(db)
             db.commit()
         finally:
             db.rollback()
@@ -1235,12 +1338,12 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             )
 
             try:
-                new_data = self._sync_group(
+                new_data = self._sync_grype_groups(
                     group_download_result,
                     full_flush=full_flush,
                     local_repo=fetched_data,
                 )  # Each group sync is a transaction
-                result.groups.append(new_data)
+                result.groups.extend(new_data)
             except Exception:
                 logger.exception(
                     self._log_context.format_msg(

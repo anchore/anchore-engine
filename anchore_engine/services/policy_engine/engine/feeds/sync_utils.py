@@ -17,6 +17,8 @@ from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     DataFeed,
+    FeedSyncResult,
+    GroupSyncResult,
     GrypeDBFeed,
 )
 from anchore_engine.subsys import logger
@@ -309,6 +311,7 @@ class SyncUtilProvider(ABC):
         ...
 
     @staticmethod
+    @abstractmethod
     def get_groups_to_download(
         source_feeds: Dict[
             str, Dict[str, Union[FeedAPIRecord, List[FeedAPIGroupRecord]]]
@@ -325,6 +328,37 @@ class SyncUtilProvider(ABC):
         :type feeds_to_sync: List[DataFeed]
         :param operation_id: UUID4 hexadecimal string
         :type operation_id: Optional[str]
+        :return:
+        """
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def retrieve_group_result(
+        feed_sync_results: List[FeedSyncResult], group_metadata: FeedGroupMetadata
+    ) -> GroupSyncResult:
+        """
+        Abstract method for getting the group result used in DataFeeds.sync
+
+        :param feed_sync_results: result of sync_from_fetched call on DataFeed object
+        :type feed_sync_results: List[FeedSyncResult]
+        :param group_metadata: metadata of group beign synced
+        :type group_metadata: FeedGroupMetadata
+        :return: GroupSyncResult
+        :rtype: GroupSyncResult
+        """
+        ...
+
+    @staticmethod
+    @abstractmethod
+    def update_feed_result(
+        feed_result: FeedSyncResult,
+        sync_results: List[FeedSyncResult],
+        group_result: GroupSyncResult,
+    ) -> None:
+        """
+        Abstract method for updating the response object on feed sync
+
         :return:
         """
         ...
@@ -435,6 +469,44 @@ class LegacySyncUtilProvider(SyncUtilProvider):
                 )
         return groups_to_download
 
+    @staticmethod
+    def retrieve_group_result(
+        feed_sync_results: List[FeedSyncResult], group_metadata: FeedGroupMetadata
+    ) -> GroupSyncResult:
+        """
+        Legacy method for getting the group result used in DataFeeds.sync.
+        Since caller is looping over groups and syncing each one individually, this returns the first index in the array
+
+        :param feed_sync_results: result of sync_from_fetched call on DataFeed object
+        :type feed_sync_results: List[FeedSyncResult]
+        :param group_metadata: metadata of group beign synced
+        :type group_metadata: FeedGroupMetadata
+        :return: GroupSyncResult
+        :rtype: GroupSyncResult
+        """
+        if not feed_sync_results:
+            raise ValueError("Invalid result list")
+
+        groups = feed_sync_results[0].groups
+        if groups:
+            return groups[0]
+        else:
+            raise ValueError("No groups in result set. Expected 1")
+
+    @staticmethod
+    def update_feed_result(
+        feed_result: FeedSyncResult,
+        sync_results: List[FeedSyncResult],
+        group_result: GroupSyncResult,
+    ) -> None:
+        """
+        Legacy function for updating the response. Updates the response with a singular group
+
+        :return:
+        """
+
+        feed_result.groups.append(group_result)
+
 
 class GrypeDBSyncUtilProvider(SyncUtilProvider):
     """
@@ -530,3 +602,51 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
                 feed_metadata.name,
             )
         return groups_to_download
+
+    @staticmethod
+    def retrieve_group_result(
+        feed_sync_results: List[FeedSyncResult], group_metadata: FeedGroupMetadata
+    ) -> GroupSyncResult:
+        """
+        Grype method oif retrieving group results from results of sync_from_fetched.
+        This is used for event notification and logging, not necessarily for response to api call or async task
+        Because of this, it returns the singular group used to manage the sync of GrypeDB
+
+        :param feed_sync_results: result of sync_from_fetched call on DataFeed object
+        :type feed_sync_results: List[FeedSyncResult]
+        :param group_metadata: metadata of group beign synced
+        :type group_metadata: FeedGroupMetadata
+        :return: GroupSyncResult
+        :rtype: GroupSyncResult
+        """
+        if not feed_sync_results:
+            raise ValueError("Invalid result list")
+        groups = feed_sync_results[0].groups
+        if groups:
+            first_group = groups[0]
+            return GroupSyncResult(
+                group=group_metadata.name,
+                status="success",
+                total_time_seconds=first_group.total_time_seconds,
+                updated_record_count=1,
+                updated_image_count=0,
+            )
+        else:
+            raise ValueError("No groups in result set. Expected 1")
+
+    @staticmethod
+    def update_feed_result(
+        feed_result: FeedSyncResult,
+        sync_results: List[FeedSyncResult],
+        group_result: GroupSyncResult,
+    ) -> None:
+        """
+        Grype function for updating response.
+        Pulls all the groups from the feed result and sets that to the feeds response
+
+        :return:
+        """
+        if not sync_results:
+            raise ValueError("Invalid result list")
+        sync_result = sync_results[0]
+        feed_result.groups = sync_result.groups

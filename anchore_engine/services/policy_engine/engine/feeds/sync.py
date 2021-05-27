@@ -404,7 +404,9 @@ class DataFeeds(object):
                             )
 
                             # Extract the single group record...
-                            group_result = _get_group_result(f_result)
+                            group_result = sync_util_provider.retrieve_group_result(
+                                f_result, g
+                            )
 
                             logger.info(
                                 "DB Sync complete (feed={}, group={}, operation_id={})".format(
@@ -435,7 +437,9 @@ class DataFeeds(object):
                                     operation_id=operation_id,
                                 )
 
-                            feed_result.groups.append(group_result)
+                            sync_util_provider.update_feed_result(
+                                feed_result, f_result, group_result
+                            )
 
                         except Exception as e:
                             logger.error(
@@ -515,17 +519,6 @@ class DataFeeds(object):
             raise KeyError(feed_name)
 
         return f.flush_all()
-
-
-def _get_group_result(feed_result: List[FeedSyncResult]) -> GroupSyncResult:
-    if not feed_result:
-        raise ValueError("Invalid result list")
-
-    groups = feed_result[0].groups
-    if groups:
-        return groups[0]
-    else:
-        raise ValueError("No groups in result set. Expected 1")
 
 
 def _ordered_feeds(feeds: list):

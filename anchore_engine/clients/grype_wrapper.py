@@ -863,7 +863,7 @@ class GrypeWrapperSingleton(object):
 
                 # Get the timestamp from the current metadata file
                 last_synced = None
-                if db_metadata := self.get_grype_db_metadata():
+                if db_metadata := self.get_grype_db_metadata(use_staging):
                     last_synced = db_metadata.built
 
                 # Transform the results along with the last_synced timestamp for each result

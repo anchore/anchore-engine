@@ -23,7 +23,7 @@ def read_expected_content(module_path, filename):
     Loads expected vulnerability response json for a given image_digest
     :param filename: name of file from which to load response
     :type filename: str
-    :return: expected vulnerability response json
+    :return: expected vulnerability response jsonanchore_engine/services/policy_engine/engine/feeds/feeds.py
     :rtype: Dict
     """
     module_filename_with_extension = path.basename(module_path)
