@@ -125,7 +125,7 @@ class GrypeDBSyncManager:
 
     @staticmethod
     def _stage_and_update_grypedb(
-        active_grypedb: GrypeDBMetadata, grypedb_file_path: Optional[str] = None
+        active_grypedb: GrypeDBFeedMetadata, grypedb_file_path: Optional[str] = None
     ):
         # Stage the new grype_db
         engine_metadata = GrypeWrapperSingleton.get_instance().stage_grype_db_update(
