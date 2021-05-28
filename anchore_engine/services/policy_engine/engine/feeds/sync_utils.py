@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 from sqlalchemy.orm.session import Session
 
-from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
+from anchore_engine.common.models.schemas import FeedAPIGroupRecord, FeedAPIRecord
 from anchore_engine.db import FeedGroupMetadata, FeedMetadata
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.feeds import IFeedSource

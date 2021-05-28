@@ -14,7 +14,7 @@ from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.common.models.schemas import (
     FeedAPIGroupRecord,
     FeedAPIRecord,
-    GrypeDBListing
+    GrypeDBListing,
 )
 from anchore_engine.services.policy_engine.engine.feeds import (
     FeedGroupList,
