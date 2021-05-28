@@ -505,7 +505,7 @@ class GrypeDBServiceClient(IFeedSource):
         :return: Grype DB listing.json
         :rtype: Dict[str, Union[int, str]
         """
-        logger.info("Downloading grypedb listing.json from {}".format(self.feed_url))
+        logger.info("Downloading grypedb listing.json from %s", self.feed_url)
         listing_response = self.http_client.execute_request(
             requests.get, self.feed_url, retries=self.RETRY_COUNT
         )
@@ -517,7 +517,7 @@ class GrypeDBServiceClient(IFeedSource):
         if not available_dbs:
             raise GrypeDBUnavailable(required_grype_db_version)
         raw_db_listing = available_dbs[0]
-        logger.info("Found relevant grypedb listing: {}".format(raw_db_listing))
+        logger.info("Found relevant grypedb listing: %s", raw_db_listing)
         return raw_db_listing
 
     def list_feed_groups(self, feed: str) -> FeedGroupList:
@@ -574,7 +574,7 @@ class GrypeDBServiceClient(IFeedSource):
         """
         grype_db_listing = self._list_feed_groups()
         grype_db_url = grype_db_listing["url"]
-        logger.info("Downloading grypedb {}".format(grype_db_url))
+        logger.info("Downloading grypedb %s", grype_db_url)
         grype_db_download_response = self.http_client.execute_request(
             requests.get, grype_db_url, retries=self.RETRY_COUNT
         )
@@ -619,7 +619,7 @@ class GrypeDBServiceClient(IFeedSource):
                 },
             )
         except (HTTPStatusException, json.JSONDecodeError, UnicodeDecodeError) as e:
-            logger.debug("Error executing grype DB data download: {}".format(e))
+            logger.debug("Error executing grype DB data download: %s", e)
             raise e
 
 
@@ -664,11 +664,10 @@ def get_grype_db_client(sync_config: SyncConfig) -> GrypeDBServiceClient:
     """
 
     logger.debug(
-        "Initializing a grype db client: url={}, conn_timeout={}, read_timeout={}".format(
-            sync_config.url,
-            sync_config.connection_timeout_seconds,
-            sync_config.read_timeout_seconds,
-        )
+        "Initializing a grype db client: url=%s, conn_timeout=%d, read_timeout=%d",
+        sync_config.url,
+        sync_config.connection_timeout_seconds,
+        sync_config.read_timeout_seconds,
     )
 
     return GrypeDBServiceClient(
