@@ -10,7 +10,7 @@ import uuid
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.configuration import localconfig
 from anchore_engine.db.entities.policy_engine import ImageCpe, Image
-from anchore_engine.services.policy_engine.api.models import (
+from anchore_engine.common.models.policy_engine import (
     ImageVulnerabilitiesReport,
     VulnerabilitiesReportMetadata,
     VulnerabilityScanProblem,

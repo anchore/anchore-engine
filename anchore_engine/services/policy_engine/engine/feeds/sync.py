@@ -14,7 +14,7 @@ from dataclasses import asdict
 from typing import List, Optional
 
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.common.schemas import (
+from anchore_engine.common.models.schemas import (
     DownloadOperationConfiguration,
     GroupDownloadOperationConfiguration,
     GroupDownloadOperationParams,

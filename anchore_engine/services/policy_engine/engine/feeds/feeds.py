@@ -9,7 +9,7 @@ from sqlalchemy.orm.session import Session
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
-from anchore_engine.common.schemas import GroupDownloadResult
+from anchore_engine.common.models.schemas import GroupDownloadResult
 from anchore_engine.db import (
     CpeV2Vulnerability,
     CpeVulnerability,

@@ -5,7 +5,7 @@ import time
 
 import pkg_resources
 
-from anchore_engine.common.schemas import (
+from anchore_engine.common.models.schemas import (
     QueueMessage,
     AnalysisQueueMessage,
     ImportQueueMessage,

@@ -1,4 +1,4 @@
-from anchore_engine.services.policy_engine.api.models import (
+from anchore_engine.common.models.policy_engine import (
     FixedArtifact,
     VulnerabilityMatch,
 )

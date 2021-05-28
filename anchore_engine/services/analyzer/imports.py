@@ -4,7 +4,7 @@ import time
 
 from .tasks import WorkerTask
 from anchore_engine.subsys import logger
-from anchore_engine.common.schemas import (
+from anchore_engine.common.models.schemas import (
     InternalImportManifest,
     ImportQueueMessage,
     ValidationError,

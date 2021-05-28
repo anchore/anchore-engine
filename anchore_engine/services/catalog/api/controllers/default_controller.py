@@ -15,7 +15,7 @@ from anchore_engine.services.catalog import archiver, CatalogService
 from anchore_engine.services.catalog.archiver import ImageConflict
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.common.schemas import ImportManifest
+from anchore_engine.common.models.schemas import ImportManifest
 from anchore_engine.apis.exceptions import (
     AnchoreApiError,
     BadRequest,
