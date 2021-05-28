@@ -1047,19 +1047,15 @@ def analyze_image(
             rc = anchore_engine.clients.skopeo_wrapper.copy_image_from_docker_archive(
                 image_source_meta, staging_dirs["copydir"]
             )
-
-            manifest = get_manifest_from_staging(staging_dirs)
-
-        manifest_data = json.loads(manifest)
-
-        if image_source != "docker-archive":
+        else:
             rc = retrying_pull_image(
                 staging_dirs,
                 pullstring,
                 registry_creds=registry_creds,
-                manifest=manifest,
-                parent_manifest=parent_manifest,
             )
+
+        manifest = get_manifest_from_staging(staging_dirs)
+        manifest_data = json.loads(manifest)
 
         if manifest_data["schemaVersion"] == 1:
             (
