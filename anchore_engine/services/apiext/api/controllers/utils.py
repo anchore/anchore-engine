@@ -12,6 +12,7 @@ import re
 
 import anchore_engine.common
 from anchore_engine.apis.exceptions import BadRequest
+from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
 from anchore_engine.utils import parse_dockerimage_string
 from anchore_engine.subsys import logger
 from anchore_engine.common import nonos_package_types
@@ -302,48 +303,38 @@ def make_cvss_scores(metrics):
 
 
 def make_response_vulnerability_report(vulnerability_type, vulnerability_report):
-
     os_vulns = []
     non_os_vulns = []
 
-    vuln_matches = vulnerability_report.get("results", [])
+    # Convert the response from json to the model type
+    image_vulnerabilities = ImageVulnerabilitiesReport.from_json(vulnerability_report)
 
-    for vuln_match in vuln_matches:
-        vulnerability_dict = vuln_match.get("vulnerability", {})
-        artifact_dict = vuln_match.get("artifact", {})
-        fix_dict = vuln_match.get("fix", {})
-        fix_versions = (
-            [item for item in fix_dict.get("versions", []) if item and item != "None"]
-            if fix_dict
-            else []
-        )
-        fixed_in_version = ", ".join(fix_versions) if fix_versions else "None"
-
-        if not vulnerability_dict or not artifact_dict:
+    for result in image_vulnerabilities.results:
+        if not result.vulnerability or not result.artifact:
             logger.warn(
                 "Missing vulnerability and artifact data in match record, skipping"
             )
             continue
 
         record = {
-            "vuln": vulnerability_dict["vulnerability_id"],
-            "severity": vulnerability_dict["severity"],
-            "url": vulnerability_dict["link"],
-            "fix": fixed_in_version,
-            "package": "{}-{}".format(artifact_dict["name"], artifact_dict["version"]),
-            "package_name": artifact_dict["name"],
-            "package_version": artifact_dict["version"],
-            "package_type": artifact_dict["pkg_type"],
-            "package_cpe": artifact_dict["cpe"],
-            "package_cpe23": artifact_dict["cpe23"],
-            "package_path": artifact_dict["pkg_path"],
-            "feed": vulnerability_dict["feed"],
-            "feed_group": vulnerability_dict["feed_group"],
-            "nvd_data": vulnerability_dict["cvss_scores_nvd"],
-            "vendor_data": vulnerability_dict["cvss_scores_vendor"],
+            "vuln": result.vulnerability.vulnerability_id,
+            "severity": result.vulnerability.severity,
+            "url": result.vulnerability.link,
+            "fix": ",".join(result.fix.versions) if result.fix.versions else None,
+            "package": "{}-{}".format(result.artifact.name, result.artifact.version),
+            "package_name": result.artifact.name,
+            "package_version": result.artifact.version,
+            "package_type": result.artifact.pkg_type,
+            "package_cpe": result.artifact.cpe,
+            "package_cpe23": result.artifact.cpe23,
+            "package_path": result.artifact.pkg_path,
+            "feed": result.vulnerability.feed,
+            "feed_group": result.vulnerability.feed_group,
+            "nvd_data": result.vulnerability.cvss_scores_nvd,
+            "vendor_data": result.vulnerability.cvss_scores_vendor,
         }
 
-        if artifact_dict["pkg_type"] in nonos_package_types:
+        if result.artifact.pkg_type in nonos_package_types:
             non_os_vulns.append(record)
         else:
             os_vulns.append(record)
