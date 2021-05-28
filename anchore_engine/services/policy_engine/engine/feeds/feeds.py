@@ -830,7 +830,8 @@ class GrypeDBFeed(DataFeed):
                 errors.append((result.id, err))
         if len(errors) > 0:
             logger.error(
-                f"Failed to create/enqueue {len(errors)}/{len(image_ids)} refresh tasks."
+                f"Failed to create/enqueue %d/%d refresh tasks.",
+                (len(errors), len(image_ids)),
             )
             raise RefreshTaskCreationError(errors)
 
@@ -955,11 +956,9 @@ class GrypeDBFeed(DataFeed):
                 total_records_updated += 1
                 logger.info(
                     self._log_context.format_msg(
-                        "DB Update Progress: {}/{}".format(
-                            total_records_updated,
-                            group_download_result.total_records,
-                        ),
-                    )
+                        "DB Update Progress: %d/%d"
+                        % (total_records_updated, group_download_result.total_records)
+                    ),
                 )
             else:
                 # If checksum already exists and  updating, assign to instance variable so timestamps can be updated
@@ -968,7 +967,8 @@ class GrypeDBFeed(DataFeed):
             db.commit()
             logger.info(
                 self._log_context.format_msg(
-                    "DB Update Complete, Progress: {}/{}".format(
+                    "DB Update Complete, Progress: %d/%d"
+                    % (
                         total_records_updated,
                         group_download_result.total_records,
                     ),
@@ -1022,9 +1022,8 @@ class GrypeDBFeed(DataFeed):
 
             logger.info(
                 self._log_context.format_msg(
-                    "Syncing {} total update records into db".format(
-                        group_download_result.total_records
-                    ),
+                    "Syncing %d total update records into db"
+                    % group_download_result.total_records,
                 )
             )
             result.updated_record_count = self._process_group_file_records(
@@ -1034,7 +1033,7 @@ class GrypeDBFeed(DataFeed):
 
             logger.debug(
                 self._log_context.format_msg(
-                    "Updating last sync timestamp to {}".format(download_started),
+                    "Updating last sync timestamp to %s" % download_started,
                 )
             )
             # There is potential failures that could happen when downloading,
@@ -1058,14 +1057,13 @@ class GrypeDBFeed(DataFeed):
             result.total_time_seconds = time.time() - download_started.timestamp()
             logger.info(
                 self._log_context.format_msg(
-                    "Sync to db duration: {} sec".format(sync_time),
+                    "Sync to db duration: %d sec" % sync_time,
                 )
             )
             logger.info(
                 self._log_context.format_msg(
-                    "Total sync, including download, duration: {} sec".format(
-                        result.total_time_seconds
-                    ),
+                    "Total sync, including download, duration: %d sec"
+                    % result.total_time_seconds,
                 )
             )
 
