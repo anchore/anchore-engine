@@ -36,17 +36,17 @@ class VulnerabilityIdentity:
         """
         Returns a list of identities from nvd references if available or a single identity with the vulnerability ID otherwise
         """
-        if vuln_match.vulnerability.cvss_scores_nvd:
+        if vuln_match.nvd:
             # generate identity tuples using the nvd refs
             results = [
                 VulnerabilityIdentity(
-                    vuln_id=nvd_score.id,
+                    vuln_id=nvd_ref.vulnerability_id,
                     pkg_name=vuln_match.artifact.name,
                     pkg_version=vuln_match.artifact.version,
                     pkg_type=vuln_match.artifact.pkg_type,
-                    pkg_path=vuln_match.artifact.pkg_path,
+                    pkg_path=vuln_match.artifact.location,
                 )
-                for nvd_score in vuln_match.vulnerability.cvss_scores_nvd
+                for nvd_ref in vuln_match.nvd
             ]
         else:
             # no nvd refs, generate the identity tuple using the vulnerability id
@@ -56,7 +56,7 @@ class VulnerabilityIdentity:
                     pkg_name=vuln_match.artifact.name,
                     pkg_version=vuln_match.artifact.version,
                     pkg_type=vuln_match.artifact.pkg_type,
-                    pkg_path=vuln_match.artifact.pkg_path,
+                    pkg_path=vuln_match.artifact.location,
                 )
             ]
 
@@ -87,7 +87,7 @@ class RankedVulnerabilityMatch:
             pkg_name=match.artifact.name,
             pkg_version=match.artifact.version,
             pkg_type=match.artifact.pkg_type,
-            pkg_path=match.artifact.pkg_path,
+            pkg_path=match.artifact.location,
             rank=rank_strategy.get(match.vulnerability.feed_group),
             match_obj=match,
         )

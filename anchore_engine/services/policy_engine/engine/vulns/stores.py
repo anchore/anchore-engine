@@ -4,6 +4,10 @@ from typing import Dict
 import retrying
 
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
+from anchore_engine.db.db_grype_db_feed_metadata import (
+    get_most_recent_active_grypedb,
+    NoActiveGrypeDB,
+)
 from anchore_engine.db import (
     Image,
     get_thread_scoped_session as get_session,
@@ -36,58 +40,42 @@ class GrypeDBKey:
 
     This key is based only on Grype DB details of the generated report.
 
-    To override the behaviour simply create a new key class and assign ImageVulnerabilitiesStore.__report_key_class__
+    To swap key implementation create a new key class with get_report_status() and assign the class to
+    ImageVulnerabilitiesStore.__report_key_class__
     to the new class
     """
 
-    def __init__(self, db_checksum=None):
-        self.db_checksum = db_checksum
-        # self.version
-        # self.db_version
-
-    @classmethod
-    def from_db(cls, report_key: Dict):
-        db_checksum = report_key.get("db_checksum") if report_key else None
-        if db_checksum:
-            return GrypeDBKey(db_checksum=db_checksum)
-        else:
-            raise ValueError(
-                "Invalid or unexpected report_key format {}".format(report_key)
-            )
-
     @classmethod
     def from_report(cls, report: ImageVulnerabilitiesReport):
-        # TODO  update this to checksum in the report after grype makes it available
-        db_checksum = (
-            GrypeWrapperSingleton.get_instance().get_current_grype_db_checksum()
+        return report.metadata.generated_by.get("db_checksum")
+
+    def get_report_status(self, db_report: DbImageVulnerabilities, session):
+        log.debug(
+            "Get report status by comparing grype-db checksums of the report and active-db"
         )
-        return GrypeDBKey(db_checksum=db_checksum)
-
-    def to_dict(self):
-        return self.__dict__
-
-    def get_report_status(self, report_key: Dict):
-        try:
-            report_db_checksum = self.from_db(report_key).db_checksum
-        except ValueError:
-            report_db_checksum = None
+        report_db_checksum = db_report.report_key
 
         if report_db_checksum:
             # try getting the current active db checksum
             try:
-                # TODO  update this to active grypedb lookup after db checksum is available
-                active_db_checksum = (
-                    GrypeWrapperSingleton.get_instance().get_current_grype_db_checksum()
-                )
-            except:
+                active_db = get_most_recent_active_grypedb(session)
+                active_db_checksum = active_db.metadata_checksum
+            except NoActiveGrypeDB:
                 active_db_checksum = None
 
+            log.debug(
+                "grype-db checksums report=%s, active=%s",
+                report_db_checksum,
+                active_db_checksum,
+            )
+
+            # compare report's checksum with active record in the system
             if active_db_checksum and active_db_checksum == report_db_checksum:
                 status = Status.valid
             else:
-                # active db checksum is invalid or doesn't match report's db checksum
                 status = Status.stale
         else:
+            log.debug("Report checksum not found, marking this report invalid")
             # report's db checksum can't be parsed, something is really weird. invalidate the report
             status = Status.invalid
 
@@ -120,7 +108,7 @@ class ImageVulnerabilitiesStore:
             data = db_record.result.get("result")
 
             return data, self.__report_key_class__().get_report_status(
-                db_record.report_key
+                db_record, session
             )
         else:
             return None, None
@@ -172,7 +160,7 @@ class ImageVulnerabilitiesStore:
         db_record = DbImageVulnerabilities()
         db_record.account_id = self.image.user_id
         db_record.image_digest = self.image.digest
-        db_record.report_key = self.__report_key_class__.from_report(report).to_dict()
+        db_record.report_key = self.__report_key_class__.from_report(report)
 
         # save it to db instead of object storage to be able to execute other queries over the data
         db_record.add_raw_result(report.to_json())
