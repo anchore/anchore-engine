@@ -2,12 +2,16 @@ import threading
 from types import TracebackType
 from typing import Optional, Type
 
-import sqlalchemy
+from sqlalchemy.orm import Session
 
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.db import GrypeDBFeedMetadata, get_thread_scoped_session
+from anchore_engine.db import GrypeDBFeedMetadata
+from anchore_engine.db.db_grype_db_feed_metadata import (
+    NoActiveGrypeDB,
+    get_most_recent_active_grypedb,
+)
 from anchore_engine.services.policy_engine.engine.feeds.storage import (
     GrypeDBFile,
     GrypeDBStorage,
@@ -21,18 +25,9 @@ class GrypeDBSyncError(Exception):
     pass
 
 
-class TooManyActiveGrypeDBs(GrypeDBSyncError):
+class NoActiveDBSyncError(GrypeDBSyncError):
     def __init__(self):
-        super().__init__(
-            "Could not determine correct grypedb to sync because too many active dbs found in database"
-        )
-
-
-class NoActiveGrypeDB(GrypeDBSyncError):
-    def __init__(self):
-        super().__init__(
-            "Could not determine correct grypedb to sync because no active db found in the database"
-        )
+        super().__init__("Local sync failed because no active db found in the database")
 
 
 class GrypeDBSyncLockAquisitionTimeout(GrypeDBSyncError):
@@ -73,40 +68,15 @@ class GrypeDBSyncManager:
     lock = threading.Lock()
 
     @classmethod
-    def _get_active_grypedb(cls) -> GrypeDBFeedMetadata:
+    def _get_active_grypedb(cls, session) -> GrypeDBFeedMetadata:
         """
-        Returns active grypedb instance from db. Raises NoActiveGrypeDB if there are none and raises
-        TooManyActiveGrypeDBs if more than one
-
-        return: Active GrypeDBFeedMetadata
-        rtype: GrypeDBFeedMetadata
+        Uses dao to get the most recent active db, which should be the global active db
+        If no active db, raises NoActiveDBSyncError
         """
         try:
-            active_grypedb = cls._query_active_dbs()
-        except sqlalchemy.orm.exc.MultipleResultsFound:
-            logger.error("Too many active grype dbs found in db")
-            raise TooManyActiveGrypeDBs
-
-        if not active_grypedb:
-            logger.error("No active grype db found in the database")
-            raise NoActiveGrypeDB
-
-        return active_grypedb
-
-    @classmethod
-    def _query_active_dbs(cls) -> Optional[GrypeDBFeedMetadata]:
-        """
-        Runs query against db to get active dbs. Uses one_or_none so raises error if more than one active db
-
-        return: Instance of GrypeDBFeedMetadata or None
-        rtype: GrypeDBFeedMetadata
-        """
-        db = get_thread_scoped_session()
-        return (
-            db.query(GrypeDBFeedMetadata)
-            .filter(GrypeDBFeedMetadata.active == True)
-            .one_or_none()
-        )
+            return get_most_recent_active_grypedb(session)
+        except NoActiveGrypeDB:
+            raise NoActiveDBSyncError
 
     @classmethod
     def _get_local_grypedb_checksum(cls) -> str:
@@ -178,18 +148,22 @@ class GrypeDBSyncManager:
         return True
 
     @classmethod
-    def run_grypedb_sync(cls, grypedb_file_path: Optional[str] = None):
+    def run_grypedb_sync(
+        cls, session: Session, grypedb_file_path: Optional[str] = None
+    ):
         """
         Runs GrypeDBSyncTask if it is necessary. Determines this by comparing local db checksum with active one in DB
         Returns true or false based upon whether db updated
+        *Note that this function may make commits on session object if there is more than one active db
 
+        :param session: db session to be used for querying and commiting
         :param grypedb_file_path: Can be passed a fie path to existing grypedb to use on local disk
         return: Boolean to whether the db was updated or not
         rtype: bool
         """
         # Do an initial check outside of lock to determine if sync is necessary
         # Helps ensure that synchronous processes are not slowed by lock
-        active_grypedb = cls._get_active_grypedb()
+        active_grypedb = cls._get_active_grypedb(session)
         local_grypedb_checksum = cls._get_local_grypedb_checksum()
         is_sync_necessary = cls._is_sync_necessary(
             active_grypedb, local_grypedb_checksum
@@ -200,7 +174,7 @@ class GrypeDBSyncManager:
         with GrypeDBSyncLock(LOCK_AQUISITION_TIMEOUT):
             # Need to requery and recheck the active an local checksums because data may have changed since waiting
             # on lock
-            active_grypedb = cls._get_active_grypedb()
+            active_grypedb = cls._get_active_grypedb(session)
             local_grypedb_checksum = cls._get_local_grypedb_checksum()
             is_sync_necessary = cls._is_sync_necessary(
                 active_grypedb, local_grypedb_checksum

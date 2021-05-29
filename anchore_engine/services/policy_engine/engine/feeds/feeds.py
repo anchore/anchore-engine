@@ -845,7 +845,9 @@ class GrypeDBFeed(AnchoreServiceFeed):
         db.add(self.grypedb_meta)
 
     @staticmethod
-    def _run_grypedb_sync_task(checksum: str, grype_db_data: bytes) -> None:
+    def _run_grypedb_sync_task(
+        db: Session, checksum: str, grype_db_data: bytes
+    ) -> None:
         """
         Write the Grype DB to a tar.gz in a temporary directory and pass to GrypeDBSyncManager.
         The GrypeDBSyncManager updates the working copy of GrypeDB on this instance of policy engine.
@@ -858,7 +860,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
         with GrypeDBStorage() as grypedb_file:
             with grypedb_file.create_file(checksum) as f:
                 f.write(grype_db_data)
-            GrypeDBSyncManager.run_grypedb_sync(grypedb_file.path)
+            GrypeDBSyncManager.run_grypedb_sync(db, grypedb_file.path)
 
     def _process_group_file_records(
         self,
@@ -908,7 +910,7 @@ class GrypeDBFeed(AnchoreServiceFeed):
                 # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
                 # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
                 try:
-                    self._run_grypedb_sync_task(checksum, record.data)
+                    self._run_grypedb_sync_task(db, checksum, record.data)
                 except GrypeDBSyncError:
                     logger.exception(
                         self._log_context.format_msg(

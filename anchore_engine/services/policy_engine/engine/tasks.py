@@ -34,7 +34,7 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
 from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedSyncResult
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
-    NoActiveGrypeDB,
+    NoActiveDBSyncError,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
     DataFeeds,
@@ -663,16 +663,14 @@ class GrypeDBSyncTask(IAsyncTask):
     def __init__(self, grypedb_file_path: Optional[str] = None):
         self.grypedb_file_path: Optional[str] = grypedb_file_path
 
-    def execute(self) -> bool:
+    def execute(self):
         """
         Runs the GrypeDBSyncTask by calling the GrypeDBSyncManager.
-
-        return: Returns True if the grypedb was updated or False if the local instance is up to date
-        rtype: bool
         """
-        try:
-            return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
-        except NoActiveGrypeDB:
-            logger.info("Grype DB not yet initialized. Waiting for initial sync...")
-        finally:
-            end_session()
+        with session_scope() as session:
+            try:
+                GrypeDBSyncManager.run_grypedb_sync(session, self.grypedb_file_path)
+            except NoActiveDBSyncError:
+                logger.warn(
+                    "Cannot initialize grype db locally since no record was found"
+                )
