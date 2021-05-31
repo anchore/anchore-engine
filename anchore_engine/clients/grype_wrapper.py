@@ -395,10 +395,9 @@ class GrypeWrapperSingleton(object):
         metadata_file = os.path.join(
             latest_grype_db_dir, grype_db_version, self.METADATA_FILE_NAME
         )
-        metadata = self.read_file_to_json(metadata_file)
-        db_checksum = (
-            metadata["checksum"] if metadata and "checksum" in metadata else None
-        )
+        db_checksum = None
+        if metadata := self.read_file_to_json(metadata_file):
+            db_checksum = metadata.get("checksum", None)
 
         # Write the engine metadata file in the same dir as the ret of the grype db files
         output_file = os.path.join(
@@ -530,7 +529,7 @@ class GrypeWrapperSingleton(object):
         grype_db_archive_local_file_location: str,
         archive_checksum: str,
         grype_db_version: str,
-    ) -> GrypeDBEngineMetadata:
+    ) -> Optional[GrypeDBEngineMetadata]:
         """
         Stage an update to grype_db, using the provided archive file, archive checksum, and grype db version.
         Returns the engine metadata for upstream validation. This method has no impact on the currently-in-use
@@ -578,7 +577,7 @@ class GrypeWrapperSingleton(object):
             )
             return None
 
-    def update_grype_db(self, archive_checksum: str) -> GrypeDBEngineMetadata:
+    def update_grype_db(self, archive_checksum: str) -> Optional[GrypeDBEngineMetadata]:
         """
         Checks to ensure a new grype_db has been staged, and raises a ValueError if it has not. Otherwise
         this promotes the staged grype_db to the production grype_db, and unstages the previously-staged
@@ -856,8 +855,9 @@ class GrypeWrapperSingleton(object):
                 )
 
                 # Get the timestamp from the current metadata file
-                db_metadata = self.get_grype_db_metadata()
-                last_synced = db_metadata.built
+                last_synced = None
+                if db_metadata := self.get_grype_db_metadata():
+                    last_synced = db_metadata.built
 
                 # Transform the results along with the last_synced timestamp for each result
                 output = []
