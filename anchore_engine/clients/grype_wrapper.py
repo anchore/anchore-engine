@@ -747,7 +747,7 @@ class GrypeWrapperSingleton(object):
                     shlex.split(cmd),
                     input_data=grype_sbom,
                     log_level="spew",
-                    env=proc_env,
+                    env=env_variables,
                 )
             except CommandException as exc:
                 logger.error(
@@ -779,7 +779,9 @@ class GrypeWrapperSingleton(object):
             stdout = None
             err = None
             try:
-                stdout, _ = run_check(shlex.split(cmd), log_level="spew", env=proc_env)
+                stdout, _ = run_check(
+                    shlex.split(cmd), log_level="spew", env=env_variables
+                )
             except CommandException as exc:
                 logger.error(
                     "Exception running command: %s, stderr: %s",
