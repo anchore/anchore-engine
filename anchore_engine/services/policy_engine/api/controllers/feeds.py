@@ -8,8 +8,8 @@ from anchore_engine.apis.exceptions import (
     AnchoreApiError,
     BadRequest,
     ConflictingRequest,
+    HTTPNotImplementedError,
     ResourceNotFound,
-    UnprocessableEntityError,
 )
 from anchore_engine.clients.services.simplequeue import (
     LeaseAcquisitionFailedError,
@@ -17,12 +17,9 @@ from anchore_engine.clients.services.simplequeue import (
 )
 from anchore_engine.common.errors import AnchoreError
 from anchore_engine.common.helpers import make_response_error
+from anchore_engine.common.models.policy_engine import FeedGroupMetadata, FeedMetadata
 from anchore_engine.db import FeedGroupMetadata as DbFeedGroupMetadata
 from anchore_engine.db import FeedMetadata as DbFeedMetadata
-from anchore_engine.common.models.policy_engine import (
-    FeedGroupMetadata,
-    FeedMetadata,
-)
 from anchore_engine.services.policy_engine.engine.feeds import db, sync
 from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     GRYPE_DB_FEED_NAME,
@@ -218,7 +215,7 @@ def delete_feed(feed):
 def delete_group(feed, group):
     session = db.get_session()
     if feed == GRYPE_DB_FEED_NAME:
-        raise UnprocessableEntityError(
+        raise HTTPNotImplementedError(
             message="Cannot delete individual groups for grypedb feed. Must delete entire feed.",
             detail={},
         )

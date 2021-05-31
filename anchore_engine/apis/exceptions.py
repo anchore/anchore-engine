@@ -64,8 +64,8 @@ class BadGatewayError(AnchoreApiError):
     __response_code__ = 502
 
 
-class UnprocessableEntityError(AnchoreApiError):
-    __response_code__ = 422
+class HTTPNotImplementedError(AnchoreApiError):
+    __response_code__ = 501
 
 
 class MissingRequiredField(BadRequest):
