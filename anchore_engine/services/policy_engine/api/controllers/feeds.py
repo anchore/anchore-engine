@@ -131,7 +131,11 @@ def sync_feeds(sync=True, force_flush=False):
 def toggle_feed_enabled(feed, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-
+    if feed == GRYPE_DB_FEED_NAME:
+        raise HTTPNotImplementedError(
+            message="Cannot disable/enable grypedb feed.",
+            detail={},
+        )
     session = db.get_session()
     try:
         f = db.set_feed_enabled(session, feed, enabled)
@@ -156,7 +160,11 @@ def toggle_feed_enabled(feed, enabled):
 def toggle_group_enabled(feed, group, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-
+    if feed == GRYPE_DB_FEED_NAME:
+        raise HTTPNotImplementedError(
+            message="Cannot disable/enable groups for grypedb feed.",
+            detail={},
+        )
     session = db.get_session()
     try:
         g = db.set_feed_group_enabled(session, feed, group, enabled)
@@ -180,6 +188,11 @@ def toggle_group_enabled(feed, group, enabled):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_feed(feed):
+    if feed == GRYPE_DB_FEED_NAME:
+        raise HTTPNotImplementedError(
+            message="Cannot delete grypedb feed.",
+            detail={},
+        )
     session = db.get_session()
     try:
         f = db.lookup_feed(db_session=session, feed_name=feed)
@@ -216,7 +229,7 @@ def delete_group(feed, group):
     session = db.get_session()
     if feed == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Cannot delete individual groups for grypedb feed. Must delete entire feed.",
+            message="Cannot delete individual groups for grypedb feed.",
             detail={},
         )
     try:
