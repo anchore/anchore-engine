@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Dict, List, Type
 
 import pytest
@@ -16,10 +15,7 @@ from anchore_engine.services.policy_engine.engine.feeds.client import (
     GrypeDBServiceClient,
     IFeedSource,
 )
-from anchore_engine.services.policy_engine.engine.feeds.config import (
-    SyncConfig,
-    compute_selected_configs_to_sync,
-)
+from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GrypeDBFeed,
     VulnerabilityFeed,
@@ -29,132 +25,44 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     LegacySyncUtilProvider,
     SyncUtilProvider,
 )
-from anchore_engine.services.policy_engine.engine.vulns.providers import (
-    GrypeProvider,
-    LegacyProvider,
-)
-
-
-@dataclass
-class FeedConfiguration:
-    feed_name: str
-    enabled: bool
-
-
-def get_config_for_params(provider: str, feed_configurations: List[FeedConfiguration]):
-    return {
-        "provider": provider,
-        "sync": {
-            "enabled": True,
-            "ssl_verify": True,
-            "connection_timeout_seconds": 3,
-            "read_timeout_seconds": 60,
-            "data": {
-                feed_configuration.feed_name: {
-                    "enabled": feed_configuration.enabled,
-                    "url": "www.anchore.com",
-                }
-                for feed_configuration in feed_configurations
-            },
-        },
-    }
 
 
 class TestSyncUtilProvider:
     @pytest.mark.parametrize(
-        "provider, feed_configurations, expected_to_sync_after_compute, expected_to_sync_after_filtering",
+        "sync_util_provider, sync_configs, expected_to_sync_after_filtering",
         [
-            (  # Legacy provider with one invalid config (vulndb), one grype config, and two legacy configs
-                "legacy",
-                [
-                    FeedConfiguration("vulnerabilities", True),
-                    FeedConfiguration("nvdv2", True),
-                    FeedConfiguration("vulndb", True),
-                    FeedConfiguration("grypedb", True),
-                ],
-                ["nvdv2", "vulnerabilities"],
-                ["nvdv2", "vulnerabilities"],
-            ),
-            (  # Grype provider with one invalid config (vulndb) one grype config, and two legacy configs
-                "grype",
-                [
-                    FeedConfiguration("vulnerabilities", True),
-                    FeedConfiguration("nvdv2", True),
-                    FeedConfiguration("vulndb", True),
-                    FeedConfiguration("grypedb", True),
-                ],
-                ["grypedb"],
-                ["grypedb"],
-            ),
-            (  # Legacy provider with two disabled configs and one grypedb config that is enabled
-                "legacy",
-                [
-                    FeedConfiguration("vulnerabilities", False),
-                    FeedConfiguration("nvdv2", False),
-                    FeedConfiguration("grypedb", True),
-                ],
-                [],
-                [],
-            ),
-            (  # Grype provider disabled grypedb config and two legacy configs enabled
-                "grype",
-                [
-                    FeedConfiguration("vulnerabilities", True),
-                    FeedConfiguration("nvdv2", True),
-                    FeedConfiguration("grypedb", False),
-                ],
-                [],
-                [],
-            ),
-            (  # Legacy provider all disabled configs
-                "legacy",
-                [
-                    FeedConfiguration("vulnerabilities", False),
-                    FeedConfiguration("nvdv2", False),
-                    FeedConfiguration("grypedb", False),
-                ],
-                [],
-                [],
-            ),
-            (  # Grype provider with all disabled configs
-                "grype",
-                [
-                    FeedConfiguration("vulnerabilities", False),
-                    FeedConfiguration("nvdv2", False),
-                    FeedConfiguration("grypedb", False),
-                ],
-                [],
-                [],
-            ),
-            (  # Grype provider with packages and grypedb enabled
-                "grype",
-                [
-                    FeedConfiguration("vulnerabilities", False),
-                    FeedConfiguration("nvdv2", False),
-                    FeedConfiguration("grypedb", True),
-                    FeedConfiguration("packages", True),
-                ],
-                ["grypedb", "packages"],
-                ["grypedb"],
-            ),
-            (  # legacy provider with packages and grypedb enabled
-                "legacy",
-                [
-                    FeedConfiguration("vulnerabilities", False),
-                    FeedConfiguration("nvdv2", False),
-                    FeedConfiguration("grypedb", True),
-                    FeedConfiguration("packages", True),
-                ],
+            (
+                LegacySyncUtilProvider,
+                {"packages": SyncConfig(url="www.anchore.com", enabled=True)},
                 ["packages"],
-                ["packages"],
+            ),
+            (
+                LegacySyncUtilProvider,
+                {
+                    "nvdv2": SyncConfig(url="www.anchore.com", enabled=True),
+                    "vulnerabilities": SyncConfig(url="www.anchore.com", enabled=True),
+                },
+                ["nvdv2", "vulnerabilities"],
+            ),
+            (
+                GrypeDBSyncUtilProvider,
+                {"grypedb": SyncConfig(url="www.anchore.com", enabled=True)},
+                ["grypedb"],
+            ),
+            (
+                GrypeDBSyncUtilProvider,
+                {
+                    "grypedb": SyncConfig(url="www.anchore.com", enabled=True),
+                    "packages": SyncConfig(url="www.anchore.com", enabled=True),
+                },
+                ["grypedb"],
             ),
         ],
     )
-    def test_config_filtering(
+    def test_get_filtered_sync_configs(
         self,
-        provider: str,
-        feed_configurations: List[FeedConfiguration],
-        expected_to_sync_after_compute: List[str],
+        sync_util_provider: Type[SyncUtilProvider],
+        sync_configs: Dict[str, SyncConfig],
         expected_to_sync_after_filtering: List[str],
     ):
         """
@@ -172,18 +80,7 @@ class TestSyncUtilProvider:
         can just do legacy feeds, while GrypeDBSyncUtilProvider will first do "grypedb" feed with the grype logic
         and then do "packages" feed with the legacy logic.
         """
-        if provider == "legacy":
-            vulnerabilities_provider = LegacyProvider()
-        else:
-            vulnerabilities_provider = GrypeProvider()
-        sync_configs = compute_selected_configs_to_sync(
-            provider=vulnerabilities_provider.get_config_name(),
-            vulnerabilities_config=get_config_for_params(provider, feed_configurations),
-            default_provider_sync_config=vulnerabilities_provider.get_default_sync_config(),
-        )
-        assert set(sync_configs.keys()) == set(expected_to_sync_after_compute)
-        sync_utils_provider = vulnerabilities_provider.get_sync_utils(sync_configs)
-        filtered_configs = sync_utils_provider._get_filtered_sync_configs(sync_configs)
+        filtered_configs = sync_util_provider._get_filtered_sync_configs(sync_configs)
         assert set(filtered_configs) == set(expected_to_sync_after_filtering)
 
     @pytest.mark.parametrize(
@@ -210,7 +107,25 @@ class TestSyncUtilProvider:
         client = sync_util_provider(sync_configs).get_client()
         assert isinstance(client, expected_client_class)
 
-    def test_get_groups_to_download_grype(self):
+    @pytest.mark.parametrize(
+        "metadata, expected_number_groups, expected_feed_group_metadata",
+        [
+            (
+                FeedMetadata(name="grypedb", enabled=True),
+                1,
+                FeedGroupMetadata(
+                    name="grypedb:vulnerabilities", feed_name="grypedb", enabled=True
+                ),
+            ),
+            (FeedMetadata(name="grypedb", enabled=False), 0, None),
+        ],
+    )
+    def test_get_groups_to_download_grype(
+        self,
+        metadata: FeedMetadata,
+        expected_number_groups: int,
+        expected_feed_group_metadata: FeedMetadata,
+    ):
         source_feeds = {
             "grypedb": {
                 "meta": FeedList(
@@ -237,16 +152,17 @@ class TestSyncUtilProvider:
                 ],
             }
         }
-        feeds_to_sync = [GrypeDBFeed(metadata=FeedMetadata(name="grypedb"))]
+        feeds_to_sync = [GrypeDBFeed(metadata=metadata)]
         sync_config = {"grypedb": SyncConfig(enabled=True, url="www.anchore.com")}
         groups_to_download = GrypeDBSyncUtilProvider(
             sync_config
         ).get_groups_to_download(source_feeds, feeds_to_sync, "0")
-        assert len(groups_to_download) == 1
-        group = groups_to_download[0]
-        assert group.enabled
-        assert group.feed_name == "grypedb"
-        assert group.name == "grypedb:vulnerabilities"
+        assert len(groups_to_download) == expected_number_groups
+        if expected_number_groups > 0:
+            group = groups_to_download[0]
+            assert group.enabled == expected_feed_group_metadata.enabled
+            assert group.feed_name == expected_feed_group_metadata.feed_name
+            assert group.name == expected_feed_group_metadata.name
 
     def test_get_groups_to_download_legacy(self):
         feed_group_metadata = [
