@@ -42,6 +42,8 @@ from anchore_engine.services.policy_engine.engine.feeds.sync import (
 )
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    GrypeProvider,
+    LegacyProvider,
     get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import identities, logger
@@ -240,35 +242,26 @@ class FeedsUpdateTask(IAsyncTask):
             start_time = datetime.datetime.utcnow()
 
             updated_data_feeds = list()
-            grype_db_sync_config = self.sync_configs.get("grypedb")
-            if grype_db_sync_config:
-                updated_data_feeds.extend(
-                    DataFeeds.sync(
-                        get_grype_db_client(grype_db_sync_config),
-                        to_sync=["grypedb"],
-                        full_flush=self.full_flush,
-                        catalog_client=catalog_client,
-                        operation_id=self.uuid,
-                    )
+            updated_data_feeds.extend(
+                DataFeeds.sync(
+                    sync_util_provider=GrypeProvider().get_sync_utils(
+                        self.sync_configs
+                    ),
+                    full_flush=self.full_flush,
+                    catalog_client=catalog_client,
+                    operation_id=self.uuid,
                 )
-
-            other_sync_configs = {
-                feed_name: sync_config
-                for feed_name, sync_config in self.sync_configs.items()
-                if feed_name != "grypedb"
-            }
-            if other_sync_configs:
-                # using the same sync config for all feeds
-                sync_config = list(other_sync_configs.values())[0]
-                updated_data_feeds.extend(
-                    DataFeeds.sync(
-                        get_feeds_client(sync_config),
-                        to_sync=list(other_sync_configs.keys()),
-                        full_flush=self.full_flush,
-                        catalog_client=catalog_client,
-                        operation_id=self.uuid,
-                    )
+            )
+            updated_data_feeds.extend(
+                DataFeeds.sync(
+                    sync_util_provider=LegacyProvider().get_sync_utils(
+                        self.sync_configs
+                    ),
+                    full_flush=self.full_flush,
+                    catalog_client=catalog_client,
+                    operation_id=self.uuid,
                 )
+            )
 
             logger.info("Feed sync complete (operation_id={})".format(self.uuid))
             return updated_data_feeds

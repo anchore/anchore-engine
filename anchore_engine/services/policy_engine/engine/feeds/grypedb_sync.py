@@ -79,7 +79,7 @@ class GrypeDBSyncManager:
             raise NoActiveDBSyncError
 
     @classmethod
-    def _get_local_grypedb_checksum(cls) -> str:
+    def _get_local_grypedb_checksum(cls) -> Optional[str]:
         """
         Returns checksum of grypedb on local instance
 
@@ -136,7 +136,7 @@ class GrypeDBSyncManager:
         archive_checksum = engine_metadata.archive_checksum
 
         # Verify that the checksum matches what was expected
-        if archive_checksum == active_grypedb.checksum:
+        if archive_checksum == active_grypedb.archive_checksum:
             # If so, Promote
             GrypeWrapperSingleton.get_instance().update_grype_db(archive_checksum)
         else:
@@ -144,7 +144,7 @@ class GrypeDBSyncManager:
             GrypeWrapperSingleton.get_instance().unstage_grype_db()
             raise GrypeDBSyncError(
                 "Unable to promote grype_db with archive checksum %s. It has been unstaged.",
-                active_grypedb.checksum,
+                active_grypedb.archive_checksum,
             )
 
     @staticmethod
