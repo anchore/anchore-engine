@@ -795,13 +795,11 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         :rtype: FeedMetadata
         """
         db = get_session()
+        deleted_records = []
         try:
-            catalog_client = self._catalog_client
             records = self._get_db_metadata_records(db)
             for record in records:
-                catalog_client.delete_document(
-                    self.__feed_name__, record.archive_checksum
-                )
+                deleted_records.append(record.archive_checksum)
                 db.delete(record)
             db.refresh(self.metadata)
 
@@ -809,10 +807,13 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             self.metadata.groups = []
             self.metadata.last_full_sync = None
             db.commit()
-            return self.metadata
         except Exception:
             db.rollback()
             raise
+        catalog_client = self._catalog_client
+        for archive_checksum in deleted_records:
+            catalog_client.delete_document(self.__feed_name__, archive_checksum)
+        return self.metadata
 
     @staticmethod
     def _enqueue_refresh_tasks(db: Session) -> None:
