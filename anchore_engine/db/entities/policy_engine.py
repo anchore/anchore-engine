@@ -4,6 +4,7 @@ import json
 import re
 import zlib
 from collections import namedtuple
+from typing import List
 
 from sqlalchemy import (
     JSON,
@@ -34,6 +35,7 @@ from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
 from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
 from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.common.models.policy_engine import NVDReference, CVSS
 
 try:
     from anchore_engine.subsys import logger as log
@@ -791,6 +793,38 @@ class NvdMetadata(Base):
     def key_tuple(self):
         return self.name
 
+    def to_nvd_reference(self) -> NVDReference:
+        """
+        Returns an NVDReference object from this nvd vulnerability. Function to be used for populating the nvd reference
+        for other vulnerabilities
+        """
+
+        return NVDReference(
+            vulnerability_id=self.name,
+            severity=self.severity,
+            link=self.link,
+            cvss=self.get_all_cvss(),
+        )
+
+    def get_all_cvss(self) -> List[CVSS]:
+        """
+        Returns a list of CVSS objects for this vulnerability
+        """
+        return [
+            CVSS(
+                version="2.0",
+                base_score=self.get_max_base_score_nvd(2),
+                exploitability_score=-1.0,
+                impact_score=-1.0,
+            )
+        ]
+
+    def get_all_nvd_references(self):
+        """
+        Compatibility method. Returns empty list since an nvd vuln doesn't have any nvd refrences
+        """
+        return []
+
 
 class NvdV2Metadata(Base):
     __tablename__ = "feed_data_nvdv2_vulnerabilities"
@@ -930,6 +964,106 @@ class NvdV2Metadata(Base):
 
     def key_tuple(self):
         return self.name
+
+    def to_nvd_reference(self) -> NVDReference:
+        """
+        Returns an NVDReference object from this nvd vulnerability. Function to be used for populating the nvd reference
+        for other vulnerabilities
+
+        cvss_v3 column format
+        {
+          "base_metrics": {
+            "attack_complexity": "LOW",
+            "attack_vector": "LOCAL",
+            "availability_impact": "HIGH",
+            "base_score": 7.8,
+            "base_severity": "High",
+            "confidentiality_impact": "HIGH",
+            "exploitability_score": 1.8,
+            "impact_score": 5.9,
+            "integrity_impact": "HIGH",
+            "privileges_required": "LOW",
+            "scope": "UNCHANGED",
+            "user_interaction": "NONE"
+          },
+          "vector_string": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H",
+          "version": "3.1"
+        }
+
+        cvss_v2 column format
+        {
+          "additional_information": {
+            "ac_insuf_info": false,
+            "obtain_all_privilege": false,
+            "obtain_other_privilege": false,
+            "obtain_user_privilege": false,
+            "user_interaction_required": false
+          },
+          "base_metrics": {
+            "access_complexity": "LOW",
+            "access_vector": "LOCAL",
+            "authentication": "NONE",
+            "availability_impact": "COMPLETE",
+            "base_score": 7.2,
+            "confidentiality_impact": "COMPLETE",
+            "exploitability_score": 3.9,
+            "impact_score": 10,
+            "integrity_impact": "COMPLETE"
+          },
+          "severity": "High",
+          "vector_string": "AV:L/AC:L/Au:N/C:C/I:C/A:C",
+          "version": "2.0"
+        }
+        """
+        nvd_ref = NVDReference(
+            vulnerability_id=self.name,
+            severity=self.severity,
+            link=self.link,
+            cvss=self.get_all_cvss(),
+        )
+
+        return nvd_ref
+
+    def get_all_cvss(self) -> List[CVSS]:
+        """
+        Returns a list of CVSS objects for this vulnerability
+        """
+        results = []
+        v2_metric = self._get_metric(cvss_version=2)
+        if v2_metric:
+            results.append(
+                CVSS(
+                    version=v2_metric.get("version", "2.0"),
+                    vector=v2_metric.get("vector_string"),
+                    base_score=self._get_score(v2_metric, base_score_key),
+                    exploitability_score=self._get_score(
+                        v2_metric, exploitability_score_key
+                    ),
+                    impact_score=self._get_score(v2_metric, impact_score_key),
+                )
+            )
+
+        v3_metric = self._get_metric(cvss_version=3)
+        if v3_metric:
+            results.append(
+                CVSS(
+                    version=v3_metric.get("version", "3.0"),
+                    vector=v3_metric.get("vector_string"),
+                    base_score=self._get_score(v3_metric, base_score_key),
+                    exploitability_score=self._get_score(
+                        v3_metric, exploitability_score_key
+                    ),
+                    impact_score=self._get_score(v3_metric, impact_score_key),
+                )
+            )
+
+        return results
+
+    def get_all_nvd_references(self):
+        """
+        Compatibility method. Returns empty list since an nvd vuln doesn't have any nvd refrences
+        """
+        return []
 
 
 class VulnDBMetadata(Base):
@@ -1393,6 +1527,130 @@ class VulnDBMetadata(Base):
 
     def key_tuple(self):
         return self.name
+
+    def to_nvd_reference(self):
+        """
+        Compatibility method. Returns None since a VulnDB vulnerability cannot be coerced into NVDReference
+        """
+        return None
+
+    def get_all_cvss(self) -> List[CVSS]:
+        """
+        Returns a list of CVSS objects from vendor_cvss_v2 and vendor_cvss_v3 columns of this vulnerability
+
+        vendor_cvss_v3 column is in format
+          [
+            {
+              "version": "3.0",
+              "vector_string": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+              "base_metrics": {
+                "base_score": 8.1,
+                "exploitability_score": 2.2,
+                "impact_score": 6.0,
+                "severity": "High"
+                ...
+              }
+            }
+          ]
+        """
+        results = []
+
+        for v2_metric in self.vendor_cvss_v2:
+            results.append(
+                CVSS(
+                    version=v2_metric.get("version", "2.0"),
+                    vector=v2_metric.get("vector_string"),
+                    base_score=self._get_score(v2_metric, base_score_key),
+                    exploitability_score=self._get_score(
+                        v2_metric, exploitability_score_key
+                    ),
+                    impact_score=self._get_score(v2_metric, impact_score_key),
+                )
+            )
+
+        for v3_metric in self.vendor_cvss_v3:
+            results.append(
+                CVSS(
+                    version=v3_metric.get("version", "3.0"),
+                    vector=v3_metric.get("vector_string"),
+                    base_score=self._get_score(v3_metric, base_score_key),
+                    exploitability_score=self._get_score(
+                        v3_metric, exploitability_score_key
+                    ),
+                    impact_score=self._get_score(v3_metric, impact_score_key),
+                )
+            )
+
+        return results
+
+    def get_all_nvd_references(self) -> List[NVDReference]:
+        """
+        Returns all NVDReferences object from this VulnDB vulnerability. Function to be used for populating the nvd references
+        for VulnDB vulnerabilities only
+
+        nvd column is in the format
+          [
+            {
+              "id": "CVE-2019-5441",
+              "cvss_v2": {
+                "version": "2.0",
+                "vector_string": "AV:N/AC:M/Au:N/C:P/I:P/A:P",
+                "base_metrics": {
+                  "base_score": 6.8,
+                  "exploitability_score": 8.6,
+                  "impact_score": 6.4,
+                  "severity": "Medium"
+                  ...
+                }
+              },
+              "cvss_v3": {
+                "version": "3.0",
+                "vector_string": "CVSS:3.0/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                "base_metrics": {
+                  "base_score": 8.1,
+                  "exploitability_score": 2.2,
+                  "impact_score": 6.0,
+                  "severity": "High"
+                  ...
+                }
+              }
+            }
+          ]
+        """
+        results = []
+        for nvd_cvss_item in self.get_cvss_data_nvd():
+            nvd_ref = NVDReference(vulnerability_id=nvd_cvss_item.get("id"), cvss=[])
+            v2_metric = nvd_cvss_item.get(cvss_v2_key, None)
+            if v2_metric:
+                nvd_ref.cvss.append(
+                    CVSS(
+                        version=v2_metric.get("version", "2.0"),
+                        vector=v2_metric.get("vector_string"),
+                        base_score=self._get_score(v2_metric, base_score_key),
+                        exploitability_score=self._get_score(
+                            v2_metric, exploitability_score_key
+                        ),
+                        impact_score=self._get_score(v2_metric, impact_score_key),
+                    )
+                )
+
+            v3_metric = nvd_cvss_item.get(cvss_v3_key, None)
+            if v3_metric:
+                nvd_ref.cvss.append(
+                    CVSS(
+                        version=v3_metric.get("version", "3.0"),
+                        vector=v3_metric.get("vector_string"),
+                        base_score=self._get_score(v3_metric, base_score_key),
+                        exploitability_score=self._get_score(
+                            v3_metric, exploitability_score_key
+                        ),
+                        impact_score=self._get_score(v3_metric, impact_score_key),
+                    )
+                )
+
+            results.append(nvd_ref)
+
+        return results
 
 
 class CpeVulnerability(Base):
@@ -3083,8 +3341,8 @@ class ImageVulnerabilitiesReport(Base, StorageInterface):
 
     account_id = Column(String, primary_key=True)
     image_digest = Column(String, primary_key=True)
-    # defining a very generic report key on purpose to allow whatever is necessary based on the engine vs enterprise
-    report_key = Column(JSONB, nullable=False)
+    report_key = Column(String, index=True)
+    generated_at = Column(DateTime, index=True)
     result = Column(JSONB)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_modified = Column(

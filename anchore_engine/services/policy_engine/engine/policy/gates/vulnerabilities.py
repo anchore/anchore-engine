@@ -283,6 +283,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 artifact_obj = vuln_match.artifact
                 fix_obj = vuln_match.fix
                 match_obj = vuln_match.match
+                nvd_objs = vuln_match.nvd
 
                 new_vuln_pkg_class = (
                     "non-os"
@@ -379,12 +380,13 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     vuln_cvss_impact_score = -1.0
 
                     # Gather cvss scores before operating with max
-                    nvd_cvss_v3_scores = [
-                        item.cvss_v3
-                        for item in vulnerability_obj.cvss_scores_nvd
-                        if item.cvss_v3
-                    ]
+                    nvd_cvss_v3_scores = []
+                    for nvd_obj in nvd_objs:
+                        for cvss_obj in nvd_obj.cvss:
+                            if cvss_obj.version.startswith("3"):
+                                nvd_cvss_v3_scores.append(cvss_obj)
 
+                    # Compute max score for each type
                     if nvd_cvss_v3_scores:
                         vuln_cvss_base_score = max(
                             item.base_score for item in nvd_cvss_v3_scores
@@ -494,11 +496,10 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     vuln_vendor_cvss_impact_score = -1.0
 
                     # Gather cvss scores before operating with max
-                    vendor_cvss_v3_scores = [
-                        item.cvss_v3
-                        for item in vulnerability_obj.cvss_scores_vendor
-                        if item.cvss_v3
-                    ]
+                    vendor_cvss_v3_scores = []
+                    for score_obj in vulnerability_obj.cvss:
+                        if score_obj.startswith("3"):
+                            vendor_cvss_v3_scores.append(score_obj)
 
                     if vendor_cvss_v3_scores:
                         vuln_vendor_cvss_base_score = max(
@@ -735,7 +736,7 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
             matches = context.data.get("loaded_vulnerabilities_new")
             for match in matches:
                 if is_vendor_only:
-                    if match.wont_fix:
+                    if match.fix.wont_fix:
                         continue
                 # search for vid in all vulns
                 if vid == match.vulnerability.vulnerability_id:

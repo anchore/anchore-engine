@@ -582,6 +582,35 @@ class PolicyValidationResponse(JsonSerializable):
         self.validation_details = validation_details
 
 
+class CVSS(JsonSerializable):
+    class CVSSV1Schema(Schema):
+        version = fields.Str()
+        vector = fields.Str(allow_none=True, missing=None)
+        base_score = fields.Float(default=-1.0, missing=-1.0)
+        exploitability_score = fields.Float(default=-1.0, missing=-1.0)
+        impact_score = fields.Float(default=-1.0, missing=-1.0)
+
+        @post_load
+        def make(self, data, **kwargs):
+            return CVSS(**data)
+
+    __schema__ = CVSSV1Schema()
+
+    def __init__(
+        self,
+        version=None,
+        vector=None,
+        base_score=None,
+        exploitability_score=None,
+        impact_score=None,
+    ):
+        self.version = version
+        self.vector = vector
+        self.base_score = base_score
+        self.exploitability_score = exploitability_score
+        self.impact_score = impact_score
+
+
 class Vulnerability(JsonSerializable):
     class VulnerabilityV1Schema(Schema):
         vulnerability_id = fields.Str()
@@ -590,10 +619,7 @@ class Vulnerability(JsonSerializable):
         link = fields.Str()
         feed = fields.Str()
         feed_group = fields.Str()
-        cvss_scores_nvd = fields.List(fields.Nested(CvssCombined.CvssCombinedV1Schema))
-        cvss_scores_vendor = fields.List(
-            fields.Nested(CvssCombined.CvssCombinedV1Schema)
-        )
+        cvss = fields.List(fields.Nested(CVSS.CVSSV1Schema))
 
         @post_load
         def make(self, data, **kwargs):
@@ -609,8 +635,7 @@ class Vulnerability(JsonSerializable):
         link=None,
         feed=None,
         feed_group=None,
-        cvss_scores_nvd=None,
-        cvss_scores_vendor=None,
+        cvss=None,
     ):
         self.vulnerability_id = vulnerability_id
         self.description = description
@@ -618,8 +643,37 @@ class Vulnerability(JsonSerializable):
         self.link = link
         self.feed = feed
         self.feed_group = feed_group
-        self.cvss_scores_nvd = cvss_scores_nvd
-        self.cvss_scores_vendor = cvss_scores_vendor
+        self.cvss = cvss
+
+
+class NVDReference(JsonSerializable):
+    class NVDReferenceV1Schema(Schema):
+        vulnerability_id = fields.Str()
+        cvss = fields.List(fields.Nested(CVSS.CVSSV1Schema))
+        # below fields may be missing for legacy, account for it using allow_none and missing
+        description = fields.Str(allow_none=True, missing=None)
+        severity = fields.Str(allow_none=True, missing=None)
+        link = fields.Str(allow_none=True, missing=None)
+
+        @post_load
+        def make(self, data, **kwargs):
+            return Vulnerability(**data)
+
+    __schema__ = NVDReferenceV1Schema()
+
+    def __init__(
+        self,
+        vulnerability_id=None,
+        description=None,
+        severity=None,
+        link=None,
+        cvss=None,
+    ):
+        self.vulnerability_id = vulnerability_id
+        self.description = description
+        self.severity = severity
+        self.link = link
+        self.cvss = cvss
 
 
 class Artifact(JsonSerializable):
@@ -627,9 +681,9 @@ class Artifact(JsonSerializable):
         name = fields.Str()
         version = fields.Str()
         pkg_type = fields.Str()
-        pkg_path = fields.Str()
-        cpe = fields.Str()
-        cpe23 = fields.Str()
+        location = fields.Str()
+        cpe = fields.Str(allow_none=True, missing=None)
+        cpes = fields.List(fields.Str())
 
         @post_load
         def make(self, data, **kwargs):
@@ -638,32 +692,26 @@ class Artifact(JsonSerializable):
     __schema__ = ArtifactV1Schema()
 
     def __init__(
-        self,
-        name=None,
-        version=None,
-        pkg_type=None,
-        pkg_path=None,
-        cpe=None,
-        cpe23=None,
+        self, name=None, version=None, pkg_type=None, location=None, cpe=None, cpes=None
     ):
         self.name = name
         self.version = version
         self.pkg_type = pkg_type
-        self.pkg_path = pkg_path
+        self.location = location
         self.cpe = cpe
-        self.cpe23 = cpe23
+        self.cpes = cpes
 
 
-class VendorAdvisory(JsonSerializable):
-    class VendorAdvisoryV1Schema(Schema):
+class Advisory(JsonSerializable):
+    class AdvisoryV1Schema(Schema):
         id = fields.Str()
         link = fields.Str()
 
         @post_load
         def make(self, data, **kwargs):
-            return VendorAdvisory(**data)
+            return Advisory(**data)
 
-    __schema__ = VendorAdvisoryV1Schema()
+    __schema__ = AdvisoryV1Schema()
 
     def __init__(self, id=None, link=None):
         self.id = id
@@ -678,7 +726,7 @@ class FixedArtifact(JsonSerializable):
             allow_none=True,
             missing=None,
         )
-        advisories = fields.List(fields.Nested(VendorAdvisory.VendorAdvisoryV1Schema))
+        advisories = fields.List(fields.Nested(Advisory.AdvisoryV1Schema))
 
         @post_load
         def make(self, data, **kwargs):
@@ -713,6 +761,7 @@ class VulnerabilityMatch(JsonSerializable):
         artifact = fields.Nested(Artifact.ArtifactV1Schema)
         fix = fields.Nested(FixedArtifact.FixedArtifactV1Schema)
         match = fields.Nested(Match.MatchV1Schema)
+        nvd = fields.List(fields.Nested(NVDReference.NVDReferenceV1Schema))
 
         @post_load
         def make(self, data, **kwargs):
@@ -720,11 +769,14 @@ class VulnerabilityMatch(JsonSerializable):
 
     __schema__ = VulnerabilityMatchV1Schema()
 
-    def __init__(self, vulnerability=None, artifact=None, fix=None, match=None):
+    def __init__(
+        self, vulnerability=None, artifact=None, fix=None, match=None, nvd=None
+    ):
         self.vulnerability = vulnerability
         self.artifact = artifact
         self.fix = fix
         self.match = match
+        self.nvd = nvd
 
     def identity_tuple(self):
         return (
@@ -733,14 +785,14 @@ class VulnerabilityMatch(JsonSerializable):
             self.artifact.name,
             self.artifact.version,
             self.artifact.pkg_type,
-            self.artifact.pkg_path,
+            self.artifact.location,
         )
 
 
 class VulnerabilitiesReportMetadata(JsonSerializable):
     class VulnerabilitiesReportMetadataV1Schema(Schema):
+        schema_version = fields.Str()
         generated_at = RFC3339DateTime()
-        uuid = fields.Str()
         generated_by = fields.Dict()
 
         @post_load
@@ -749,9 +801,9 @@ class VulnerabilitiesReportMetadata(JsonSerializable):
 
     __schema__ = VulnerabilitiesReportMetadataV1Schema()
 
-    def __init__(self, generated_at=None, uuid=None, generated_by=None):
+    def __init__(self, schema_version=None, generated_at=None, generated_by=None):
+        self.schema_version = schema_version
         self.generated_at = generated_at
-        self.uuid = uuid
         self.generated_by = generated_by
 
 

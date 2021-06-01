@@ -12,26 +12,38 @@ from sqlalchemy import asc, func, orm
 from anchore_engine import version
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.db import DistroNamespace
 from anchore_engine.db import (
+    DistroNamespace,
     Image,
     ImageCpe,
     VulnDBMetadata,
     VulnDBCpe,
+    Vulnerability,
+    ImagePackageVulnerability,
     get_thread_scoped_session as get_session,
     select_nvd_classes,
+    NvdV2Metadata,
+)
+from anchore_engine.db.entities.policy_engine import (
+    cvss_v2_key,
+    cvss_v3_key,
+    exploitability_score_key,
+    base_score_key,
+    impact_score_key,
 )
 from anchore_engine.db import Vulnerability, ImagePackageVulnerability
 from anchore_engine.common.models.policy_engine import (
     Vulnerability as VulnerabilityModel,
     VulnerabilityMatch,
     Artifact,
-    VendorAdvisory,
+    Advisory,
     ImageVulnerabilitiesReport,
     VulnerabilitiesReportMetadata,
     CvssCombined,
     FixedArtifact,
     Match,
+    CVSS,
+    NVDReference,
 )
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     get_provider_name,
@@ -201,7 +213,6 @@ class LegacyProvider(VulnerabilitiesProvider):
             vulns = scanner.get_vulnerabilities(image)
 
         # Has vulnerabilities?
-        warns = []
         if not vulns:
             vulns = []
             ns = DistroNamespace.for_obj(image)
@@ -212,7 +223,6 @@ class LegacyProvider(VulnerabilitiesProvider):
                     )
                 ]
 
-        rows = []
         with timer("Image vulnerability nvd metadata merge", log_level="debug"):
             vulns = merge_nvd_metadata_image_packages(
                 db_session, vulns, _nvd_cls, _cpe_cls
@@ -226,19 +236,17 @@ class LegacyProvider(VulnerabilitiesProvider):
                 if vendor_only and vuln.fix_has_no_advisory(fixed_in=fixed_artifact):
                     continue
 
-                # Don't bail on errors building cvss scores or advisories, should never happen with the helper functions but just in case
+                # Don't bail on errors building nvd references or advisories, should never happen with the helper functions but just in case
                 try:
-                    nvd_scores = [
-                        CvssCombined.from_json(score)
-                        for nvd_record in nvd_records
-                        for score in nvd_record.get_cvss_scores_nvd()
+                    nvd_refs = [
+                        nvd_record.to_nvd_reference() for nvd_record in nvd_records
                     ]
-                except ValidationError:
+                except Exception:
                     log.debug(
                         "Ignoring error building nvd CVSS scores for %s",
                         vuln.vulnerability_id,
                     )
-                    nvd_scores = []
+                    nvd_refs = []
 
                 advisories = []
                 if fixed_artifact.fix_metadata:
@@ -248,7 +256,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                     if vendor_advisories:
                         try:
                             advisories = [
-                                VendorAdvisory.from_json(vendor_advisory_dict)
+                                Advisory.from_json(vendor_advisory_dict)
                                 for vendor_advisory_dict in vendor_advisories
                             ]
                         except ValidationError:
@@ -263,21 +271,20 @@ class LegacyProvider(VulnerabilitiesProvider):
                     VulnerabilityMatch(
                         vulnerability=VulnerabilityModel(
                             vulnerability_id=vuln.vulnerability_id,
-                            description="NA",
+                            description=None,
                             severity=vuln.vulnerability.severity,
                             link=vuln.vulnerability.link,
                             feed="vulnerabilities",
                             feed_group=vuln.vulnerability.namespace_name,
-                            cvss_scores_nvd=nvd_scores,
-                            cvss_scores_vendor=[],
+                            cvss=[],  # backwards compatibility - distro vulns didn't used to provide cvss
                         ),
                         artifact=Artifact(
                             name=vuln.pkg_name,
                             version=vuln.package.fullversion,
                             pkg_type=vuln.pkg_type,
-                            pkg_path=vuln.pkg_path,
-                            cpe="None",
-                            cpe23="None",
+                            location=vuln.pkg_path,
+                            cpe=None,
+                            cpes=[],
                         ),
                         fix=FixedArtifact(
                             versions=[fixed_in] if fixed_in else [],
@@ -288,6 +295,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             advisories=advisories,
                         ),
                         match=Match(detected_at=vuln.created_at),
+                        nvd=nvd_refs,
                     )
                 )
 
@@ -311,48 +319,34 @@ class LegacyProvider(VulnerabilitiesProvider):
 
                     # Don't bail on errors building cvss scores, should never happen with the helper functions but just in case
                     try:
-                        nvd_scores = [
-                            CvssCombined.from_json(score)
-                            for score in vulnerability_cpe.parent.get_cvss_scores_nvd()
-                        ]
-                    except ValidationError:
+                        nvd_refs = vulnerability_cpe.parent.get_all_nvd_references()
+                        cvss_objects = vulnerability_cpe.parent.get_all_cvss()
+                    except Exception:
                         log.debug(
-                            "Ignoring error building nvd CVSS for %s",
+                            "Ignoring error building nvd refs and or CVSS scores for %s",
                             vulnerability_cpe.vulnerability_id,
                         )
-                        nvd_scores = []
-
-                    try:
-                        vendor_scores = [
-                            CvssCombined.from_json(score)
-                            for score in vulnerability_cpe.parent.get_cvss_scores_vendor()
-                        ]
-                    except ValidationError:
-                        log.debug(
-                            "Ignoring error building vendor CVSS scores for %s",
-                            vulnerability_cpe.vulnerability_id,
-                        )
-                        vendor_scores = []
+                        nvd_refs = []
+                        cvss_objects = []
 
                     results.append(
                         VulnerabilityMatch(
                             vulnerability=VulnerabilityModel(
                                 vulnerability_id=vulnerability_cpe.parent.normalized_id,
-                                description="NA",
+                                description=None,
                                 severity=vulnerability_cpe.parent.severity,
                                 link=link,
                                 feed=vulnerability_cpe.feed_name,
                                 feed_group=vulnerability_cpe.namespace_name,
-                                cvss_scores_nvd=nvd_scores,
-                                cvss_scores_vendor=vendor_scores,
+                                cvss=cvss_objects,
                             ),
                             artifact=Artifact(
                                 name=image_cpe.name,
                                 version=image_cpe.version,
                                 pkg_type=image_cpe.pkg_type,
-                                pkg_path=image_cpe.pkg_path,
+                                location=image_cpe.pkg_path,
                                 cpe=image_cpe.get_cpestring(),
-                                cpe23=image_cpe.get_cpe23string(),
+                                cpes=[image_cpe.get_cpe23string()],
                             ),
                             fix=FixedArtifact(
                                 versions=vulnerability_cpe.get_fixed_in(),
@@ -364,6 +358,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             ),
                             # using vulnerability created_at to indicate the match timestamp for now
                             match=Match(detected_at=vulnerability_cpe.created_at),
+                            nvd=nvd_refs,
                         )
                     )
         except Exception as err:
@@ -374,9 +369,11 @@ class LegacyProvider(VulnerabilitiesProvider):
             image_id=image_id,
             results=get_image_vulnerabilities_deduper().execute(results),
             metadata=VulnerabilitiesReportMetadata(
+                schema_version="1.0",
                 generated_at=datetime.datetime.utcnow(),
-                uuid=str(uuid.uuid4()),
-                generated_by=self._get_provider_metadata(),
+                generated_by={
+                    "scanner": self.__scanner__.__name__,
+                },
             ),
             problems=[],
         )
@@ -725,13 +722,6 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         return return_object
 
-    def _get_provider_metadata(self):
-        return {
-            "name": self.get_config_name(),
-            "version": version.version,
-            "database_version": version.db_version,
-        }
-
     @staticmethod
     def _check_no_advisory(img_pkg_vuln, advisory_cache):
         """
@@ -800,7 +790,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         if force_refresh:
             report = self._create_new_report(image, db_session, use_store)
         else:
-            report = self._try_load_report_from_store(image, db_session, use_store)
+            report = self._try_load_report_from_store(image, db_session)
 
         if vendor_only:
             if not isinstance(report, ImageVulnerabilitiesReport):
@@ -825,7 +815,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         if force_refresh:
             report = self._create_new_report(image, db_session, use_store)
         else:
-            report = self._try_load_report_from_store(image, db_session, use_store)
+            report = self._try_load_report_from_store(image, db_session)
 
         if not isinstance(report, ImageVulnerabilitiesReport):
             report = ImageVulnerabilitiesReport.from_json(report)
@@ -880,7 +870,6 @@ class GrypeProvider(VulnerabilitiesProvider):
         self,
         image: Image,
         db_session,
-        use_store: bool = True,
     ):
         """
         Tries to load the report from the store if one is available and returns it if it's valid.
@@ -889,52 +878,42 @@ class GrypeProvider(VulnerabilitiesProvider):
 
         user_id = image.user_id
         image_id = image.id
-        store_manager = None
         existing_report = None
 
-        if use_store:
-            try:
-                store_manager = self.__store__(image)
-            except:
-                log.exception("Ignoring error initializing store for vulnerabilities")
-                store_manager = None
+        # initialize store manager first
+        store_manager = self.__store__(image)
 
-        if store_manager:
-            timer2 = time.time()
-            try:
-                existing_report, report_status = store_manager.fetch()
-                if existing_report and report_status and report_status == Status.valid:
-                    metrics.counter_inc(name="anchore_vulnerabilities_cache_hits")
-                    metrics.histogram_observe(
-                        "anchore_vulnerabilities_cache_access_latency",
-                        time.time() - timer2,
-                        status="hit",
-                    )
-                    log.info(
-                        "Vulnerabilities cache hit, returning cached report for %s/%s",
-                        user_id,
-                        image_id,
-                    )
-                    return existing_report
-                else:
-                    metrics.counter_inc(name="anchore_vulnerabilities_cache_misses")
-                    metrics.histogram_observe(
-                        "anchore_vulnerabilities_cache_access_latency",
-                        time.time() - timer2,
-                        status="miss",
-                    )
-                    log.info(
-                        "Vulnerabilities not cached or invalid, executing report for %s/%s",
-                        user_id,
-                        image_id,
-                    )
-            except Exception:
-                log.exception(
-                    "Unexpected error with vulnerabilities store. Skipping use of cache."
+        timer2 = time.time()
+        try:
+            existing_report, report_status = store_manager.fetch()
+            if existing_report and report_status and report_status == Status.valid:
+                metrics.counter_inc(name="anchore_vulnerabilities_cache_hits")
+                metrics.histogram_observe(
+                    "anchore_vulnerabilities_cache_access_latency",
+                    time.time() - timer2,
+                    status="hit",
                 )
-        else:
-            log.info(
-                "Vulnerabilities store disabled or cannot be initialized. Generating a new report"
+                log.info(
+                    "Vulnerabilities cache hit, returning cached report for %s/%s",
+                    user_id,
+                    image_id,
+                )
+                return existing_report
+            else:
+                metrics.counter_inc(name="anchore_vulnerabilities_cache_misses")
+                metrics.histogram_observe(
+                    "anchore_vulnerabilities_cache_access_latency",
+                    time.time() - timer2,
+                    status="miss",
+                )
+                log.info(
+                    "Vulnerabilities not cached or invalid, executing report for %s/%s",
+                    user_id,
+                    image_id,
+                )
+        except Exception:
+            log.exception(
+                "Unexpected error with vulnerabilities store. Skipping use of cache."
             )
 
         # if control gets here, new report has to be generated
@@ -942,11 +921,12 @@ class GrypeProvider(VulnerabilitiesProvider):
             image, db_session
         )
 
-        # merge and save steps only if there were no problems
+        # check for problems generating the report
         if new_report and not new_report.problems:
+            # merge and save steps only if there were no problems
 
-            # transfer timestamps of previously found vulnerabilities
             if existing_report:
+                # transfer timestamps of previously found vulnerabilities
                 log.debug(
                     "Attempting to transfer timestamps from existing to the new vulnerabilities report for %s/%s",
                     user_id,
@@ -957,7 +937,8 @@ class GrypeProvider(VulnerabilitiesProvider):
                         existing_report
                     )
                     merged_results = transfer_vulnerability_timestamps(
-                        source=existing_report.results, destination=new_report.results
+                        source=existing_report.results,
+                        destination=new_report.results,
                     )
                     new_report.results = merged_results
                 except Exception:
@@ -966,15 +947,29 @@ class GrypeProvider(VulnerabilitiesProvider):
                     )
 
             # Don't let the save block results, at worst the report will be regenerated the next time
-            if store_manager:
-                try:
-                    store_manager.save(new_report)
-                except Exception:
-                    log.exception(
-                        "Ignoring error saving vulnerabilities report to store"
-                    )
+            try:
+                store_manager.save(new_report)
+            except Exception:
+                log.exception("Ignoring error saving vulnerabilities report to store")
 
-        return new_report
+            return new_report
+        elif existing_report:
+            # if there were problems generating the report, return the stored version if its available
+            log.warn(
+                "Failed to generate new image vulnerabilities report for %s/%s. Returning the existing report",
+                user_id,
+                image_id,
+            )
+
+            return existing_report
+        else:
+            log.warn(
+                "Failed to generate new image vulnerabilities report for %s/%s",
+                user_id,
+                image_id,
+            )
+
+            return new_report
 
     def get_vulnerabilities(self, **kwargs):
         pass

@@ -24,7 +24,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
 from typing import List
 from .dedup import get_image_vulnerabilities_deduper
-from .mappers import EngineGrypeMapper
+from .mappers import to_grype_sbom, to_engine_vulnerabilities
 
 # debug option for saving image sbom, defaults to not saving
 SAVE_SBOM_TO_FILE = (
@@ -173,11 +173,26 @@ class GrypeScanner:
             .all()
         )
 
-    def _get_report_metadata(self, grype_response):
-        return {
-            "name": "grype",
-            "version": grype_response.get("descriptor").get("version"),
-        }
+    def _get_report_generated_by(self, grype_response):
+        generated_by = {"scanner": self.__class__.__name__}
+
+        try:
+            descriptor_dict = grype_response.get("descriptor", {})
+            db_dict = descriptor_dict.get("db", {})
+            generated_by.update(
+                {
+                    "grype_version": descriptor_dict.get("version"),
+                    "db_checksum": db_dict.get("checksum"),
+                    "db_schema_version": db_dict.get("schemaVersion"),
+                    "db_built_at": db_dict.get("built"),
+                }
+            )
+        except (AttributeError, ValueError):
+            logger.exception(
+                "Ignoring error parsing report metadata from grype response"
+            )
+
+        return generated_by
 
     def scan_image_for_vulnerabilities(
         self, image: Image, db_session
@@ -193,9 +208,9 @@ class GrypeScanner:
             image_id=image.id,
             results=[],
             metadata=VulnerabilitiesReportMetadata(
+                schema_version="1.0",
                 generated_at=datetime.datetime.utcnow(),
-                uuid=str(uuid.uuid4()),
-                generated_by={"name": "grype"},
+                generated_by={"scanner": self.__class__.__name__},
             ),
             problems=[],
         )
@@ -212,11 +227,9 @@ class GrypeScanner:
             )
             return report
 
-        mapper = EngineGrypeMapper()
-
         # create the image sbom
         try:
-            sbom = mapper.to_grype_sbom(
+            sbom = to_grype_sbom(
                 image, image.packages, self._get_image_cpes(image, db_session)
             )
         except Exception:
@@ -268,14 +281,9 @@ class GrypeScanner:
 
         # transform grype response to engine vulnerabilities and dedup
         try:
-            results = mapper.to_engine_vulnerabilities(grype_response)
+            results = to_engine_vulnerabilities(grype_response)
             report.results = get_image_vulnerabilities_deduper().execute(results)
-            report.metadata.generated_by = (
-                {  # TODO do this another function and add more details
-                    "name": "grype",
-                    "version": grype_response.get("descriptor").get("version"),
-                }
-            )
+            report.metadata.generated_by = self._get_report_generated_by(grype_response)
         except Exception:
             logger.exception("Failed to transform grype vulnerabilities response")
             report.problems.append(
