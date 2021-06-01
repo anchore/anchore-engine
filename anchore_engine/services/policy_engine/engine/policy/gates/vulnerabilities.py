@@ -325,12 +325,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 if comparison_fn(found_severity_idx, comparison_idx):
                     # package path excludes logic for non-os packages only
                     if new_vuln_pkg_class == "non-os" and package_path_re:
-                        match_found = package_path_re.match(artifact_obj.pkg_path)
+                        match_found = package_path_re.match(artifact_obj.location)
                         if match_found is not None:
                             logger.debug(
                                 "Non-OS vulnerability {} package path {} matches package path exclude {}, skipping".format(
                                     artifact_obj.name,
-                                    artifact_obj.pkg_path,
+                                    artifact_obj.location,
                                     path_exclude_re_value,
                                 )
                             )
@@ -498,7 +498,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     # Gather cvss scores before operating with max
                     vendor_cvss_v3_scores = []
                     for score_obj in vulnerability_obj.cvss:
-                        if score_obj.startswith("3"):
+                        if score_obj.version.startswith("3"):
                             vendor_cvss_v3_scores.append(score_obj)
 
                     if vendor_cvss_v3_scores:
@@ -596,12 +596,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         trigger_fname = None
                         if artifact_obj.pkg_type in ["java", "gem"]:
                             try:
-                                trigger_fname = artifact_obj.pkg_path.split("/")[-1]
+                                trigger_fname = artifact_obj.location.split("/")[-1]
                             except:
                                 trigger_fname = None
                         elif artifact_obj.pkg_type in ["npm"]:
                             try:
-                                trigger_fname = artifact_obj.pkg_path.split("/")[-2]
+                                trigger_fname = artifact_obj.location.split("/")[-2]
                             except:
                                 trigger_fname = None
 
@@ -610,7 +610,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 [artifact_obj.name, artifact_obj.version]
                             )
 
-                        pkgname = artifact_obj.pkg_path
+                        pkgname = artifact_obj.location
                     else:
                         trigger_fname = artifact_obj.name
                         pkgname = artifact_obj.name
