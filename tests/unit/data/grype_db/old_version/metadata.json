@@ -1,5 +1,5 @@
 {
  "built": "2021-04-07T08:12:05Z",
- "version": 1,
- "checksum": "sha256:1db8bd20af545fadc5fb2b25260601d49339349cf04e32650531324ded8a45d0"
+ "version": 2,
+ "checksum": "mock_db_checksum"
 }
