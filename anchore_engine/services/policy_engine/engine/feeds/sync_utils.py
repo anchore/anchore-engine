@@ -513,11 +513,20 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
         # TODO consider throwing exceptions if length is not 1 for these
         api_feed_group = source_feeds[GRYPE_DB_FEED_NAME]["groups"][0]
         feed_metadata = feeds_to_sync[0].metadata
-        group_to_download = FeedGroupMetadata(
-            name=api_feed_group.name,
-            feed_name=feed_metadata.name,
-            description=api_feed_group.description,
-            access_tier=api_feed_group.access_tier,
-            enabled=True,
-        )
-        return [group_to_download]
+        groups_to_download = []
+        if feed_metadata.enabled:
+            groups_to_download.append(
+                FeedGroupMetadata(
+                    name=api_feed_group.name,
+                    feed_name=feed_metadata.name,
+                    description=api_feed_group.description,
+                    access_tier=api_feed_group.access_tier,
+                    enabled=True,
+                )
+            )
+        else:
+            logger.info(
+                "Will not sync/download feed %s because feed is explicitly disabled",
+                feed_metadata.name,
+            )
+        return groups_to_download
