@@ -17,6 +17,7 @@ from readerwriterlock import rwlock
 from sqlalchemy import Column, ForeignKey, func, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
+from typing import Tuple, Optional, Dict
 
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
@@ -478,7 +479,7 @@ class GrypeWrapperSingleton(object):
         latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
         return latest_grype_db_engine
 
-    def _init_latest_grype_db_session_maker(self, grype_db_engine):
+    def _init_latest_grype_db_session_maker(self, grype_db_engine) -> sessionmaker:
         """
         Create and return the db session maker
         """
@@ -493,7 +494,7 @@ class GrypeWrapperSingleton(object):
         lastest_grype_db_archive: str,
         archive_checksum: str,
         grype_db_version: str,
-    ):
+    ) -> Tuple[str, sessionmaker]:
         """
         Write the db string to file, create the engine, and create the session maker
         Return the file and session maker
@@ -511,7 +512,7 @@ class GrypeWrapperSingleton(object):
         # Return the dir and session maker
         return latest_grype_db_dir, latest_grype_db_session_maker
 
-    def _remove_local_grype_db(self, grype_db_dir):
+    def _remove_local_grype_db(self, grype_db_dir) -> None:
         """
         Remove old the local grype db file
         """
@@ -519,7 +520,7 @@ class GrypeWrapperSingleton(object):
             logger.info("Removing old grype_db at %s", grype_db_dir)
             shutil.rmtree(grype_db_dir)
         else:
-            logger.warning(
+            logger.warn(
                 "Failed to remove grype db at %s as it cannot be found.", grype_db_dir
             )
         return
@@ -529,7 +530,7 @@ class GrypeWrapperSingleton(object):
         grype_db_archive_local_file_location: str,
         archive_checksum: str,
         grype_db_version: str,
-    ):
+    ) -> GrypeDBEngineMetadata:
         """
         Stage an update to grype_db, using the provided archive file, archive checksum, and grype db version.
         Returns the engine metadata for upstream validation. This method has no impact on the currently-in-use
@@ -559,7 +560,7 @@ class GrypeWrapperSingleton(object):
             # Return the staging engine metadata as a data object
             return self.get_grype_db_engine_metadata(use_staging=True)
 
-    def unstage_grype_db(self):
+    def unstage_grype_db(self) -> Optional[GrypeDBEngineMetadata]:
         """
         Unstages the staged grype_db. This method returns the production grype_db engine metadata, if a production
         grype_db has been set. Otherwise it returns None.
@@ -644,7 +645,9 @@ class GrypeWrapperSingleton(object):
         # Ensure the file exists
         return self.read_file_to_json(latest_metadata_file)
 
-    def get_grype_db_metadata(self, use_staging: bool = False) -> GrypeDBMetadata:
+    def get_grype_db_metadata(
+        self, use_staging: bool = False
+    ) -> Optional[GrypeDBMetadata]:
         """
         Return the contents of the current grype_db metadata file as a data object.
         This file contains metadata specific to grype about the current grype_db instance.
@@ -662,7 +665,7 @@ class GrypeWrapperSingleton(object):
 
     def get_grype_db_engine_metadata(
         self, use_staging: bool = False
-    ) -> GrypeDBEngineMetadata:
+    ) -> Optional[GrypeDBEngineMetadata]:
         """
         Return the contents of the current grype_db engine metadata file as a data object.
         This file contains metadata specific to engine about the current grype_db instance.
@@ -680,7 +683,7 @@ class GrypeWrapperSingleton(object):
 
     def _get_env_variables(
         self, include_grype_db: bool = True, use_staging: bool = False
-    ):
+    ) -> Dict[str, str]:
         # Set grype env variables, optionally including the grype db location
         grype_env = self.GRYPE_BASE_ENV_VARS.copy()
         if include_grype_db:
