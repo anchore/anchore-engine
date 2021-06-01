@@ -100,9 +100,32 @@ class LogContext:
         )
 
 
+class LogContextMixin:
+    def __init__(self, metadata: Optional[FeedMetadata] = None):
+        self._log_ctx: LogContext = LogContext(None, None, None)
+        super().__init__(metadata)
+
+    @property
+    def _log_context(self):
+        """
+        Getter for log context.
+        """
+        return self._log_ctx
+
+    @_log_context.setter
+    def _log_context(self, log_context: LogContext) -> None:
+        """
+        Setter for log context.
+
+        :param log_context: log context object to replace what's currently stored
+        :type log_context: LogContext
+        """
+        self._log_ctx = log_context
+
+
 class DataFeed(ABC):
     """
-    Interface for a data feed. A DataFeed is a combination of a means to connect to the feed, metadata about the feed actions
+    Base class for a data feed. A DataFeed is a combination of a means to connect to the feed, metadata about the feed actions
     locally, and mapping data ingesting the feed data itself.
 
     :param metadata: existing FeedMetadata instance to use to store stateful information about this feed (if available for bootstrapping)
@@ -122,25 +145,7 @@ class DataFeed(ABC):
                 raise Exception(
                     "Must have feed metadata in db already, should sync metadata before invoking instance operations"
                 )
-        self._log_ctx: LogContext = LogContext(None, self.__feed_name__, None)
         self.metadata: FeedMetadata = metadata
-
-    @property
-    def _log_context(self):
-        """
-        Getter for log context.
-        """
-        return self._log_ctx
-
-    @_log_context.setter
-    def _log_context(self, log_context: LogContext) -> None:
-        """
-        Setter for log context.
-
-        :param log_context: log context object to replace what's currently stored
-        :type log_context: LogContext
-        """
-        self._log_ctx = log_context
 
     def _update_last_full_sync_timestamp(self) -> None:
         """
@@ -249,7 +254,7 @@ class DataFeed(ABC):
         ...
 
 
-class AnchoreServiceFeed(DataFeed, ABC):
+class AnchoreServiceFeed(LogContextMixin, DataFeed, ABC):
     """
     A data feed provided by the Anchore Feeds service.
 
@@ -680,7 +685,7 @@ class RefreshTaskCreationError(GrypeDBFeedSyncError):
         )
 
 
-class GrypeDBFeed(DataFeed):
+class GrypeDBFeed(LogContextMixin, DataFeed):
     """
     AnchoreServiceFeed used to sync Grype DB data.
 
@@ -716,7 +721,7 @@ class GrypeDBFeed(DataFeed):
         return self._catalog_svc_client
 
     @staticmethod
-    def _find_match(
+    def _get_db_metadata_records(
         db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
     ) -> List[GrypeDBFeedMetadata]:
         """
@@ -752,7 +757,7 @@ class GrypeDBFeed(DataFeed):
         :return: number of records
         :rtype: int
         """
-        return len(self._find_match(db))
+        return len(self._get_db_metadata_records(db))
 
     def flush_group(self, group_name: str) -> FeedGroupMetadata:
         """
@@ -792,7 +797,7 @@ class GrypeDBFeed(DataFeed):
         db = get_session()
         try:
             catalog_client = self._catalog_client
-            records = self._find_match(db)
+            records = self._get_db_metadata_records(db)
             for record in records:
                 catalog_client.delete_document(
                     self.__feed_name__, record.archive_checksum
@@ -831,7 +836,8 @@ class GrypeDBFeed(DataFeed):
         if len(errors) > 0:
             logger.error(
                 f"Failed to create/enqueue %d/%d refresh tasks.",
-                (len(errors), len(image_ids)),
+                len(errors),
+                len(image_ids),
             )
             raise RefreshTaskCreationError(errors)
 
@@ -855,7 +861,7 @@ class GrypeDBFeed(DataFeed):
         catalog_client = self._catalog_client
 
         # delete all records not active
-        inactive_records = self._find_match(db, active=False)
+        inactive_records = self._get_db_metadata_records(db, active=False)
         for inactive_record in inactive_records:
             catalog_client.delete_document(
                 self.__feed_name__, inactive_record.archive_checksum
@@ -863,7 +869,7 @@ class GrypeDBFeed(DataFeed):
             db.delete(inactive_record)
 
         # search for active and mark inactive
-        active_records = self._find_match(db, active=True)
+        active_records = self._get_db_metadata_records(db, active=True)
         for active_record in active_records:
             active_record.active = False
 
@@ -932,7 +938,7 @@ class GrypeDBFeed(DataFeed):
             checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
             # If there aren't any other database files with the same checksum, then this is a new database file.
-            matches = self._find_match(db, checksum)
+            matches = self._get_db_metadata_records(db, checksum)
             if len(matches) == 0:
                 # Update the database and the catalog with the new Grype DB file.
                 self._switch_active_grypedb(
