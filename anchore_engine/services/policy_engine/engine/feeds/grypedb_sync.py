@@ -142,6 +142,10 @@ class GrypeDBSyncManager:
         else:
             # Otherwise unstage
             GrypeWrapperSingleton.get_instance().unstage_grype_db()
+            raise GrypeDBSyncError(
+                "Unable to promote grype_db with archive checksum %s. It has been unstaged.",
+                active_grypedb.checksum,
+            )
 
     @staticmethod
     def _is_sync_necessary(
