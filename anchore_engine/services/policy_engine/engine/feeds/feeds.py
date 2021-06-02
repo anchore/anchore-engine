@@ -6,6 +6,11 @@ from typing import List, Optional, Sequence, Tuple
 
 from sqlalchemy.orm.session import Session
 
+from anchore_engine.clients.grype_wrapper import (
+    GrypeDBEngineMetadata,
+    GrypeDBMetadata,
+    GrypeWrapperSingleton,
+)
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
@@ -685,6 +690,15 @@ class RefreshTaskCreationError(GrypeDBFeedSyncError):
         )
 
 
+class GrypeDBStagingFailure(GrypeDBFeedSyncError):
+    def __init__(
+        self, engine_metadata: GrypeDBEngineMetadata, db_metadata: GrypeDBMetadata
+    ):
+        super().__init__(
+            f"Staging new Grype DB file was unsuccessful. (engine_metadata: {engine_metadata}, db_metadata: {engine_metadata})"
+        )
+
+
 class GrypeDBFeed(LogContextMixin, DataFeed):
     """
     AnchoreServiceFeed used to sync Grype DB data.
@@ -846,7 +860,8 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         self,
         db: Session,
         record: FileData,
-        checksum: str,
+        engine_metadata: GrypeDBEngineMetadata,
+        db_metadata: GrypeDBMetadata,
     ) -> None:
         """
         Inserts a new active GrypeDBFeedMetadata record. Before doing so, it deletes all inactive records and then
@@ -856,8 +871,10 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         :type db: Session
         :param record: FileData record retrieved from download.FileListIterator
         :type record: FileData
-        :param checksum: grype DB file checksum
-        :type checksum: str
+        :param engine_metadata: metadata from staged Grype DB file
+        :type engine_metadata: GrypeDBEngineMetadata
+        :param db_metadata: metadata from staged Grype DB file
+        :type db_metadata: GrypeDBMetadata
         """
         catalog_client = self._catalog_client
 
@@ -876,36 +893,18 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
 
         # insert new as active
         object_url = catalog_client.create_raw_object(
-            self.__feed_name__, checksum, record.data
+            self.__feed_name__, engine_metadata.archive_checksum, record.data
         )
-        built_at = rfc3339str_to_datetime(record.metadata["built"])
+        built_at = rfc3339str_to_datetime(db_metadata.built)
         self.grypedb_meta = GrypeDBFeedMetadata(
-            archive_checksum=checksum,
-            metadata_checksum=None,
-            schema_version=str(record.metadata["version"]),
+            archive_checksum=engine_metadata.archive_checksum,
+            db_checksum=engine_metadata.db_checksum,
+            schema_version=engine_metadata.grype_db_version,
             object_url=object_url,
             active=True,
             built_at=built_at,
         )
         db.add(self.grypedb_meta)
-
-    @staticmethod
-    def _run_grypedb_sync_task(
-        db: Session, checksum: str, grype_db_data: bytes
-    ) -> None:
-        """
-        Write the Grype DB to a tar.gz in a temporary directory and pass to GrypeDBSyncManager.
-        The GrypeDBSyncManager updates the working copy of GrypeDB on this instance of policy engine.
-
-        :param checksum: grype DB file checksum
-        :type checksum: str
-        :param grype_db_data: raw tar.gz file data
-        :type grype_db_data: bytes
-        """
-        with GrypeDBStorage() as grypedb_file:
-            with grypedb_file.create_file(checksum) as f:
-                f.write(grype_db_data)
-            GrypeDBSyncManager.run_grypedb_sync(db, grypedb_file.path)
 
     def _process_group_file_records(
         self,
@@ -941,24 +940,48 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             # If there aren't any other database files with the same checksum, then this is a new database file.
             matches = self._get_db_metadata_records(db, checksum)
             if len(matches) == 0:
-                # Update the database and the catalog with the new Grype DB file.
-                self._switch_active_grypedb(
-                    db,
-                    record,
-                    checksum,
-                )
-                # Cache the file to temporary storage and call GrypeDBSyncTask
-                # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
-                # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
-                # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
-                try:
-                    self._run_grypedb_sync_task(db, checksum, record.data)
-                except GrypeDBSyncError:
-                    logger.exception(
-                        self._log_context.format_msg(
-                            "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
+                # Cache the file to temporary storage
+                with GrypeDBStorage() as grypedb_file:
+                    with grypedb_file.create_file(checksum) as f:
+                        f.write(record.data)
+                    logger.info("Staging new Grype DB file for update.")
+                    # Call grype-wrapper to stage a db update. Wrapper responds with object containing archive and db checksums.
+                    engine_metadata = (
+                        GrypeWrapperSingleton.get_instance().stage_grype_db_update(
+                            grypedb_file.path,
+                            checksum,
+                            str(record.metadata["version"]),
                         )
                     )
+                    db_metadata = (
+                        GrypeWrapperSingleton.get_instance().get_grype_db_metadata(
+                            use_staging=True
+                        )
+                    )
+                    GrypeWrapperSingleton.get_instance().unstage_grype_db()
+                    if engine_metadata and db_metadata:
+                        logger.info(
+                            "Staging Grype DB was successful. Switching active Grype DB file to new DB."
+                        )
+                        # Based on the response policy-engine creates an active grypedbfeed record and marks the rest inactive.
+                        # Update the database and the catalog with the new Grype DB file.
+                        self._switch_active_grypedb(
+                            db, record, engine_metadata, db_metadata
+                        )
+                        # Changes are unstaged to allow GrypeDBSyncTask to control swapping of working copy.
+                        # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
+                        # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
+                        # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
+                        try:
+                            GrypeDBSyncManager.run_grypedb_sync(db, grypedb_file.path)
+                        except GrypeDBSyncError:
+                            logger.exception(
+                                self._log_context.format_msg(
+                                    "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
+                                )
+                            )
+                    else:
+                        raise GrypeDBStagingFailure(engine_metadata, db_metadata)
                 # Update number of records processed
                 total_records_updated += 1
                 logger.info(

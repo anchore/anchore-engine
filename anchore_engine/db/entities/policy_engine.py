@@ -150,7 +150,7 @@ class GrypeDBFeedMetadata(Base):
     __tablename__ = "grype_db_feed_metadata"
 
     archive_checksum = Column(String, primary_key=True)
-    metadata_checksum = Column(String, nullable=True, index=True)
+    db_checksum = Column(String, nullable=True, index=True)
     schema_version = Column(String, nullable=False)
     object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
