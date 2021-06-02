@@ -16,7 +16,7 @@ from anchore_engine.clients.grype_wrapper import (
 
 TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
 GRYPE_ARCHIVE_FILE_NAME = "grype_db_test_archive.tar.gz"
-GRYPE_DB_VERSION = "2"
+GRYPE_DB_VERSION = "3"
 
 GRYPE_DB_DIR = "grype_db/"
 PRODUCTION_VERSION_MOCK_CHECKSUM = "old_version"
