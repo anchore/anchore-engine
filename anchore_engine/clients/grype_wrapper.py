@@ -246,14 +246,17 @@ class GrypeWrapperSingleton(object):
             write_lock.release()
 
     @contextmanager
-    def grype_session_scope(self):
+    def grype_session_scope(self, use_staging: bool = False):
         """
         Provides simplified session scope management around the currently configured grype db. Grype
         wrapper only reads from this db (writes only ever happen upstream when the db file is created!)
         so there's no need for normal transaction management as there will never be changes to commit.
         This context manager primarily ensures the session is closed after use.
         """
-        session = self._grype_db_session_maker()
+        if use_staging:
+            session = self._staging_grype_db_session_maker()
+        else:
+            session = self._grype_db_session_maker()
 
         logger.debug("Opening grype_db session: " + str(session))
         try:
@@ -836,7 +839,7 @@ class GrypeWrapperSingleton(object):
 
                 return query.all()
 
-    def query_record_source_counts(self):
+    def query_record_source_counts(self, use_staging: bool = False):
         """
         Query the current feed group counts for all current vulnerabilities.
         """
@@ -845,7 +848,7 @@ class GrypeWrapperSingleton(object):
             logger.debug("Querying grype_db for feed group counts")
 
             # Get the counts for each record source
-            with self.grype_session_scope() as session:
+            with self.grype_session_scope(use_staging) as session:
                 results = (
                     session.query(
                         GrypeVulnerability.record_source,
