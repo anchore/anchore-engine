@@ -1142,7 +1142,7 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
     ],
 )
 def test_query_vulnerabilities(
-    staging_grype_db_dir,
+    production_grype_db_dir,
     vuln_id,
     affected_package,
     namespace,
@@ -1154,7 +1154,7 @@ def test_query_vulnerabilities(
 
     # Setup the sqlalchemy artifacts on the test grype db
     test_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
-        staging_grype_db_dir, GRYPE_DB_VERSION
+        production_grype_db_dir, GRYPE_DB_VERSION
     )
     grype_wrapper_singleton._grype_db_session_maker = (
         grype_wrapper_singleton._init_latest_grype_db_session_maker(
@@ -1193,34 +1193,60 @@ def test_query_vulnerabilities_missing_session():
 
 
 @pytest.mark.parametrize(
-    "expected_group, expected_count",
+    "expected_group, expected_count, use_staging",
     [
-        ("debian:10", 4),
-        ("alpine:3.10", 3),
-        ("github:python", 3),
+        ("debian:10", 3, True),
+        ("alpine:3.10", 2, True),
+        ("github:python", 2, True),
+        ("debian:10", 4, False),
+        ("alpine:3.10", 3, False),
+        ("github:python", 3, False),
     ],
 )
 def test_query_record_source_counts(
-    staging_grype_db_dir, expected_group, expected_count
+    staging_grype_db_dir,
+    production_grype_db_dir,
+    expected_group,
+    expected_count,
+    use_staging,
 ):
     # Create grype_wrapper_singleton instance
     grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
 
-    # Setup the grype_db_dir state and the sqlalchemy artifacts on the test grype db
-    grype_wrapper_singleton._grype_db_dir = staging_grype_db_dir
-    grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
-    test_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
+    # Setup the grype_db_dir state and the sqlalchemy artifacts on the test staging grype db
+    grype_wrapper_singleton._staging_grype_db_dir = staging_grype_db_dir
+    grype_wrapper_singleton._staging_grype_db_version = GRYPE_DB_VERSION
+
+    test_staging_grype_db_engine = grype_wrapper_singleton._init_latest_grype_db_engine(
         staging_grype_db_dir, GRYPE_DB_VERSION
+    )
+
+    grype_wrapper_singleton._staging_grype_db_session_maker = (
+        grype_wrapper_singleton._init_latest_grype_db_session_maker(
+            test_staging_grype_db_engine
+        )
+    )
+
+    # Setup the grype_db_dir state and the sqlalchemy artifacts on the test production grype db
+    grype_wrapper_singleton._grype_db_dir = production_grype_db_dir
+    grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
+
+    test_production_grype_db_engine = (
+        grype_wrapper_singleton._init_latest_grype_db_engine(
+            production_grype_db_dir, GRYPE_DB_VERSION
+        )
     )
 
     grype_wrapper_singleton._grype_db_session_maker = (
         grype_wrapper_singleton._init_latest_grype_db_session_maker(
-            test_grype_db_engine
+            test_production_grype_db_engine
         )
     )
 
     # Function under test
-    results = grype_wrapper_singleton.query_record_source_counts()
+    results = grype_wrapper_singleton.query_record_source_counts(
+        use_staging=use_staging
+    )
 
     # Validate output
     filtered_result = next(
