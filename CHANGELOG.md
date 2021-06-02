@@ -1,5 +1,14 @@
 # Changelog
 
+### 0.10.0
+
++ Improved - Update Skopeo version in the docker image and utilizes skopeo list-tags command to retrieve tags from remote repository. #918
++ Improved - Refactored vulnerability abstraction/subsystem to query anything related to vulnerabilities in the policy-engine #1000 #1001 #1002
++ Fixed - Fixes error in malware gate execution causing evaluation error of whole policy #993
++ Fixed - Regression in 31_file_package_verify analyzer #965
++ Fixed - Package 2.3 CPE string is missing for all non-os vulnerabilities. #959
+
+
 ## 0.9.4
 
 + Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990
