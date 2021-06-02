@@ -1,23 +1,24 @@
-import anchore_engine.configuration.localconfig
 import errno
 import json
 import os
 import shlex
 import shutil
-import sqlalchemy
 import tarfile
-
-from anchore_engine.db.entities.common import UtilMixin
-from anchore_engine.subsys import logger
-from anchore_engine.utils import CommandException, run_check
 from contextlib import contextmanager
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
+from typing import Dict, Optional, Tuple
+
+import sqlalchemy
 from readerwriterlock import rwlock
-from sqlalchemy import Column, ForeignKey, func, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from typing import Tuple, Optional, Dict
+from sqlalchemy.orm import relationship, sessionmaker
+
+import anchore_engine.configuration.localconfig
+from anchore_engine.db.entities.common import UtilMixin
+from anchore_engine.subsys import logger
+from anchore_engine.utils import CommandException, run_check
 
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
@@ -345,7 +346,7 @@ class GrypeWrapperSingleton(object):
                 grype_db_archive_local_file_location,
                 grype_db_archive_copied_file_location,
             )
-            os.replace(
+            shutil.copyfile(
                 grype_db_archive_local_file_location,
                 grype_db_archive_copied_file_location,
             )
