@@ -59,7 +59,7 @@ class GrypeDBKey:
             # try getting the current active db checksum
             try:
                 active_db = get_most_recent_active_grypedb(session)
-                active_db_checksum = active_db.metadata_checksum
+                active_db_checksum = active_db.db_checksum
             except NoActiveGrypeDB:
                 active_db_checksum = None
 

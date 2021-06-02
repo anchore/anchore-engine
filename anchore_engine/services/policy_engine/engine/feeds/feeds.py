@@ -898,7 +898,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         built_at = rfc3339str_to_datetime(db_metadata.built)
         self.grypedb_meta = GrypeDBFeedMetadata(
             archive_checksum=engine_metadata.archive_checksum,
-            metadata_checksum=engine_metadata.db_checksum,
+            db_checksum=engine_metadata.db_checksum,
             schema_version=engine_metadata.grype_db_version,
             object_url=object_url,
             active=True,
