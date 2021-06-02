@@ -157,10 +157,12 @@ class ImageVulnerabilitiesStore:
         self.delete_all()
 
         # save the new results as a new entry
-        db_record = DbImageVulnerabilities()
-        db_record.account_id = self.image.user_id
-        db_record.image_digest = self.image.digest
-        db_record.report_key = self.__report_key_class__.from_report(report)
+        db_record = DbImageVulnerabilities(
+            account_id=self.image.user_id,
+            image_digest=self.image.digest,
+            generated_at=report.metadata.generated_at,
+            report_key=self.__report_key_class__.from_report(report),
+        )
 
         # save it to db instead of object storage to be able to execute other queries over the data
         db_record.add_raw_result(report.to_json())
