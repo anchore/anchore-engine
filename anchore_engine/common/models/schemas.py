@@ -645,3 +645,39 @@ class LocalFeedDataRepoMetadata(JsonSerializable):
         self.download_configuration = download_configuration
         self.download_result = download_result
         self.data_write_dir = data_write_dir
+
+
+class ImageVulnerabilitiesQueueMessage(JsonSerializable):
+    class ImageVulnerabilitiesQueueMessageV1Schema(Schema):
+        account_id = fields.Str()
+        image_id = fields.Str()
+        image_digest = fields.Str()
+
+        @post_load
+        def make(self, data, **kwargs):
+            return ImageVulnerabilitiesQueueMessage(**data)
+
+    __schema__ = ImageVulnerabilitiesQueueMessageV1Schema()
+
+    def __init__(self, account_id=None, image_id=None, image_digest=None):
+        self.account_id = account_id
+        self.image_id = image_id
+        self.image_digest = image_digest
+
+
+class BatchImageVulnerabilitiesQueueMessage(JsonSerializable):
+    class BatchImageVulnerabilitiesQueueMessageV1Schema(Schema):
+        messages = fields.List(
+            fields.Nested(
+                ImageVulnerabilitiesQueueMessage.ImageVulnerabilitiesQueueMessageV1Schema
+            )
+        )
+
+        @post_load
+        def make(self, data, **kwargs):
+            return BatchImageVulnerabilitiesQueueMessage(**data)
+
+    __schema__ = BatchImageVulnerabilitiesQueueMessageV1Schema()
+
+    def __init__(self, messages=None):
+        self.messages = messages

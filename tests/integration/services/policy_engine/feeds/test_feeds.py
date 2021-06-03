@@ -9,12 +9,17 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
+    GrypeDBFeed,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     MetadataSyncUtils,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.common.models.schemas import (
+    BatchImageVulnerabilitiesQueueMessage,
+    ImageVulnerabilitiesQueueMessage,
+)
 
 logger.enable_test_logging()
 
@@ -131,3 +136,79 @@ def test_metadata_sync(test_data_env):
     assert r[0].get("packages")
     assert r[0].get("vulndb")
     assert r[0].get("nvdv2")
+
+
+class TestGrypeDBFeed:
+    @pytest.mark.parametrize(
+        "test_input, batch_size",
+        [
+            pytest.param([], 0, id="empty-1"),
+            pytest.param([], -1, id="empty-2"),
+            pytest.param([], 10, id="empty-3"),
+            pytest.param(None, 0, id="none-1"),
+            pytest.param(None, -1, id="none-2"),
+            pytest.param(None, 10, id="none-3"),
+        ],
+    )
+    def test_create_refresh_tasks_invalid_input(self, test_input, batch_size):
+        assert GrypeDBFeed._create_refresh_tasks(test_input, batch_size) == []
+
+    @pytest.mark.parametrize(
+        "test_input, batch_size, expected",
+        [
+            pytest.param(
+                [("x", "y", "z"), ("x", "y", "z")],
+                10,
+                [
+                    BatchImageVulnerabilitiesQueueMessage(
+                        messages=[
+                            ImageVulnerabilitiesQueueMessage("x", "y", "z"),
+                            ImageVulnerabilitiesQueueMessage("x", "y", "z"),
+                        ]
+                    )
+                ],
+                id="input-less-than-batch-size",
+            ),
+            pytest.param(
+                [("x", "y", "z"), ("x", "y", "z"), ("x", "y", "z")],
+                1,
+                [
+                    BatchImageVulnerabilitiesQueueMessage(
+                        messages=[ImageVulnerabilitiesQueueMessage("x", "y", "z")]
+                    ),
+                    BatchImageVulnerabilitiesQueueMessage(
+                        messages=[ImageVulnerabilitiesQueueMessage("x", "y", "z")]
+                    ),
+                    BatchImageVulnerabilitiesQueueMessage(
+                        messages=[ImageVulnerabilitiesQueueMessage("x", "y", "z")]
+                    ),
+                ],
+                id="input-greater-than-batch-size-1",
+            ),
+            pytest.param(
+                [("x", "y", "z"), ("x", "y", "z")],
+                2,
+                [
+                    BatchImageVulnerabilitiesQueueMessage(
+                        messages=[
+                            ImageVulnerabilitiesQueueMessage("x", "y", "z"),
+                            ImageVulnerabilitiesQueueMessage("x", "y", "z"),
+                        ]
+                    ),
+                ],
+                id="input-equals-batch-size",
+            ),
+        ],
+    )
+    def test_create_refresh_tasks(self, test_input, batch_size, expected):
+        actual = GrypeDBFeed._create_refresh_tasks(test_input, batch_size)
+        assert len(actual) == len(expected)
+
+        for actual_batch, expected_batch in zip(actual, expected):
+            assert len(actual_batch.messages) == len(expected_batch.messages)
+            for actual_message, expected_message in zip(
+                actual_batch.messages, expected_batch.messages
+            ):
+                assert actual_message.account_id == expected_message.account_id
+                assert actual_message.image_id == expected_message.image_id
+                assert actual_message.image_digest == expected_message.image_digest
