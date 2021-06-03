@@ -1,11 +1,11 @@
 {
  "available": {
-  "2": [
+  "3": [
    {
-    "built": "2021-05-27T22:50:13Z",
-    "version": 2,
-    "url": "http://docker.for.mac.localhost:8448/v1/service/databases/grypedb/sha256:6fb347178410d8c98bf1429de85d94c4644ec6062f773665bf06ebc554461ed3.tar.gz",
-    "checksum": "sha256:6fb347178410d8c98bf1429de85d94c4644ec6062f773665bf06ebc554461ed3"
+    "built": "2021-06-03T20:18:03Z",
+    "version": 3,
+    "url": "http://docker.for.mac.localhost:8448/v1/service/databases/grypedb/sha256:7f926429366ced0e47fa1264ece7d614008ccf66d03a2cea98aface4b2c9f5ba.tar.gz",
+    "checksum": "sha256:7f926429366ced0e47fa1264ece7d614008ccf66d03a2cea98aface4b2c9f5ba"
    }
   ]
  }
