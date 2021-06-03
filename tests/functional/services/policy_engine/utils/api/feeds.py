@@ -6,13 +6,15 @@ from tests.functional.services.utils import http_utils
 
 def feeds_sync(force_flush=None, feed=None):
     payload = {
+        "user_id": policy_engine_api_conf().get("ANCHORE_API_USER"),
+    }
+    query = {
         "force_flush": force_flush,
         "feed": feed,
-        "user_id": policy_engine_api_conf().get("ANCHORE_API_USER"),
     }
 
     feed_sync_resp = http_utils.http_post(
-        ["feeds"], payload, config=policy_engine_api_conf
+        ["feeds"], payload, query=query, config=policy_engine_api_conf
     )
 
     if feed_sync_resp.code != 200:

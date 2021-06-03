@@ -25,6 +25,10 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     GRYPE_DB_FEED_NAME,
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    VulnerabilitiesProvider,
+    get_vulnerabilities_provider,
+)
 from anchore_engine.subsys import logger as log
 
 authorizer = get_authorizer()
@@ -39,25 +43,38 @@ def list_feeds(refresh_counts=False):
     :return:
     """
 
-    if refresh_counts:
-        sync.DataFeeds.update_counts()
+    provider = get_vulnerabilities_provider()
 
-    response = [x.to_json() for x in _marshall_feeds_response()]
+    if refresh_counts:
+        provider.update_feed_group_counts()
+
+    response = [x.to_json() for x in _marshall_feeds_response(provider)]
 
     return jsonify(response)
 
 
-def _marshall_feeds_response() -> typing.List[FeedMetadata]:
+def _marshall_feeds_response(
+    provider: VulnerabilitiesProvider,
+) -> typing.List[FeedMetadata]:
+    """
+    Marshalls feeds and groups for specified provider into api models
+    """
     response = []
-    meta = db.get_all_feeds_detached()
+    meta = provider.get_feeds_detached()
 
     for feed in meta:
-        response.append(_marshall_feed_response(feed))
+        response.append(_marshall_feed_response(provider, feed))
 
     return response
 
 
-def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
+def _marshall_feed_response(
+    provider: VulnerabilitiesProvider, feed: DbFeedMetadata
+) -> FeedMetadata:
+    """
+    Marshalls FeedMetadata record obtained from the db into the api model
+    Calls _marshall_group_response to build the groups for the specified vuln provider
+    """
     if not feed:
         return ValueError(feed)
 
@@ -69,13 +86,18 @@ def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
     i.enabled = feed.enabled
     i.groups = []
 
-    for group in feed.groups:
+    groups = provider.get_feed_groups_detached(feed)
+
+    for group in groups:
         i.groups.append(_marshall_group_response(group))
 
     return i
 
 
 def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
+    """
+    Marshalls the specified group from db record to api model
+    """
     if not group:
         raise ValueError(group)
 
