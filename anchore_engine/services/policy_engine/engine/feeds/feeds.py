@@ -14,7 +14,11 @@ from anchore_engine.clients.grype_wrapper import (
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
-from anchore_engine.common.models.schemas import GroupDownloadResult
+from anchore_engine.common.models.schemas import (
+    GroupDownloadResult,
+    ImageVulnerabilitiesQueueMessage,
+    BatchImageVulnerabilitiesQueueMessage,
+)
 from anchore_engine.db import (
     CpeV2Vulnerability,
     CpeVulnerability,
@@ -69,6 +73,9 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import rfc3339str_to_datetime
+
+IMAGE_VULNERABILITIES_QUEUE = "image_vulnerabilities"
+MESSAGE_BATCH_SIZE = 10
 
 
 @dataclass
@@ -757,7 +764,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         if checksum:
             results = results.filter(GrypeDBFeedMetadata.archive_checksum == checksum)
         if isinstance(active, bool):
-            results = results.filter(GrypeDBFeedMetadata.active == active)
+            results = results.filter(GrypeDBFeedMetadata.active.is_(active))
         return results.all()
 
     def record_count(self, group_name: str, db: Session) -> int:
@@ -832,29 +839,74 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
     @staticmethod
     def _enqueue_refresh_tasks(db: Session) -> None:
         """
-        Places a refresh task on the simple queue service for every image id in the image table.
+        Queues a task for refreshing image vulnerabilities report for each image in policy-engine persistence context
 
         :param db: sqlalchemy database session
         :type db: Session
         """
+        logger.debug("Enqueuing image vulnerabilities refresh tasks")
+        all_images = db.query(Image.user_id, Image.id, Image.digest).all()
+
+        if not all_images:
+            logger.debug("No images in the system to refresh")
+            return
+
+        queue_messages = GrypeDBFeed._create_refresh_tasks(
+            all_images, MESSAGE_BATCH_SIZE
+        )
         q_client = internal_client_for(SimpleQueueClient, None)
-        subscription_type = "refresh_tasks"
-        image_ids = db.query(Image.id).all()
         errors = []
-        for result in image_ids:
-            task_body = {"image_id": result.id}
+        for task in queue_messages:
             try:
-                # if not q_client.is_inqueue(subscription_type, task_body):
-                q_client.enqueue(subscription_type, task_body)
+                q_client.enqueue(name=IMAGE_VULNERABILITIES_QUEUE, inobj=task.to_json())
             except Exception as err:
-                errors.append((result.id, err))
+                errors.append((task.to_json_str(), err))
+
         if len(errors) > 0:
             logger.error(
                 f"Failed to create/enqueue %d/%d refresh tasks.",
                 len(errors),
-                len(image_ids),
+                len(queue_messages),
             )
             raise RefreshTaskCreationError(errors)
+
+        logger.debug(
+            "Queued %d task(s) for %d image(s)", len(queue_messages), len(all_images)
+        )
+
+    @staticmethod
+    def _create_refresh_tasks(
+        all_images: List[Tuple[str, str, str]], batch_size: int = MESSAGE_BATCH_SIZE
+    ) -> List[BatchImageVulnerabilitiesQueueMessage]:
+        """
+        Creates a list of queue messages to be added to the queue. Each queue message is a list of images to be refreshed.
+        This is to avoid queue overheads for message per image in a system with a large number of images
+
+        :param all_images: List of tuples where each tuple is (account_id, image_id, image_digest)
+        :param batch_size: Number of messages in a batch
+        """
+        tasks = []
+
+        if not all_images or not isinstance(batch_size, int) or batch_size < 1:
+            return tasks
+
+        for start in range(0, len(all_images), batch_size):
+            tasks.append(
+                BatchImageVulnerabilitiesQueueMessage(
+                    messages=[
+                        ImageVulnerabilitiesQueueMessage(
+                            account_id=account_id,
+                            image_id=image_id,
+                            image_digest=image_digest,
+                        )
+                        for account_id, image_id, image_digest in all_images[
+                            start : start + batch_size
+                        ]
+                    ]
+                )
+            )
+
+        return tasks
 
     def _switch_active_grypedb(
         self,
@@ -980,6 +1032,14 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                                     "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
                                 )
                             )
+
+                        # best effort at queuing refresh tasks, DO NOT bail on errors
+                        try:
+                            self._enqueue_refresh_tasks(db)
+                        except RefreshTaskCreationError:
+                            logger.exception(
+                                "Logging and ignoring error queuing report refresh tasks post GrypeDB sync"
+                            )
                     else:
                         raise GrypeDBStagingFailure(engine_metadata, db_metadata)
                 # Update number of records processed
@@ -1004,12 +1064,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                     ),
                 )
             )
-        logger.debug(
-            self._log_context.format_msg(
-                "Enqueuing image refresh tasks.",
-            )
-        )
-        self._enqueue_refresh_tasks(db)
+
         return total_records_updated
 
     def _sync_group(

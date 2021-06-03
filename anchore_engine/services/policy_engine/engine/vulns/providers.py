@@ -30,6 +30,7 @@ from anchore_engine.db import (
     VulnDBCpe,
     VulnDBMetadata,
     Vulnerability,
+    get_thread_scoped_session,
 )
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import select_nvd_classes
@@ -51,7 +52,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
 )
-from anchore_engine.subsys import logger as log
+from anchore_engine.subsys import logger
 from anchore_engine.subsys import metrics
 from anchore_engine.utils import timer
 
@@ -126,6 +127,14 @@ class VulnerabilitiesProvider(ABC):
         """
         ...
 
+    @abstractmethod
+    def rescan_images_loaded_during_feed_sync(
+        self, uuid: str, from_time: datetime.datetime, to_time: datetime.datetime
+    ):
+        """
+        Legacy holdout for updating vulnerability matches of images that were loaded during the feed sync
+        """
+
 
 class LegacyProvider(VulnerabilitiesProvider):
     """
@@ -187,7 +196,7 @@ class LegacyProvider(VulnerabilitiesProvider):
         results = []
 
         if force_refresh:
-            log.info(
+            logger.info(
                 "Forcing refresh of vulnerabilities for {}/{}".format(user_id, image_id)
             )
             try:
@@ -196,7 +205,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 )
                 db_session.commit()
             except Exception as e:
-                log.exception(
+                logger.exception(
                     "Error refreshing cve matches for image {}/{}".format(
                         user_id, image_id
                     )
@@ -243,7 +252,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                         nvd_record.to_nvd_reference() for nvd_record in nvd_records
                     ]
                 except Exception:
-                    log.debug(
+                    logger.debug(
                         "Ignoring error building nvd CVSS scores for %s",
                         vuln.vulnerability_id,
                     )
@@ -261,7 +270,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                                 for vendor_advisory_dict in vendor_advisories
                             ]
                         except ValidationError:
-                            log.debug(
+                            logger.debug(
                                 "Ignoring error building vendor advisories for %s",
                                 vuln.vulnerability_id,
                             )
@@ -323,7 +332,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                         nvd_refs = vulnerability_cpe.parent.get_all_nvd_references()
                         cvss_objects = vulnerability_cpe.parent.get_all_cvss()
                     except Exception:
-                        log.debug(
+                        logger.debug(
                             "Ignoring error building nvd refs and or CVSS scores for %s",
                             vulnerability_cpe.vulnerability_id,
                         )
@@ -363,7 +372,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                         )
                     )
         except Exception as err:
-            log.exception("could not fetch CPE matches")
+            logger.exception("could not fetch CPE matches")
 
         return ImageVulnerabilitiesReport(
             account_id=image.user_id,
@@ -434,7 +443,7 @@ class LegacyProvider(VulnerabilitiesProvider):
             .all()
         )
 
-        log.spew("Vuln query 1 timing: {}".format(time.time() - t1))
+        logger.spew("Vuln query 1 timing: {}".format(time.time() - t1))
 
         api_endpoint = self._get_api_endpoint()
 
@@ -480,7 +489,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 ):
                     dedupped_return_hash[namespace_el["id"]] = namespace_el
 
-            log.spew("Vuln merge took {}".format(time.time() - t1))
+            logger.spew("Vuln merge took {}".format(time.time() - t1))
 
             return_object.extend(list(dedupped_return_hash.values()))
 
@@ -504,10 +513,10 @@ class LegacyProvider(VulnerabilitiesProvider):
 
             vulnerabilities = qry.all()
 
-            log.spew("Vuln query 2 timing: {}".format(time.time() - t1))
+            logger.spew("Vuln query 2 timing: {}".format(time.time() - t1))
 
         if vulnerabilities:
-            log.spew("Merging nvd data into the vulns")
+            logger.spew("Merging nvd data into the vulns")
             t1 = time.time()
             merged_vulns = merge_nvd_metadata(
                 db_session,
@@ -516,7 +525,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 _cpe_cls,
                 already_loaded_nvds=nvd_vulnerabilities,
             )
-            log.spew("Vuln nvd query 2 timing: {}".format(time.time() - t1))
+            logger.spew("Vuln nvd query 2 timing: {}".format(time.time() - t1))
 
             for entry in merged_vulns:
                 vulnerability = entry[0]
@@ -660,7 +669,7 @@ class LegacyProvider(VulnerabilitiesProvider):
         image_cpe_matches = icm_query  # .all()
         image_cpe_vlndb_matches = icm_vulndb_query
 
-        log.debug("QUERY TIME: {}".format(time.time() - start))
+        logger.debug("QUERY TIME: {}".format(time.time() - start))
 
         start = time.time()
         if image_package_matches or image_cpe_matches or image_cpe_vlndb_matches:
@@ -688,7 +697,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 }
 
                 ret_hash[imageId]["vulnerable_packages"].append(pkg_el)
-            log.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
+            logger.debug("IMAGEOSPKG TIME: {}".format(time.time() - start))
 
             for cpe_matches in [image_cpe_matches, image_cpe_vlndb_matches]:
                 start = time.time()
@@ -714,12 +723,12 @@ class LegacyProvider(VulnerabilitiesProvider):
                         ret_hash[imageId]["vulnerable_packages"].append(pkg_el)
                     pkg_hash[imageId][phash] = True
 
-                log.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
+                logger.debug("IMAGECPEPKG TIME: {}".format(time.time() - start))
 
         start = time.time()
         vulnerable_images = list(ret_hash.values())
         return_object = {"vulnerable_images": vulnerable_images}
-        log.debug("RESP TIME: {}".format(time.time() - start))
+        logger.debug("RESP TIME: {}".format(time.time() - start))
 
         return return_object
 
@@ -753,13 +762,13 @@ class LegacyProvider(VulnerabilitiesProvider):
         try:
             return get_service_endpoint("apiext").strip("/")
         except:
-            log.warn(
+            logger.warn(
                 "Could not find valid apiext endpoint for links so will use policy engine endpoint instead"
             )
             try:
                 return get_service_endpoint("policy_engine").strip("/")
             except:
-                log.warn(
+                logger.warn(
                     "No policy engine endpoint found either, using default but invalid url"
                 )
                 return "http://<valid endpoint not found>"
@@ -771,6 +780,88 @@ class LegacyProvider(VulnerabilitiesProvider):
         Get a SyncUtilProvider.
         """
         return LegacySyncUtilProvider(sync_configs)
+
+    def rescan_images_loaded_during_feed_sync(
+        self, uuid: str, from_time: datetime.datetime, to_time: datetime.datetime
+    ):
+        """
+        If this was a vulnerability update (e.g. timestamps vuln feeds lies in that interval), then look for any images that were loaded in that interval and
+        re-scan the cves for those to ensure that no ordering of transactions caused cves to be missed for an image.
+
+        This is an alternative to a blocking approach by which image loading is blocked during feed syncs.
+
+        :param uuid:
+        :param from_time:
+        :param to_time:
+        :return: count of updated images
+        """
+
+        if from_time is None or to_time is None:
+            raise ValueError("Cannot process None timestamp")
+
+        logger.info(
+            "Rescanning images loaded between {} and {} (operation_id={})".format(
+                from_time.isoformat(), to_time.isoformat(), uuid
+            )
+        )
+        count = 0
+
+        db = get_session()
+        try:
+            # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
+            imgs = [
+                (x.id, x.user_id)
+                for x in db.query(Image).filter(
+                    Image.created_at >= from_time, Image.created_at <= to_time
+                )
+            ]
+            logger.info(
+                "Detected images: {} for rescan (operation_id={})".format(
+                    " ,".join([str(x) for x in imgs]) if imgs else "[]", uuid
+                )
+            )
+        finally:
+            db.rollback()
+
+        retry_max = 3
+        for img in imgs:
+            for i in range(retry_max):
+                try:
+                    # New transaction for each image to get incremental progress
+                    db = get_session()
+                    try:
+                        # If the type or ordering of 'img' tuple changes, this needs to be updated as it relies on symmetry of that tuple and the identity key of the Image entity
+                        image_obj = db.query(Image).get(img)
+                        if image_obj:
+                            logger.info(
+                                "Rescanning image {} post-vuln sync. (operation_id={})".format(
+                                    img, uuid
+                                )
+                            )
+                            self.load_image(image_obj, db_session=db)
+                            count += 1
+                        else:
+                            logger.warn(
+                                "Failed to lookup image with tuple: {} (operation_id={})".format(
+                                    str(img), uuid
+                                )
+                            )
+
+                        db.commit()
+
+                    finally:
+                        db.rollback()
+
+                    break
+                except Exception as e:
+                    logger.exception(
+                        "Caught exception updating vulnerability scan results for image {}. Waiting and retrying (operation_id={})".format(
+                            img, uuid
+                        )
+                    )
+                    time.sleep(5)
+
+        return count
 
 
 class GrypeProvider(VulnerabilitiesProvider):
@@ -871,7 +962,9 @@ class GrypeProvider(VulnerabilitiesProvider):
                 store_manager = self.__store__(image)
                 store_manager.save(new_report)
             except Exception:
-                log.exception("Ignoring error saving vulnerabilities report to store")
+                logger.exception(
+                    "Ignoring error saving vulnerabilities report to store"
+                )
 
         return new_report
 
@@ -902,7 +995,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                     time.time() - timer2,
                     status="hit",
                 )
-                log.info(
+                logger.info(
                     "Vulnerabilities cache hit, returning cached report for %s/%s",
                     user_id,
                     image_id,
@@ -915,13 +1008,13 @@ class GrypeProvider(VulnerabilitiesProvider):
                     time.time() - timer2,
                     status="miss",
                 )
-                log.info(
+                logger.info(
                     "Vulnerabilities not cached or invalid, executing report for %s/%s",
                     user_id,
                     image_id,
                 )
         except Exception:
-            log.exception(
+            logger.exception(
                 "Unexpected error with vulnerabilities store. Skipping use of cache."
             )
 
@@ -936,7 +1029,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
             if existing_report:
                 # transfer timestamps of previously found vulnerabilities
-                log.debug(
+                logger.debug(
                     "Attempting to transfer timestamps from existing to the new vulnerabilities report for %s/%s",
                     user_id,
                     image_id,
@@ -951,7 +1044,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                     )
                     new_report.results = merged_results
                 except Exception:
-                    log.exception(
+                    logger.exception(
                         "Ignoring error reconciling timestamps from an existing vulnerability report"
                     )
 
@@ -959,12 +1052,14 @@ class GrypeProvider(VulnerabilitiesProvider):
             try:
                 store_manager.save(new_report)
             except Exception:
-                log.exception("Ignoring error saving vulnerabilities report to store")
+                logger.exception(
+                    "Ignoring error saving vulnerabilities report to store"
+                )
 
             return new_report
         elif existing_report:
             # if there were problems generating the report, return the stored version if its available
-            log.warn(
+            logger.warn(
                 "Failed to generate new image vulnerabilities report for %s/%s. Returning the existing report",
                 user_id,
                 image_id,
@@ -972,7 +1067,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
             return existing_report
         else:
-            log.warn(
+            logger.warn(
                 "Failed to generate new image vulnerabilities report for %s/%s",
                 user_id,
                 image_id,
@@ -994,6 +1089,15 @@ class GrypeProvider(VulnerabilitiesProvider):
         """
         return GrypeDBSyncUtilProvider(sync_configs)
 
+    def rescan_images_loaded_during_feed_sync(
+        self, uuid: str, from_time: datetime.datetime, to_time: datetime.datetime
+    ):
+        """
+        This is a no-op for grype provider since vulnerability matches are not computed the same way as the legacy provider.
+        grype-db feed sync will refresh the matches for all images in the system
+        """
+        pass
+
 
 # Override this map for associating different provider classes
 PROVIDER_CLASSES = [LegacyProvider, GrypeProvider]
@@ -1011,7 +1115,7 @@ def set_provider():
     )
 
     if not provider_class:
-        log.warn(
+        logger.warn(
             "No implementation found for configured provider %s. Falling back to default",
             provider_name,
         )
