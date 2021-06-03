@@ -868,11 +868,11 @@ class GrypeWrapperSingleton(object):
 
                 # Transform the results along with the last_synced timestamp for each result
                 output = []
-                for result in results:
+                for group, count in results:
                     record_source = RecordSource(
-                        count=result[1],
+                        count=count,
                         feed=VULNERABILITIES,
-                        group=result[0],
+                        group=group,
                         last_synced=last_synced,
                     )
                     output.append(record_source)
