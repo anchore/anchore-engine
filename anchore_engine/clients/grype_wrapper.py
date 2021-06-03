@@ -20,6 +20,7 @@ from anchore_engine.db.entities.common import UtilMixin
 from anchore_engine.subsys import logger
 from anchore_engine.utils import CommandException, run_check
 
+VULNERABILITIES = "vulnerabilities"
 VULNERABILITY_TABLE_NAME = "vulnerability"
 VULNERABILITY_METADATA_TABLE_NAME = "vulnerability_metadata"
 Base = declarative_base()
@@ -31,14 +32,15 @@ class GrypeVulnerability(Base, UtilMixin):
 
     pk = Column(Integer, primary_key=True)
     id = Column(String)
-    record_source = Column(String)
     package_name = Column(String)
     namespace = Column(String)
     version_constraint = Column(String)
     version_format = Column(String)
     cpes = Column(String)
-    proxy_vulnerabilities = Column(String)
-    fixed_in_version = Column(String)
+    related_vulnerabilities = Column(String)
+    fixed_in_versions = Column(String)
+    fix_state = Column(String)
+    advisories = Column(String)
     vulnerability_metadata = relationship("GrypeVulnerabilityMetadata")
 
 
@@ -46,12 +48,13 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     __tablename__ = VULNERABILITY_METADATA_TABLE_NAME
 
     id = Column(String, ForeignKey(f"{VULNERABILITY_TABLE_NAME}.id"), primary_key=True)
-    record_source = Column(String, primary_key=True)
+    namespace = Column(String, primary_key=True)
+    data_source = Column(String)
+    record_source = Column(String)
     severity = Column(String)
-    links = Column(String)
+    urls = Column(String)
     description = Column(String)
-    cvss_v2 = Column(String)
-    cvss_v3 = Column(String)
+    cvss = Column(String)
 
 
 @dataclass
@@ -851,10 +854,10 @@ class GrypeWrapperSingleton(object):
             with self.grype_session_scope(use_staging) as session:
                 results = (
                     session.query(
-                        GrypeVulnerability.record_source,
-                        func.count(GrypeVulnerability.record_source).label("count"),
+                        GrypeVulnerability.namespace,
+                        func.count(GrypeVulnerability.namespace).label("count"),
                     )
-                    .group_by(GrypeVulnerability.record_source)
+                    .group_by(GrypeVulnerability.namespace)
                     .all()
                 )
 
@@ -865,20 +868,11 @@ class GrypeWrapperSingleton(object):
 
                 # Transform the results along with the last_synced timestamp for each result
                 output = []
-                for result in results:
-                    feed_group = str(result[0]).split(":", 1)
-                    if len(feed_group) != 2:
-                        logger.error(
-                            "Unable to process feed/group for record_source {}. Omitting from the response".format(
-                                feed_group
-                            )
-                        )
-                        continue
-
+                for group, count in results:
                     record_source = RecordSource(
-                        count=result[1],
-                        feed=feed_group[0],
-                        group=feed_group[1],
+                        count=count,
+                        feed=VULNERABILITIES,
+                        group=group,
                         last_synced=last_synced,
                     )
                     output.append(record_source)

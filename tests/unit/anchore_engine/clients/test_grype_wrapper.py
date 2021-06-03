@@ -11,18 +11,18 @@ from anchore_engine.clients.grype_wrapper import (
     GrypeWrapperSingleton,
     GrypeDBEngineMetadata,
     GrypeDBMetadata,
+    VULNERABILITIES,
 )
 
 TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
 GRYPE_ARCHIVE_FILE_NAME = "grype_db_test_archive.tar.gz"
-GRYPE_DB_VERSION = "2"
+GRYPE_DB_VERSION = "3"
 
 GRYPE_DB_DIR = "grype_db/"
 PRODUCTION_VERSION_MOCK_CHECKSUM = "old_version"
 STAGED_VERSION_MOCK_CHECKSUM = "new_version"
 MOCK_DB_CHECKSUM = "mock_db_checksum"
 MOCK_BUILT_TIMESTAMP = "2021-04-07T08:12:05Z"
-VULNERABILITIES = "vulnerabilities"
 LAST_SYNCED_TIMESTAMP = "2021-04-07T08:12:05Z"
 
 
@@ -1124,18 +1124,12 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
             None,
             None,
             "debian:10",
-            10,
+            4,
             [
                 "CVE-2019-16775",
                 "CVE-2019-16777",
                 "CVE-2019-16776",
                 "CVE-2020-10174",
-                "CVE-2019-2391",
-                "CVE-2020-7610",
-                "CVE-2020-8518",
-                "CVE-2019-9658",
-                "CVE-2019-15690",
-                "CVE-2019-20788",
             ],
         ),
         ("CVE-2019-16775", "npm", "debian:10", 1, ["CVE-2019-16775"]),
