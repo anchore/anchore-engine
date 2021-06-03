@@ -575,8 +575,23 @@ class EngineGrypeDBMapper:
 
         vendor_data = {}
         vendor_data["id"] = grype_vulnerability.id
-        vendor_data["cvss_v2"] = grype_vulnerability.deserialized_cvss_v2
-        vendor_data["cvss_v3"] = grype_vulnerability.deserialized_cvss_v3
+
+        # Transform the cvss blocks
+        cvss_v2 = []
+        cvss_v3 = []
+        cvss_combined = grype_vulnerability.deserialized_cvss
+
+        for cvss in cvss_combined:
+            if cvss["Version"].startswith["2"]:
+                cvss_v2.append(cvss)
+            elif cvss["Version"].startswith["3"]:
+                cvss_v3.append(cvss)
+            else:
+                continue  # TODO Delete this line, just log
+                # TODO Log an unknown CVSS version
+        vendor_data["cvss_v2"] = cvss_v2
+        vendor_data["cvss_v3"] = cvss_v3
+
         if (
             grype_vulnerability.record_source
             and grype_vulnerability.record_source.startswith("nvdv2")
