@@ -10,11 +10,10 @@ from anchore_engine.db.db_grype_db_feed_metadata import (
 )
 from anchore_engine.db import (
     Image,
-    get_thread_scoped_session as get_session,
     ImageVulnerabilitiesReport as DbImageVulnerabilities,
 )
 from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
-from anchore_engine.subsys import logger as log
+from anchore_engine.subsys import logger
 
 # Disabled by default, can be set in config file. Seconds for connection to store
 DEFAULT_STORE_CONN_TIMEOUT = -1
@@ -50,7 +49,7 @@ class GrypeDBKey:
         return report.metadata.generated_by.get("db_checksum")
 
     def get_report_status(self, db_report: DbImageVulnerabilities, session):
-        log.debug(
+        logger.debug(
             "Get report status by comparing grype-db checksums of the report and active-db"
         )
         report_db_checksum = db_report.report_key
@@ -63,7 +62,7 @@ class GrypeDBKey:
             except NoActiveGrypeDB:
                 active_db_checksum = None
 
-            log.debug(
+            logger.debug(
                 "grype-db checksums report=%s, active=%s",
                 report_db_checksum,
                 active_db_checksum,
@@ -75,7 +74,7 @@ class GrypeDBKey:
             else:
                 status = Status.stale
         else:
-            log.debug("Report checksum not found, marking this report invalid")
+            logger.debug("Report checksum not found, marking this report invalid")
             # report's db checksum can't be parsed, something is really weird. invalidate the report
             status = Status.invalid
 
@@ -86,18 +85,14 @@ class ImageVulnerabilitiesStore:
 
     __report_key_class__ = GrypeDBKey
 
-    def __init__(
-        self,
-        image_object: Image,
-    ):
+    def __init__(self, image_object: Image):
         self.image = image_object
 
-    def fetch(self):
+    def fetch(self, session):
         """
         Tries to find a report for the image and it's validity if one is available
 
         """
-        session = get_session()
         db_record = (
             session.query(DbImageVulnerabilities)
             .filter_by(account_id=self.image.user_id, image_digest=self.image.digest)
@@ -113,27 +108,11 @@ class ImageVulnerabilitiesStore:
         else:
             return None, None
 
-    def _lookup(self):
-        """
-        Returns all entries for the image
-
-        :return:
-        """
-
-        session = get_session()
-        return (
-            session.query(DbImageVulnerabilities)
-            .filter_by(account_id=self.image.user_id, image_digest=self.image.digest)
-            .order_by(DbImageVulnerabilities.last_modified.desc())
-            .all()
-        )
-
-    def delete_all(self):
+    def delete_all(self, session):
         """
         Flush all report entries for the given image
         :return:
         """
-        session = get_session()
         for entry in session.query(DbImageVulnerabilities).filter_by(
             account_id=self.image.user_id, image_digest=self.image.digest
         ):
@@ -141,20 +120,23 @@ class ImageVulnerabilitiesStore:
                 session.delete(entry)
                 session.flush()
             except:
-                log.exception("Could not delete vuln store entry: {}".format(entry))
+                logger.exception("Could not delete vuln store entry: {}".format(entry))
 
         return True
 
     @retrying.retry(
         stop_max_attempt_number=REPORT_SAVE_RETRIES, wait_fixed=REPORT_SAVE_WAIT
     )
-    def save(self, report: ImageVulnerabilitiesReport):
+    def save(self, report: ImageVulnerabilitiesReport, session):
         """
         Persist the new result to store
         """
+        logger.debug(
+            "Saving report to store for %s/%s", report.account_id, report.image_id
+        )
 
         # delete all previous stored results
-        self.delete_all()
+        self.delete_all(session)
 
         # save the new results as a new entry
         db_record = DbImageVulnerabilities(
@@ -167,6 +149,4 @@ class ImageVulnerabilitiesStore:
         # save it to db instead of object storage to be able to execute other queries over the data
         db_record.add_raw_result(report.to_json())
 
-        # Update session
-        session = get_session()
         return session.merge(db_record)
