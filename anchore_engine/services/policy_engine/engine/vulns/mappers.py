@@ -538,6 +538,9 @@ def to_engine_vulnerabilities(grype_response):
 
 
 class EngineGrypeDBMapper:
+
+    # TODO Refactor this into several smaller methods, so I can write managable unit tests on them
+    # I want to run through the logic with the group and answer some fo the inline TODOs first though
     def _to_engine_vulnerability(self, grype_vulnerability):
         """
         Receives a single vulnerability_metadata record from grype_db and maps into the data structure engine expects.
@@ -564,11 +567,12 @@ class EngineGrypeDBMapper:
         output_vulnerability["description"] = grype_vulnerability.description
         output_vulnerability["severity"] = grype_vulnerability.severity
 
-        # TODO What should we do with multiple links. Currently just grabbing the first one
-        if grype_vulnerability.deserialized_links:
-            output_vulnerability["link"] = grype_vulnerability.deserialized_links[0]
+        # TODO What should we do with multiple links? Currently just grabbing the first one
+        # What will break downstream if we make the field a list?
+        if grype_vulnerability.deserialized_urls:
+            output_vulnerability["link"] = grype_vulnerability.deserialized_urls[0]
         else:
-            output_vulnerability["link"] = []
+            output_vulnerability["link"] = None
 
         # TODO Not sure yet how these should be mapped
         output_vulnerability["references"] = None
@@ -582,13 +586,17 @@ class EngineGrypeDBMapper:
         cvss_combined = grype_vulnerability.deserialized_cvss
 
         for cvss in cvss_combined:
-            if cvss["Version"].startswith["2"]:
+            version = cvss["Version"]
+            if version.startswith("2"):
                 cvss_v2.append(cvss)
-            elif cvss["Version"].startswith["3"]:
+            elif version.startswith("3"):
                 cvss_v3.append(cvss)
             else:
-                continue  # TODO Delete this line, just log
-                # TODO Log an unknown CVSS version
+                log.warn(
+                    "Omitting the following cvss with unknown version from vulnerability {}: {}",
+                    output_vulnerability["id"],
+                    cvss,
+                )
         vendor_data["cvss_v2"] = cvss_v2
         vendor_data["cvss_v3"] = cvss_v3
 
