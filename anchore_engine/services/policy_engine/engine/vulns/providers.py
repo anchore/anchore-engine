@@ -928,7 +928,8 @@ class GrypeProvider(VulnerabilitiesProvider):
     }
 
     def load_image(self, image: Image, db_session, use_store=True):
-        return self._create_new_report(image, db_session, use_store)
+        with timer("grype provider load-image", log_level="info"):
+            return self._create_new_report(image, db_session, use_store)
 
     def get_image_vulnerabilities_json(
         self,
@@ -938,22 +939,23 @@ class GrypeProvider(VulnerabilitiesProvider):
         force_refresh: bool = False,
         use_store: bool = True,
     ):
-        if force_refresh:
-            report = self._create_new_report(image, db_session, use_store)
-        else:
-            report = self._try_load_report_from_store(image, db_session)
+        with timer("grype provider get-image-vulnerabilities-json", log_level="info"):
+            if force_refresh:
+                report = self._create_new_report(image, db_session, use_store)
+            else:
+                report = self._try_load_report_from_store(image, db_session)
 
-        if vendor_only:
-            if not isinstance(report, ImageVulnerabilitiesReport):
-                report = ImageVulnerabilitiesReport.from_json(report)
+            if vendor_only:
+                if not isinstance(report, ImageVulnerabilitiesReport):
+                    report = ImageVulnerabilitiesReport.from_json(report)
 
-            report.results = self._exclude_wont_fix(report.results)
-            report = report.to_json()
-        else:
-            if isinstance(report, ImageVulnerabilitiesReport):
+                report.results = self._exclude_wont_fix(report.results)
                 report = report.to_json()
+            else:
+                if isinstance(report, ImageVulnerabilitiesReport):
+                    report = report.to_json()
 
-        return report
+            return report
 
     def get_image_vulnerabilities(
         self,
@@ -963,18 +965,19 @@ class GrypeProvider(VulnerabilitiesProvider):
         force_refresh: bool = False,
         use_store: bool = True,
     ) -> ImageVulnerabilitiesReport:
-        if force_refresh:
-            report = self._create_new_report(image, db_session, use_store)
-        else:
-            report = self._try_load_report_from_store(image, db_session)
+        with timer("grype provider get-image-vulnerabilities", log_level="info"):
+            if force_refresh:
+                report = self._create_new_report(image, db_session, use_store)
+            else:
+                report = self._try_load_report_from_store(image, db_session)
 
-        if not isinstance(report, ImageVulnerabilitiesReport):
-            report = ImageVulnerabilitiesReport.from_json(report)
+            if not isinstance(report, ImageVulnerabilitiesReport):
+                report = ImageVulnerabilitiesReport.from_json(report)
 
-        if vendor_only:
-            report.results = self._exclude_wont_fix(report.results)
+            if vendor_only:
+                report.results = self._exclude_wont_fix(report.results)
 
-        return report
+            return report
 
     @staticmethod
     def _exclude_wont_fix(matches: List[VulnerabilityMatch]):
@@ -1011,7 +1014,7 @@ class GrypeProvider(VulnerabilitiesProvider):
             # Don't let the save block results, at worst the report will be regenerated the next time
             try:
                 store_manager = self.__store__(image)
-                store_manager.save(new_report)
+                store_manager.save(new_report, db_session)
             except Exception:
                 logger.exception(
                     "Ignoring error saving vulnerabilities report to store"
@@ -1038,7 +1041,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
         timer2 = time.time()
         try:
-            existing_report, report_status = store_manager.fetch()
+            existing_report, report_status = store_manager.fetch(db_session)
             if existing_report and report_status and report_status == Status.valid:
                 metrics.counter_inc(name="anchore_vulnerabilities_cache_hits")
                 metrics.histogram_observe(
@@ -1102,7 +1105,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
             # Don't let the save block results, at worst the report will be regenerated the next time
             try:
-                store_manager.save(new_report)
+                store_manager.save(new_report, db_session)
             except Exception:
                 logger.exception(
                     "Ignoring error saving vulnerabilities report to store"
@@ -1195,76 +1198,76 @@ class GrypeProvider(VulnerabilitiesProvider):
         #             ],
         #         },
         #     }
+        with timer("grype provider get-images-by-vulnerability", log_level="info"):
+            vulnerable_images = []
 
-        vulnerable_images = []
-
-        # construct a jsonb query for result->results->vulnerability->vulnerability_id
-        db_records = (
-            db_session.query(DBImageVulnerabilitiesReport)
-            .filter(DBImageVulnerabilitiesReport.account_id == account_id)
-            .filter(
-                DBImageVulnerabilitiesReport.result.contains(
-                    {
-                        "result": {
-                            "results": [
-                                {
-                                    "vulnerability": {
-                                        "vulnerability_id": vulnerability_id
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                )
-            )
-            .all()
-        )
-
-        logger.debug(
-            "Found %d report(s) containing %s",
-            len(db_records),
-            vulnerability_id,
-        )
-        if not db_records:
-            return ret_hash
-
-        # horribly hacky utility function to get catalog owned tag history info for all images this user owns
-        image_to_record = get_imageId_to_record(account_id, dbsession=db_session)
-
-        for db_record in db_records:
-            try:
-                # parse the report
-                report = ImageVulnerabilitiesReport.from_json(
-                    db_record.result["result"]
-                )
-
-                # apply other filters now
-                filtered_dicts = self._filter_vulnerability_matches(
-                    matches=report.results,
-                    vulnerability_id=vulnerability_id,
-                    severity_filter=severity_filter,
-                    namespace_filter=namespace_filter,
-                    affected_package_filter=affected_package_filter,
-                    vendor_only=vendor_only,
-                )
-
-                # construct a return object
-                if filtered_dicts:
-                    image_id = report.image_id
-                    vulnerable_images.append(
+            # construct a jsonb query for result->results->vulnerability->vulnerability_id
+            db_records = (
+                db_session.query(DBImageVulnerabilitiesReport)
+                .filter(DBImageVulnerabilitiesReport.account_id == account_id)
+                .filter(
+                    DBImageVulnerabilitiesReport.result.contains(
                         {
-                            "image": image_to_record.get(image_id, {}),
-                            "vulnerable_packages": filtered_dicts,
+                            "result": {
+                                "results": [
+                                    {
+                                        "vulnerability": {
+                                            "vulnerability_id": vulnerability_id
+                                        }
+                                    }
+                                ]
+                            }
                         }
                     )
-            except:
-                logger.exception(
-                    "Ignoring error processing %s/%s for images by vulnerability query",
-                    account_id,
-                    db_record.image_digest,
                 )
+                .all()
+            )
 
-        return {"vulnerable_images": vulnerable_images}
+            logger.debug(
+                "Found %d report(s) containing %s",
+                len(db_records),
+                vulnerability_id,
+            )
+            if not db_records:
+                return ret_hash
+
+            # horribly hacky utility function to get catalog owned tag history info for all images this user owns
+            image_to_record = get_imageId_to_record(account_id, dbsession=db_session)
+
+            for db_record in db_records:
+                try:
+                    # parse the report
+                    report = ImageVulnerabilitiesReport.from_json(
+                        db_record.result["result"]
+                    )
+
+                    # apply other filters now
+                    filtered_dicts = self._filter_vulnerability_matches(
+                        matches=report.results,
+                        vulnerability_id=vulnerability_id,
+                        severity_filter=severity_filter,
+                        namespace_filter=namespace_filter,
+                        affected_package_filter=affected_package_filter,
+                        vendor_only=vendor_only,
+                    )
+
+                    # construct a return object
+                    if filtered_dicts:
+                        image_id = report.image_id
+                        vulnerable_images.append(
+                            {
+                                "image": image_to_record.get(image_id, {}),
+                                "vulnerable_packages": filtered_dicts,
+                            }
+                        )
+                except:
+                    logger.exception(
+                        "Ignoring error processing %s/%s for images by vulnerability query",
+                        account_id,
+                        db_record.image_digest,
+                    )
+
+            return {"vulnerable_images": vulnerable_images}
 
     @staticmethod
     def _filter_vulnerability_matches(
