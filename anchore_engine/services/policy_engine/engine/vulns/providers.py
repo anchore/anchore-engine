@@ -34,6 +34,7 @@ from anchore_engine.db import (
     VulnDBMetadata,
     Vulnerability,
     get_thread_scoped_session,
+    ImageVulnerabilitiesReport as DBImageVulnerabilitiesReport,
 )
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import select_nvd_classes, session_scope
@@ -54,9 +55,6 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GrypeDBFeed,
     have_vulnerabilities_for,
 )
-from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
-    GrypeDBSyncManager,
-)
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     GrypeDBSyncUtilProvider,
@@ -68,8 +66,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
 )
-from anchore_engine.subsys import logger
-from anchore_engine.subsys import metrics
+from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import rfc3339str_to_datetime, timer
 
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
@@ -635,8 +632,8 @@ class LegacyProvider(VulnerabilitiesProvider):
 
     def get_images_by_vulnerability(
         self,
-        user_id,
-        id,
+        account_id,
+        vulnerability_id,
         severity_filter,
         namespace_filter,
         affected_package_filter,
@@ -665,20 +662,20 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         ipm_query = (
             db_session.query(ImagePackageVulnerability)
-            .filter(ImagePackageVulnerability.vulnerability_id == id)
-            .filter(ImagePackageVulnerability.pkg_user_id == user_id)
+            .filter(ImagePackageVulnerability.vulnerability_id == vulnerability_id)
+            .filter(ImagePackageVulnerability.pkg_user_id == account_id)
         )
         icm_query = (
             db_session.query(ImageCpe, _cpe_cls)
-            .filter(_cpe_cls.vulnerability_id == id)
+            .filter(_cpe_cls.vulnerability_id == vulnerability_id)
             .filter(func.lower(ImageCpe.name) == _cpe_cls.name)
-            .filter(ImageCpe.image_user_id == user_id)
+            .filter(ImageCpe.image_user_id == account_id)
             .filter(ImageCpe.version == _cpe_cls.version)
         )
         icm_vulndb_query = db_session.query(ImageCpe, VulnDBCpe).filter(
-            VulnDBCpe.vulnerability_id == id,
+            VulnDBCpe.vulnerability_id == vulnerability_id,
             func.lower(ImageCpe.name) == VulnDBCpe.name,
-            ImageCpe.image_user_id == user_id,
+            ImageCpe.image_user_id == account_id,
             ImageCpe.version == VulnDBCpe.version,
             VulnDBCpe.is_affected.is_(True),
         )
@@ -721,7 +718,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         start = time.time()
         if image_package_matches or image_cpe_matches or image_cpe_vlndb_matches:
-            imageId_to_record = get_imageId_to_record(user_id, dbsession=db_session)
+            imageId_to_record = get_imageId_to_record(account_id, dbsession=db_session)
 
             start = time.time()
             for image in image_package_matches:
@@ -1084,7 +1081,7 @@ class GrypeProvider(VulnerabilitiesProvider):
             if existing_report:
                 # transfer timestamps of previously found vulnerabilities
                 logger.debug(
-                    "Attempting to transfer timestamps from existing to the new vulnerabilities report for %s/%s",
+                    "Transfer timestamps from existing to the new vulnerabilities report for %s/%s",
                     user_id,
                     image_id,
                 )
@@ -1092,10 +1089,11 @@ class GrypeProvider(VulnerabilitiesProvider):
                     existing_report = ImageVulnerabilitiesReport.from_json(
                         existing_report
                     )
-                    merged_results = transfer_vulnerability_timestamps(
-                        source=existing_report.results,
-                        destination=new_report.results,
-                    )
+                    with timer("transfer timestamps from existing report"):
+                        merged_results = transfer_vulnerability_timestamps(
+                            source=existing_report.results,
+                            destination=new_report.results,
+                        )
                     new_report.results = merged_results
                 except Exception:
                     logger.exception(
@@ -1130,10 +1128,191 @@ class GrypeProvider(VulnerabilitiesProvider):
             return new_report
 
     def get_vulnerabilities(self, **kwargs):
-        pass
+        raise NotImplemented
 
-    def get_images_by_vulnerability(self, **kwargs):
-        pass
+    def get_images_by_vulnerability(
+        self,
+        account_id,
+        vulnerability_id,
+        severity_filter,
+        namespace_filter,
+        affected_package_filter,
+        vendor_only,
+        db_session,
+    ):
+        """
+        Return image with nested package records that match the filter criteria.
+
+        This is a rather slow and hacky implementation that uses a jsonb query to look up reports in the database.
+        The matched reports are then loaded into the python space and additional filters are applied
+        """
+        # format of the JSONB column that holds the report
+        #     {
+        #         "type": "direct",
+        #         "result": {
+        #             "account_id": "admin",
+        #             "image_id": "da28a15dbf563fbc5a486f622b44970ee1bf10f48013bab640f403b06b278543",
+        #             "metadata": {
+        #                 "generated_at": "2021-06-04T02:27:35Z",
+        #                 "generated_by": {
+        #                     "db_built_at": "2021-06-03T12:30:51Z",
+        #                     "db_checksum": "sha256:31e09fb931256cd6dabb54092727c56b3c2a0c9016edd3f90a207f92df4d8c1c",
+        #                     "db_schema_version": 3,
+        #                     "grype_version": "0.13.0",
+        #                     "scanner": "GrypeScanner",
+        #                 },
+        #                 "schema_version": "1.0",
+        #             },
+        #             "problems": [],
+        #             "results": [
+        #                 {
+        #                     "artifact": {
+        #                         "cpe": None,
+        #                         "cpes": [],
+        #                         "location": "pkgdb",
+        #                         "name": "openjdk8",
+        #                         "pkg_type": "APKG",
+        #                         "version": "8.212.04-r0",
+        #                     },
+        #                     "fix": {
+        #                         "advisories": [],
+        #                         "observed_at": "2021-06-04T02:27:35Z",
+        #                         "versions": ["8.232.09-r0"],
+        #                         "wont_fix": False,
+        #                     },
+        #                     "match": {"detected_at": "2021-06-03T05:20:09Z"},
+        #                     "nvd": [],
+        #                     "vulnerability": {
+        #                         "cvss": [],
+        #                         "description": None,
+        #                         "feed": "vulnerabilities",
+        #                         "feed_group": "alpine:3.9",
+        #                         "link": "http://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-2987",
+        #                         "severity": "Medium",
+        #                         "vulnerability_id": "CVE-2019-2987",
+        #                     },
+        #                 },
+        #             ],
+        #         },
+        #     }
+
+        vulnerable_images = []
+
+        # construct a jsonb query for result->results->vulnerability->vulnerability_id
+        db_records = (
+            db_session.query(DBImageVulnerabilitiesReport)
+            .filter(DBImageVulnerabilitiesReport.account_id == account_id)
+            .filter(
+                DBImageVulnerabilitiesReport.result.contains(
+                    {
+                        "result": {
+                            "results": [
+                                {
+                                    "vulnerability": {
+                                        "vulnerability_id": vulnerability_id
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                )
+            )
+            .all()
+        )
+
+        logger.debug(
+            "Found %d report(s) containing %s",
+            len(db_records),
+            vulnerability_id,
+        )
+        if not db_records:
+            return ret_hash
+
+        # horribly hacky utility function to get catalog owned tag history info for all images this user owns
+        image_to_record = get_imageId_to_record(account_id, dbsession=db_session)
+
+        for db_record in db_records:
+            try:
+                # parse the report
+                report = ImageVulnerabilitiesReport.from_json(
+                    db_record.result["result"]
+                )
+
+                # apply other filters now
+                filtered_dicts = self._filter_vulnerability_matches(
+                    matches=report.results,
+                    vulnerability_id=vulnerability_id,
+                    severity_filter=severity_filter,
+                    namespace_filter=namespace_filter,
+                    affected_package_filter=affected_package_filter,
+                    vendor_only=vendor_only,
+                )
+
+                # construct a return object
+                if filtered_dicts:
+                    image_id = report.image_id
+                    vulnerable_images.append(
+                        {
+                            "image": image_to_record.get(image_id, {}),
+                            "vulnerable_packages": filtered_dicts,
+                        }
+                    )
+            except:
+                logger.exception(
+                    "Ignoring error processing %s/%s for images by vulnerability query",
+                    account_id,
+                    db_record.image_digest,
+                )
+
+        return {"vulnerable_images": vulnerable_images}
+
+    @staticmethod
+    def _filter_vulnerability_matches(
+        matches: List[VulnerabilityMatch],
+        vulnerability_id,
+        severity_filter=None,
+        namespace_filter=None,
+        affected_package_filter=None,
+        vendor_only=None,
+    ) -> List[Dict]:
+        filtered_dicts = []
+
+        for match in matches:
+            # find the result with the vulnerability id first
+            if match.vulnerability.vulnerability_id == vulnerability_id:
+                # now apply other the filters
+                if severity_filter and severity_filter != match.vulnerability.severity:
+                    continue
+                if (
+                    namespace_filter
+                    and namespace_filter != match.vulnerability.feed_group
+                ):
+                    continue
+                if (
+                    affected_package_filter
+                    and affected_package_filter != match.artifact.name
+                ):
+                    continue
+                if (
+                    isinstance(vendor_only, bool)
+                    and vendor_only  # true means vendor may fix
+                    and match.fix.wont_fix  # true means vendor won't fix
+                ):
+                    continue
+
+                # tada! this is a match for the query
+
+                pkg_el = {
+                    "name": match.artifact.name,
+                    "version": match.artifact.version,
+                    "type": match.artifact.pkg_type,
+                    "namespace": match.vulnerability.feed_group,
+                    "severity": match.vulnerability.severity,
+                }
+
+                filtered_dicts.append(pkg_el)
+
+        return filtered_dicts
 
     def get_sync_utils(
         self, sync_configs: Dict[str, SyncConfig]
@@ -1169,7 +1348,7 @@ class GrypeProvider(VulnerabilitiesProvider):
             )
 
         if feed.name != GrypeDBFeed.__feed_name__:
-            return self.super().get_feed_groups_detached()
+            return super().get_feed_groups_detached(feed)
 
         groups = []
 
