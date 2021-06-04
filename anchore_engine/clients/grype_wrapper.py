@@ -66,8 +66,8 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     )
 
     @property
-    def deserialized_links(self):
-        return json.loads(self.links)
+    def deserialized_urls(self):
+        return json.loads(self.urls)
 
     @property
     def deserialized_cvss(self):
