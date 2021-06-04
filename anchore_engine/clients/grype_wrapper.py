@@ -504,7 +504,7 @@ class GrypeWrapperSingleton(object):
             latest_grype_db_dir, grype_db_version, self.VULNERABILITY_FILE_NAME
         )
         db_connect = self.SQL_LITE_URL_TEMPLATE.format(latest_grype_db_file)
-        latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
+        latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=False)
         return latest_grype_db_engine
 
     def _init_latest_grype_db_session_maker(self, grype_db_engine) -> sessionmaker:
