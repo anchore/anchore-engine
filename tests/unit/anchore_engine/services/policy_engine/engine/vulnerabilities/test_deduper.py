@@ -6,6 +6,7 @@ from anchore_engine.common.models.policy_engine import (
     Artifact,
     Match,
     NVDReference,
+    FixedArtifact,
 )
 from anchore_engine.services.policy_engine.engine.vulns.dedup import (
     ImageVulnerabilitiesDeduplicator,
@@ -653,6 +654,7 @@ class TestTimestampMerger:
                 feed_group="whatever:hello",
                 vulnerability_id="meh",
             ),
+            fix=FixedArtifact(),
         )
 
         source = copy.deepcopy(random)
@@ -686,6 +688,7 @@ class TestTimestampMerger:
                     vulnerability_id="meh",
                 ),
                 match=Match(detected_at=dest_ts),
+                fix=FixedArtifact(),
             ),
             VulnerabilityMatch(
                 artifact=Artifact(
@@ -700,6 +703,7 @@ class TestTimestampMerger:
                     vulnerability_id="foo",
                 ),
                 match=Match(detected_at=dest_ts),
+                fix=FixedArtifact(),
             ),
         ]
 
@@ -717,6 +721,7 @@ class TestTimestampMerger:
                     vulnerability_id="meh",
                 ),
                 match=Match(detected_at=src_ts),
+                fix=FixedArtifact(),
             )
         ]
 
@@ -733,3 +738,81 @@ class TestTimestampMerger:
                 assert result.match.detected_at == src_ts
             else:
                 assert result.match.detected_at == dest_ts
+
+    @pytest.mark.parametrize(
+        "test_source, test_destination, expected",
+        [
+            pytest.param(
+                FixedArtifact(
+                    versions=[], observed_at=datetime.datetime.utcfromtimestamp(0)
+                ),
+                FixedArtifact(
+                    versions=[], observed_at=datetime.datetime.utcfromtimestamp(10)
+                ),
+                datetime.datetime.utcfromtimestamp(10),
+                id="empty-versions",
+            ),
+            pytest.param(
+                FixedArtifact(
+                    versions=None, observed_at=datetime.datetime.utcfromtimestamp(0)
+                ),
+                FixedArtifact(
+                    versions=None, observed_at=datetime.datetime.utcfromtimestamp(10)
+                ),
+                datetime.datetime.utcfromtimestamp(10),
+                id="none-versions",
+            ),
+            pytest.param(
+                FixedArtifact(
+                    versions=[], observed_at=datetime.datetime.utcfromtimestamp(0)
+                ),
+                FixedArtifact(
+                    versions=["foo"], observed_at=datetime.datetime.utcfromtimestamp(10)
+                ),
+                datetime.datetime.utcfromtimestamp(10),
+                id="different-versions",
+            ),
+            pytest.param(
+                FixedArtifact(
+                    versions=["bar", "foo", "meh"],
+                    observed_at=datetime.datetime.utcfromtimestamp(0),
+                ),
+                FixedArtifact(
+                    versions=["meh", "bar", "foo"],
+                    observed_at=datetime.datetime.utcfromtimestamp(10),
+                ),
+                datetime.datetime.utcfromtimestamp(0),
+                id="same-versions-ordered-differently",
+            ),
+        ],
+    )
+    def test_transfer_vulnerability_timestamps_fix_observed_at(
+        self, test_source, test_destination, expected
+    ):
+        random = VulnerabilityMatch(
+            artifact=Artifact(
+                name="blah",
+                location="/usr/local/java/blah",
+                pkg_type="java",
+                version="1.2.3maven",
+            ),
+            vulnerability=Vulnerability(
+                feed="vulnerabilities",
+                feed_group="whatever:hello",
+                vulnerability_id="meh",
+            ),
+            match=Match(detected_at=datetime.datetime.utcnow()),
+        )
+
+        source = copy.deepcopy(random)
+        source.fix = test_source
+
+        destination = copy.deepcopy(random)
+        destination.fix = test_destination
+
+        results = transfer_vulnerability_timestamps(
+            source=[source], destination=[destination]
+        )
+
+        assert results and len(results) == 1
+        assert results[0].fix.observed_at == expected

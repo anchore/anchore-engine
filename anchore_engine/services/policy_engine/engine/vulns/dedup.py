@@ -194,7 +194,15 @@ def transfer_vulnerability_timestamps(
         if source_match:
             destination_match = destination_map.get(identity_tuple)
             destination_match.match.detected_at = source_match.match.detected_at
-            # TODO something similar for fix observed at as well
+            # Transfer fix observed_at timestamp from source only if the fix versions are set and equal
+            if destination_match.fix.versions and source_match.fix.versions:
+                destination_match.fix.versions.sort()
+                source_match.fix.versions.sort()
+                if (
+                    destination_match.fix.versions == source_match.fix.versions
+                    and source_match.fix.observed_at
+                ):
+                    destination_match.fix.observed_at = source_match.fix.observed_at
 
     return list(destination_map.values())
 

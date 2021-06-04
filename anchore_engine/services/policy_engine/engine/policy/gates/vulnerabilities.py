@@ -733,7 +733,7 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
         for vid in vids:
             found = False
 
-            matches = context.data.get("loaded_vulnerabilities_new")
+            matches = context.data.get("loaded_vulnerabilities")
             for match in matches:
                 if is_vendor_only:
                     if match.fix.wont_fix:
