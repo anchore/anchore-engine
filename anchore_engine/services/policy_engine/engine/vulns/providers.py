@@ -73,6 +73,7 @@ from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import rfc3339str_to_datetime, timer
 
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
+from .mappers import EngineGrypeDBMapper
 from .scanners import GrypeScanner, LegacyScanner
 from .stores import ImageVulnerabilitiesStore, Status
 

@@ -41,9 +41,6 @@ class GrypeVulnerability(Base, UtilMixin):
     fixed_in_versions = Column(String)
     fix_state = Column(String)
     advisories = Column(String)
-    vulnerability_metadata = relationship(
-        "GrypeVulnerabilityMetadata", back_populates="vulnerability"
-    )
 
     @property
     def deserialized_related_vulnerabilities(self):
@@ -61,9 +58,6 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     urls = Column(String)
     description = Column(String)
     cvss = Column(String)
-    vulnerability = relationship(
-        "GrypeVulnerability", back_populates="vulnerability_metadata"
-    )
 
     @property
     def deserialized_urls(self):
@@ -855,10 +849,12 @@ class GrypeWrapperSingleton(object):
 
             with self.grype_session_scope() as session:
                 query = (
-                    session.query(GrypeVulnerabilityMetadata)
+                    session.query(GrypeVulnerabilityMetadata, GrypeVulnerability)
                     .join(
                         GrypeVulnerability,
-                        GrypeVulnerabilityMetadata.id == GrypeVulnerability.id,
+                        GrypeVulnerabilityMetadata.id == GrypeVulnerability.id
+                        and GrypeVulnerabilityMetadata.namespace
+                        == GrypeVulnerability.namespace,
                     )
                     .order_by(
                         GrypeVulnerabilityMetadata.id,

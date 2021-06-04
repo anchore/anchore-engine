@@ -1177,7 +1177,12 @@ def test_query_vulnerabilities(
 
     # Validate results
     assert len(results) == expected_result_length
-    assert sorted(list(set(map(lambda result: result.id, results)))) == expected_output
+    assert (
+        sorted(
+            list(set(map(lambda result: result.GrypeVulnerabilityMetadata.id, results)))
+        )
+        == expected_output
+    )
 
 
 def test_query_vulnerabilities_missing_session():
