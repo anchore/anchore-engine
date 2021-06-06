@@ -97,8 +97,8 @@ class GrypeWrapperSingleton(object):
     _grype_wrapper_instance = None
 
     # These values should be treated as constants, and will not be changed by the functions below
-    LOCK_READ_ACCESS_TIMEOUT = 60
-    LOCK_WRITE_ACCESS_TIMEOUT = 60
+    LOCK_READ_ACCESS_TIMEOUT = 60000
+    LOCK_WRITE_ACCESS_TIMEOUT = 60000
     SQL_LITE_URL_TEMPLATE = "sqlite:///{}"
     GRYPE_SUB_COMMAND = "grype -vv -o json"
     GRYPE_VERSION_COMMAND = "grype version -o json"
@@ -243,7 +243,7 @@ class GrypeWrapperSingleton(object):
 
         try:
             if write_lock.acquire(
-                blocking=True, timeout=self.LOCK_WRITE_ACCESS_TIMEOUT
+                blocking=False, timeout=self.LOCK_WRITE_ACCESS_TIMEOUT
             ):
                 logger.debug("Unable to acquire write access for the grype_db lock")
                 yield
