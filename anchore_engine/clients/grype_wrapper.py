@@ -93,6 +93,10 @@ class RecordSource:
     last_synced: str
 
 
+class LockAcquisitionError(Exception):
+    pass
+
+
 class GrypeWrapperSingleton(object):
     _grype_wrapper_instance = None
 
@@ -220,16 +224,15 @@ class GrypeWrapperSingleton(object):
         read_lock = self._grype_db_lock.gen_rlock()
 
         try:
-            acquired = read_lock.acquire(
-                blocking=True, timeout=self.LOCK_READ_ACCESS_TIMEOUT
-            )
-            if acquired:
+            if read_lock.acquire(blocking=True, timeout=self.LOCK_READ_ACCESS_TIMEOUT):
                 logger.debug("Acquired read access for the grype_db lock")
-                yield acquired
+                yield
             else:
-                raise Exception("Unable to acquire read access for the grype_db lock")
+                raise LockAcquisitionError(
+                    "Unable to acquire read access for the grype_db lock"
+                )
         finally:
-            if acquired:
+            if read_lock.locked():
                 logger.debug("Releasing read access for the grype_db lock")
                 read_lock.release()
 
@@ -243,16 +246,15 @@ class GrypeWrapperSingleton(object):
         write_lock = self._grype_db_lock.gen_wlock()
 
         try:
-            acquired = write_lock.acquire(
-                blocking=True, timeout=self.LOCK_READ_ACCESS_TIMEOUT
-            )
-            if acquired:
+            if write_lock.acquire(blocking=True, timeout=self.LOCK_READ_ACCESS_TIMEOUT):
                 logger.debug("Unable to acquire write access for the grype_db lock")
-                yield acquired
+                yield
             else:
-                raise Exception("Unable to acquire write access for the grype_db lock")
+                raise LockAcquisitionError(
+                    "Unable to acquire write access for the grype_db lock"
+                )
         finally:
-            if acquired:
+            if write_lock.locked():
                 logger.debug("Releasing write access for the grype_db lock")
                 write_lock.release()
 
