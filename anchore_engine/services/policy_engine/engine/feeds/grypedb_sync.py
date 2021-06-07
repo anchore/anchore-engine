@@ -65,8 +65,6 @@ class GrypeDBSyncManager:
     Sync grype db to local instance of policy engine if it has been updated globally
     """
 
-    lock = threading.Lock()
-
     @classmethod
     def _get_active_grypedb(cls, session) -> GrypeDBFeedMetadata:
         """
