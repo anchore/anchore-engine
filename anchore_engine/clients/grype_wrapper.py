@@ -884,7 +884,6 @@ class GrypeWrapperSingleton(object):
                         func.count(GrypeVulnerability.namespace).label("count"),
                     )
                     .group_by(GrypeVulnerability.namespace)
-                    .order_by(GrypeVulnerability.namespace)
                     .all()
                 )
 
