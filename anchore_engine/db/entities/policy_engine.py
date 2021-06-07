@@ -795,36 +795,35 @@ class NvdMetadata(Base):
 
     def to_nvd_reference(self) -> NVDReference:
         """
-        Returns an NVDReference object from this nvd vulnerability. Function to be used by non-nvd vulnerabilities
+        Returns an NVDReference object from this nvd vulnerability. Function to be used by non-nvd vulnerabilities for
+        populating an nvd reference
         """
 
         return NVDReference(
             vulnerability_id=self.name,
             severity=self.severity,
             link=self.link,
-            cvss=[
-                CVSS(
-                    version="2.0",
-                    base_score=self.get_max_base_score_nvd(2),
-                    exploitability_score=-1.0,
-                    impact_score=-1.0,
-                )
-            ],
+            cvss=self.get_all_cvss(),
         )
 
     def get_all_cvss(self) -> List[CVSS]:
         """
-        Return an empty list for backwards compatibility. Translates to no vendor cvss scores for an nvd vulnerability.
-        nvd cvss scores are available from get_all_nvd_references
+        Returns a list of CVSS objects for this vulnerability
         """
-
-        return []
+        return [
+            CVSS(
+                version="2.0",
+                base_score=self.get_max_base_score_nvd(2),
+                exploitability_score=-1.0,
+                impact_score=-1.0,
+            )
+        ]
 
     def get_all_nvd_references(self):
         """
-        Return a list with a single nvd reference. Function to be used by nvd vulnerability
+        Compatibility method. Returns empty list since an nvd vuln doesn't have any nvd refrences
         """
-        return [self.to_nvd_reference()]
+        return []
 
 
 class NvdV2Metadata(Base):
@@ -968,7 +967,8 @@ class NvdV2Metadata(Base):
 
     def to_nvd_reference(self) -> NVDReference:
         """
-        Returns an NVDReference object from this nvd vulnerability. Function to be used by non-nvd vulnerabilities
+        Returns an NVDReference object from this nvd vulnerability. Function to be used by non-nvd vulnerabilities for
+        populating an nvd reference
 
         cvss_v3 column format
         {
@@ -1019,12 +1019,19 @@ class NvdV2Metadata(Base):
             vulnerability_id=self.name,
             severity=self.severity,
             link=self.link,
-            cvss=[],
+            cvss=self.get_all_cvss(),
         )
 
+        return nvd_ref
+
+    def get_all_cvss(self) -> List[CVSS]:
+        """
+        Returns a list of CVSS objects for this vulnerability
+        """
+        results = []
         v2_metric = self._get_metric(cvss_version=2)
         if v2_metric:
-            nvd_ref.cvss.append(
+            results.append(
                 CVSS(
                     version=v2_metric.get("version", "2.0"),
                     vector=v2_metric.get("vector_string"),
@@ -1038,7 +1045,7 @@ class NvdV2Metadata(Base):
 
         v3_metric = self._get_metric(cvss_version=3)
         if v3_metric:
-            nvd_ref.cvss.append(
+            results.append(
                 CVSS(
                     version=v3_metric.get("version", "3.0"),
                     vector=v3_metric.get("vector_string"),
@@ -1050,21 +1057,13 @@ class NvdV2Metadata(Base):
                 )
             )
 
-        return nvd_ref
-
-    def get_all_cvss(self) -> List[CVSS]:
-        """
-        Return an empty list for backwards compatibility. Translates to no vendor cvss scores for an nvd vulnerability.
-        nvd cvss scores are available from get_all_nvd_references
-        """
-
-        return []
+        return results
 
     def get_all_nvd_references(self):
         """
-        Return a list with a single nvd reference. Function to be used by nvd vulnerability
+        Compatibility method. Returns empty list since an nvd vuln doesn't have any nvd refrences
         """
-        return [self.to_nvd_reference()]
+        return []
 
 
 class VulnDBMetadata(Base):

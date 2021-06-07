@@ -690,8 +690,8 @@ class TestMakeVulnerabilityReport:
             ),
         ],
     )
-    def test_to_nvd_data_no_cvss(self, test_input):
-        actual_output = api_utils.to_nvd_data(test_input)
+    def test_get_nvd_data_from_nvd_references_no_cvss(self, test_input):
+        actual_output = api_utils.get_nvd_data_from_nvd_references(test_input)
         assert len(test_input) == len(actual_output)
         for input_item, output_item in zip(test_input, actual_output):
             assert output_item == {
@@ -708,7 +708,7 @@ class TestMakeVulnerabilityReport:
                 },
             }
 
-    def test_to_nvd_data_multiple_cvss(self):
+    def test_get_nvd_data_from_nvd_references_multiple_cvss(self):
         test_input = NVDReference(
             vulnerability_id="CVE-x",
             cvss=[
@@ -747,7 +747,7 @@ class TestMakeVulnerabilityReport:
             },
         }
 
-        actual_output = api_utils.to_nvd_data([test_input])
+        actual_output = api_utils.get_nvd_data_from_nvd_references([test_input])
 
         assert len(actual_output) == 1
         assert actual_output[0] == expected_output
@@ -759,8 +759,8 @@ class TestMakeVulnerabilityReport:
             pytest.param(Vulnerability(cvss=None), id="none"),
         ],
     )
-    def test_to_vendor_data_no_cvss(self, test_input):
-        assert api_utils.to_vendor_data(test_input) == []
+    def test_get_vendor_data_from_vulnerability_no_cvss(self, test_input):
+        assert api_utils.get_vendor_data_from_vulnerability(test_input) == []
 
     @pytest.mark.parametrize(
         "test_input, expected_output",
@@ -844,8 +844,93 @@ class TestMakeVulnerabilityReport:
             ),
         ],
     )
-    def test_to_vendor_data(self, test_input, expected_output):
-        actual_output = api_utils.to_vendor_data(test_input)
+    def test_get_vendor_data_from_vulnerability(self, test_input, expected_output):
+        actual_output = api_utils.get_vendor_data_from_vulnerability(test_input)
+        assert len(actual_output) == len(expected_output)
+        for actual_item, expected_item in zip(actual_output, expected_output):
+            assert actual_item == expected_item
+
+    @pytest.mark.parametrize(
+        "test_input",
+        [
+            pytest.param(Vulnerability(cvss=[]), id="empty-list"),
+            pytest.param(Vulnerability(cvss=None), id="none"),
+        ],
+    )
+    def test_get_nvd_data_from_vulnerability_no_cvss(self, test_input):
+        assert api_utils.get_nvd_data_from_vulnerability(test_input) == []
+
+    @pytest.mark.parametrize(
+        "test_input, expected_output",
+        [
+            pytest.param(
+                Vulnerability(
+                    vulnerability_id="CVE-x",
+                    cvss=[
+                        CVSS(
+                            version="2.3",
+                            base_score=1.1,
+                            exploitability_score=1.2,
+                            impact_score=1.3,
+                        )
+                    ],
+                ),
+                [
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": 1.1,
+                            "exploitability_score": 1.2,
+                            "impact_score": 1.3,
+                        },
+                        "cvss_v3": {
+                            "base_score": -1.0,
+                            "exploitability_score": -1.0,
+                            "impact_score": -1.0,
+                        },
+                    }
+                ],
+                id="single_cvss",
+            ),
+            pytest.param(
+                Vulnerability(
+                    vulnerability_id="CVE-x",
+                    cvss=[
+                        CVSS(
+                            version="2.3",
+                            base_score=1.1,
+                            exploitability_score=1.2,
+                            impact_score=1.3,
+                        ),
+                        CVSS(
+                            version="3.1",
+                            base_score=2.1,
+                            exploitability_score=2.2,
+                            impact_score=2.3,
+                        ),
+                    ],
+                ),
+                [
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": 1.1,
+                            "exploitability_score": 1.2,
+                            "impact_score": 1.3,
+                        },
+                        "cvss_v3": {
+                            "base_score": 2.1,
+                            "exploitability_score": 2.2,
+                            "impact_score": 2.3,
+                        },
+                    },
+                ],
+                id="multiple_cvss",
+            ),
+        ],
+    )
+    def test_get_nvd_data_from_vulnerability(self, test_input, expected_output):
+        actual_output = api_utils.get_nvd_data_from_vulnerability(test_input)
         assert len(actual_output) == len(expected_output)
         for actual_item, expected_item in zip(actual_output, expected_output):
             assert actual_item == expected_item
