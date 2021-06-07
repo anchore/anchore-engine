@@ -848,18 +848,13 @@ class GrypeWrapperSingleton(object):
             )
 
             with self.grype_session_scope() as session:
-                query = (
-                    session.query(GrypeVulnerabilityMetadata, GrypeVulnerability)
-                    .join(
-                        GrypeVulnerability,
-                        GrypeVulnerabilityMetadata.id == GrypeVulnerability.id
-                        and GrypeVulnerabilityMetadata.namespace
-                        == GrypeVulnerability.namespace,
-                    )
-                    .order_by(
-                        GrypeVulnerabilityMetadata.id,
-                        GrypeVulnerabilityMetadata.record_source,
-                    )
+                query = session.query(
+                    GrypeVulnerability, GrypeVulnerabilityMetadata
+                ).join(
+                    GrypeVulnerabilityMetadata,
+                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
+                    and GrypeVulnerability.namespace
+                    == GrypeVulnerabilityMetadata.namespace,
                 )
 
                 if vuln_id is not None:
