@@ -129,6 +129,7 @@ class GrypeWrapperSingleton(object):
     def __new__(cls):
         # If the singleton has not been initialized yet, do so with the instance variables below
         if cls._grype_wrapper_instance is None:
+            logger.debug("Initializing Grype wrapper instance.")
             # The singleton instance, only instantiated once outside of testing
             cls._grype_wrapper_instance = super(GrypeWrapperSingleton, cls).__new__(cls)
 
