@@ -574,38 +574,38 @@ class EngineGrypeDBMapper:
                 "references"
             ] = grype_vulnerability_metadata.deserialized_urls
 
-            vendor_data = {}
-            vendor_data["id"] = grype_vulnerability_metadata.id
-
-            # Transform the cvss blocks
-            cvss_v2 = []
-            cvss_v3 = []
-            cvss_combined = grype_vulnerability_metadata.deserialized_cvss
-
-            for cvss in cvss_combined:
-                version = cvss["Version"]
-                if version.startswith("2"):
-                    cvss_v2.append(cvss)
-                elif version.startswith("3"):
-                    cvss_v3.append(cvss)
-                else:
-                    log.warn(
-                        "Omitting the following cvss with unknown version from vulnerability {}: {}",
-                        output_vulnerability["id"],
-                        cvss,
-                    )
-            vendor_data["cvss_v2"] = cvss_v2
-            vendor_data["cvss_v3"] = cvss_v3
-
-            if (
-                grype_vulnerability_metadata.record_source
-                and grype_vulnerability_metadata.record_source.startswith("nvdv2")
-            ):
-                output_vulnerability["nvd_data"] = [vendor_data]
-                output_vulnerability["vendor_data"] = []
-            else:
-                output_vulnerability["nvd_data"] = []
-                output_vulnerability["vendor_data"] = [vendor_data]
+            # vendor_data = {}
+            # vendor_data["id"] = grype_vulnerability_metadata.id
+            #
+            # # Transform the cvss blocks
+            # cvss_v2 = []
+            # cvss_v3 = []
+            # cvss_combined = grype_vulnerability_metadata.deserialized_cvss
+            #
+            # for cvss in cvss_combined:
+            #     version = cvss["Version"]
+            #     if version.startswith("2"):
+            #         cvss_v2.append(cvss)
+            #     elif version.startswith("3"):
+            #         cvss_v3.append(cvss)
+            #     else:
+            #         log.warn(
+            #             "Omitting the following cvss with unknown version from vulnerability {}: {}",
+            #             output_vulnerability["id"],
+            #             cvss,
+            #         )
+            # vendor_data["cvss_v2"] = cvss_v2
+            # vendor_data["cvss_v3"] = cvss_v3
+            #
+            # if (
+            #     grype_vulnerability_metadata.record_source
+            #     and grype_vulnerability_metadata.record_source.startswith("nvdv2")
+            # ):
+            #     output_vulnerability["nvd_data"] = [vendor_data]
+            #     output_vulnerability["vendor_data"] = []
+            # else:
+            #     output_vulnerability["nvd_data"] = []
+            #     output_vulnerability["vendor_data"] = [vendor_data]
 
         # Get fields from the nested vulnerability object, if it exists
         if grype_vulnerability:
