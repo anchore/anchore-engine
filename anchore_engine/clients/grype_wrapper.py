@@ -93,12 +93,16 @@ class RecordSource:
     last_synced: str
 
 
+class LockAcquisitionError(Exception):
+    pass
+
+
 class GrypeWrapperSingleton(object):
     _grype_wrapper_instance = None
 
     # These values should be treated as constants, and will not be changed by the functions below
-    LOCK_READ_ACCESS_TIMEOUT = 60
-    LOCK_WRITE_ACCESS_TIMEOUT = 60
+    LOCK_READ_ACCESS_TIMEOUT = 60000
+    LOCK_WRITE_ACCESS_TIMEOUT = 60000
     SQL_LITE_URL_TEMPLATE = "sqlite:///{}"
     GRYPE_SUB_COMMAND = "grype -vv -o json"
     GRYPE_VERSION_COMMAND = "grype version -o json"
@@ -216,18 +220,21 @@ class GrypeWrapperSingleton(object):
         Get read access to the reader writer lock. Releases the lock after exit the
         context. Any exceptions are passed up.
         """
-        logger.debug("Getting read access for the grype_db lock")
+        logger.debug("Attempting to get read access for the grype_db lock")
         read_lock = self._grype_db_lock.gen_rlock()
 
         try:
-            yield read_lock.acquire(
-                blocking=False, timeout=self.LOCK_READ_ACCESS_TIMEOUT
-            )
-        except Exception as exception:
-            raise exception
+            if read_lock.acquire(timeout=self.LOCK_READ_ACCESS_TIMEOUT):
+                logger.debug("Acquired read access for the grype_db lock")
+                yield
+            else:
+                raise LockAcquisitionError(
+                    "Unable to acquire read access for the grype_db lock"
+                )
         finally:
-            logger.debug("Releasing read access for the grype_db lock")
-            read_lock.release()
+            if read_lock.locked():
+                logger.debug("Releasing read access for the grype_db lock")
+                read_lock.release()
 
     @contextmanager
     def write_lock_access(self):
@@ -235,18 +242,21 @@ class GrypeWrapperSingleton(object):
         Get read access to the reader writer lock. Releases the lock after exit the
         context. y exceptions are passed up.
         """
-        logger.debug("Getting write access for the grype_db lock")
+        logger.debug("Attempting to get write access for the grype_db lock")
         write_lock = self._grype_db_lock.gen_wlock()
 
         try:
-            yield write_lock.acquire(
-                blocking=True, timeout=self.LOCK_WRITE_ACCESS_TIMEOUT
-            )
-        except Exception as exception:
-            raise exception
+            if write_lock.acquire(timeout=self.LOCK_READ_ACCESS_TIMEOUT):
+                logger.debug("Unable to acquire write access for the grype_db lock")
+                yield
+            else:
+                raise LockAcquisitionError(
+                    "Unable to acquire write access for the grype_db lock"
+                )
         finally:
-            logger.debug("Releasing write access for the grype_db lock")
-            write_lock.release()
+            if write_lock.locked():
+                logger.debug("Releasing write access for the grype_db lock")
+                write_lock.release()
 
     @contextmanager
     def grype_session_scope(self, use_staging: bool = False):
