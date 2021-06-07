@@ -538,10 +538,7 @@ def to_engine_vulnerabilities(grype_response):
 
 
 class EngineGrypeDBMapper:
-
-    # TODO Refactor this into several smaller methods, so I can write managable unit tests on them
-    # I want to run through the logic with the group and answer some fo the inline TODOs first though
-    def _to_engine_vulnerability(self, grype_vulnerability):
+    def _to_engine_vulnerability(self, grype_raw_result):
         """
         Receives a single vulnerability_metadata record from grype_db and maps into the data structure engine expects.
         The vulnerability_metadata record may optionally (but in practice should always) have a nested record for the
@@ -562,66 +559,62 @@ class EngineGrypeDBMapper:
         }
         output_vulnerability.update(return_el_template)
 
+        grype_vulnerability = grype_raw_result.GrypeVulnerability
+        grype_vulnerability_metadata = grype_raw_result.GrypeVulnerabilityMetadata
+
         # Set mapped field values
-        output_vulnerability["id"] = grype_vulnerability.id
-        output_vulnerability["description"] = grype_vulnerability.description
-        output_vulnerability["severity"] = grype_vulnerability.severity
+        if grype_vulnerability_metadata:
+            output_vulnerability["id"] = grype_vulnerability_metadata.id
+            output_vulnerability[
+                "description"
+            ] = grype_vulnerability_metadata.description
+            output_vulnerability["severity"] = grype_vulnerability_metadata.severity
+            output_vulnerability["link"] = grype_vulnerability_metadata.data_source
+            output_vulnerability[
+                "references"
+            ] = grype_vulnerability_metadata.deserialized_urls
 
-        # TODO What should we do with multiple links? Currently just grabbing the first one
-        # What will break downstream if we make the field a list?
-        if grype_vulnerability.deserialized_urls:
-            output_vulnerability["link"] = grype_vulnerability.deserialized_urls[0]
-        else:
-            output_vulnerability["link"] = None
+            vendor_data = {}
+            vendor_data["id"] = grype_vulnerability_metadata.id
 
-        # TODO Not sure yet how these should be mapped
-        output_vulnerability["references"] = None
+            # Transform the cvss blocks
+            cvss_v2 = []
+            cvss_v3 = []
+            cvss_combined = grype_vulnerability_metadata.deserialized_cvss
 
-        vendor_data = {}
-        vendor_data["id"] = grype_vulnerability.id
+            for cvss in cvss_combined:
+                version = cvss["Version"]
+                if version.startswith("2"):
+                    cvss_v2.append(cvss)
+                elif version.startswith("3"):
+                    cvss_v3.append(cvss)
+                else:
+                    log.warn(
+                        "Omitting the following cvss with unknown version from vulnerability {}: {}",
+                        output_vulnerability["id"],
+                        cvss,
+                    )
+            vendor_data["cvss_v2"] = cvss_v2
+            vendor_data["cvss_v3"] = cvss_v3
 
-        # Transform the cvss blocks
-        cvss_v2 = []
-        cvss_v3 = []
-        cvss_combined = grype_vulnerability.deserialized_cvss
-
-        for cvss in cvss_combined:
-            version = cvss["Version"]
-            if version.startswith("2"):
-                cvss_v2.append(cvss)
-            elif version.startswith("3"):
-                cvss_v3.append(cvss)
+            if (
+                grype_vulnerability_metadata.record_source
+                and grype_vulnerability_metadata.record_source.startswith("nvdv2")
+            ):
+                output_vulnerability["nvd_data"] = [vendor_data]
+                output_vulnerability["vendor_data"] = []
             else:
-                log.warn(
-                    "Omitting the following cvss with unknown version from vulnerability {}: {}",
-                    output_vulnerability["id"],
-                    cvss,
-                )
-        vendor_data["cvss_v2"] = cvss_v2
-        vendor_data["cvss_v3"] = cvss_v3
-
-        if (
-            grype_vulnerability.record_source
-            and grype_vulnerability.record_source.startswith("nvdv2")
-        ):
-            output_vulnerability["nvd_data"] = [vendor_data]
-            output_vulnerability["vendor_data"] = []
-        else:
-            output_vulnerability["nvd_data"] = []
-            output_vulnerability["vendor_data"] = [vendor_data]
+                output_vulnerability["nvd_data"] = []
+                output_vulnerability["vendor_data"] = [vendor_data]
 
         # Get fields from the nested vulnerability object, if it exists
-        if grype_vulnerability.vulnerability is not None:
-            output_vulnerability[
-                "namespace"
-            ] = grype_vulnerability.vulnerability.namespace
+        if grype_vulnerability:
+            output_vulnerability["namespace"] = grype_vulnerability.namespace
 
             affected_package = {}
-            affected_package["name"] = grype_vulnerability.vulnerability.package_name
-            affected_package["type"] = grype_vulnerability.vulnerability.version_format
-            affected_package[
-                "version"
-            ] = grype_vulnerability.vulnerability.version_constraint
+            affected_package["name"] = grype_vulnerability.package_name
+            affected_package["type"] = grype_vulnerability.version_format
+            affected_package["version"] = grype_vulnerability.version_constraint
             output_vulnerability["affected_packages"] = [affected_package]
 
         return output_vulnerability
@@ -634,7 +627,7 @@ class EngineGrypeDBMapper:
         transformed_vulnerabilities = []
         for grype_raw_result in grype_vulnerabilities:
             transformed_vulnerabilities.append(
-                self._transform_grype_vulnerability(grype_raw_result)
+                self._to_engine_vulnerability(grype_raw_result)
             )
 
         return transformed_vulnerabilities
