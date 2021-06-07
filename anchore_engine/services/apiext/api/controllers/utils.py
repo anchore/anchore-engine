@@ -351,9 +351,9 @@ def to_cvss_score(cvss: CVSS):
     }
 
 
-def to_nvd_data(nvd_refs: List[NVDReference]) -> List[Dict]:
+def get_nvd_data_from_nvd_references(nvd_refs: List[NVDReference]) -> List[Dict]:
     """
-    Utility function for transforming a list of NVDReference objects to API nvd_data
+    Utility function for creating a list of cvss dicts from a list of NVDReference objects
     """
     results = []
 
@@ -390,9 +390,47 @@ def to_nvd_data(nvd_refs: List[NVDReference]) -> List[Dict]:
     return results
 
 
-def to_vendor_data(vulnerability: Vulnerability) -> List:
+def get_nvd_data_from_vulnerability(vulnerability: Vulnerability) -> List[Dict]:
     """
-    Utility function for creating vendor_data dict from Vulnerability object object to dict
+    Utility function for creating a list of cvss dicts from a vulnerability object
+    """
+    results = []
+
+    if not vulnerability.cvss:
+        return results
+
+    # generate nvd data item for each nvd reference
+    nvd_dict = {
+        "id": vulnerability.vulnerability_id,
+        # set defaults first for backwards compatibility, argh!
+        "cvss_v2": {
+            "base_score": -1.0,
+            "exploitability_score": -1.0,
+            "impact_score": -1.0,
+        },
+        "cvss_v3": {
+            "base_score": -1.0,
+            "exploitability_score": -1.0,
+            "impact_score": -1.0,
+        },
+    }
+
+    if vulnerability.cvss:
+        # get cvss_v2 or cvss_v3 dicts and update the nvd_dict
+        for cvss_obj in vulnerability.cvss:
+            cvss_dict = to_cvss_score(cvss_obj)
+
+            if cvss_dict:
+                nvd_dict.update(cvss_dict)
+
+    results.append(nvd_dict)
+
+    return results
+
+
+def get_vendor_data_from_vulnerability(vulnerability: Vulnerability) -> List:
+    """
+    Utility function for creating vendor_data cvss dict from Vulnerability object
     """
     results = []
 
@@ -490,8 +528,17 @@ def make_response_vulnerability_report(vulnerability_type, vulnerability_report)
         vuln_dict["package_path"] = result.artifact.location
         vuln_dict["feed"] = result.vulnerability.feed
         vuln_dict["feed_group"] = result.vulnerability.feed_group
-        vuln_dict["nvd_data"] = to_nvd_data(result.nvd)
-        vuln_dict["vendor_data"] = to_vendor_data(result.vulnerability)
+        # backwards compatibility hack
+        if result.vulnerability.feed_group and "nvd" in result.vulnerability.feed_group:
+            vuln_dict["nvd_data"] = get_nvd_data_from_vulnerability(
+                result.vulnerability
+            )
+            vuln_dict["vendor_data"] = []
+        else:
+            vuln_dict["nvd_data"] = get_nvd_data_from_nvd_references(result.nvd)
+            vuln_dict["vendor_data"] = get_vendor_data_from_vulnerability(
+                result.vulnerability
+            )
 
         vulns.append(vuln_dict)
 

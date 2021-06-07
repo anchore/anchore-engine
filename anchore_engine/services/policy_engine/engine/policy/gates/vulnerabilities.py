@@ -283,7 +283,8 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 artifact_obj = vuln_match.artifact
                 fix_obj = vuln_match.fix
                 match_obj = vuln_match.match
-                nvd_objs = vuln_match.nvd
+                nvd_cvss_objects = vuln_match.get_cvss_scores_nvd()
+                vendor_cvss_objects = vuln_match.get_cvss_scores_vendor()
 
                 new_vuln_pkg_class = (
                     "non-os"
@@ -381,10 +382,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Gather cvss scores before operating with max
                     nvd_cvss_v3_scores = []
-                    for nvd_obj in nvd_objs:
-                        for cvss_obj in nvd_obj.cvss:
-                            if cvss_obj.version.startswith("3"):
-                                nvd_cvss_v3_scores.append(cvss_obj)
+                    for cvss_obj in nvd_cvss_objects:
+                        if cvss_obj.version.startswith("3"):
+                            nvd_cvss_v3_scores.append(cvss_obj)
 
                     # Compute max score for each type
                     if nvd_cvss_v3_scores:
@@ -497,7 +497,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Gather cvss scores before operating with max
                     vendor_cvss_v3_scores = []
-                    for score_obj in vulnerability_obj.cvss:
+                    for score_obj in vendor_cvss_objects:
                         if score_obj.version.startswith("3"):
                             vendor_cvss_v3_scores.append(score_obj)
 
