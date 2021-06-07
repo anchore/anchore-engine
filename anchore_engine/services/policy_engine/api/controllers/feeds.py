@@ -1,4 +1,3 @@
-import typing
 from dataclasses import asdict
 
 from flask import jsonify
@@ -26,7 +25,6 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
-    VulnerabilitiesProvider,
     get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import logger as log
@@ -51,12 +49,9 @@ def list_feeds(refresh_counts=False):
     return jsonify([feed.to_json() for feed in provider.get_feeds()])
 
 
-def _marshall_feed_response(
-    provider: VulnerabilitiesProvider, feed: DbFeedMetadata
-) -> FeedMetadata:
+def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
     """
-    Marshalls FeedMetadata record obtained from the db into the api model
-    Calls _marshall_group_response to build the groups for the specified vuln provider
+    Old method for marshaling a feed. Currently being replaced by workflows driven by providers
     """
     if not feed:
         return ValueError(feed)
@@ -69,9 +64,7 @@ def _marshall_feed_response(
     i.enabled = feed.enabled
     i.groups = []
 
-    groups = provider.get_feed_groups_detached(feed)
-
-    for group in groups:
+    for group in feed.groups:
         i.groups.append(_marshall_group_response(group))
 
     return i
@@ -79,7 +72,7 @@ def _marshall_feed_response(
 
 def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
     """
-    Marshalls the specified group from db record to api model
+    Old method for marshaling a feed's groups. Currently being replaced by workflows driven by providers
     """
     if not group:
         raise ValueError(group)
