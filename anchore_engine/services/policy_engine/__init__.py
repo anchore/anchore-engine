@@ -10,10 +10,20 @@ from sqlalchemy.exc import IntegrityError
 import anchore_engine.clients.services.common
 import anchore_engine.subsys.metrics
 import anchore_engine.subsys.servicestatus
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services import internal_client_for, simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.common.models.schemas import BatchImageVulnerabilitiesQueueMessage
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
+from anchore_engine.services.policy_engine.engine.feeds import (
+    grypedb_sync,
+)  # Import grypedb_sync so that class variables are initialized before twistd threads start
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    get_provider_name,
+    get_section_for_vulnerabilities,
+    is_sync_enabled,
+)
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GithubFeed,
     GrypeDBFeed,
@@ -25,12 +35,6 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_registry,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.feeds.config import (
-    is_sync_enabled,
-    get_section_for_vulnerabilities,
-    get_provider_name,
-)
-from anchore_engine.common.models.schemas import BatchImageVulnerabilitiesQueueMessage
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
@@ -320,10 +324,10 @@ def handle_grypedb_sync(*args, **kwargs):
     # import code in function so that it is not imported to all contexts that import policy engine
     # this is an issue caused by these handlers being declared within the __init__.py file
     # See https://github.com/anchore/anchore-engine/issues/991
-    from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
     from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
         GrypeDBSyncError,
     )
+    from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
 
     logger.info("init args: {}".format(kwargs))
     cycle_time = kwargs["mythread"]["cycle_timer"]
@@ -445,6 +449,12 @@ def handle_image_vulnerabilities_refresh(*args, **kwargs):
     return True
 
 
+def initialize_grype_wrapper():
+    logger.debug("Initializing Grype wrapper singleton.")
+    GrypeWrapperSingleton.get_instance()
+    logger.debug("Grype wrapper initialized.")
+
+
 class PolicyEngineService(ApiService):
     __service_name__ = "policy_engine"
     __spec_dir__ = pkg_resources.resource_filename(__name__, "swagger")
@@ -509,5 +519,8 @@ class PolicyEngineService(ApiService):
     __lifecycle_handlers__ = {
         LifeCycleStages.pre_register: [
             (process_preflight, None),
-        ]
+        ],
+        LifeCycleStages.post_bootstrap: [
+            (initialize_grype_wrapper, None),
+        ],
     }
