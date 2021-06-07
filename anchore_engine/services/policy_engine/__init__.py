@@ -10,10 +10,20 @@ from sqlalchemy.exc import IntegrityError
 import anchore_engine.clients.services.common
 import anchore_engine.subsys.metrics
 import anchore_engine.subsys.servicestatus
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services import internal_client_for, simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.common.models.schemas import BatchImageVulnerabilitiesQueueMessage
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
+from anchore_engine.services.policy_engine.engine.feeds import (
+    grypedb_sync,
+)  # Import grypedb_sync so that class variables are initialized before twistd threads start
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    get_provider_name,
+    get_section_for_vulnerabilities,
+    is_sync_enabled,
+)
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GithubFeed,
     GrypeDBFeed,
@@ -25,11 +35,6 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_registry,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.feeds.config import (
-    is_sync_enabled,
-    get_section_for_vulnerabilities,
-    get_provider_name,
-)
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
@@ -319,12 +324,10 @@ def handle_grypedb_sync(*args, **kwargs):
     # import code in function so that it is not imported to all contexts that import policy engine
     # this is an issue caused by these handlers being declared within the __init__.py file
     # See https://github.com/anchore/anchore-engine/issues/991
-    from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
     from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
         GrypeDBSyncError,
     )
-
-    system_user = _system_creds()
+    from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
 
     logger.info("init args: {}".format(kwargs))
     cycle_time = kwargs["mythread"]["cycle_timer"]
@@ -333,11 +336,8 @@ def handle_grypedb_sync(*args, **kwargs):
         provider = get_provider_name(get_section_for_vulnerabilities())
         if provider == "grype":  # TODO fix this
             try:
-                result = GrypeDBSyncTask().execute()
-
-                if result:
-                    logger.info("Grype DB synced to local instance via handler")
-            #         TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
+                GrypeDBSyncTask().execute()
+            # TODO narrow scope of exceptions in handlers. see https://github.com/anchore/anchore-engine/issues/1005
             except Exception:
                 logger.exception(
                     "Error encountered when running GrypeDBSyncTask from async monitor"
@@ -373,6 +373,86 @@ def push_sync_task(system_user):
             except:
                 logger.error("Could not enqueue message for a feed sync")
                 raise
+
+
+def handle_image_vulnerabilities_refresh(*args, **kwargs):
+    """
+    Checks the queue for any refresh tasks and calls the provider
+    """
+    # import code in function so that it is not imported to all contexts that import policy engine
+    # this is an issue caused by these handlers being declared within the __init__.py file
+    # See https://github.com/anchore/anchore-engine/issues/991
+    from anchore_engine.services.policy_engine.engine.tasks import (
+        ImageVulnerabilitiesRefreshTask,
+    )
+
+    logger.info("init args: {}".format(kwargs))
+    cycle_time = kwargs["mythread"]["cycle_timer"]
+
+    queue_name = "image_vulnerabilities"
+
+    while True:
+        try:
+            all_ready = anchore_engine.clients.services.common.check_services_ready(
+                ["simplequeue"]
+            )
+
+            if all_ready:
+                q_client = internal_client_for(SimpleQueueClient, userId=None)
+                qlen = q_client.qlen(name=queue_name)
+                while qlen > 0:
+                    try:
+                        logger.debug("Found %s task(s) in %s queue", qlen, queue_name)
+                        queue_message = q_client.dequeue(name=queue_name)
+
+                        if not queue_message:
+                            logger.warn(
+                                "Received an invalid/empty message from %s queue %s",
+                                queue_name,
+                                queue_message,
+                            )
+                            continue
+
+                        try:
+                            batch_request = (
+                                BatchImageVulnerabilitiesQueueMessage.from_json(
+                                    queue_message.get("data")
+                                )
+                            )
+                        except:
+                            logger.exception(
+                                "Ignoring error parsing %s queue message %s",
+                                queue_name,
+                                queue_message,
+                            )
+                            continue
+
+                        for message in batch_request.messages:
+                            try:
+                                ImageVulnerabilitiesRefreshTask(message).execute()
+                            except:
+                                logger.exception(
+                                    "Failed to refresh image vulnerabilities report"
+                                )
+                    finally:
+                        qlen = q_client.qlen(name=queue_name)
+
+            else:
+                logger.info("simplequeue service not yet ready, will retry")
+        except:
+            logger.exception(
+                "Unexpected error in image vulnerabilities refresh handler, will retry"
+            )
+
+        time.sleep(cycle_time)
+
+    return True
+
+
+def initialize_grype_wrapper():
+    logger.debug("Initializing Grype wrapper singleton.")
+    GrypeWrapperSingleton.get_instance()
+    logger.debug("Grype wrapper initialized.")
 
 
 class PolicyEngineService(ApiService):
@@ -423,10 +503,24 @@ class PolicyEngineService(ApiService):
             "last_return": False,
             "initialized": False,
         },
+        "image_vulnerabilities_refresh": {
+            "handler": handle_image_vulnerabilities_refresh,
+            "taskType": "image_vulnerabilities_refresh",
+            "args": [],
+            "cycle_timer": 600,
+            "min_cycle_timer": 60,
+            "max_cycle_timer": 86400,
+            "last_queued": 0,
+            "last_return": False,
+            "initialized": False,
+        },
     }
 
     __lifecycle_handlers__ = {
         LifeCycleStages.pre_register: [
             (process_preflight, None),
-        ]
+        ],
+        LifeCycleStages.post_bootstrap: [
+            (initialize_grype_wrapper, None),
+        ],
     }

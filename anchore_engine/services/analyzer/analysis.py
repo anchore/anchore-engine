@@ -19,7 +19,7 @@ from anchore_engine.services.analyzer.utils import (
     get_tempdir,
 )
 from anchore_engine.subsys import logger, events as events, metrics, taskstate
-from anchore_engine.common.schemas import AnalysisQueueMessage, ValidationError
+from anchore_engine.common.models.schemas import AnalysisQueueMessage, ValidationError
 from anchore_engine.utils import AnchoreException
 from anchore_engine.services.analyzer.errors import (
     PolicyEngineClientError,

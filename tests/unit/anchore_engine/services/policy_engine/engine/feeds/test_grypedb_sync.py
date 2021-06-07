@@ -3,15 +3,17 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
-import sqlalchemy
 
-from anchore_engine.db import GrypeDBMetadata
+from anchore_engine.db import GrypeDBFeedMetadata
+from anchore_engine.db.db_grype_db_feed_metadata import (
+    NoActiveGrypeDB,
+    get_most_recent_active_grypedb,
+)
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncLock,
     GrypeDBSyncLockAquisitionTimeout,
     GrypeDBSyncManager,
-    NoActiveGrypeDB,
-    TooManyActiveGrypeDBs,
+    NoActiveDBSyncError,
 )
 
 
@@ -23,10 +25,12 @@ class TestGrypeDBSyncTask:
         """
 
         def _mock_query(mocked_output):
+            def _mocked_call(session):
+                return mocked_output
+
             monkeypatch.setattr(
-                GrypeDBSyncManager,
-                "_query_active_dbs",
-                Mock(return_value=mocked_output),
+                "anchore_engine.services.policy_engine.engine.feeds.grypedb_sync.get_most_recent_active_grypedb",
+                _mocked_call,
             )
 
         return _mock_query
@@ -54,8 +58,8 @@ class TestGrypeDBSyncTask:
         Provides ability to mock all class methods necessary to run a sync as a unit test
         """
 
-        def _mock(mock_active_dbs=[], mock_local_checksum=""):
-            mock_query_active_dbs_with_data(mock_active_dbs)
+        def _mock(mock_active_db=[], mock_local_checksum=""):
+            mock_query_active_dbs_with_data(mock_active_db)
             mock_get_local_grypedb_checksum(mock_local_checksum)
 
         return _mock
@@ -73,7 +77,7 @@ class TestGrypeDBSyncTask:
         )
 
         # mock initial state so execution occurs
-        mock_calls_for_sync(GrypeDBMetadata(checksum=old_checksum), "")
+        mock_calls_for_sync(GrypeDBFeedMetadata(archive_checksum=old_checksum), "")
 
         # Mock the update_grypedb method for task to sleep and update mocks for active and local grype dbs
         def _mock_update_grypedb_for_thread1(
@@ -84,42 +88,34 @@ class TestGrypeDBSyncTask:
 
             # mock the returns to mimic persistent change of active grypedb local and global
             # This in effect mocks the actual execution for the first thread
-            mock_calls_for_sync(GrypeDBMetadata(checksum=new_checksum), new_checksum)
+            mock_calls_for_sync(
+                GrypeDBFeedMetadata(archive_checksum=new_checksum), new_checksum
+            )
 
         monkeypatch.setattr(
             GrypeDBSyncManager, "_update_grypedb", _mock_update_grypedb_for_thread1
         )
 
-    def test_no_active_grypedb(self, mock_calls_for_sync):
-        mock_calls_for_sync(
-            mock_active_dbs=None,
-            mock_local_checksum="eef3b1bcd5728346cb1b30eae09647348bacfbde3ba225d70cb0374da249277c",
-        )
-
-        with pytest.raises(NoActiveGrypeDB):
-            GrypeDBSyncManager.run_grypedb_sync()
-
-    def test_too_many_active_grypedbs(self, monkeypatch):
-        def _raise_multiple_results_found():
-            raise sqlalchemy.orm.exc.MultipleResultsFound
+    def test_no_active_grypedb(self, monkeypatch):
+        def _mocked_call(session):
+            raise NoActiveGrypeDB
 
         monkeypatch.setattr(
-            GrypeDBSyncManager,
-            "_query_active_dbs",
-            _raise_multiple_results_found,
+            "anchore_engine.services.policy_engine.engine.feeds.grypedb_sync.get_most_recent_active_grypedb",
+            _mocked_call,
         )
 
-        with pytest.raises(TooManyActiveGrypeDBs):
-            GrypeDBSyncManager.run_grypedb_sync()
+        with pytest.raises(NoActiveDBSyncError):
+            GrypeDBSyncManager.run_grypedb_sync(Mock())
 
     def test_matching_checksums(self, mock_calls_for_sync):
         checksum = "eef3b1bcd5728346cb1b30eae09647348bacfbde3ba225d70cb0374da249277c"
         mock_calls_for_sync(
-            mock_active_dbs=GrypeDBMetadata(checksum=checksum),
+            mock_active_db=GrypeDBFeedMetadata(archive_checksum=checksum),
             mock_local_checksum=checksum,
         )
 
-        sync_ran = GrypeDBSyncManager.run_grypedb_sync()
+        sync_ran = GrypeDBSyncManager.run_grypedb_sync(Mock())
 
         assert sync_ran is False
 
@@ -132,7 +128,7 @@ class TestGrypeDBSyncTask:
         )
 
         mock_calls_for_sync(
-            mock_active_dbs=GrypeDBMetadata(checksum=global_checksum),
+            mock_active_db=GrypeDBFeedMetadata(archive_checksum=global_checksum),
             mock_local_checksum=local_checksum,
         )
 
@@ -143,7 +139,7 @@ class TestGrypeDBSyncTask:
 
         # pass a file path to bypass connection to catalog to retrieve tar from object storage
         sync_ran = GrypeDBSyncManager.run_grypedb_sync(
-            grypedb_file_path="test/bypass/catalog.txt"
+            Mock(), grypedb_file_path="test/bypass/catalog.txt"
         )
 
         assert sync_ran is True
@@ -160,7 +156,7 @@ class TestGrypeDBSyncTask:
         mock_lock = MagicMock()
         monkeypatch.setattr(GrypeDBSyncLock, "_lock", mock_lock)
         mock_calls_for_sync(
-            mock_active_dbs=GrypeDBMetadata(checksum=checksum),
+            mock_active_db=GrypeDBFeedMetadata(archive_checksum=checksum),
             mock_local_checksum="",
         )
 
@@ -169,7 +165,7 @@ class TestGrypeDBSyncTask:
         )
 
         sync_ran = GrypeDBSyncManager.run_grypedb_sync(
-            grypedb_file_path="test/bypass/catalog.txt"
+            Mock(), grypedb_file_path="test/bypass/catalog.txt"
         )
 
         assert sync_ran is True
@@ -200,7 +196,7 @@ class TestGrypeDBSyncTask:
                 if GrypeDBSyncLock._lock.locked():
                     lock_acquired = True
                     synchronous_task = GrypeDBSyncManager.run_grypedb_sync(
-                        grypedb_file_path="test/bypass/catalog.txt"
+                        Mock(), grypedb_file_path="test/bypass/catalog.txt"
                     )
                     break
                 else:
@@ -224,7 +220,7 @@ class TestGrypeDBSyncTask:
         with ThreadPoolExecutor() as executor:
             # run thread1
             thread1 = executor.submit(
-                GrypeDBSyncManager.run_grypedb_sync, "test/bypass/catalog.txt"
+                GrypeDBSyncManager.run_grypedb_sync, Mock(), "test/bypass/catalog.txt"
             )
 
             # Wait until thread1 has taken the lock and then run thread2 with timeout of ~5 seconds
@@ -234,7 +230,7 @@ class TestGrypeDBSyncTask:
                     lock_acquired = True
                     with pytest.raises(GrypeDBSyncLockAquisitionTimeout):
                         GrypeDBSyncManager.run_grypedb_sync(
-                            grypedb_file_path="test/bypass/catalog.txt"
+                            Mock(), grypedb_file_path="test/bypass/catalog.txt"
                         )
                     break
                 else:

@@ -1,11 +1,12 @@
 import pytest
 
-from anchore_engine.services.policy_engine.api.models import (
+from anchore_engine.common.models.policy_engine import (
     VulnerabilityMatch,
     Vulnerability,
     Artifact,
-    CvssCombined,
     Match,
+    NVDReference,
+    FixedArtifact,
 )
 from anchore_engine.services.policy_engine.engine.vulns.dedup import (
     ImageVulnerabilitiesDeduplicator,
@@ -37,24 +38,24 @@ class TestVulnerabilityIdentity:
         "test_input",
         [
             pytest.param(
-                [CvssCombined(id="CVE-abc")],
-                id="single-cvss",
+                [NVDReference(vulnerability_id="CVE-abc")],
+                id="single-nvd",
             ),
             pytest.param(
                 [
-                    CvssCombined(id="CVE-abc"),
-                    CvssCombined(id="CVE-def"),
-                    CvssCombined(id="CVE-ghi"),
+                    NVDReference(vulnerability_id="CVE-abc"),
+                    NVDReference(vulnerability_id="CVE-def"),
+                    NVDReference(vulnerability_id="CVE-ghi"),
                 ],
-                id="multiple-cvss",
+                id="multiple-nvd",
             ),
         ],
     )
-    def test_from_with_cvss(self, test_input):
+    def test_from_with_nvd(self, test_input):
         match = VulnerabilityMatch(
             artifact=Artifact(
                 name="blah",
-                pkg_path="/usr/local/java/blah",
+                location="/usr/local/java/blah",
                 pkg_type="java",
                 version="1.2.3maven",
             ),
@@ -62,27 +63,27 @@ class TestVulnerabilityIdentity:
                 feed="vulnerabilities",
                 feed_group="whatever:hello",
                 vulnerability_id="meh",
-                cvss_scores_nvd=test_input,
             ),
         )
+        match.nvd = test_input
         identity_objects = VulnerabilityIdentity.from_match(match)
 
         assert identity_objects
         assert isinstance(identity_objects, list) and len(identity_objects) == len(
             test_input
         )
-        for identity_object, input_cvss in zip(identity_objects, test_input):
-            assert identity_object.vuln_id == input_cvss.id
+        for identity_object, input_nvd in zip(identity_objects, test_input):
+            assert identity_object.vuln_id == input_nvd.vulnerability_id
             assert identity_object.pkg_name == match.artifact.name
             assert identity_object.pkg_type == match.artifact.pkg_type
             assert identity_object.pkg_version == match.artifact.version
-            assert identity_object.pkg_path == match.artifact.pkg_path
+            assert identity_object.pkg_path == match.artifact.location
 
-    def test_from_no_cvss(self):
+    def test_from_without_nvd(self):
         match = VulnerabilityMatch(
             artifact=Artifact(
                 name="blah",
-                pkg_path="/usr/local/java/blah",
+                location="/usr/local/java/blah",
                 pkg_type="java",
                 version="1.2.3maven",
             ),
@@ -90,8 +91,8 @@ class TestVulnerabilityIdentity:
                 feed="vulnerabilities",
                 feed_group="whatever:hello",
                 vulnerability_id="meh",
-                cvss_scores_nvd=[],
             ),
+            nvd=[],
         )
         identity_objects = VulnerabilityIdentity.from_match(match)
 
@@ -103,63 +104,75 @@ class TestVulnerabilityIdentity:
         assert identity_object.pkg_name == match.artifact.name
         assert identity_object.pkg_type == match.artifact.pkg_type
         assert identity_object.pkg_version == match.artifact.version
-        assert identity_object.pkg_path == match.artifact.pkg_path
+        assert identity_object.pkg_path == match.artifact.location
 
     @pytest.mark.parametrize(
         "lhs, rhs, expected",
         [
             pytest.param(
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
-                Vulnerability(
-                    feed="hedgehog",
-                    feed_group="hedgy:thorny",
-                    vulnerability_id="foo",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    Vulnerability(
+                        feed="hedgehog",
+                        feed_group="hedgy:thorny",
+                        vulnerability_id="foo",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
                 True,
                 id="equal-different-namespaces",
             ),
             pytest.param(
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[
-                        CvssCombined(id="CVE-abc"),
-                        CvssCombined(id="CVE-def"),
-                        CvssCombined(id="CVE-ghi"),
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[
+                        NVDReference(vulnerability_id="CVE-abc"),
+                        NVDReference(vulnerability_id="CVE-def"),
+                        NVDReference(vulnerability_id="CVE-ghi"),
                     ],
                 ),
-                Vulnerability(
-                    feed="hedgehog",
-                    feed_group="hedgy:thorny",
-                    vulnerability_id="foo",
-                    cvss_scores_nvd=[
-                        CvssCombined(id="CVE-abc"),
-                        CvssCombined(id="CVE-def"),
-                        CvssCombined(id="CVE-ghi"),
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="hedgehog",
+                        feed_group="hedgy:thorny",
+                        vulnerability_id="foo",
+                    ),
+                    nvd=[
+                        NVDReference(vulnerability_id="CVE-abc"),
+                        NVDReference(vulnerability_id="CVE-def"),
+                        NVDReference(vulnerability_id="CVE-ghi"),
                     ],
                 ),
                 True,
                 id="equal-multiple-cvss",
             ),
             pytest.param(
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
-                Vulnerability(
-                    feed="hedgehog",
-                    feed_group="hedgy:thorny",
-                    vulnerability_id="foo",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-def")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="hedgehog",
+                        feed_group="hedgy:thorny",
+                        vulnerability_id="foo",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-def")],
                 ),
                 False,
                 id="not-equal",
@@ -169,23 +182,17 @@ class TestVulnerabilityIdentity:
     def test_equality_constant_artifact(self, lhs, rhs, expected):
         artifact = Artifact(
             name="blah",
-            pkg_path="/usr/local/java/blah",
+            location="/usr/local/java/blah",
             pkg_type="java",
             version="1.2.3maven",
         )
-        lhs_record = VulnerabilityMatch(
-            artifact=artifact,
-            vulnerability=lhs,
-        )
+        lhs.artifact = artifact
 
-        rhs_record = VulnerabilityMatch(
-            artifact=artifact,
-            vulnerability=rhs,
-        )
+        rhs.artifact = artifact
 
         assert (
-            VulnerabilityIdentity.from_match(lhs_record)
-            == VulnerabilityIdentity.from_match(rhs_record)
+            VulnerabilityIdentity.from_match(lhs)
+            == VulnerabilityIdentity.from_match(rhs)
         ) == expected
 
     @pytest.mark.parametrize("count", [1, 2, 3, 4, 5])
@@ -208,7 +215,7 @@ class TestRankedVulnerabilityMatch:
         match = VulnerabilityMatch(
             artifact=Artifact(
                 name="blah",
-                pkg_path="/usr/local/java/blah",
+                location="/usr/local/java/blah",
                 pkg_type="java",
                 version="1.2.3maven",
             ),
@@ -216,8 +223,8 @@ class TestRankedVulnerabilityMatch:
                 feed="vulnerabilities",
                 feed_group="whatever:hello",
                 vulnerability_id="meh",
-                cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
             ),
+            nvd=[NVDReference(vulnerability_id="CVE-abc")],
         )
         rank_strategy = FeedGroupRank()
         ranked_match = RankedVulnerabilityMatch.from_match(match, FeedGroupRank())
@@ -228,62 +235,72 @@ class TestRankedVulnerabilityMatch:
         assert ranked_match.pkg_name == match.artifact.name
         assert ranked_match.pkg_type == match.artifact.pkg_type
         assert ranked_match.pkg_version == match.artifact.version
-        assert ranked_match.pkg_path == match.artifact.pkg_path
+        assert ranked_match.pkg_path == match.artifact.location
         assert ranked_match.rank == rank_strategy.__default__
 
     @pytest.mark.parametrize(
         "lhs, rhs, expected",
         [
             pytest.param(
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
-                Vulnerability(
-                    feed="hedgehog",
-                    feed_group="hedgy:thorny",
-                    vulnerability_id="foo",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="hedgehog",
+                        feed_group="hedgy:thorny",
+                        vulnerability_id="foo",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
                 False,
                 id="not-equal-different-ids",
             ),
             pytest.param(
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[
-                        CvssCombined(id="CVE-abc"),
-                        CvssCombined(id="CVE-def"),
-                        CvssCombined(id="CVE-ghi"),
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[
+                        NVDReference(vulnerability_id="CVE-abc"),
+                        NVDReference(vulnerability_id="CVE-def"),
+                        NVDReference(vulnerability_id="CVE-ghi"),
                     ],
                 ),
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[
-                        CvssCombined(id="CVE-abc"),
-                    ],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
                 True,
                 id="equal-different-cvss",
             ),
             pytest.param(
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:chameleon",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:chameleon",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
-                Vulnerability(
-                    feed="trusty",
-                    feed_group="trusty:python",
-                    vulnerability_id="meh",
-                    cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
+                VulnerabilityMatch(
+                    vulnerability=Vulnerability(
+                        feed="trusty",
+                        feed_group="trusty:python",
+                        vulnerability_id="meh",
+                    ),
+                    nvd=[NVDReference(vulnerability_id="CVE-abc")],
                 ),
                 False,
                 id="not-equal-different-namespaces",
@@ -293,23 +310,17 @@ class TestRankedVulnerabilityMatch:
     def test_equality_constant_artifact(self, lhs, rhs, expected):
         artifact = Artifact(
             name="blah",
-            pkg_path="/usr/local/java/blah",
+            location="/usr/local/java/blah",
             pkg_type="java",
             version="1.2.3maven",
         )
-        lhs_record = VulnerabilityMatch(
-            artifact=artifact,
-            vulnerability=lhs,
-        )
+        lhs.artifact = artifact
 
-        rhs_record = VulnerabilityMatch(
-            artifact=artifact,
-            vulnerability=rhs,
-        )
+        rhs.artifact = artifact
 
         assert (
-            RankedVulnerabilityMatch.from_match(lhs_record, FeedGroupRank())
-            == RankedVulnerabilityMatch.from_match(rhs_record, FeedGroupRank())
+            RankedVulnerabilityMatch.from_match(lhs, FeedGroupRank())
+            == RankedVulnerabilityMatch.from_match(rhs, FeedGroupRank())
         ) == expected
 
     @pytest.mark.parametrize("count", [1, 2, 3, 4, 5])
@@ -337,7 +348,7 @@ class TestRankedVulnerabilityMatch:
                     VulnerabilityMatch(
                         artifact=Artifact(
                             name="blah",
-                            pkg_path="/usr/local/java/blah",
+                            location="/usr/local/java/blah",
                             pkg_type="java",
                             version="1.2.3maven",
                         ),
@@ -345,13 +356,13 @@ class TestRankedVulnerabilityMatch:
                             feed="twisty",
                             feed_group="twisty:python",
                             vulnerability_id="meh",
-                            cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
                         ),
+                        nvd=[NVDReference(vulnerability_id="CVE-abc")],
                     ),
                     VulnerabilityMatch(
                         artifact=Artifact(
                             name="foo",
-                            pkg_path="/usr/local/java/foo",
+                            location="/usr/local/java/foo",
                             pkg_type="unknown",
                             version="1.2.3",
                         ),
@@ -359,8 +370,8 @@ class TestRankedVulnerabilityMatch:
                             feed="tricky",
                             feed_group="tricky:chameleon",
                             vulnerability_id="meh",
-                            cvss_scores_nvd=[CvssCombined(id="CVE-def")],
                         ),
+                        nvd=[NVDReference(vulnerability_id="CVE-def")],
                     ),
                 ],
                 id="different-matches",
@@ -370,7 +381,7 @@ class TestRankedVulnerabilityMatch:
                     VulnerabilityMatch(
                         artifact=Artifact(
                             name="blah",
-                            pkg_path="/usr/local/java/blah",
+                            location="/usr/local/java/blah",
                             pkg_type="java",
                             version="1.2.3maven",
                         ),
@@ -378,8 +389,8 @@ class TestRankedVulnerabilityMatch:
                             feed="twisty",
                             feed_group="twisty:python",
                             vulnerability_id="meh",
-                            cvss_scores_nvd=[CvssCombined(id="CVE-abc")],
                         ),
+                        nvd=[NVDReference(vulnerability_id="CVE-abc")],
                     ),
                 ]
                 * 3,
@@ -419,17 +430,21 @@ class TestImageVulnerabilitiesDeduplicator:
         [
             pytest.param(
                 [
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="nvdv2:cves",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvdv2:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="ubuntu:20.04",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="ubuntu:20.04",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
                 ],
                 1,
@@ -437,17 +452,21 @@ class TestImageVulnerabilitiesDeduplicator:
             ),
             pytest.param(
                 [
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="nvdv2:cves",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvdv2:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="github:java",
-                        vulnerability_id="GHSA-foobar",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
                 ],
                 1,
@@ -455,17 +474,21 @@ class TestImageVulnerabilitiesDeduplicator:
             ),
             pytest.param(
                 [
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="github:java",
-                        vulnerability_id="GHSA-foobar",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="ubuntu:20.04",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="ubuntu:20.04",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
                 ],
                 1,
@@ -473,17 +496,21 @@ class TestImageVulnerabilitiesDeduplicator:
             ),
             pytest.param(
                 [
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="nvdv2:cves",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvdv2:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="ubuntu:20.04",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="ubuntu:20.04",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[],
                     ),
                 ],
                 1,
@@ -491,25 +518,31 @@ class TestImageVulnerabilitiesDeduplicator:
             ),
             pytest.param(
                 [
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="nvdv2:cves",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12345")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvdv2:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12345")],
                     ),
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="nvdv2:cves",
-                        vulnerability_id="CVE-2019-12904",
-                        cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvdv2:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
                     ),
-                    Vulnerability(
-                        feed="vulnerabilities",
-                        feed_group="github:java",
-                        vulnerability_id="GHSA-foobar",
-                        cvss_scores_nvd=[
-                            CvssCombined(id="CVE-2019-12904"),
-                            CvssCombined(id="CVE-2019-12345"),
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[
+                            NVDReference(vulnerability_id="CVE-2019-12904"),
+                            NVDReference(vulnerability_id="CVE-2019-12345"),
                         ],
                     ),
                 ],
@@ -519,35 +552,29 @@ class TestImageVulnerabilitiesDeduplicator:
         ],
     )
     def test_execute(self, test_input, expected_index):
-        matches_input = [
-            VulnerabilityMatch(
-                artifact=Artifact(
-                    name="blah",
-                    pkg_path="/usr/local/java/blah",
-                    pkg_type="java",
-                    version="1.2.3maven",
-                ),
-                vulnerability=item,
-            )
-            for item in test_input
-        ]
-
-        results = ImageVulnerabilitiesDeduplicator(FeedGroupRank()).execute(
-            matches_input
+        artifact = Artifact(
+            name="blah",
+            location="/usr/local/java/blah",
+            pkg_type="java",
+            version="1.2.3maven",
         )
+        for item in test_input:
+            item.artifact = artifact
+
+        results = ImageVulnerabilitiesDeduplicator(FeedGroupRank()).execute(test_input)
         assert len(results) == 1
 
         actual = results[0].vulnerability
         expected = test_input[expected_index]
-        assert actual.vulnerability_id == expected.vulnerability_id
-        assert actual.feed_group == expected.feed_group
+        assert actual.vulnerability_id == expected.vulnerability.vulnerability_id
+        assert actual.feed_group == expected.vulnerability.feed_group
 
     @pytest.mark.parametrize("count", [1, 2, 3, 4, 5])
     def test_execute_absolute_duplicates(self, count):
         a = VulnerabilityMatch(
             artifact=Artifact(
                 name="blah",
-                pkg_path="/usr/local/java/blah",
+                location="/usr/local/java/blah",
                 pkg_type="java",
                 version="1.2.3maven",
             ),
@@ -555,8 +582,8 @@ class TestImageVulnerabilitiesDeduplicator:
                 feed="vulnerabilities",
                 feed_group="whatever:hello",
                 vulnerability_id="meh",
-                cvss_scores_nvd=[CvssCombined(id="CVE-2019-12904")],
             ),
+            nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
         )
 
         input_matches = [a for x in range(count)]
@@ -618,7 +645,7 @@ class TestTimestampMerger:
         random = VulnerabilityMatch(
             artifact=Artifact(
                 name="blah",
-                pkg_path="/usr/local/java/blah",
+                location="/usr/local/java/blah",
                 pkg_type="java",
                 version="1.2.3maven",
             ),
@@ -627,6 +654,7 @@ class TestTimestampMerger:
                 feed_group="whatever:hello",
                 vulnerability_id="meh",
             ),
+            fix=FixedArtifact(),
         )
 
         source = copy.deepcopy(random)
@@ -650,7 +678,7 @@ class TestTimestampMerger:
             VulnerabilityMatch(
                 artifact=Artifact(
                     name="blah",
-                    pkg_path="/usr/local/java/blah",
+                    location="/usr/local/java/blah",
                     pkg_type="java",
                     version="1.2.3maven",
                 ),
@@ -660,11 +688,12 @@ class TestTimestampMerger:
                     vulnerability_id="meh",
                 ),
                 match=Match(detected_at=dest_ts),
+                fix=FixedArtifact(),
             ),
             VulnerabilityMatch(
                 artifact=Artifact(
                     name="blah",
-                    pkg_path="/usr/local/java/blah",
+                    location="/usr/local/java/blah",
                     pkg_type="java",
                     version="1.2.3maven",
                 ),
@@ -674,6 +703,7 @@ class TestTimestampMerger:
                     vulnerability_id="foo",
                 ),
                 match=Match(detected_at=dest_ts),
+                fix=FixedArtifact(),
             ),
         ]
 
@@ -681,7 +711,7 @@ class TestTimestampMerger:
             VulnerabilityMatch(
                 artifact=Artifact(
                     name="blah",
-                    pkg_path="/usr/local/java/blah",
+                    location="/usr/local/java/blah",
                     pkg_type="java",
                     version="1.2.3maven",
                 ),
@@ -691,6 +721,7 @@ class TestTimestampMerger:
                     vulnerability_id="meh",
                 ),
                 match=Match(detected_at=src_ts),
+                fix=FixedArtifact(),
             )
         ]
 
@@ -707,3 +738,81 @@ class TestTimestampMerger:
                 assert result.match.detected_at == src_ts
             else:
                 assert result.match.detected_at == dest_ts
+
+    @pytest.mark.parametrize(
+        "test_source, test_destination, expected",
+        [
+            pytest.param(
+                FixedArtifact(
+                    versions=[], observed_at=datetime.datetime.utcfromtimestamp(0)
+                ),
+                FixedArtifact(
+                    versions=[], observed_at=datetime.datetime.utcfromtimestamp(10)
+                ),
+                datetime.datetime.utcfromtimestamp(10),
+                id="empty-versions",
+            ),
+            pytest.param(
+                FixedArtifact(
+                    versions=None, observed_at=datetime.datetime.utcfromtimestamp(0)
+                ),
+                FixedArtifact(
+                    versions=None, observed_at=datetime.datetime.utcfromtimestamp(10)
+                ),
+                datetime.datetime.utcfromtimestamp(10),
+                id="none-versions",
+            ),
+            pytest.param(
+                FixedArtifact(
+                    versions=[], observed_at=datetime.datetime.utcfromtimestamp(0)
+                ),
+                FixedArtifact(
+                    versions=["foo"], observed_at=datetime.datetime.utcfromtimestamp(10)
+                ),
+                datetime.datetime.utcfromtimestamp(10),
+                id="different-versions",
+            ),
+            pytest.param(
+                FixedArtifact(
+                    versions=["bar", "foo", "meh"],
+                    observed_at=datetime.datetime.utcfromtimestamp(0),
+                ),
+                FixedArtifact(
+                    versions=["meh", "bar", "foo"],
+                    observed_at=datetime.datetime.utcfromtimestamp(10),
+                ),
+                datetime.datetime.utcfromtimestamp(0),
+                id="same-versions-ordered-differently",
+            ),
+        ],
+    )
+    def test_transfer_vulnerability_timestamps_fix_observed_at(
+        self, test_source, test_destination, expected
+    ):
+        random = VulnerabilityMatch(
+            artifact=Artifact(
+                name="blah",
+                location="/usr/local/java/blah",
+                pkg_type="java",
+                version="1.2.3maven",
+            ),
+            vulnerability=Vulnerability(
+                feed="vulnerabilities",
+                feed_group="whatever:hello",
+                vulnerability_id="meh",
+            ),
+            match=Match(detected_at=datetime.datetime.utcnow()),
+        )
+
+        source = copy.deepcopy(random)
+        source.fix = test_source
+
+        destination = copy.deepcopy(random)
+        destination.fix = test_destination
+
+        results = transfer_vulnerability_timestamps(
+            source=[source], destination=[destination]
+        )
+
+        assert results and len(results) == 1
+        assert results[0].fix.observed_at == expected

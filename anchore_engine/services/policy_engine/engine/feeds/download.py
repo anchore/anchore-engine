@@ -6,7 +6,7 @@ import shutil
 from dataclasses import dataclass
 from typing import Dict, Generator, Tuple
 
-from anchore_engine.common.schemas import (
+from anchore_engine.common.models.schemas import (
     DownloadOperationConfiguration,
     DownloadOperationResult,
     GroupDownloadOperationConfiguration,

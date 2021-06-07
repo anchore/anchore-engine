@@ -12,7 +12,7 @@ import time
 import uuid
 from marshmallow import Schema, fields, post_load
 
-from anchore_engine.common.schemas import JsonSerializable
+from anchore_engine.common.models.schemas import JsonSerializable
 from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services import internal_client_for

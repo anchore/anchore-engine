@@ -6,21 +6,47 @@ These functions may raise/use api exception types
 """
 import copy
 import json
+import re
+from typing import List, Dict
 
 import jsonschema
-import re
 
 import anchore_engine.common
 from anchore_engine.apis.exceptions import BadRequest
-from anchore_engine.utils import parse_dockerimage_string
-from anchore_engine.subsys import logger
 from anchore_engine.common import nonos_package_types
+from anchore_engine.common.models.policy_engine import (
+    ImageVulnerabilitiesReport,
+    Vulnerability,
+    NVDReference,
+    CVSS,
+)
+from anchore_engine.subsys import logger
+from anchore_engine.utils import parse_dockerimage_string
 
 REGISTRY_TAG_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryTagSource"
 REGISTRY_DIGEST_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryDigestSource"
 REGISTRY_ARCHIVE_SOURCE_SCHEMA_DEFINITION_NAME = "AnalysisArchiveSource"
 
 DIGEST_REGEX = re.compile(r"^\W*sha256:[a-fA-F0-9]{64}\W*$")
+
+
+eltemplate = {
+    "vuln": "None",
+    "severity": "None",
+    "url": "None",
+    "fix": "None",
+    "package": "None",
+    "package_name": "None",
+    "package_version": "None",
+    "package_type": "None",
+    "package_cpe": "None",
+    "package_cpe23": "None",
+    "package_path": "None",
+    "feed": "None",
+    "feed_group": "None",
+    "nvd_data": "None",
+    "vendor_data": "None",
+}
 
 
 def validate_pullstring_is_tag(pullstring: str) -> bool:
@@ -301,64 +327,175 @@ def make_cvss_scores(metrics):
     return score_list
 
 
+def to_cvss_score(cvss: CVSS):
+    """
+    Utility function for transforming a CVSS object to dict. Returns a dict with cvss_v2 or cvss_v3 as the key.
+    Other CVSS major versions are not currently supported by the API
+    """
+    if not cvss or not cvss.version:
+        return None
+
+    # parse major CVSS version
+    major_version = cvss.version.split(".", 1)[0]
+
+    # currently supported keys are cvss_v2 or cvss_v3, so ignore other versions for now
+    if major_version not in ["2", "3"]:
+        return None
+
+    return {
+        "cvss_v{}".format(major_version): {
+            "base_score": cvss.base_score,
+            "exploitability_score": cvss.exploitability_score,
+            "impact_score": cvss.impact_score,
+        }
+    }
+
+
+def to_nvd_data(nvd_refs: List[NVDReference]) -> List[Dict]:
+    """
+    Utility function for transforming a list of NVDReference objects to API nvd_data
+    """
+    results = []
+
+    if not nvd_refs:
+        return results
+
+    for nvd_ref in nvd_refs:
+        # generate nvd data item for each nvd reference
+        nvd_dict = {
+            "id": nvd_ref.vulnerability_id,
+            # set defaults first for backwards compatibility, argh!
+            "cvss_v2": {
+                "base_score": -1.0,
+                "exploitability_score": -1.0,
+                "impact_score": -1.0,
+            },
+            "cvss_v3": {
+                "base_score": -1.0,
+                "exploitability_score": -1.0,
+                "impact_score": -1.0,
+            },
+        }
+
+        if nvd_ref.cvss:
+            # get cvss_v2 or cvss_v3 dicts and update the nvd_dict
+            for cvss_obj in nvd_ref.cvss:
+                cvss_dict = to_cvss_score(cvss_obj)
+
+                if cvss_dict:
+                    nvd_dict.update(cvss_dict)
+
+        results.append(nvd_dict)
+
+    return results
+
+
+def to_vendor_data(vulnerability: Vulnerability) -> List:
+    """
+    Utility function for creating vendor_data dict from Vulnerability object object to dict
+    """
+    results = []
+
+    if not vulnerability.cvss:
+        return results
+
+    for cvss_obj in vulnerability.cvss:
+        cvss_dict = to_cvss_score(cvss_obj)
+
+        if cvss_dict:
+            vendor_dict = {
+                "id": vulnerability.vulnerability_id,
+                # set defaults first for backwards compatibility, argh!
+                "cvss_v2": {
+                    "base_score": -1.0,
+                    "exploitability_score": -1.0,
+                    "impact_score": -1.0,
+                },
+                "cvss_v3": {
+                    "base_score": -1.0,
+                    "exploitability_score": -1.0,
+                    "impact_score": -1.0,
+                },
+            }
+
+            vendor_dict.update(cvss_dict)
+            results.append(vendor_dict)
+
+    return results
+
+
+def is_type_match(report_type: str, package_type: str) -> bool:
+    """
+    Returns True if the report type is os and package types is rpm, dpkg or apkg.
+    Returns True if the report type is non-os and package type is python, java, npm, gem, go etc
+    Returns True if the report type is all regardless of the package
+
+    :param report_type: type of vulnerabilities requested. Valid values: os, non-os, all
+    :param package_type: package type such as rpm, apkg, python etc
+    """
+    if report_type == "all":
+        return True
+    elif report_type == "os":
+        return package_type.lower() not in nonos_package_types
+    elif report_type == "non-os":
+        return package_type.lower() in nonos_package_types
+    else:
+        return True
+
+
 def make_response_vulnerability_report(vulnerability_type, vulnerability_report):
+    vulns = []
 
-    os_vulns = []
-    non_os_vulns = []
+    # Convert the response from json to the model type
+    image_vulnerabilities = ImageVulnerabilitiesReport.from_json(vulnerability_report)
 
-    vuln_matches = vulnerability_report.get("results", [])
-
-    for vuln_match in vuln_matches:
-        vulnerability_dict = vuln_match.get("vulnerability", {})
-        artifact_dict = vuln_match.get("artifact", {})
-        fix_list = vuln_match.get("fixes", [])
-        fix_versions = (
-            [
-                item["version"]
-                for item in fix_list
-                if item["version"] and item["version"] != "None"
-                for item in fix_list
-            ]
-            if fix_list
-            else []
-        )
-        fixed_in_version = ", ".join(fix_versions) if fix_versions else "None"
-
-        if not vulnerability_dict or not artifact_dict:
+    for result in image_vulnerabilities.results:
+        if not result.vulnerability or not result.artifact:
             logger.warn(
-                "Missing vulnerability and artifact data in match record, skipping"
+                "Missing vulnerability and or artifact data in match record, skipping"
             )
             continue
 
-        record = {
-            "vuln": vulnerability_dict["vulnerability_id"],
-            "severity": vulnerability_dict["severity"],
-            "url": vulnerability_dict["link"],
-            "fix": fixed_in_version,
-            "package": "{}-{}".format(artifact_dict["name"], artifact_dict["version"]),
-            "package_name": artifact_dict["name"],
-            "package_version": artifact_dict["version"],
-            "package_type": artifact_dict["pkg_type"],
-            "package_cpe": artifact_dict["cpe"],
-            "package_cpe23": artifact_dict["cpe23"],
-            "package_path": artifact_dict["pkg_path"],
-            "feed": vulnerability_dict["feed"],
-            "feed_group": vulnerability_dict["feed_group"],
-            "nvd_data": vulnerability_dict["cvss_scores_nvd"],
-            "vendor_data": vulnerability_dict["cvss_scores_vendor"],
-        }
+        # process the item only if it matches the requested type, otherwise skip it
+        if not is_type_match(
+            report_type=vulnerability_type, package_type=result.artifact.pkg_type
+        ):
+            logger.debug(
+                "%s package is not a match for %s vulnerabilities, skipping",
+                result.artifact.pkg_type,
+                vulnerability_type,
+            )
+            continue
 
-        if artifact_dict["pkg_type"] in nonos_package_types:
-            non_os_vulns.append(record)
-        else:
-            os_vulns.append(record)
+        # backwards compatibility for filling in literal "None"
+        vuln_dict = copy.deepcopy(eltemplate)
 
-    if vulnerability_type == "os":
-        return os_vulns
-    elif vulnerability_type == "non-os":
-        return non_os_vulns
-    else:
-        return os_vulns + non_os_vulns
+        vuln_dict["vuln"] = result.vulnerability.vulnerability_id
+        vuln_dict["severity"] = result.vulnerability.severity
+        if result.vulnerability.link:
+            vuln_dict["url"] = result.vulnerability.link
+        if result.fix and result.fix.versions:
+            vuln_dict["fix"] = ",".join(result.fix.versions)
+        vuln_dict["package"] = "{}-{}".format(
+            result.artifact.name, result.artifact.version
+        )
+        vuln_dict["package_name"] = result.artifact.name
+        vuln_dict["package_version"] = result.artifact.version
+        vuln_dict["package_type"] = result.artifact.pkg_type
+        if result.artifact.cpe:
+            vuln_dict["package_cpe"] = result.artifact.cpe
+        if result.artifact.cpes:
+            # hack since api doesn't support multiples
+            vuln_dict["package_cpe23"] = result.artifact.cpes[0]
+        vuln_dict["package_path"] = result.artifact.location
+        vuln_dict["feed"] = result.vulnerability.feed
+        vuln_dict["feed_group"] = result.vulnerability.feed_group
+        vuln_dict["nvd_data"] = to_nvd_data(result.nvd)
+        vuln_dict["vendor_data"] = to_vendor_data(result.vulnerability)
+
+        vulns.append(vuln_dict)
+
+    return vulns
 
 
 def make_response_vulnerability(vulnerability_type, vulnerability_data):
@@ -367,24 +504,6 @@ def make_response_vulnerability(vulnerability_type, vulnerability_data):
     if not vulnerability_data:
         logger.warn("empty query data given to format - returning empty result")
         return ret
-
-    eltemplate = {
-        "vuln": "None",
-        "severity": "None",
-        "url": "None",
-        "fix": "None",
-        "package": "None",
-        "package_name": "None",
-        "package_version": "None",
-        "package_type": "None",
-        "package_cpe": "None",
-        "package_cpe23": "None",
-        "package_path": "None",
-        "feed": "None",
-        "feed_group": "None",
-        "nvd_data": "None",
-        "vendor_data": "None",
-    }
 
     osvulns = []
     nonosvulns = []

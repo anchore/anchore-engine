@@ -281,8 +281,9 @@ class VulnerabilityMatchTrigger(BaseTrigger):
             for vuln_match in vuln_matches:
                 vulnerability_obj = vuln_match.vulnerability
                 artifact_obj = vuln_match.artifact
-                fix_obj_list = vuln_match.fixes
+                fix_obj = vuln_match.fix
                 match_obj = vuln_match.match
+                nvd_objs = vuln_match.nvd
 
                 new_vuln_pkg_class = (
                     "non-os"
@@ -309,11 +310,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 parameter_data["pkg_class"] = new_vuln_pkg_class
 
                 # setting fixed_version here regardless of gate parameter,
-                fix_versions = [
-                    item.version
-                    for item in fix_obj_list
-                    if item.version and item.version != "None"
-                ]
+                fix_versions = [version for version in fix_obj.versions if version]
                 fix_available_in = ", ".join(fix_versions) if fix_versions else None
 
                 if fix_available_in:
@@ -328,12 +325,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 if comparison_fn(found_severity_idx, comparison_idx):
                     # package path excludes logic for non-os packages only
                     if new_vuln_pkg_class == "non-os" and package_path_re:
-                        match_found = package_path_re.match(artifact_obj.pkg_path)
+                        match_found = package_path_re.match(artifact_obj.location)
                         if match_found is not None:
                             logger.debug(
                                 "Non-OS vulnerability {} package path {} matches package path exclude {}, skipping".format(
                                     artifact_obj.name,
-                                    artifact_obj.pkg_path,
+                                    artifact_obj.location,
                                     path_exclude_re_value,
                                 )
                             )
@@ -341,7 +338,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Check vendor_only flag specified by the user in policy
                     if is_vendor_only:
-                        if any(item.wont_fix for item in fix_obj_list):
+                        if fix_obj.wont_fix:
                             logger.debug(
                                 "{} vulnerability {} for package {} is marked by vendor as won't fix, skipping".format(
                                     new_vuln_pkg_class,
@@ -363,40 +360,33 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         ] = match_obj.detected_at.date()
 
                     if is_fix_available and fix_timeallowed is not None:
-                        observed_at_list = [
-                            item.observed_at
-                            for item in fix_obj_list
-                            if item.version
-                            and item.version != "None"
-                            and item.observed_at
-                        ]
-
                         fix_observed_at = (
-                            max(observed_at_list) if observed_at_list else None
+                            fix_obj.observed_at if fix_available_in else None
                         )
 
-                        if (
-                            fix_observed_at
-                            and calendar.timegm(fix_observed_at.timetuple())
-                            > fix_timeallowed
-                        ):
-                            continue
-                        else:
-                            parameter_data[
-                                "max_days_since_fix"
-                            ] = fix_observed_at.date()
+                        if fix_observed_at:
+                            if (
+                                calendar.timegm(fix_observed_at.timetuple())
+                                > fix_timeallowed
+                            ):
+                                continue
+                            else:
+                                parameter_data[
+                                    "max_days_since_fix"
+                                ] = fix_observed_at.date()
 
                     vuln_cvss_base_score = -1.0
                     vuln_cvss_exploitability_score = -1.0
                     vuln_cvss_impact_score = -1.0
 
                     # Gather cvss scores before operating with max
-                    nvd_cvss_v3_scores = [
-                        item.cvss_v3
-                        for item in vulnerability_obj.cvss_scores_nvd
-                        if item.cvss_v3
-                    ]
+                    nvd_cvss_v3_scores = []
+                    for nvd_obj in nvd_objs:
+                        for cvss_obj in nvd_obj.cvss:
+                            if cvss_obj.version.startswith("3"):
+                                nvd_cvss_v3_scores.append(cvss_obj)
 
+                    # Compute max score for each type
                     if nvd_cvss_v3_scores:
                         vuln_cvss_base_score = max(
                             item.base_score for item in nvd_cvss_v3_scores
@@ -506,11 +496,10 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     vuln_vendor_cvss_impact_score = -1.0
 
                     # Gather cvss scores before operating with max
-                    vendor_cvss_v3_scores = [
-                        item.cvss_v3
-                        for item in vulnerability_obj.cvss_scores_vendor
-                        if item.cvss_v3
-                    ]
+                    vendor_cvss_v3_scores = []
+                    for score_obj in vulnerability_obj.cvss:
+                        if score_obj.version.startswith("3"):
+                            vendor_cvss_v3_scores.append(score_obj)
 
                     if vendor_cvss_v3_scores:
                         vuln_vendor_cvss_base_score = max(
@@ -607,12 +596,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         trigger_fname = None
                         if artifact_obj.pkg_type in ["java", "gem"]:
                             try:
-                                trigger_fname = artifact_obj.pkg_path.split("/")[-1]
+                                trigger_fname = artifact_obj.location.split("/")[-1]
                             except:
                                 trigger_fname = None
                         elif artifact_obj.pkg_type in ["npm"]:
                             try:
-                                trigger_fname = artifact_obj.pkg_path.split("/")[-2]
+                                trigger_fname = artifact_obj.location.split("/")[-2]
                             except:
                                 trigger_fname = None
 
@@ -621,7 +610,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 [artifact_obj.name, artifact_obj.version]
                             )
 
-                        pkgname = artifact_obj.pkg_path
+                        pkgname = artifact_obj.location
                     else:
                         trigger_fname = artifact_obj.name
                         pkgname = artifact_obj.name
@@ -744,10 +733,10 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
         for vid in vids:
             found = False
 
-            matches = context.data.get("loaded_vulnerabilities_new")
+            matches = context.data.get("loaded_vulnerabilities")
             for match in matches:
                 if is_vendor_only:
-                    if match.fixes and any(item.wont_fix for item in match.fixes):
+                    if match.fix.wont_fix:
                         continue
                 # search for vid in all vulns
                 if vid == match.vulnerability.vulnerability_id:
