@@ -15,10 +15,13 @@ from anchore_engine.clients.grype_wrapper import (
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
+from anchore_engine.common.models.policy_engine import (
+    FeedGroupMetadata as APIFeedGroupMetadata,
+)
 from anchore_engine.common.models.schemas import (
+    BatchImageVulnerabilitiesQueueMessage,
     GroupDownloadResult,
     ImageVulnerabilitiesQueueMessage,
-    BatchImageVulnerabilitiesQueueMessage,
 )
 from anchore_engine.db import (
     CpeV2Vulnerability,
@@ -984,45 +987,60 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         certain timestamps like the last_sync are not set in this process the first time around because it has not yet
         been set on the GrypeDBFeedMetadata object
         """
-        groups = []
+        if source_counts and isinstance(source_counts, list):
+            groups = []
 
-        for source in source_counts:
-            logger.debug(
-                "Adding group %s consisting of %d vulns to GrypeDBFeedMetadata record",
-                source.group,
-                source.count,
-            )
-            groups.append(
-                FeedGroupMetadata(
-                    name=source.group,
-                    feed_name=self.__feed_name__,
-                    description="Upstream source of grype db vulnerability",
-                    access_tier=0,
-                    last_sync=self.grypedb_meta.synced_at,
-                    created_at=self.grypedb_meta.created_at,
-                    last_update=self.grypedb_meta.last_updated,
-                    enabled=True,
-                    count=source.count,
-                ).to_json()
-            )
+            for source in source_counts:
+                logger.debug(
+                    "Adding group %s consisting of %d vulns to GrypeDBFeedMetadata record",
+                    source.group,
+                    source.count,
+                )
+                groups.append(
+                    APIFeedGroupMetadata(
+                        name=source.group,
+                        last_sync=self.grypedb_meta.synced_at,
+                        created_at=self.grypedb_meta.created_at,
+                        updated_at=self.grypedb_meta.last_updated,
+                        enabled=True,
+                        record_count=source.count,
+                    ).to_json()
+                )
 
-        self.grypedb_meta.groups = groups
-        db.flush()
+            self.grypedb_meta.groups = groups
+            db.flush()
+        else:
+            raise ValueError(
+                "GrypeDBFeedMetadata type is non iterable and incorrectly set"
+            )
 
     def _update_group_timestamps(self, db):
         """
         Updates the tiemstamps
         """
-        groups = [FeedGroupMetadata(**group) for group in self.grypedb_meta.groups]
 
-        for group in groups:
-            group.last_sync = self.grypedb_meta.synced_at
-            group.last_update = self.grypedb_meta.last_updated
+        if self.grypedb_meta.groups and isinstance(self.grypedb_meta.groups, List):
+            # Set last_sync and updated_at on dict so from_json can be used
+            groups = []
+            for group in self.grypedb_meta.groups:
+                groups.append(
+                    APIFeedGroupMetadata(
+                        name=group["name"],
+                        last_sync=self.grypedb_meta.synced_at,
+                        created_at=self.grypedb_meta.created_at,
+                        updated_at=self.grypedb_meta.last_updated,
+                        enabled=True,
+                        record_count=group["record_count"],
+                    ).to_json()
+                )
 
-        groups = [group.to_json() for group in groups]
-        self.grypedb_meta.groups = groups
+            self.grypedb_meta.groups = groups
 
-        db.flush()
+            db.flush()
+        else:
+            raise ValueError(
+                "GrypeDBFeedMetadata type is non iterable and incorrectly set"
+            )
 
     def _process_grype_file_records(
         self,
@@ -1228,20 +1246,6 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         finally:
             sync_time = time.time() - sync_started
             total_time_seconds = time.time() - download_started.timestamp()
-            for source in source_counts:
-                if is_new:
-                    updated_count = source.count
-                else:
-                    updated_count = 0
-
-                results.append(
-                    GroupSyncResult(
-                        group=source.group,
-                        updated_record_count=updated_count,
-                        total_time_seconds=total_time_seconds,
-                        status="success",
-                    )
-                )
             logger.info(
                 self._log_context.format_msg(
                     "Sync to db duration: %d sec" % sync_time,
@@ -1252,6 +1256,21 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                     "Total sync, including download, duration: {} sec".format(
                         total_time_seconds
                     ),
+                )
+            )
+
+        for source in source_counts:
+            if is_new:
+                updated_count = source.count
+            else:
+                updated_count = 0
+
+            results.append(
+                GroupSyncResult(
+                    group=source.group,
+                    updated_record_count=updated_count,
+                    total_time_seconds=total_time_seconds,
+                    status="success",
                 )
             )
 

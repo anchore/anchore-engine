@@ -48,24 +48,7 @@ def list_feeds(refresh_counts=False):
     if refresh_counts:
         provider.update_feed_group_counts()
 
-    response = [x.to_json() for x in _marshall_feeds_response(provider)]
-
-    return jsonify(response)
-
-
-def _marshall_feeds_response(
-    provider: VulnerabilitiesProvider,
-) -> typing.List[FeedMetadata]:
-    """
-    Marshalls feeds and groups for specified provider into api models
-    """
-    response = []
-    meta = provider.get_feeds_detached()
-
-    for feed in meta:
-        response.append(_marshall_feed_response(provider, feed))
-
-    return response
+    return jsonify([feed.to_json() for feed in provider.get_feeds()])
 
 
 def _marshall_feed_response(

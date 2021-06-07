@@ -5,15 +5,17 @@ import time
 from abc import ABC, abstractmethod
 from typing import Dict, Iterable, List
 
-import dateutil.parser
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
+from anchore_engine.common.models.policy_engine import Advisory, Artifact
 from anchore_engine.common.models.policy_engine import (
-    Advisory,
-    Artifact,
+    FeedGroupMetadata as APIFeedGroupMetadata,
+)
+from anchore_engine.common.models.policy_engine import FeedMetadata as APIFeedMetadata
+from anchore_engine.common.models.policy_engine import (
     FixedArtifact,
     ImageVulnerabilitiesReport,
     Match,
@@ -30,18 +32,13 @@ from anchore_engine.db import (
     Image,
     ImageCpe,
     ImagePackageVulnerability,
-    VulnDBCpe,
-    VulnDBMetadata,
-    Vulnerability,
-    get_thread_scoped_session,
-    ImageVulnerabilitiesReport as DBImageVulnerabilitiesReport,
 )
+from anchore_engine.db import ImageVulnerabilitiesReport as DBImageVulnerabilitiesReport
+from anchore_engine.db import VulnDBCpe, VulnDBMetadata, Vulnerability
+from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import select_nvd_classes, session_scope
-from anchore_engine.db.db_grype_db_feed_metadata import (
-    NoActiveGrypeDB,
-    get_most_recent_active_grypedb,
-)
+from anchore_engine.db.db_grype_db_feed_metadata import get_most_recent_active_grypedb
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     SyncConfig,
     get_provider_name,
@@ -68,7 +65,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata_image_packages,
 )
 from anchore_engine.subsys import logger, metrics
-from anchore_engine.utils import rfc3339str_to_datetime, timer
+from anchore_engine.utils import timer
 
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
 from .mappers import EngineGrypeDBMapper
@@ -150,7 +147,7 @@ class VulnerabilitiesProvider(ABC):
         Legacy holdout for updating vulnerability matches of images that were loaded during the feed sync
         """
 
-    def get_feeds_detached(self) -> List[FeedMetadata]:
+    def _get_db_feeds(self) -> List[FeedMetadata]:
         """
         Returns all feeds excluding grypedb feed in detached state
         """
@@ -159,21 +156,74 @@ class VulnerabilitiesProvider(ABC):
             filter(lambda feed: feed.name in self.__default_sync_config__.keys(), feeds)
         )
 
-    def get_feed_groups_detached(
-        self, feed: FeedMetadata
-    ) -> Iterable[FeedGroupMetadata]:
+    def get_feeds(self) -> List[APIFeedMetadata]:
         """
-        Gets a list of all groups consumed by Legacy provider from specified feed in a detached state
+        Builds the response for the get_list_feeds endpoint. Gets all feeds and their groups for the provider and returns
+        them in correct json format based on models
+
+        :return: JSON list of APIFeedMetadata and their groups converted to json
+        :rtype: list
         """
-        if feed.name not in self.__default_sync_config__.keys():
+        response = []
+
+        for db_feed in self._get_db_feeds():
+            response.append(self.get_feed(db_feed))
+
+        return response
+
+    def get_feed(self, db_feed: FeedMetadata) -> APIFeedMetadata:
+        if not db_feed:
+            raise ValueError(db_feed)
+
+        if db_feed.name not in self.__default_sync_config__.keys():
             raise ValueError(
                 "%s feed is not supported by %s provider, supported feeds are %s",
-                feed.name,
+                db_feed.name,
                 self.__config__name__,
                 list(self.__default_sync_config__.keys()),
             )
 
-        return feed.groups
+        feed_meta = APIFeedMetadata(
+            name=db_feed.name,
+            last_full_sync=db_feed.last_full_sync,
+            created_at=db_feed.created_at,
+            updated_at=db_feed.last_update,
+            enabled=db_feed.enabled,
+            groups=[],
+        )
+
+        feed_meta.groups = self._get_feed_groups(db_feed)
+        return feed_meta
+
+    def get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
+        """
+        Given a feed this function returns the groups for that feed as a list of APIFeedGroupMetadata
+
+        :return: List of APIFeedGroupMetadata corresponding to feed
+        :rtype: List[APIFeedGroupMetadata]
+        """
+        if not db_feed:
+            raise ValueError(db_feed)
+
+        if db_feed.name not in self.__default_sync_config__.keys():
+            raise ValueError(
+                "%s feed is not supported by %s provider, supported feeds are %s",
+                db_feed.name,
+                self.__config__name__,
+                list(self.__default_sync_config__.keys()),
+            )
+
+        return self._get_feed_groups(db_feed)
+
+    @abstractmethod
+    def _get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
+        """
+        Returns the groups of feed as a list of APIFeedGroupMetadata
+
+        :return: List of feed's groups
+        :rtype: List[APIFeedGroupMetadata]
+        """
+        ...
 
     @abstractmethod
     def update_feed_group_counts(self) -> None:
@@ -946,6 +996,28 @@ class LegacyProvider(VulnerabilitiesProvider):
             max(feed_group_updated_list) > since if feed_group_updated_list else False
         )
 
+    def _get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
+        """
+        Given a feed this function returns the groups for that feed as a list of APIFeedGroupMetadata
+
+        :return: List of APIFeedGroupMetadata corresponding to feed
+        :rtype: List[APIFeedGroupMetadata]
+        """
+        groups = []
+        for group in db_feed.groups:
+            groups.append(
+                APIFeedGroupMetadata(
+                    name=group.name,
+                    last_sync=group.last_sync,
+                    created_at=group.created_at,
+                    updated_at=group.last_update,
+                    enabled=group.enabled,
+                    record_count=group.count,
+                )
+            )
+
+        return groups
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -1379,40 +1451,36 @@ class GrypeProvider(VulnerabilitiesProvider):
         """
         pass
 
-    def get_feed_groups_detached(
-        self, feed: FeedMetadata
-    ) -> Iterable[FeedGroupMetadata]:
+    def update_feed_group_counts(self) -> None:
         """
-        Gets a list of all groups from feed
-        If not grype feed, calls super function
-        If grype, builds list of groups from GrypeDBFeedMetadata record
+        Counts on grypedb are static so no need to update
         """
-        if feed.name not in self.__default_sync_config__.keys():
-            raise ValueError(
-                "%s feed is not supported by %s provider, supported feeds are %s",
-                feed.name,
-                self.__config__name__,
-                list(self.__default_sync_config__.keys()),
-            )
+        return
 
-        if feed.name != GrypeDBFeed.__feed_name__:
-            return super().get_feed_groups_detached(feed)
-
+    def _get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
+        """
+        Overrides function on parent class to handle grype feed. If feed is not grype it calls the super function
+        Otherwise, it builds the group response for the grype feed using the GrypeDBFeedMetadata record
+        """
         groups = []
 
-        with session_scope() as session:
-            active_db = get_most_recent_active_grypedb(session)
-            for raw_group in active_db.groups:
-                # Because groups are saved as json, the timestamps are converted to strings
-                # In order to support marshmallow api models, the timestamp fields need to be converted to datetime
-                time_fields = ["created_at", "last_update", "last_sync"]
-                for field in time_fields:
-                    if isinstance(raw_group[field], str):
-                        raw_group[field] = dateutil.parser.isoparse(raw_group[field])
-
-                # convert raw_group to an instance of FeedGroupMetadata and append to groups
-                feed_group_metadata = FeedGroupMetadata(**raw_group)
-                groups.append(feed_group_metadata)
+        if db_feed.name != GrypeDBFeed.__feed_name__:
+            for group in db_feed.groups:
+                groups.append(
+                    APIFeedGroupMetadata(
+                        name=group.name,
+                        last_sync=group.last_sync,
+                        created_at=group.created_at,
+                        updated_at=group.last_update,
+                        enabled=group.enabled,
+                        record_count=group.count,
+                    )
+                )
+        else:
+            with session_scope() as session:
+                active_db = get_most_recent_active_grypedb(session)
+                for raw_group in active_db.groups:
+                    groups.append(APIFeedGroupMetadata.from_json(raw_group))
 
         return groups
 
