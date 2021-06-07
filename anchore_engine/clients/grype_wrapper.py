@@ -220,15 +220,14 @@ class GrypeWrapperSingleton(object):
         read_lock = self._grype_db_lock.gen_rlock()
 
         try:
-            if read_lock.acquire(blocking=False, timeout=self.LOCK_READ_ACCESS_TIMEOUT):
+            acquired = read_lock.acquire(blocking=True, timeout=self.LOCK_READ_ACCESS_TIMEOUT)
+            if acquired:
                 logger.debug("Acquired read access for the grype_db lock")
-                yield
+                yield acquired
             else:
                 raise Exception("Unable to acquire read access for the grype_db lock")
-        except Exception as exception:
-            raise exception
         finally:
-            if read_lock.locked():
+            if acquired:
                 logger.debug("Releasing read access for the grype_db lock")
                 read_lock.release()
 
@@ -242,17 +241,14 @@ class GrypeWrapperSingleton(object):
         write_lock = self._grype_db_lock.gen_wlock()
 
         try:
-            if write_lock.acquire(
-                blocking=False, timeout=self.LOCK_WRITE_ACCESS_TIMEOUT
-            ):
+            acquired = write_lock.acquire(blocking=True, timeout=self.LOCK_READ_ACCESS_TIMEOUT)
+            if acquired:
                 logger.debug("Unable to acquire write access for the grype_db lock")
-                yield
+                yield acquired
             else:
                 raise Exception("Unable to acquire write access for the grype_db lock")
-        except Exception as exception:
-            raise exception
         finally:
-            if write_lock.locked():
+            if acquired:
                 logger.debug("Releasing write access for the grype_db lock")
                 write_lock.release()
 
