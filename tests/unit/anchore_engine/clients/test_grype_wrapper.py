@@ -1257,7 +1257,10 @@ def test_query_record_source_counts(
 
 class TestLocking:
     @staticmethod
-    def read_nothing(grype_wrapper, name, input_queue, output_queue):
+    def hold_read_lock(grype_wrapper, name, input_queue, output_queue):
+        """
+        Acquire and hold a read lock until instructed to release it.
+        """
         print("Waiting to acquire read lock for {}".format(name))
         with grype_wrapper.read_lock_access() as acquired:
             output_queue.put(name)
@@ -1267,7 +1270,10 @@ class TestLocking:
                 return
 
     @staticmethod
-    def write_nothing(grype_wrapper, name, input_queue, output_queue):
+    def hold_write_lock(grype_wrapper, name, input_queue, output_queue):
+        """
+        Acquire and hold a write lock until instructed to release it.
+        """
         print("Waiting to acquire write lock for {}".format(name))
         with grype_wrapper.write_lock_access() as acquired:
             output_queue.put(name)
@@ -1278,6 +1284,9 @@ class TestLocking:
 
     @staticmethod
     def value_in_queue(queue, value, timeout=None):
+        """
+        Check if a value is in the queue. Block with optional timeout.
+        """
         try:
             result = queue.get(block=True, timeout=timeout)
             if result == value:
@@ -1291,27 +1300,34 @@ class TestLocking:
         Tests that two threads reading at the same time is possible.
         """
         grype_wrapper = TestGrypeWrapperSingleton.get_instance()
+        # This queue will be used to tell threads to release the lock.
         instruction_queue = Queue()
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
         output_queue = Queue()
 
         reader_1_name = "a"
         reader_2_name = "b"
 
         a = Thread(
-            target=self.read_nothing,
+            target=self.hold_read_lock,
             args=(grype_wrapper, reader_1_name, instruction_queue, output_queue),
         )
         b = Thread(
-            target=self.read_nothing,
+            target=self.hold_read_lock,
             args=(grype_wrapper, reader_2_name, instruction_queue, output_queue),
         )
+
         a.start()
         b.start()
+
+        # Both thread should be holding the lock at this point.
         acquired_tasks = []
         for x in range(2):
             acquired_tasks.append(output_queue.get(block=True, timeout=3))
         assert reader_1_name in acquired_tasks
         assert reader_2_name in acquired_tasks
+
+        # Tell the threads that they can release.
         instruction_queue.put(True)
         instruction_queue.put(True)
         a.join()
@@ -1323,14 +1339,18 @@ class TestLocking:
         """
         grype_wrapper = TestGrypeWrapperSingleton.get_instance()
 
+        # These queues will be used to tell threads to release the lock.
         writer_1_instruction_queue = Queue()
         writer_2_instruction_queue = Queue()
+
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
         output_queue = Queue()
+
         writer_1_name = "a"
         writer_2_name = "b"
 
         writer_1 = Thread(
-            target=self.write_nothing,
+            target=self.hold_write_lock,
             args=(
                 grype_wrapper,
                 writer_1_name,
@@ -1339,7 +1359,7 @@ class TestLocking:
             ),
         )
         writer_2 = Thread(
-            target=self.write_nothing,
+            target=self.hold_write_lock,
             args=(
                 grype_wrapper,
                 writer_2_name,
@@ -1348,22 +1368,27 @@ class TestLocking:
             ),
         )
 
+        # Start the first writer and check that it has acquired the lock.
         writer_1.start()
-        time.sleep(1)
-        writer_2.start()
 
         acquired_writer_1 = self.value_in_queue(output_queue, writer_1_name, 3)
         assert acquired_writer_1
 
+        # Start the second writer and check that is has not acquired the lock.
+        writer_2.start()
+
         acquired_writer_2 = self.value_in_queue(output_queue, writer_2_name, 3)
         assert not acquired_writer_2
 
+        # Tell the first writer to release the lock.
         writer_1_instruction_queue.put(True)
         writer_1.join()
 
+        # Check that the second writer has acquired the lock.
         acquired_writer_2 = self.value_in_queue(output_queue, writer_2_name, 3)
         assert acquired_writer_2
 
+        # Tell the second writer to release the lock.
         writer_2_instruction_queue.put(True)
         writer_2.join()
 
@@ -1373,37 +1398,46 @@ class TestLocking:
         """
         grype_wrapper = TestGrypeWrapperSingleton.get_instance()
 
+        # These queues will be used to tell threads to release the lock.
         reader_instruction_queue = Queue()
         writer_instruction_queue = Queue()
+
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
         output_queue = Queue()
+
         writer_name = "a"
         reader_name = "b"
 
         reader = Thread(
-            target=self.read_nothing,
+            target=self.hold_read_lock,
             args=(grype_wrapper, reader_name, reader_instruction_queue, output_queue),
         )
         writer = Thread(
-            target=self.write_nothing,
+            target=self.hold_write_lock,
             args=(grype_wrapper, writer_name, writer_instruction_queue, output_queue),
         )
 
+        # Start the reader and check that it has acquired the lock.
         reader.start()
-        time.sleep(1)
-        writer.start()
 
         acquired_read = self.value_in_queue(output_queue, reader_name, 3)
         assert acquired_read
 
+        # Start the writer and check that is has not acquired the lock.
+        writer.start()
+
         acquired_write = self.value_in_queue(output_queue, writer_name, 3)
         assert not acquired_write
 
+        # Tell the reader to release the lock.
         reader_instruction_queue.put(True)
         reader.join()
 
+        # Check that the writer has acquired the lock.
         acquired_write = self.value_in_queue(output_queue, writer_name, 3)
         assert acquired_write
 
+        # Tell the writer to release the lock.
         writer_instruction_queue.put(True)
         writer.join()
 
@@ -1413,36 +1447,45 @@ class TestLocking:
         """
         grype_wrapper = TestGrypeWrapperSingleton.get_instance()
 
+        # These queues will be used to tell threads to release the lock.
         reader_instruction_queue = Queue()
         writer_instruction_queue = Queue()
+
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
         output_queue = Queue()
+
         writer_name = "a"
         reader_name = "b"
 
         reader = Thread(
-            target=self.read_nothing,
+            target=self.hold_read_lock,
             args=(grype_wrapper, reader_name, reader_instruction_queue, output_queue),
         )
         writer = Thread(
-            target=self.write_nothing,
+            target=self.hold_write_lock,
             args=(grype_wrapper, writer_name, writer_instruction_queue, output_queue),
         )
 
+        # Start the writer and check that it has acquired the lock.
         writer.start()
-        time.sleep(1)
-        reader.start()
 
         acquired_write = self.value_in_queue(output_queue, writer_name, 3)
         assert acquired_write
 
+        # Start the reader and check that is has not acquired the lock.
+        reader.start()
+
         acquired_read = self.value_in_queue(output_queue, reader_name, 3)
         assert not acquired_read
 
+        # Tell the writer to release the lock.
         writer_instruction_queue.put(True)
         writer.join()
 
+        # Check that the reader has acquired the lock.
         acquired_read = self.value_in_queue(output_queue, reader_name, 3)
         assert acquired_read
 
+        # Tell the reader to release the lock.
         reader_instruction_queue.put(True)
         reader.join()
