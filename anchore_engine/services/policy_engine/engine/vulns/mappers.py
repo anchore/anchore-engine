@@ -542,6 +542,7 @@ class EngineGrypeDBMapper:
     def _transform_cvss(self, cvss, cvss_template):
         score_dict = copy.deepcopy(cvss_template)
         score_dict["version"] = cvss.get("Version")
+        score_dict["vector"] = cvss.get("Vector", None)
         score_dict["base_score"] = cvss.get("Metrics", {}).get("BaseScore", -1.0)
         score_dict["expolitability_score"] = cvss.get("Metrics", {}).get(
             "ExploitabilityScore", -1.0
@@ -594,7 +595,7 @@ class EngineGrypeDBMapper:
                 vuln_dict["namespace"] = grype_vulnerability.namespace
                 vuln_dict["description"] = grype_vulnerability_metadata.description
                 vuln_dict["severity"] = grype_vulnerability_metadata.severity
-                vuln_dict["link"] = grype_vulnerability_metadata.record_source
+                vuln_dict["link"] = grype_vulnerability_metadata.data_source
                 vuln_dict["references"] = grype_vulnerability_metadata.deserialized_urls
 
                 # Transform the cvss blocks
