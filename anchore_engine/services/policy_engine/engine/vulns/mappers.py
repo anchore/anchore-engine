@@ -666,9 +666,7 @@ class EngineGrypeDBMapper:
                 vuln_dict["description"] = grype_vulnerability_metadata.description
                 vuln_dict["severity"] = grype_vulnerability_metadata.severity
                 vuln_dict["link"] = grype_vulnerability_metadata.data_source
-                output_vulnerability[
-                    "references"
-                ] = grype_vulnerability_metadata.deserialized_urls
+                vuln_dict["references"] = grype_vulnerability_metadata.deserialized_urls
 
                 # Transform the cvss blocks
                 cvss_combined = grype_vulnerability_metadata.deserialized_cvss
@@ -716,7 +714,7 @@ class EngineGrypeDBMapper:
                     else:
                         log.warn(
                             "Omitting the following cvss with unknown version from vulnerability {}: {}",
-                            output_vulnerability["id"],
+                            grype_vulnerability.id,
                             cvss,
                         )
                         continue
