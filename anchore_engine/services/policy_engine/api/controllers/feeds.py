@@ -25,6 +25,7 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    InvalidFeed,
     get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import logger as log
@@ -129,23 +130,23 @@ def sync_feeds(sync=True, force_flush=False):
 def toggle_feed_enabled(feed, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-    session = db.get_session()
+
     try:
-        f = db.set_feed_enabled(session, feed, enabled)
-        if not f:
+        provider = get_vulnerabilities_provider()
+        feed = provider.toggle_feed_enabled(feed, enabled)
+
+        if not feed:
             raise ResourceNotFound(feed, detail={})
-        session.flush()
 
-        updated = _marshall_feed_response(f).to_json()
-        session.commit()
+        return jsonify(feed.to_json()), 200
 
-        return jsonify(updated), 200
-    except AnchoreApiError:
-        session.rollback()
-        raise
+    except InvalidFeed:
+        raise BadRequest(
+            message="Feed not enabled on configured vulnerability provider",
+            detail={"feed": feed, "configured_provider": provider.__config__name__},
+        )
     except Exception as e:
         log.error("Could not update feed enabled status")
-        session.rollback()
         return jsonify(make_response_error(e, in_httpcode=500)), 500
 
 

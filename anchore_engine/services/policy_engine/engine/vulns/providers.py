@@ -3,7 +3,7 @@ import hashlib
 import json
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, Iterable, List
+from typing import Dict, List, Optional
 
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
@@ -48,6 +48,7 @@ from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_all_feeds_detached,
     get_feed_detached,
     get_all_feeds,
+    set_feed_enabled
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GrypeDBFeed,
@@ -71,6 +72,10 @@ from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_tim
 from .mappers import EngineGrypeDBMapper
 from .scanners import GrypeScanner, LegacyScanner
 from .stores import ImageVulnerabilitiesStore, Status
+
+
+class InvalidFeed(Exception):
+    pass
 
 
 class VulnerabilitiesProvider(ABC):
@@ -172,16 +177,12 @@ class VulnerabilitiesProvider(ABC):
         return response
 
     def get_feed(self, db_feed: FeedMetadata) -> APIFeedMetadata:
+        """
+        Returns feed and its groups as api models
+        """
         if not db_feed:
             raise ValueError(db_feed)
-
-        if db_feed.name not in self.__default_sync_config__.keys():
-            raise ValueError(
-                "%s feed is not supported by %s provider, supported feeds are %s",
-                db_feed.name,
-                self.__config__name__,
-                list(self.__default_sync_config__.keys()),
-            )
+        self.validate_feed(db_feed.name)
 
         feed_meta = APIFeedMetadata(
             name=db_feed.name,
@@ -204,14 +205,7 @@ class VulnerabilitiesProvider(ABC):
         """
         if not db_feed:
             raise ValueError(db_feed)
-
-        if db_feed.name not in self.__default_sync_config__.keys():
-            raise ValueError(
-                "%s feed is not supported by %s provider, supported feeds are %s",
-                db_feed.name,
-                self.__config__name__,
-                list(self.__default_sync_config__.keys()),
-            )
+        self.validate_feed(db_feed.name)
 
         return self._get_feed_groups(db_feed)
 
@@ -240,6 +234,30 @@ class VulnerabilitiesProvider(ABC):
         Returns a boolean value - True if the image vulnerabilites were updated since the timestamp, False otherwise
         """
         ...
+
+    def toggle_feed_enabled(
+        self, feed_name: str, enabled: bool
+    ) -> Optional[APIFeedMetadata]:
+        self.validate_feed(feed_name)
+
+        with session_scope() as session:
+            feed = set_feed_enabled(session, feed_name, enabled)
+            if not feed:
+                return None
+
+            return self.get_feed(feed)
+
+    def validate_feed(self, feed_name: str) -> None:
+        """
+        Raises a ValueError if the feed name is not available on the provider. Does nothing if it is valid
+        """
+        if feed_name not in self.__default_sync_config__.keys():
+            raise InvalidFeed(
+                "%s feed is not supported by %s provider, supported feeds are %s",
+                feed_name,
+                self.__config__name__,
+                list(self.__default_sync_config__.keys()),
+            )
 
 
 class LegacyProvider(VulnerabilitiesProvider):
