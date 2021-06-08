@@ -721,11 +721,18 @@ class EngineGrypeDBMapper:
 
                 # parse_nvd_data() using grype_vulnerability_metadata
 
+            # Transform the versions block
+            if grype_vulnerability.deserialized_fixed_in_versions:
+                version = ",".join(grype_vulnerability.deserialized_fixed_in_versions)
+            else:
+                version = "*"
+
+            # Populate affected_packages
             vuln_dict["affected_packages"].append(
                 {
                     "name": grype_vulnerability.package_name,
                     "type": grype_vulnerability.version_format,
-                    "version": grype_vulnerability.fixed_in_versions,
+                    "version": version,
                 }
             )
 
