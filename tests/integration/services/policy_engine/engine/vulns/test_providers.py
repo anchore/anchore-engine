@@ -19,7 +19,7 @@ class TestLegacyProvider:
 
     def test_get_feeds_detached(self, test_data_env, legacy_provider):
 
-        feeds = legacy_provider.get_feeds_detached()
+        feeds = legacy_provider._get_db_feeds()
 
         assert isinstance(feeds, list) is True
         assert len(feeds) == 1

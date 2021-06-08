@@ -121,7 +121,7 @@ class FeedMetadata(JsonSerializable):
         enabled=None,
     ):
         self.name = name
-        self.created_aat = created_at
+        self.created_at = created_at
         self.updated_at = updated_at
         self.groups = groups
         self.last_full_sync = last_full_sync
