@@ -47,7 +47,7 @@ def list_feeds(refresh_counts=False):
     if refresh_counts:
         provider.update_feed_group_counts()
 
-    return jsonify([feed.to_json() for feed in provider.get_feeds()])
+    return [feed.to_json() for feed in provider.get_feeds()]
 
 
 def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
@@ -133,17 +133,17 @@ def toggle_feed_enabled(feed, enabled):
 
     try:
         provider = get_vulnerabilities_provider()
-        feed = provider.toggle_feed_enabled(feed, enabled)
+        feed = provider.update_feed_enabled_status(feed, enabled)
 
         if not feed:
             raise ResourceNotFound(feed, detail={})
 
-        return jsonify(feed.to_json()), 200
+        return feed.to_json(), 200
 
     except InvalidFeed:
         raise BadRequest(
-            message="Feed not enabled on configured vulnerability provider",
-            detail={"feed": feed, "configured_provider": provider.__config__name__},
+            message="Feed not supported on configured vulnerability provider",
+            detail={"feed": feed, "configured_provider": provider.get_config_name()},
         )
     except Exception as e:
         log.error("Could not update feed enabled status")

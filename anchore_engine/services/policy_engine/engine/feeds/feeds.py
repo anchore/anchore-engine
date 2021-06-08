@@ -1019,7 +1019,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         Updates the tiemstamps
         """
 
-        if self.grypedb_meta.groups and isinstance(self.grypedb_meta.groups, List):
+        if self.grypedb_meta.groups and isinstance(self.grypedb_meta.groups, list):
             # Set last_sync and updated_at on dict so from_json can be used
             groups = []
             for group in self.grypedb_meta.groups:
@@ -1181,6 +1181,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
         :rtype: dict
         """
         results = []
+        sync_time = total_time_seconds = None
 
         db = get_session()
 
@@ -1226,15 +1227,24 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                     GrypeWrapperSingleton.get_instance().query_record_source_counts()
                 )
 
+            sync_time = time.time() - sync_started
+            total_time_seconds = time.time() - download_started.timestamp()
+            for source in source_counts:
+                if is_new:
+                    updated_count = source.count
+                else:
+                    updated_count = 0
+
+                results.append(
+                    GroupSyncResult(
+                        group=source.group,
+                        updated_record_count=updated_count,
+                        total_time_seconds=total_time_seconds,
+                        status="success",
+                    )
+                )
+
             db.commit()
-            # There is potential failure-s that could happen when downloading,
-            # skipping updating the `last_sync` allows the system to retry
-            # if group_download_result.status == "complete":
-            #     group_db_obj.last_sync = download_started
-            #       TODO update group info here
-            # group_db_obj.count = self.record_count(group_db_obj.name, db)
-            # db.add(group_db_obj)
-            # db.commit()
         except Exception as e:
             logger.exception(
                 self._log_context.format_msg(
@@ -1244,8 +1254,9 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             db.rollback()
             raise e
         finally:
-            sync_time = time.time() - sync_started
-            total_time_seconds = time.time() - download_started.timestamp()
+            if not sync_time or not sync_started:
+                sync_time = time.time() - sync_started
+                total_time_seconds = time.time() - download_started.timestamp()
             logger.info(
                 self._log_context.format_msg(
                     "Sync to db duration: %d sec" % sync_time,
@@ -1256,21 +1267,6 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
                     "Total sync, including download, duration: {} sec".format(
                         total_time_seconds
                     ),
-                )
-            )
-
-        for source in source_counts:
-            if is_new:
-                updated_count = source.count
-            else:
-                updated_count = 0
-
-            results.append(
-                GroupSyncResult(
-                    group=source.group,
-                    updated_record_count=updated_count,
-                    total_time_seconds=total_time_seconds,
-                    status="success",
                 )
             )
 

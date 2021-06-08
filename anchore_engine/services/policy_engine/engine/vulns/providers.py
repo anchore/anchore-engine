@@ -235,7 +235,7 @@ class VulnerabilitiesProvider(ABC):
         """
         ...
 
-    def toggle_feed_enabled(
+    def update_feed_enabled_status(
         self, feed_name: str, enabled: bool
     ) -> Optional[APIFeedMetadata]:
         self.validate_feed(feed_name)
