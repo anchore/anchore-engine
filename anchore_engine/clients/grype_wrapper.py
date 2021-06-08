@@ -46,6 +46,10 @@ class GrypeVulnerability(Base, UtilMixin):
     def deserialized_related_vulnerabilities(self):
         return json.loads(self.related_vulnerabilities)
 
+    @property
+    def deserialized_fixed_in_versions(self):
+        return json.loads(self.fixed_in_versions)
+
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
     __tablename__ = VULNERABILITY_METADATA_TABLE_NAME
