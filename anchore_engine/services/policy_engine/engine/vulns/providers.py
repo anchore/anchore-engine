@@ -45,10 +45,10 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
     get_section_for_vulnerabilities,
 )
 from anchore_engine.services.policy_engine.engine.feeds.db import (
+    get_all_feeds,
     get_all_feeds_detached,
     get_feed_detached,
-    get_all_feeds,
-    set_feed_enabled
+    set_feed_enabled,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GrypeDBFeed,
