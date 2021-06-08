@@ -294,3 +294,13 @@ class GrypeScanner:
             return report
 
         return report
+
+    def get_vulnerabilities(
+        self, ids, affected_package, affected_package_version, namespace
+    ):
+        return GrypeWrapperSingleton.get_instance().query_vulnerabilities(
+            vuln_id=ids,
+            affected_package=affected_package,
+            affected_package_version=affected_package_version,
+            namespace=namespace,
+        )

@@ -9,8 +9,6 @@ import dateutil.parser
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
-from anchore_engine import version
-from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.common.models.policy_engine import (
@@ -1167,16 +1165,17 @@ class GrypeProvider(VulnerabilitiesProvider):
     def get_vulnerabilities(
         self, ids, affected_package, affected_package_version, namespace, session
     ):
-        unmapped_results = GrypeWrapperSingleton.get_instance().query_vulnerabilities(
-            vuln_id=ids,
-            affected_package=affected_package,
-            affected_package_version=affected_package_version,
-            namespace=namespace,
+        scanner = self.__scanner__()
+
+        # Get vulnerability results from grype db, through the grype wrapper, via the scanner
+        unmapped_results = scanner.get_vulnerabilities(
+            ids, affected_package, affected_package_version, namespace
         )
+
+        # Map grype db vulnerabilities into engine vulnerabilities
         mapped_results = EngineGrypeDBMapper().to_engine_vulnerabilities(
             unmapped_results
         )
-
         return mapped_results
 
     def get_images_by_vulnerability(
