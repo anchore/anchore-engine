@@ -2,6 +2,7 @@ import enum
 from typing import Dict
 
 import retrying
+import datetime
 
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db.db_grype_db_feed_metadata import (
@@ -107,6 +108,38 @@ class ImageVulnerabilitiesStore:
             )
         else:
             return None, None
+
+    def is_modified(self, session, since: datetime.datetime):
+        """
+        Looks up a report for the image and returns True if the report is newer than the timestamp.
+        If the report was generated before the since timestamp, the logic checks for report status and returns True
+        if the report needs a refresh, False otherwise
+
+        """
+        db_record = (
+            session.query(DbImageVulnerabilities)
+            .filter_by(account_id=self.image.user_id, image_digest=self.image.digest)
+            .one_or_none()
+        )
+
+        if db_record:
+            # found a report, check if it's valid
+            if db_record.generated_at <= since:
+                # report generated before since timestamp, verify status is valid
+                is_modified = (
+                    False
+                    if self.__report_key_class__().get_report_status(db_record, session)
+                    == Status.valid
+                    else True
+                )
+            else:
+                # report newer than since timestamp, so it's definitely modified
+                is_modified = True
+        else:
+            # no report, nothing has been modified
+            is_modified = False
+
+        return is_modified
 
     def delete_all(self, session):
         """

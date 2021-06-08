@@ -50,6 +50,7 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_all_feeds_detached,
     get_feed_detached,
+    get_all_feeds,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GrypeDBFeed,
@@ -177,6 +178,15 @@ class VulnerabilitiesProvider(ABC):
     def update_feed_group_counts(self) -> None:
         """
         Update counts of feed and groups
+        """
+        ...
+
+    @abstractmethod
+    def is_image_vulnerabilities_updated(
+        self, image: Image, db_session, since: datetime.datetime
+    ):
+        """
+        Returns a boolean value - True if the image vulnerabilites were updated since the timestamp, False otherwise
         """
         ...
 
@@ -914,6 +924,27 @@ class LegacyProvider(VulnerabilitiesProvider):
         """
         DataFeeds.update_counts()
 
+    def is_image_vulnerabilities_updated(
+        self, image: Image, db_session, since: datetime.datetime
+    ):
+        """
+        Image vulnerabilities *may be* updated after feeds are synced. This function determines if the image vulnerabilities
+        have been updated by comparing the last_sync timestamp of the feed groups with the input timestamp
+
+        Copied over from EvaluationCacheManager._inputs_changed in synchronous_operations.py
+        """
+        # TODO: zhill - test more
+        feed_group_updated_list = [
+            group.last_sync
+            if group.last_sync is not None
+            else datetime.datetime.utcfromtimestamp(0)
+            for feed in get_all_feeds(db_session)
+            for group in feed.groups
+        ]
+        return (
+            max(feed_group_updated_list) > since if feed_group_updated_list else False
+        )
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -1376,6 +1407,23 @@ class GrypeProvider(VulnerabilitiesProvider):
         Counts on grypedb are static so no need to update
         """
         return
+
+    def is_image_vulnerabilities_updated(
+        self, image: Image, db_session, since: datetime.datetime
+    ):
+        """
+        This function determines if the image vulnerabilities were updated based on the state of the report in the store.
+        Returns True if a newer report is available or if the existing report needs a refresh. False otherwise
+
+        It does not intentionally use the same mechanism as the legacy provider i.e. grype-db feed last_sync timestamp,
+        as that's not an accurate measure. The last_sync timestamp reflects when a sync was performed,
+        not if a new grype-db was synced. The more accurate approach is to compare the input with the report generation
+        timestamp
+        """
+        # initialize store manager first
+        store_manager = self.__store__(image)
+
+        return store_manager.is_modified(session=db_session, since=since)
 
 
 # Override this map for associating different provider classes
