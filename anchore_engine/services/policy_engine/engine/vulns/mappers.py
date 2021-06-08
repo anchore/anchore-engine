@@ -1,3 +1,4 @@
+import copy
 import datetime
 import uuid
 from collections import defaultdict
@@ -625,9 +626,109 @@ class EngineGrypeDBMapper:
         into the data structure engine expects.
         """
         transformed_vulnerabilities = []
+        intermediate_tuple_list = {}
+
+        return_el_template = {
+            "id": None,  # done
+            "namespace": None,  # done
+            "severity": None,  # done
+            "link": None,  # done
+            "affected_packages": [],  # done
+            "description": None,  # done
+            "references": None,  # leaving this be
+            "nvd_data": [],
+            "vendor_data": [],  # leaving this be
+        }
+        cvss_template = {
+            "version": None,
+            "vector": None,
+            "base_score": -1.0,
+            "expolitability_score": -1.0,
+            "impact_score": -1.0,
+        }
+
         for grype_raw_result in grype_vulnerabilities:
-            transformed_vulnerabilities.append(
-                self._to_engine_vulnerability(grype_raw_result)
+            grype_vulnerability = grype_raw_result.GrypeVulnerability
+            grype_vulnerability_metadata = grype_raw_result.GrypeVulnerabilityMetadata
+
+            vuln_dict = intermediate_tuple_list.get(
+                (grype_vulnerability.id, grype_vulnerability.namespace)
             )
 
-        return transformed_vulnerabilities
+            if not vuln_dict:
+                vuln_dict = copy.deepcopy(return_el_template)
+                intermediate_tuple_list[
+                    (grype_vulnerability.id, grype_vulnerability.namespace)
+                ] = vuln_dict
+
+                vuln_dict["id"] = grype_vulnerability_metadata.id
+                vuln_dict["namespace"] = grype_vulnerability.namespace
+                vuln_dict["description"] = grype_vulnerability_metadata.description
+                vuln_dict["severity"] = grype_vulnerability_metadata.severity
+                vuln_dict["link"] = grype_vulnerability_metadata.data_source
+                output_vulnerability[
+                    "references"
+                ] = grype_vulnerability_metadata.deserialized_urls
+
+                # Transform the cvss blocks
+                cvss_combined = grype_vulnerability_metadata.deserialized_cvss
+
+                for cvss in cvss_combined:
+                    version = cvss["Version"]
+                    if version.startswith("2"):
+                        score_dict = copy.deepcopy(cvss_template)
+                        score_dict["version"] = (cvss.get("Version"),)
+                        score_dict["base_score"] = cvss.get("Metrics", {}).get(
+                            "BaseScore", -1.0
+                        )
+                        score_dict["exploitabilityScore"] = cvss.get("Metrics", {}).get(
+                            "ExploitabilityScore", -1.0
+                        )
+                        score_dict["impactScore"] = cvss.get("Metrics", {}).get(
+                            "ImpactScore", -1.0
+                        )
+
+                        vuln_dict["vendor_data"].append(
+                            {
+                                "cvss_v2": score_dict,
+                                "id": grype_vulnerability_metadata.id,
+                            }
+                        )
+                    elif version.startswith("3"):
+                        score_dict = copy.deepcopy(cvss_template)
+                        score_dict["version"] = (cvss.get("Version"),)
+                        score_dict["base_score"] = cvss.get("Metrics", {}).get(
+                            "BaseScore", -1.0
+                        )
+                        score_dict["exploitabilityScore"] = cvss.get("Metrics", {}).get(
+                            "ExploitabilityScore", -1.0
+                        )
+                        score_dict["impactScore"] = cvss.get("Metrics", {}).get(
+                            "ImpactScore", -1.0
+                        )
+
+                        vuln_dict["vendor_data"].append(
+                            {
+                                "cvss_v3": score_dict,
+                                "id": grype_vulnerability_metadata.id,
+                            }
+                        )
+                    else:
+                        log.warn(
+                            "Omitting the following cvss with unknown version from vulnerability {}: {}",
+                            output_vulnerability["id"],
+                            cvss,
+                        )
+                        continue
+
+                # parse_nvd_data() using grype_vulnerability_metadata
+
+            vuln_dict["affected_packages"].append(
+                {
+                    "name": grype_vulnerability.package_name,
+                    "type": grype_vulnerability.version_format,
+                    "version": grype_vulnerability.fixed_in_versions,
+                }
+            )
+
+        return list(intermediate_tuple_list.values())
