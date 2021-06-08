@@ -1335,6 +1335,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         #     }
         with timer("grype provider get-images-by-vulnerability", log_level="info"):
             vulnerable_images = []
+            results = {"vulnerable_images": vulnerable_images}
 
             # construct a jsonb query for result->results->vulnerability->vulnerability_id
             db_records = (
@@ -1364,7 +1365,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                 vulnerability_id,
             )
             if not db_records:
-                return ret_hash
+                return results
 
             # horribly hacky utility function to get catalog owned tag history info for all images this user owns
             image_to_record = get_imageId_to_record(account_id, dbsession=db_session)
@@ -1402,7 +1403,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                         db_record.image_digest,
                     )
 
-            return {"vulnerable_images": vulnerable_images}
+            return results
 
     @staticmethod
     def _filter_vulnerability_matches(
