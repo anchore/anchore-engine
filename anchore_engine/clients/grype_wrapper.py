@@ -41,7 +41,10 @@ class GrypeVulnerability(Base, UtilMixin):
     fixed_in_versions = Column(String)
     fix_state = Column(String)
     advisories = Column(String)
-    vulnerability_metadata = relationship("GrypeVulnerabilityMetadata")
+
+    @property
+    def deserialized_related_vulnerabilities(self):
+        return json.loads(self.related_vulnerabilities)
 
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
@@ -55,6 +58,14 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     urls = Column(String)
     description = Column(String)
     cvss = Column(String)
+
+    @property
+    def deserialized_urls(self):
+        return json.loads(self.urls)
+
+    @property
+    def deserialized_cvss(self):
+        return json.loads(self.cvss)
 
 
 @dataclass
@@ -493,7 +504,7 @@ class GrypeWrapperSingleton(object):
             latest_grype_db_dir, grype_db_version, self.VULNERABILITY_FILE_NAME
         )
         db_connect = self.SQL_LITE_URL_TEMPLATE.format(latest_grype_db_file)
-        latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
+        latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=False)
         return latest_grype_db_engine
 
     def _init_latest_grype_db_session_maker(self, grype_db_engine) -> sessionmaker:
@@ -837,9 +848,13 @@ class GrypeWrapperSingleton(object):
             )
 
             with self.grype_session_scope() as session:
-                query = session.query(GrypeVulnerability).join(
+                query = session.query(
+                    GrypeVulnerability, GrypeVulnerabilityMetadata
+                ).join(
                     GrypeVulnerabilityMetadata,
-                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
+                    and GrypeVulnerability.namespace
+                    == GrypeVulnerabilityMetadata.namespace,
                 )
 
                 if vuln_id is not None:

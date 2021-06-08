@@ -535,3 +535,99 @@ def to_engine_vulnerabilities(grype_response):
             )
 
     return results
+
+
+class EngineGrypeDBMapper:
+    def _to_engine_vulnerability(self, grype_raw_result):
+        """
+        Receives a single vulnerability_metadata record from grype_db and maps into the data structure engine expects.
+        The vulnerability_metadata record may optionally (but in practice should always) have a nested record for the
+        related vulnerability record.
+        """
+        # Create the templated output object
+        output_vulnerability = {}
+        return_el_template = {
+            "id": None,
+            "namespace": None,
+            "severity": None,
+            "link": None,
+            "affected_packages": None,
+            "description": None,
+            "references": None,
+            "nvd_data": None,
+            "vendor_data": None,
+        }
+        output_vulnerability.update(return_el_template)
+
+        grype_vulnerability = grype_raw_result.GrypeVulnerability
+        grype_vulnerability_metadata = grype_raw_result.GrypeVulnerabilityMetadata
+
+        # Set mapped field values
+        if grype_vulnerability_metadata:
+            output_vulnerability["id"] = grype_vulnerability_metadata.id
+            output_vulnerability[
+                "description"
+            ] = grype_vulnerability_metadata.description
+            output_vulnerability["severity"] = grype_vulnerability_metadata.severity
+            output_vulnerability["link"] = grype_vulnerability_metadata.data_source
+            output_vulnerability[
+                "references"
+            ] = grype_vulnerability_metadata.deserialized_urls
+
+            # vendor_data = {}
+            # vendor_data["id"] = grype_vulnerability_metadata.id
+            #
+            # # Transform the cvss blocks
+            # cvss_v2 = []
+            # cvss_v3 = []
+            # cvss_combined = grype_vulnerability_metadata.deserialized_cvss
+            #
+            # for cvss in cvss_combined:
+            #     version = cvss["Version"]
+            #     if version.startswith("2"):
+            #         cvss_v2.append(cvss)
+            #     elif version.startswith("3"):
+            #         cvss_v3.append(cvss)
+            #     else:
+            #         log.warn(
+            #             "Omitting the following cvss with unknown version from vulnerability {}: {}",
+            #             output_vulnerability["id"],
+            #             cvss,
+            #         )
+            # vendor_data["cvss_v2"] = cvss_v2
+            # vendor_data["cvss_v3"] = cvss_v3
+            #
+            # if (
+            #     grype_vulnerability_metadata.record_source
+            #     and grype_vulnerability_metadata.record_source.startswith("nvdv2")
+            # ):
+            #     output_vulnerability["nvd_data"] = [vendor_data]
+            #     output_vulnerability["vendor_data"] = []
+            # else:
+            #     output_vulnerability["nvd_data"] = []
+            #     output_vulnerability["vendor_data"] = [vendor_data]
+
+        # Get fields from the nested vulnerability object, if it exists
+        if grype_vulnerability:
+            output_vulnerability["namespace"] = grype_vulnerability.namespace
+
+            affected_package = {}
+            affected_package["name"] = grype_vulnerability.package_name
+            affected_package["type"] = grype_vulnerability.version_format
+            affected_package["version"] = grype_vulnerability.version_constraint
+            output_vulnerability["affected_packages"] = [affected_package]
+
+        return output_vulnerability
+
+    def to_engine_vulnerabilities(self, grype_vulnerabilities):
+        """
+        Receives a list of vulnerability_metadata records from grype_db and returns a list of vulnerabilities mapped
+        into the data structure engine expects.
+        """
+        transformed_vulnerabilities = []
+        for grype_raw_result in grype_vulnerabilities:
+            transformed_vulnerabilities.append(
+                self._to_engine_vulnerability(grype_raw_result)
+            )
+
+        return transformed_vulnerabilities

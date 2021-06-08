@@ -71,6 +71,7 @@ from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import rfc3339str_to_datetime, timer
 
 from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
+from .mappers import EngineGrypeDBMapper
 from .scanners import GrypeScanner, LegacyScanner
 from .stores import ImageVulnerabilitiesStore, Status
 
@@ -1161,8 +1162,21 @@ class GrypeProvider(VulnerabilitiesProvider):
 
             return new_report
 
-    def get_vulnerabilities(self, **kwargs):
-        raise NotImplemented
+    def get_vulnerabilities(
+        self, ids, affected_package, affected_package_version, namespace, session
+    ):
+        scanner = self.__scanner__()
+
+        # Get vulnerability results from grype db, through the grype wrapper, via the scanner
+        unmapped_results = scanner.get_vulnerabilities(
+            ids, affected_package, affected_package_version, namespace
+        )
+
+        # Map grype db vulnerabilities into engine vulnerabilities
+        mapped_results = EngineGrypeDBMapper().to_engine_vulnerabilities(
+            unmapped_results
+        )
+        return mapped_results
 
     def get_images_by_vulnerability(
         self,
