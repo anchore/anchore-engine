@@ -132,6 +132,12 @@ setup-and-test-functional: venv setup-test-infra ## Stand up/start docker-compos
 	@$(MAKE) test-functional
 	@$(MAKE) compose-down
 
+setup-and-test-functional-grype: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
+	@$(ACTIVATE_VENV) && $(CI_CMD) prep-local-docker-registry-credentials
+	@$(MAKE) compose-up ANCHORE_VULNERABILITIES_PROVIDER="grype"
+	@$(MAKE) test-functional
+	@$(MAKE) compose-down
+
 setup-e2e-tests: setup-test-infra venv ## Start kind cluster and set up end to end tests
 	@$(MAKE) cluster-up
 	@$(ACTIVATE_VENV) && $(CI_CMD) setup-e2e-tests "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)"
@@ -172,6 +178,7 @@ push-rebuild: setup-test-infra ## Rebuild and push prod Anchore Engine docker im
 
 compose-up: venv setup-test-infra ## Stand up/start docker-compose with dev image
 	@export TEST_IMAGE_NAME="$(TEST_IMAGE_NAME)";\
+	export ANCHORE_VULNERABILITIES_PROVIDER := "legacy" ;\
 	if [ "$(OS)" = "Darwin" ]; then \
 		export GID_DOCKER=0;\
 		export GID_CI=$(shell id -g);\
@@ -213,3 +220,4 @@ printvars: ## Print make variables
 help:
 	@printf "\n%s\n\n" "usage: make <target>"
 	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[0;36m%-30s\033[0m %s\n", $$1, $$2}'
+
