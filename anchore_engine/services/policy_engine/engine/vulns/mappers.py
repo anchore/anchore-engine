@@ -2,19 +2,20 @@ import copy
 import datetime
 import uuid
 from collections import defaultdict
-from typing import List, Dict
+from typing import Dict, List
 
-from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.common.models.policy_engine import (
-    VulnerabilityMatch,
-    Artifact,
-    Vulnerability,
-    Match,
-    FixedArtifact,
-    Advisory,
     CVSS,
+    Advisory,
+    Artifact,
+    FixedArtifact,
+    Match,
     NVDReference,
+    Vulnerability,
+    VulnerabilityMatch,
 )
+from anchore_engine.db import Image, ImageCpe, ImagePackage
+from anchore_engine.services.policy_engine.engine.feeds.feeds import GrypeDBFeed
 from anchore_engine.subsys import logger as log
 
 
@@ -340,7 +341,7 @@ class VulnerabilityMapper:
                 description=vuln_dict.get("description"),
                 severity=vuln_dict.get("severity"),
                 link=vuln_dict.get("dataSource"),
-                feed="vulnerabilities",
+                feed=GrypeDBFeed.__feed_name__,
                 feed_group=vuln_dict.get("namespace"),
                 cvss=cvss_objs,
             ),
