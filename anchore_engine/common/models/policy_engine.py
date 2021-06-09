@@ -121,7 +121,7 @@ class FeedMetadata(JsonSerializable):
         enabled=None,
     ):
         self.name = name
-        self.created_aat = created_at
+        self.created_at = created_at
         self.updated_at = updated_at
         self.groups = groups
         self.last_full_sync = last_full_sync
@@ -787,6 +787,51 @@ class VulnerabilityMatch(JsonSerializable):
             self.artifact.pkg_type,
             self.artifact.location,
         )
+
+    def get_cvss_scores_nvd(self):
+        """
+        Backwards compatible utility funciton for getting NVD assigned cvss scores attached to a vulnerability.
+        This is a convenience funciton that abstracts the logic of finding the relevant scores from the caller
+
+        TLDR;
+        Source for NVD CVSS score depends on the type of the vulnerability. There are two types vulnerabilities
+        - NVD vulnerabilities. Scores in the vulnerability object data model represent vendor assigned CVSS scores. In this case they are the same as NVD scores since the vendor is NVD
+        - Non-NVD vulnerabilities with NVD references. NVD CVSS scores are available via the NVD reference objects
+        """
+        scores = []
+
+        # check the vulnerability type using the feed group. legacy feed group for nvd is "nvdv2:cves", grype counterpart is "nvd"
+        if self.vulnerability.feed_group and "nvd" in self.vulnerability.feed_group:
+            scores = self.vulnerability.cvss
+        else:
+            if self.nvd:
+                [
+                    scores.extend(nvd_reference.cvss)
+                    for nvd_reference in self.nvd
+                    if nvd_reference.cvss
+                ]
+
+        return scores
+
+    def get_cvss_scores_vendor(self):
+        """
+        Backwards compatible utility funciton for getting vendor assigned cvss scores attached to a vulnerability.
+        This is a convenience funciton that abstracts the logic of finding the relevant scores from the caller
+
+        TLDR;
+        Source for vendor CVSS score depends on the type of the vulnerability. There are two types vulnerabilities
+        - NVD vulnerabilities. These don't have vendor scores. Scores in the vulnerability object data model represent vendor assigned CVSS scores but in this case they are accounted as NVD scores since the vendor is NVD.
+        - Non-NVD vulnerabilities with NVD references. CVSS scores are available via the vulnerability object
+        """
+        scores = []
+
+        # check the vulnerability type using the feed group. legacy feed group for nvd is "nvdv2:cves", grype counterpart is "nvd"
+        if self.vulnerability.feed_group and "nvd" in self.vulnerability.feed_group:
+            scores = []
+        else:
+            scores = self.vulnerability.cvss
+
+        return scores
 
 
 class VulnerabilitiesReportMetadata(JsonSerializable):

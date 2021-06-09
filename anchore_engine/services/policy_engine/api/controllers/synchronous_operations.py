@@ -501,23 +501,15 @@ class EvaluationCacheManager(object):
     def _inputs_changed(self, cache_timestamp):
         # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
         db = get_session()
-        # TODO: zhill - test more
-        feed_group_updated_list = [
-            group.last_sync
-            if group.last_sync is not None
-            else datetime.datetime.utcfromtimestamp(0)
-            for feed in get_all_feeds(db)
-            for group in feed.groups
-        ]
-        feed_synced = (
-            max(feed_group_updated_list) > cache_timestamp
-            if feed_group_updated_list
-            else False
-        )
 
         image_updated = self.image.last_modified > cache_timestamp
 
-        return feed_synced or image_updated
+        return (
+            image_updated
+            or get_vulnerabilities_provider().is_image_vulnerabilities_updated(
+                image=self.image, db_session=db, since=cache_timestamp
+            )
+        )
 
     def _should_evaluate(self, cache_entry: CachedPolicyEvaluation):
         if cache_entry is None:

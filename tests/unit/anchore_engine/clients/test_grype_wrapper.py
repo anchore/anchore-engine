@@ -1,17 +1,20 @@
+import json
+import os
+import shutil
+import time
+from queue import Empty, Queue
+from threading import Thread
+
+import pytest
+import sqlalchemy
 from sqlalchemy.orm import sessionmaker
 
 import anchore_engine.configuration.localconfig
-import json
-import os
-import pytest
-import shutil
-import sqlalchemy
-
 from anchore_engine.clients.grype_wrapper import (
-    GrypeWrapperSingleton,
+    VULNERABILITIES,
     GrypeDBEngineMetadata,
     GrypeDBMetadata,
-    VULNERABILITIES,
+    GrypeWrapperSingleton,
 )
 
 TEST_DATA_RELATIVE_PATH = "../../data/grype_db/"
@@ -1104,35 +1107,44 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
             None,
             None,
             None,
-            10,
+            20,
             [
+                "CVE-2019-15690",
                 "CVE-2019-16775",
-                "CVE-2019-16777",
                 "CVE-2019-16776",
-                "CVE-2020-10174",
+                "CVE-2019-16777",
+                "CVE-2019-20788",
                 "CVE-2019-2391",
+                "CVE-2019-9658",
+                "CVE-2020-10174",
                 "CVE-2020-7610",
                 "CVE-2020-8518",
-                "CVE-2019-9658",
-                "CVE-2019-15690",
-                "CVE-2019-20788",
             ],
         ),
-        ("CVE-2019-16775", None, None, 1, ["CVE-2019-16775"]),
-        (None, "npm", None, 3, ["CVE-2019-16775", "CVE-2019-16777", "CVE-2019-16776"]),
+        ("CVE-2019-16775", None, None, 2, ["CVE-2019-16775"]),
+        (None, "npm", None, 6, ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777"]),
         (
             None,
             None,
             "debian:10",
-            4,
+            8,
             [
                 "CVE-2019-16775",
-                "CVE-2019-16777",
                 "CVE-2019-16776",
+                "CVE-2019-16777",
                 "CVE-2020-10174",
             ],
         ),
-        ("CVE-2019-16775", "npm", "debian:10", 1, ["CVE-2019-16775"]),
+        ("CVE-2019-16775", None, None, 2, ["CVE-2019-16775"]),
+        (None, "npm", None, 6, ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777"]),
+        (
+            None,
+            None,
+            "debian:10",
+            8,
+            ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777", "CVE-2020-10174"],
+        ),
+        ("CVE-2019-16775", "npm", "debian:10", 2, ["CVE-2019-16775"]),
     ],
 )
 def test_query_vulnerabilities(
@@ -1162,11 +1174,15 @@ def test_query_vulnerabilities(
         affected_package=affected_package,
         namespace=namespace,
     )
+
+    # Validate results
     assert len(results) == expected_result_length
-    assert list(map(lambda result: result.id, results)) == expected_output
-    # TODO Assert joined vulnerability_metadata is correct
-    # I need to further simplify the test data set to keep the expected_output size manageable
-    # Or else that matrix is just going to be unreadable
+    assert (
+        sorted(
+            list(set(map(lambda result: result.GrypeVulnerabilityMetadata.id, results)))
+        )
+        == expected_output
+    )
 
 
 def test_query_vulnerabilities_missing_session():
@@ -1250,3 +1266,239 @@ def test_query_record_source_counts(
     assert filtered_result.feed == VULNERABILITIES
     assert filtered_result.count == expected_count
     assert filtered_result.last_synced == LAST_SYNCED_TIMESTAMP
+
+
+class TestLocking:
+    @staticmethod
+    def hold_read_lock(grype_wrapper, name, input_queue, output_queue):
+        """
+        Acquire and hold a read lock until instructed to release it.
+        """
+        print("Waiting to acquire read lock for {}".format(name))
+        with grype_wrapper.read_lock_access() as acquired:
+            output_queue.put(name)
+            print("Read lock acquired for {} - {}".format(name, acquired))
+            if input_queue.get(block=True):
+                print("Releasing read lock for {}".format(name))
+                return
+
+    @staticmethod
+    def hold_write_lock(grype_wrapper, name, input_queue, output_queue):
+        """
+        Acquire and hold a write lock until instructed to release it.
+        """
+        print("Waiting to acquire write lock for {}".format(name))
+        with grype_wrapper.write_lock_access() as acquired:
+            output_queue.put(name)
+            print("Write lock acquired for {} - {}".format(name, acquired))
+            if input_queue.get(block=True):
+                print("Releasing write lock for {}".format(name))
+                return
+
+    @staticmethod
+    def value_in_queue(queue, value, timeout=None):
+        """
+        Check if a value is in the queue. Block with optional timeout.
+        """
+        try:
+            result = queue.get(block=True, timeout=timeout)
+            if result == value:
+                return True
+        except Empty:
+            pass
+        return False
+
+    def test_simultaneous_read(self):
+        """
+        Tests that two threads reading at the same time is possible.
+        """
+        grype_wrapper = TestGrypeWrapperSingleton.get_instance()
+        # This queue will be used to tell threads to release the lock.
+        instruction_queue = Queue()
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
+        output_queue = Queue()
+
+        reader_1_name = "a"
+        reader_2_name = "b"
+
+        a = Thread(
+            target=self.hold_read_lock,
+            args=(grype_wrapper, reader_1_name, instruction_queue, output_queue),
+        )
+        b = Thread(
+            target=self.hold_read_lock,
+            args=(grype_wrapper, reader_2_name, instruction_queue, output_queue),
+        )
+
+        a.start()
+        b.start()
+
+        # Both thread should be holding the lock at this point.
+        acquired_tasks = []
+        for x in range(2):
+            acquired_tasks.append(output_queue.get(block=True, timeout=3))
+        assert reader_1_name in acquired_tasks
+        assert reader_2_name in acquired_tasks
+
+        # Tell the threads that they can release.
+        instruction_queue.put(True)
+        instruction_queue.put(True)
+        a.join()
+        b.join()
+
+    def test_simultaneous_write(self):
+        """
+        Tests that two threads writing at the same time is not possible.
+        """
+        grype_wrapper = TestGrypeWrapperSingleton.get_instance()
+
+        # These queues will be used to tell threads to release the lock.
+        writer_1_instruction_queue = Queue()
+        writer_2_instruction_queue = Queue()
+
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
+        output_queue = Queue()
+
+        writer_1_name = "a"
+        writer_2_name = "b"
+
+        writer_1 = Thread(
+            target=self.hold_write_lock,
+            args=(
+                grype_wrapper,
+                writer_1_name,
+                writer_1_instruction_queue,
+                output_queue,
+            ),
+        )
+        writer_2 = Thread(
+            target=self.hold_write_lock,
+            args=(
+                grype_wrapper,
+                writer_2_name,
+                writer_2_instruction_queue,
+                output_queue,
+            ),
+        )
+
+        # Start the first writer and check that it has acquired the lock.
+        writer_1.start()
+
+        acquired_writer_1 = self.value_in_queue(output_queue, writer_1_name, 3)
+        assert acquired_writer_1
+
+        # Start the second writer and check that is has not acquired the lock.
+        writer_2.start()
+
+        acquired_writer_2 = self.value_in_queue(output_queue, writer_2_name, 3)
+        assert not acquired_writer_2
+
+        # Tell the first writer to release the lock.
+        writer_1_instruction_queue.put(True)
+        writer_1.join()
+
+        # Check that the second writer has acquired the lock.
+        acquired_writer_2 = self.value_in_queue(output_queue, writer_2_name, 3)
+        assert acquired_writer_2
+
+        # Tell the second writer to release the lock.
+        writer_2_instruction_queue.put(True)
+        writer_2.join()
+
+    def test_simultaneous_write_while_reading(self):
+        """
+        Tests that one thread cannot write while another thread is already reading.
+        """
+        grype_wrapper = TestGrypeWrapperSingleton.get_instance()
+
+        # These queues will be used to tell threads to release the lock.
+        reader_instruction_queue = Queue()
+        writer_instruction_queue = Queue()
+
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
+        output_queue = Queue()
+
+        writer_name = "a"
+        reader_name = "b"
+
+        reader = Thread(
+            target=self.hold_read_lock,
+            args=(grype_wrapper, reader_name, reader_instruction_queue, output_queue),
+        )
+        writer = Thread(
+            target=self.hold_write_lock,
+            args=(grype_wrapper, writer_name, writer_instruction_queue, output_queue),
+        )
+
+        # Start the reader and check that it has acquired the lock.
+        reader.start()
+
+        acquired_read = self.value_in_queue(output_queue, reader_name, 3)
+        assert acquired_read
+
+        # Start the writer and check that is has not acquired the lock.
+        writer.start()
+
+        acquired_write = self.value_in_queue(output_queue, writer_name, 3)
+        assert not acquired_write
+
+        # Tell the reader to release the lock.
+        reader_instruction_queue.put(True)
+        reader.join()
+
+        # Check that the writer has acquired the lock.
+        acquired_write = self.value_in_queue(output_queue, writer_name, 3)
+        assert acquired_write
+
+        # Tell the writer to release the lock.
+        writer_instruction_queue.put(True)
+        writer.join()
+
+    def test_simultaneous_read_while_writing(self):
+        """
+        Tests that one thread cannot read while another thread is already writing.
+        """
+        grype_wrapper = TestGrypeWrapperSingleton.get_instance()
+
+        # These queues will be used to tell threads to release the lock.
+        reader_instruction_queue = Queue()
+        writer_instruction_queue = Queue()
+
+        # This queue will be used for the threads to notify whether or not they have acquired the lock.
+        output_queue = Queue()
+
+        writer_name = "a"
+        reader_name = "b"
+
+        reader = Thread(
+            target=self.hold_read_lock,
+            args=(grype_wrapper, reader_name, reader_instruction_queue, output_queue),
+        )
+        writer = Thread(
+            target=self.hold_write_lock,
+            args=(grype_wrapper, writer_name, writer_instruction_queue, output_queue),
+        )
+
+        # Start the writer and check that it has acquired the lock.
+        writer.start()
+
+        acquired_write = self.value_in_queue(output_queue, writer_name, 3)
+        assert acquired_write
+
+        # Start the reader and check that is has not acquired the lock.
+        reader.start()
+
+        acquired_read = self.value_in_queue(output_queue, reader_name, 3)
+        assert not acquired_read
+
+        # Tell the writer to release the lock.
+        writer_instruction_queue.put(True)
+        writer.join()
+
+        # Check that the reader has acquired the lock.
+        acquired_read = self.value_in_queue(output_queue, reader_name, 3)
+        assert acquired_read
+
+        # Tell the reader to release the lock.
+        reader_instruction_queue.put(True)
+        reader.join()

@@ -41,7 +41,14 @@ class GrypeVulnerability(Base, UtilMixin):
     fixed_in_versions = Column(String)
     fix_state = Column(String)
     advisories = Column(String)
-    vulnerability_metadata = relationship("GrypeVulnerabilityMetadata")
+
+    @property
+    def deserialized_related_vulnerabilities(self):
+        return json.loads(self.related_vulnerabilities)
+
+    @property
+    def deserialized_fixed_in_versions(self):
+        return json.loads(self.fixed_in_versions)
 
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
@@ -55,6 +62,14 @@ class GrypeVulnerabilityMetadata(Base, UtilMixin):
     urls = Column(String)
     description = Column(String)
     cvss = Column(String)
+
+    @property
+    def deserialized_urls(self):
+        return json.loads(self.urls)
+
+    @property
+    def deserialized_cvss(self):
+        return json.loads(self.cvss)
 
 
 @dataclass
@@ -93,12 +108,16 @@ class RecordSource:
     last_synced: str
 
 
+class LockAcquisitionError(Exception):
+    pass
+
+
 class GrypeWrapperSingleton(object):
     _grype_wrapper_instance = None
 
     # These values should be treated as constants, and will not be changed by the functions below
-    LOCK_READ_ACCESS_TIMEOUT = 60
-    LOCK_WRITE_ACCESS_TIMEOUT = 60
+    LOCK_READ_ACCESS_TIMEOUT = 60000
+    LOCK_WRITE_ACCESS_TIMEOUT = 60000
     SQL_LITE_URL_TEMPLATE = "sqlite:///{}"
     GRYPE_SUB_COMMAND = "grype -vv -o json"
     GRYPE_VERSION_COMMAND = "grype version -o json"
@@ -125,6 +144,7 @@ class GrypeWrapperSingleton(object):
     def __new__(cls):
         # If the singleton has not been initialized yet, do so with the instance variables below
         if cls._grype_wrapper_instance is None:
+            logger.debug("Initializing Grype wrapper instance.")
             # The singleton instance, only instantiated once outside of testing
             cls._grype_wrapper_instance = super(GrypeWrapperSingleton, cls).__new__(cls)
 
@@ -216,18 +236,21 @@ class GrypeWrapperSingleton(object):
         Get read access to the reader writer lock. Releases the lock after exit the
         context. Any exceptions are passed up.
         """
-        logger.debug("Getting read access for the grype_db lock")
+        logger.debug("Attempting to get read access for the grype_db lock")
         read_lock = self._grype_db_lock.gen_rlock()
 
         try:
-            yield read_lock.acquire(
-                blocking=False, timeout=self.LOCK_READ_ACCESS_TIMEOUT
-            )
-        except Exception as exception:
-            raise exception
+            if read_lock.acquire(timeout=self.LOCK_READ_ACCESS_TIMEOUT):
+                logger.debug("Acquired read access for the grype_db lock")
+                yield
+            else:
+                raise LockAcquisitionError(
+                    "Unable to acquire read access for the grype_db lock"
+                )
         finally:
-            logger.debug("Releasing read access for the grype_db lock")
-            read_lock.release()
+            if read_lock.locked():
+                logger.debug("Releasing read access for the grype_db lock")
+                read_lock.release()
 
     @contextmanager
     def write_lock_access(self):
@@ -235,18 +258,21 @@ class GrypeWrapperSingleton(object):
         Get read access to the reader writer lock. Releases the lock after exit the
         context. y exceptions are passed up.
         """
-        logger.debug("Getting write access for the grype_db lock")
+        logger.debug("Attempting to get write access for the grype_db lock")
         write_lock = self._grype_db_lock.gen_wlock()
 
         try:
-            yield write_lock.acquire(
-                blocking=True, timeout=self.LOCK_WRITE_ACCESS_TIMEOUT
-            )
-        except Exception as exception:
-            raise exception
+            if write_lock.acquire(timeout=self.LOCK_READ_ACCESS_TIMEOUT):
+                logger.debug("Unable to acquire write access for the grype_db lock")
+                yield
+            else:
+                raise LockAcquisitionError(
+                    "Unable to acquire write access for the grype_db lock"
+                )
         finally:
-            logger.debug("Releasing write access for the grype_db lock")
-            write_lock.release()
+            if write_lock.locked():
+                logger.debug("Releasing write access for the grype_db lock")
+                write_lock.release()
 
     @contextmanager
     def grype_session_scope(self, use_staging: bool = False):
@@ -482,7 +508,7 @@ class GrypeWrapperSingleton(object):
             latest_grype_db_dir, grype_db_version, self.VULNERABILITY_FILE_NAME
         )
         db_connect = self.SQL_LITE_URL_TEMPLATE.format(latest_grype_db_file)
-        latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=True)
+        latest_grype_db_engine = sqlalchemy.create_engine(db_connect, echo=False)
         return latest_grype_db_engine
 
     def _init_latest_grype_db_session_maker(self, grype_db_engine) -> sessionmaker:
@@ -826,9 +852,13 @@ class GrypeWrapperSingleton(object):
             )
 
             with self.grype_session_scope() as session:
-                query = session.query(GrypeVulnerability).join(
+                query = session.query(
+                    GrypeVulnerability, GrypeVulnerabilityMetadata
+                ).join(
                     GrypeVulnerabilityMetadata,
-                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
+                    and GrypeVulnerability.namespace
+                    == GrypeVulnerabilityMetadata.namespace,
                 )
 
                 if vuln_id is not None:

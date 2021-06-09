@@ -28,6 +28,7 @@ def test_feeds():
         "groups": None,
         "enabled": None,
         "last_full_sync": None,
+        "created_at": None,
     }
 
     f.groups = []
@@ -42,6 +43,7 @@ def test_feeds():
         "updated_at": datetime_to_rfc3339(d1),
         "enabled": None,
         "last_full_sync": None,
+        "created_at": None,
         "groups": [
             {
                 "name": "group1",

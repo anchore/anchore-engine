@@ -303,7 +303,7 @@ workflows:
   nightly_build:
     triggers:
       - schedule:
-          cron: "0 10 * * *"
+          cron: "0 5 * * *"
           filters:
             branches:
               only:

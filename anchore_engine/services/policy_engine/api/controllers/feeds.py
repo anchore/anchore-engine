@@ -1,4 +1,3 @@
-import typing
 from dataclasses import asdict
 
 from flask import jsonify
@@ -26,7 +25,7 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
-    VulnerabilitiesProvider,
+    InvalidFeed,
     get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import logger as log
@@ -48,32 +47,12 @@ def list_feeds(refresh_counts=False):
     if refresh_counts:
         provider.update_feed_group_counts()
 
-    response = [x.to_json() for x in _marshall_feeds_response(provider)]
-
-    return jsonify(response)
+    return [feed.to_json() for feed in provider.get_feeds()]
 
 
-def _marshall_feeds_response(
-    provider: VulnerabilitiesProvider,
-) -> typing.List[FeedMetadata]:
+def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
     """
-    Marshalls feeds and groups for specified provider into api models
-    """
-    response = []
-    meta = provider.get_feeds_detached()
-
-    for feed in meta:
-        response.append(_marshall_feed_response(provider, feed))
-
-    return response
-
-
-def _marshall_feed_response(
-    provider: VulnerabilitiesProvider, feed: DbFeedMetadata
-) -> FeedMetadata:
-    """
-    Marshalls FeedMetadata record obtained from the db into the api model
-    Calls _marshall_group_response to build the groups for the specified vuln provider
+    Old method for marshaling a feed. Currently being replaced by workflows driven by providers
     """
     if not feed:
         return ValueError(feed)
@@ -86,9 +65,7 @@ def _marshall_feed_response(
     i.enabled = feed.enabled
     i.groups = []
 
-    groups = provider.get_feed_groups_detached(feed)
-
-    for group in groups:
+    for group in feed.groups:
         i.groups.append(_marshall_group_response(group))
 
     return i
@@ -96,7 +73,7 @@ def _marshall_feed_response(
 
 def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
     """
-    Marshalls the specified group from db record to api model
+    Old method for marshaling a feed's groups. Currently being replaced by workflows driven by providers
     """
     if not group:
         raise ValueError(group)
@@ -153,23 +130,23 @@ def sync_feeds(sync=True, force_flush=False):
 def toggle_feed_enabled(feed, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-    session = db.get_session()
+
     try:
-        f = db.set_feed_enabled(session, feed, enabled)
-        if not f:
+        provider = get_vulnerabilities_provider()
+        feed = provider.update_feed_enabled_status(feed, enabled)
+
+        if not feed:
             raise ResourceNotFound(feed, detail={})
-        session.flush()
 
-        updated = _marshall_feed_response(f).to_json()
-        session.commit()
+        return feed.to_json(), 200
 
-        return jsonify(updated), 200
-    except AnchoreApiError:
-        session.rollback()
-        raise
+    except InvalidFeed:
+        raise BadRequest(
+            message="Feed not supported on configured vulnerability provider",
+            detail={"feed": feed, "configured_provider": provider.get_config_name()},
+        )
     except Exception as e:
         log.error("Could not update feed enabled status")
-        session.rollback()
         return jsonify(make_response_error(e, in_httpcode=500)), 500
 
 
