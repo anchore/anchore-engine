@@ -28,7 +28,7 @@ services:
       ANCHORE_CLI_USER: admin
       ANCHORE_CLI_PASS: foobar
       ANCHORE_TEST_DB_URL: postgresql://postgres:mysecretpassword@anchore-db:5432/postgres
-      TEST_VULNERABILITIES_PROVIDER: legacy
+      TEST_VULNERABILITIES_PROVIDER: ${ANCHORE_VULNERABILITIES_PROVIDER:-legacy}
     working_dir: /job-workspace
     volumes:
       - ../../:/job-workspace
@@ -118,9 +118,11 @@ services:
       - ANCHORE_OAUTH_ENABLED=true
       - ANCHORE_AUTH_SECRET=supersharedsecret
       - ANCHORE_FEEDS_URL="http://mock-feeds-nginx:8080/v1/service/feeds"
+      - ANCHORE_GRYPE_DB_URL=http://mock-feeds-nginx:8080/v1/service/databases/grypedb
       - ANCHORE_FEEDS_ENABLED=true
       - ANCHORE_FEEDS_CLIENT_URL=null
       - ANCHORE_FEEDS_TOKEN_URL=null
+      - ANCHORE_VULNERABILITIES_PROVIDER=${ANCHORE_VULNERABILITIES_PROVIDER:-legacy}
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
     image: ${TEST_IMAGE_NAME}
