@@ -15,7 +15,6 @@ from anchore_engine.common.models.policy_engine import (
     VulnerabilityMatch,
 )
 from anchore_engine.db import Image, ImageCpe, ImagePackage
-from anchore_engine.services.policy_engine.engine.feeds.feeds import GrypeDBFeed
 from anchore_engine.subsys import logger as log
 
 
@@ -341,7 +340,7 @@ class VulnerabilityMapper:
                 description=vuln_dict.get("description"),
                 severity=vuln_dict.get("severity"),
                 link=vuln_dict.get("dataSource"),
-                feed=GrypeDBFeed.__feed_name__,
+                feed="grypedb",
                 feed_group=vuln_dict.get("namespace"),
                 cvss=cvss_objs,
             ),
