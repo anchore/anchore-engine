@@ -43,6 +43,11 @@ feeds:
   read_timeout_seconds: 60
 ```
 
+***Note:*** Engine now has a new feed for Grype. This feed will only be synced if the
+[tech preview Grype vulnerability scanner]({{< ref "/docs/grype/_index" >}}) is enabled. Furthermore, if it is
+enabled this will be the only feed that Engine syncs, as it replaces (and contains vulnerability data from)
+the other groups.
+
 #### Read Timeout
 
 Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
@@ -114,6 +119,9 @@ vulnerabilities        ubuntu:18.10           2020-03-27T20:39:20.097963        
 vulnerabilities        ubuntu:19.04           2020-03-27T20:40:18.628869        8664               
 vulnerabilities        ubuntu:19.10           2020-03-27T20:41:20.828796        7327      
 ```
+
+***Note:*** If the tech preview Grype vulnerability scanner is enabled, the Grype feed is the only feed that will be synced. It will
+contain the records from all the other groups. It is not possible to include or exclude groups from the Grype feed.
 
 ### Using the Config File to Include/Exclude Feeds at System Bootstrap
 
