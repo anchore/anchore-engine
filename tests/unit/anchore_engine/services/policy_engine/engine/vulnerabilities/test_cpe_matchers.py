@@ -9,6 +9,7 @@ import anchore_engine.services.policy_engine.engine.vulns.db
 from anchore_engine.services.policy_engine.engine.vulns.cpe_matchers import (
     cve_ids_for_vuln_record,
     filter_secdb_entries,
+    cpes_for_image_packages,
 )
 from anchore_engine.services.policy_engine.engine.vulns.cpes import (
     dedup_cpe_vulnerabilities,
@@ -23,6 +24,7 @@ from anchore_engine.db.entities.policy_engine import (
     DistroNamespace,
     DistroMapping,
     DistroTuple,
+    ImagePackage,
 )
 from anchore_engine.subsys import logger
 from tests.conftest import monkeysession
@@ -240,5 +242,48 @@ def test_filter_secdb(
     filtered = filter_secdb_entries(
         image_distro=namespace, matches=image_matches, db_manager=mock_db_query_manager
     )
-    logger.info("Filtered = s", filtered)
     assert filtered == expected
+
+
+pkg1 = ImagePackage(name="pkg1", version="1.0.0")
+pkg2 = ImagePackage(name="pkg-two", version="2.0.0")
+pkg1_cpe = ImageCpe(name="pkg1", version="1.0.0")
+pkg2_cpe1 = ImageCpe(name="pkg-two", version="2.0.0")
+pkg2_cpe2 = ImageCpe(name="pkg_two", version="2.0.0")
+
+
+@pytest.mark.parametrize(
+    "packages, mapped_cpes",
+    [
+        (
+            [pkg1],
+            [(pkg1, pkg1_cpe)],
+        ),
+        (
+            [pkg2],
+            [
+                (pkg2, pkg2_cpe1),
+                (pkg2, pkg2_cpe2),
+            ],
+        ),
+    ],
+)
+def test_cpes_for_images_packages(packages, mapped_cpes):
+    def tuple_sort_key(
+        cpe_tuple: Tuple[ImagePackage, ImageCpe]
+    ) -> Tuple[str, str, str, str]:
+        img = cpe_tuple[0]
+        cpe = cpe_tuple[1]
+        return (
+            img.name,
+            img.version,
+            cpe.name,
+            cpe.version,
+        )
+
+    # For this test, just use simple string tuples to identify the results for equality check
+    # This should be safe since cpes are generated per package, so other package differentiating fields aren't relevant
+    # for the correctness of the cpe generation logic itself
+    sorted_found = sorted(map(tuple_sort_key, cpes_for_image_packages(packages)))
+    sorted_expected = sorted(map(tuple_sort_key, mapped_cpes))
+    assert sorted_found == sorted_expected

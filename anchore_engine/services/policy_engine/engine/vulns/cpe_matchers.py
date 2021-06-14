@@ -20,6 +20,7 @@ from anchore_engine.services.policy_engine.engine.vulns.cpes import (
 )
 from anchore_engine.services.policy_engine.engine.vulns.db import (
     CpeDBQueryManager,
+    db_result_tuples_to_list,
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
@@ -67,16 +68,15 @@ def filter_secdb_entries(
     :return: filtered match list
     """
 
-    secdb_matched_cves = db_manager.result_tuples_to_list(
-        db_manager.matched_records_for_namespace(image_distro, matches)
-    )
+    secdb_matched_cves = db_manager.matched_records_for_namespace(image_distro, matches)
+
     logger.info("Secdb matched cves %s", secdb_matched_cves)
     unmatched = set(matches).difference(secdb_matched_cves)
     return list(unmatched)
 
 
 def cpes_for_image_packages(
-    packages: ImagePackage,
+    packages: List[ImagePackage],
 ) -> List[Tuple[ImagePackage, ImageCpe]]:
     """
     Generate cpes for the packages

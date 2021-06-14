@@ -16,6 +16,22 @@ from anchore_engine.db import (
 from anchore_engine.subsys import logger
 
 
+def db_result_tuples_to_list(
+    result_tulpe_rows: List[Tuple[str]], extract_tuple_index=0
+):
+    """
+    Expects tuple input from a tuple-style query response (each row is a tuple of result columns)
+
+    :param cve_tulpes:
+    :return:
+    """
+    return (
+        [row[extract_tuple_index] for row in result_tulpe_rows]
+        if result_tulpe_rows
+        else []
+    )
+
+
 class CpeDBQueryManager:
     def __init__(self, db_session: Session):
         self.db_session = db_session
@@ -97,6 +113,13 @@ class CpeDBQueryManager:
     def matched_records_for_namespace(
         self, namespace: DistroNamespace, filter_ids: List[str]
     ) -> List[str]:
+        return db_result_tuples_to_list(
+            self._query_records_for_namespace(namespace, filter_ids)
+        )
+
+    def _query_records_for_namespace(
+        self, namespace: DistroNamespace, filter_ids: List[str]
+    ) -> List[Tuple[str]]:
         """
         Utility function to lookup all vulns for the namespace
 
@@ -111,13 +134,13 @@ class CpeDBQueryManager:
         vuln_ids = []
         match_count = len(filter_ids)
 
-        logger.info("Checking for sec db matches for %s", filter_ids)
+        logger.spew("Checking for sec db matches for %s", filter_ids)
 
         # Do a chunked query to ensure a long list of match_set doesn't break due to query length
         while idx < match_count:
             chunk = filter_ids[idx : idx + chunk_size]
             idx += chunk_size
-            logger.info(
+            logger.spew(
                 "Query chunk %s with namespace %s",
                 chunk,
                 namespace.like_namespace_names,
@@ -129,26 +152,11 @@ class CpeDBQueryManager:
             )
 
             result = _db_query_wrapper(qry, get_all=True)
-            logger.info("Raw result = %s", str(result))
+            logger.spew("Raw result = %s", str(result))
             vuln_ids.extend(result)
 
-        logger.info("Found cve id matches for %s", vuln_ids)
+        logger.spew("Found cve id matches for %s", vuln_ids)
         return vuln_ids
-
-    def result_tuples_to_list(
-        self, result_tulpe_rows: List[Tuple[str]], extract_tuple_index=0
-    ):
-        """
-        Expects tuple input from a tuple-style query response (each row is a tuple of result columns)
-
-        :param cve_tulpes:
-        :return:
-        """
-        return (
-            [row[extract_tuple_index] for row in result_tulpe_rows]
-            if result_tulpe_rows
-            else []
-        )
 
     def query_nvd_cpe_matches(
         self, packages: List[ImageCpe], cpe_cls=CpeV2Vulnerability
@@ -243,7 +251,7 @@ def _db_query_wrapper(query: sqlalchemy.orm.Query, get_all=True):
     :param get_all:
     :return:
     """
-    logger.debug("executing query: %s", str(query))
+    logger.spew("executing query: %s", str(query))
     # If get_all, then caller will iterate over results
     if get_all:
         return query.all()
