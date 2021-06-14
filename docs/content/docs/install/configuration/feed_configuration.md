@@ -44,7 +44,7 @@ feeds:
 ```
 
 ***Note:*** Engine now has a new feed for Grype. This feed will only be synced if the
-[tech preview Grype vulnerability scanner]({{< ref "/docs/grype/_index" >}}) is enabled. Furthermore, if it is
+[tech preview Grype vulnerability scanner]({{< ref "/docs/grype/_index.md" >}}) is enabled. Furthermore, if it is
 enabled this will be the only feed that Engine syncs, as it replaces (and contains vulnerability data from)
 the other groups.
 
