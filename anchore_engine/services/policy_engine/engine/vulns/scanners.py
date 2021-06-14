@@ -5,24 +5,15 @@ A scanner may use persistence context or an external tool to match image content
 import datetime
 import json
 import os
-import typing
-from typing import List
-
-from sqlalchemy.orm.session import Session
+import uuid
 
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
+from anchore_engine.configuration import localconfig
+from anchore_engine.db.entities.policy_engine import ImageCpe, Image
 from anchore_engine.common.models.policy_engine import (
     ImageVulnerabilitiesReport,
     VulnerabilitiesReportMetadata,
     VulnerabilityScanProblem,
-)
-from anchore_engine.configuration import localconfig
-from anchore_engine.db.entities.policy_engine import (
-    Image,
-    ImagePackageVulnerability,
-    ImageCpe,
-    NvdV2Metadata,
-    CpeV2Vulnerability,
 )
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
@@ -31,7 +22,7 @@ from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
-from .cpe_matchers import NonOSCpeMatcher, DistroEnabledCpeMatcher
+from typing import List
 from .dedup import get_image_vulnerabilities_deduper
 from .mappers import to_grype_sbom, to_engine_vulnerabilities
 
@@ -40,58 +31,124 @@ SAVE_SBOM_TO_FILE = (
     os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "true").lower() == "true"
 )
 
-# Distros that only add a CVE record to their secdb entries when a fix is available
-nvd_distro_matching_enabled = (
-    os.getenv("ANCHORE_ENABLE_DISTRO_NVD_MATCHES", "true").lower() == "true"
-)
-
-FIX_ONLY_DISTROS = ["alpine"]
-
-
-def is_fix_only_distro(distro_name: str) -> bool:
-    """
-    Does the given distro's security feed/db support vulnerability records before a fix is available?
-
-    :param distro_name:
-    :return: bool
-    """
-    return distro_name in FIX_ONLY_DISTROS
-
 
 class LegacyScanner:
     """
     Scanner wrapping the legacy vulnerabilities subsystem.
     """
 
-    def flush_and_recompute_vulnerabilities(
-        self, image_obj: Image, db_session: Session
-    ) -> typing.List[ImagePackageVulnerability]:
+    def flush_and_recompute_vulnerabilities(self, image_obj, db_session):
         """
         Wrapper for rescan_image function.
         """
-        return vulnerabilities.rescan_image(image_obj, db_session)
+        vulnerabilities.rescan_image(image_obj, db_session)
 
-    def get_vulnerabilities(
-        self, image: Image
-    ) -> typing.List[ImagePackageVulnerability]:
-        distro_matches = image.vulnerabilities()
-        return distro_matches
+    def compute_vulnerabilities(self, image_obj):
+        """
+        Wrapper for vulnerabilities_for_image function
+        """
 
-    def get_cpe_vulnerabilities(
-        self,
-        image: Image,
-        nvd_cls: type = NvdV2Metadata,
-        cpe_cls: type = CpeV2Vulnerability,
-    ):
-        if nvd_distro_matching_enabled and is_fix_only_distro(image.distro_name):
-            matcher = DistroEnabledCpeMatcher(nvd_cls, cpe_cls)
-        else:
-            matcher = NonOSCpeMatcher(nvd_cls, cpe_cls)
+        vulnerabilities.vulnerabilities_for_image(image_obj)
 
+    def get_vulnerabilities(self, image):
+        return image.vulnerabilities()
+
+    def get_cpe_vulnerabilities(self, image, nvd_cls: type, cpe_cls: type):
         with timer("Image vulnerability cpe lookups", log_level="debug"):
-            matches = matcher.image_cpe_vulnerabilities(image)
+            return self.dedup_cpe_vulnerabilities(
+                image.cpe_vulnerabilities(_nvd_cls=nvd_cls, _cpe_cls=cpe_cls)
+            )
 
-        return matches
+    def compare_fields(self, lhs, rhs):
+        """
+        Comparison function for cpe fields
+        - * is considered least specific and any non-* value is considered greater
+        - if both sides are non-*, comparison defaults to python lexicographic comparison for consistency
+        """
+
+        if lhs == "*":
+            if rhs == "*":
+                return 0
+            else:
+                return 1
+        else:
+            if rhs == "*":
+                return -1
+            else:
+                # case where both are not *, i.e. some value. pick a way to compare them, using lexicographic comparison for now
+                if rhs == lhs:
+                    return 0
+                elif rhs > lhs:
+                    return 1
+                else:
+                    return -1
+
+    def compare_cpes(self, lhs: ImageCpe, rhs: ImageCpe):
+        """
+        Compares the cpes based on business logic and returns -1, 0 or 1 if the lhs is lower than, equal to or greater than the rhs respectively
+
+        Business logic here is to compare vendor, name, version, update and meta fields in that order
+        """
+        vendor_cmp = self.compare_fields(lhs.vendor, rhs.vendor)
+        if vendor_cmp != 0:
+            return vendor_cmp
+
+        name_cmp = self.compare_fields(lhs.name, rhs.name)
+        if name_cmp != 0:
+            return name_cmp
+
+        version_cmp = self.compare_fields(lhs.version, rhs.version)
+        if version_cmp != 0:
+            return version_cmp
+
+        update_cmp = self.compare_fields(lhs.update, rhs.update)
+        if update_cmp != 0:
+            return update_cmp
+
+        meta_cmp = self.compare_fields(lhs.meta, rhs.meta)
+        if meta_cmp != 0:
+            return meta_cmp
+
+        # all avenues of comparison have been depleted, the two cpes are same for all practical purposes
+        return 0
+
+    def dedup_cpe_vulnerabilities(self, image_vuln_tuples):
+        """
+        Due to multiple cpes per package in the analysis data, the list of matched vulnerabilities may contain duplicates.
+        This function filters the list and yields one record aka image vulnerability cpe tuple per vulnerability affecting a package
+        """
+        if not image_vuln_tuples:
+            return list()
+
+        # build a hash with vulnerability as the key mapped to a unique set of packages
+        dedup_hash = dict()
+
+        for image_cpe, vuln_cpe in image_vuln_tuples:
+
+            # construct key that ties vulnerability and package - a unique indicator for the vulnerability affecting a package
+            vuln_pkg_key = (
+                vuln_cpe.vulnerability_id,
+                vuln_cpe.namespace_name,
+                image_cpe.pkg_path,
+            )
+
+            # check if the vulnerability was already recorded for the package
+            if vuln_pkg_key in dedup_hash:
+                # compare the existing cpe to the new cpe
+                current_cpe = dedup_hash[vuln_pkg_key][0]
+                if self.compare_cpes(current_cpe, image_cpe) > 0:
+                    # if the new cpe trumps the existing one, overwrite
+                    dedup_hash[vuln_pkg_key] = (image_cpe, vuln_cpe)
+                else:
+                    # otherwise leave the existing cpe be
+                    pass
+            else:
+                # vulnerability was never recorded for the package, nothing to compare it against
+                dedup_hash[vuln_pkg_key] = (image_cpe, vuln_cpe)
+
+        final_results = list(dedup_hash.values())
+
+        return final_results
 
 
 class GrypeScanner:
