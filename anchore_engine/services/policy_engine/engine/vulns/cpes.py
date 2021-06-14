@@ -3,6 +3,7 @@ import typing
 from typing import List, Tuple
 
 from anchore_engine.db.entities.policy_engine import ImageCpe, ImagePackage
+from anchore_engine.common import os_package_types
 
 
 def compare_fields(lhs, rhs):
@@ -78,6 +79,11 @@ class FuzzyCandidateCpeGenerator:
 
         # Do a "-" --> "_" substitution addition so may have multiple cpe candidates for a single package
         names = {package.name, re.sub("-", "_", package.name)}
+        if not package.pkg_path and package.pkg_type in os_package_types:
+            pkg_path = "pkgdb"
+        else:
+            pkg_path = package.pkg_path
+
         for name in names:
             # for vendor in vendors:
             c = ImageCpe()
@@ -88,6 +94,7 @@ class FuzzyCandidateCpeGenerator:
             c.vendor = "*"  # vendor match anything
             c.meta = "-"
             c.update = "-"
+            c.pkg_path = pkg_path
             cpes.append(c)
 
         return cpes
