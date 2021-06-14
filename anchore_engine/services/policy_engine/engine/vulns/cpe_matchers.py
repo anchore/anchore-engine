@@ -70,7 +70,7 @@ def filter_secdb_entries(
 
     secdb_matched_cves = db_manager.matched_records_for_namespace(image_distro, matches)
 
-    logger.info("Secdb matched cves %s", secdb_matched_cves)
+    logger.spew("Secdb matched cves %s", secdb_matched_cves)
     unmatched = set(matches).difference(secdb_matched_cves)
     return list(unmatched)
 
@@ -291,7 +291,7 @@ class DistroEnabledCpeMatcher(NonOSCpeMatcher):
         :param image:
         :return: list of tuples
         """
-        logger.debug(
+        logger.spew(
             "scanning os packages for cpe matches id=%s digest=%s",
             image.id,
             image.digest,
@@ -299,13 +299,13 @@ class DistroEnabledCpeMatcher(NonOSCpeMatcher):
 
         os_pkg_cpe_mappings = cpes_for_image_packages(image.packages)
 
-        logger.debug("distro cpes: %s", os_pkg_cpe_mappings)
+        logger.spew("distro cpes: %s", os_pkg_cpe_mappings)
 
         os_cpes = [cpe for pkg, cpe in os_pkg_cpe_mappings]
         # Get the matches
         matches = self._query_cpe_matches(os_cpes)
 
-        logger.debug(
+        logger.spew(
             "pre-filter cpe distro findings: %s",
             [(x.image_cpe, x.vuln_cpe.vulnerability_id) for x in matches],
         )
