@@ -207,8 +207,8 @@ class CpeDBQueryManager:
         for cpe in packages:
             clauses.append(
                 and_(
-                    cpe.name == VulnDBCpe.name,
-                    cpe.version == VulnDBCpe.version,
+                    VulnDBCpe.name == cpe.name,
+                    VulnDBCpe.version == cpe.version,
                 )
             )
             count += 1
@@ -218,7 +218,7 @@ class CpeDBQueryManager:
                 qry = (
                     self.db_session.query(VulnDBCpe)
                     .filter(VulnDBCpe.is_affected.is_(True))
-                    .filter(*clauses)
+                    .filter(or_(*clauses))
                 )
                 results.extend(_db_query_wrapper(qry, get_all=True))
                 clauses = []
@@ -229,7 +229,7 @@ class CpeDBQueryManager:
             qry = (
                 self.db_session.query(VulnDBCpe)
                 .filter(VulnDBCpe.is_affected.is_(True))
-                .filter(*clauses)
+                .filter(or_(*clauses))
             )
             results.extend(_db_query_wrapper(qry, get_all=True))
 

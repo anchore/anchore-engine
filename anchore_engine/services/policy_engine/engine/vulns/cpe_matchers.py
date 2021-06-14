@@ -260,6 +260,11 @@ class DistroEnabledCpeMatcher(NonOSCpeMatcher):
         """
         nvd_cpes = self.db_manager.query_nvd_cpe_matches(image_cpes, self.cpe_cls)
         vulndb_cpes = self.db_manager.query_vulndb_cpes(image_cpes)
+        logger.debug(
+            "Found %s nvd matches and %s vulndb matches",
+            len(nvd_cpes),
+            len(vulndb_cpes),
+        )
 
         # Join the found cpes against the input cpes, this done after the queries to make queries faster
         nvd_findings = map_matches_to_image(nvd_cpes, image_cpes)

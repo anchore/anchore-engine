@@ -1128,14 +1128,14 @@ class VulnDBMetadata(Base):
     @property
     def referenced_cves(self) -> typing.List[str]:
         """
-        Returns all referenced CVE IDs from the record, may be zero, one, or many
+        Returns all referenced CVE IDs from the record, may be zero, one, or many.
+
         :return: List[Str]
         """
         ids = set()
 
-        for entry in [
-            k for k in self.references.items() if k.get("source") == "CVE ID"
-        ]:
+        # References is a list of objects each with a potential "source" key
+        for entry in [k for k in self.references if k.get("source") == "CVE ID"]:
             url = entry.get("url")
             if url:
                 # findall should return a single id list ['2020-11989']
