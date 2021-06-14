@@ -142,8 +142,8 @@ class ImageMessageMapper(object):
 
     def db_to_msg(self, db_obj):
         msg = ImageMsg()
-        msg.last_modified = db_obj.last_modified.strftime(self.rfc3339_date_fmt)
-        msg.created_at = db_obj.created_at.strftime(self.rfc3339_date_fmt)
+        msg.last_modified = db_obj.last_modified
+        msg.created_at = db_obj.created_at
         msg.distro_namespace = db_obj.distro_namespace
         msg.user_id = db_obj.user_id
         msg.state = db_obj.state
@@ -198,7 +198,7 @@ def list_image_users(page=None):
     finally:
         db.close()
 
-    return list(img_user_set)
+    return sorted(list(img_user_set))
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -804,34 +804,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
     """
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
     to do so.
-
-
-    Example json output:
-    {
-       "multi" : {
-          "url_column_index" : 7,
-          "result" : {
-             "rows" : [],
-             "rowcount" : 0,
-             "colcount" : 8,
-             "header" : [
-                "CVE_ID",
-                "Severity",
-                "*Total_Affected",
-                "Vulnerable_Package",
-                "Fix_Available",
-                "Fix_Images",
-                "Rebuild_Images",
-                "URL"
-             ]
-          },
-          "querycommand" : "/usr/lib/python2.7/site-packages/anchore/anchore-modules/multi-queries/cve-scan.py /ebs_data/anchore/querytmp/queryimages.7026386 /ebs_data/anchore/data /ebs_data/anchore/querytmp/query.59057288 all",
-          "queryparams" : "all",
-          "warns" : [
-             "0005b136f0fb (prom/prometheus:master) cannot perform CVE scan: no CVE data is currently available for the detected base distro type (busybox:unknown_version,busybox:v1.26.2)"
-          ]
-       }
-    }
 
     :param user_id: user id of image to evaluate
     :param image_id: image id to evaluate
