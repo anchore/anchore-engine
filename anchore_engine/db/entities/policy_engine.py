@@ -4,7 +4,6 @@ import json
 import re
 import zlib
 from collections import namedtuple
-import typing
 from typing import List
 
 from sqlalchemy import (
@@ -1124,26 +1123,6 @@ class VulnDBMetadata(Base):
                 return "CVE-" + cve_id_col[0]
 
         return self.name
-
-    @property
-    def referenced_cves(self) -> typing.List[str]:
-        """
-        Returns all referenced CVE IDs from the record, may be zero, one, or many.
-
-        :return: List[Str]
-        """
-        ids = set()
-
-        # References is a list of objects each with a potential "source" key
-        for entry in [k for k in self.references if k.get("source") == "CVE ID"]:
-            url = entry.get("url")
-            if url:
-                # findall should return a single id list ['2020-11989']
-                cve_id_col = re.findall(r"\=(\d+\-\d+)", url)
-                if cve_id_col:
-                    ids.add("CVE-" + cve_id_col[0])
-
-        return list(ids)
 
     def _get_max_cvss_v3_metric_nvd(self):
         cvss_v3 = None
@@ -2434,17 +2413,8 @@ class ImageCpe(Base):
     )
 
     def __repr__(self):
-        return (
-            "<{} user_id={}, img_id={}, name={}, version={}, type={}, path={}>".format(
-                self.__class__,
-                self.image_user_id,
-                self.image_id,
-                self.name,
-                self.name,
-                self.version,
-                self.pkg_type,
-                self.pkg_path,
-            )
+        return "<{} user_id={}, img_id={}, name={}>".format(
+            self.__class__, self.image_user_id, self.image_id, self.name
         )
 
     def fixed_in(self):
@@ -2772,9 +2742,6 @@ class Image(Base):
             return self.distro_name + ":" + self.distro_version
         else:
             return None
-
-    def distro_namespace_obj(self):
-        return DistroNamespace.for_obj(self)
 
     def get_packages_by_type(self, pkg_type):
         db = get_thread_scoped_session()

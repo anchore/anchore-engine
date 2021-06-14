@@ -10,12 +10,6 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
 from anchore_engine.subsys import logger
 from tests.integration.services.policy_engine.conftest import run_legacy_sync
 from tests.integration.services.policy_engine.utils import reset_feed_sync_time
-from anchore_engine.services.policy_engine import (
-    _init_distro_mappings,
-    init_feed_registry,
-)
-from anchore_engine.services.policy_engine.engine.vulns.providers import LegacyScanner
-
 
 logger.enable_test_logging()
 
@@ -107,7 +101,7 @@ def _img_vulns(id):
         img = db.query(Image).filter_by(id=id, user_id="0").one_or_none()
         assert img, "Image not found {}".format(id)
         total_vulns = [str(x) for x in img.vulnerabilities()] + [
-            str(y) for y in LegacyScanner().get_cpe_vulnerabilities(img)
+            str(y) for y in img.cpe_vulnerabilities(None, None)
         ]
         return total_vulns
     finally:
