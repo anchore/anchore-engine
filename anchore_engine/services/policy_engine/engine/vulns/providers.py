@@ -316,7 +316,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         user_id = image.user_id
         image_id = image.id
-
+        warns = []
         results = []
 
         if force_refresh:
