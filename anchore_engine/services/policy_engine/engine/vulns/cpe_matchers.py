@@ -97,29 +97,13 @@ def cpes_for_image_packages(
     return os_pkg_cpe_mappings
 
 
-def map_matches_to_image(
-    matched_vuln_cpes: List, image_cpes: List[ImageCpe]
-) -> List[CpeMatch]:
+def cpe_product_version_keygen(cpe) -> Tuple[str]:
     """
-    Maps the vuln matches back to the image cpe by product, version tuple
+    Key generator that uses only product and version, expects either an ImageCpe or a CpeVuln class
 
-    :param matched_vuln_cpes:
-    :param image_cpes:
+    :param cpe:
     :return:
     """
-    # Join the found cpes against the input cpes, this done after the queries to make queries faster
-    image_cpe_map = {(cpe.name, cpe.version): cpe for cpe in image_cpes}
-
-    return [
-        CpeMatch(
-            image_cpe=image_cpe_map[(vuln.name, vuln.version)],
-            vuln_cpe=vuln,
-        )
-        for vuln in matched_vuln_cpes
-    ]
-
-
-def cpe_product_version_keygen(cpe) -> Tuple[str]:
     # Name is an alias for product
     try:
         return (cpe.product, cpe.version)
@@ -128,6 +112,13 @@ def cpe_product_version_keygen(cpe) -> Tuple[str]:
 
 
 def cpe_vendor_product_version_keygen(cpe) -> Tuple[str]:
+    """
+    Key generator that uses vendor, product, and version expects either an ImageCpe or a CpeVuln class
+
+    :param cpe:
+    :return:
+    """
+
     # Name is an alias for product
     try:
         return (cpe.vendor, cpe.product, cpe.version)
@@ -284,6 +275,11 @@ class DistroEnabledCpeMatcher(NonOSCpeMatcher):
 
         return list(set(cve_ids))  # Dedup the list
 
+    def _get_cpes_for_os_packages(
+        self, packages: List[ImagePackage]
+    ) -> List[Tuple[ImagePackage, ImageCpe]]:
+        return cpes_for_image_packages(packages)
+
     def _match_distro_packages_by_cpe(self, image: Image) -> List[CpeMatch]:
         """
         Returns list of tuples of (imagecpe, vulncpe) that are matches
@@ -297,7 +293,7 @@ class DistroEnabledCpeMatcher(NonOSCpeMatcher):
             image.digest,
         )
 
-        os_pkg_cpe_mappings = cpes_for_image_packages(image.packages)
+        os_pkg_cpe_mappings = self._get_cpes_for_os_packages(image.packages)
 
         logger.spew("distro cpes: %s", os_pkg_cpe_mappings)
 

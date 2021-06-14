@@ -18,17 +18,11 @@ from anchore_engine.services.policy_engine.engine.vulns.cpes import (
 from anchore_engine.db.entities.policy_engine import (
     Vulnerability,
     CpeV2Vulnerability,
-    VulnDBMetadata,
-    VulnDBCpe,
     ImageCpe,
     DistroNamespace,
-    DistroMapping,
     DistroTuple,
     ImagePackage,
 )
-from anchore_engine.subsys import logger
-from tests.conftest import monkeysession
-from anchore_engine.db.entities.common import session_scope
 
 
 @pytest.mark.parametrize(
