@@ -556,13 +556,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score
                         ):
                             logger.debug(
-                                "{}} vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(
-                                    new_vuln_pkg_class,
-                                    vulnerability_obj.vulnerability_id,
-                                    vuln_vendor_cvss_impact_score,
-                                    self.vendor_cvss_v3_impact_score_comparison.value(),
-                                    vendor_cvss_v3_impact_score,
-                                )
+                                "%s vulnerability %s vendor cvss V3 impact sub score %d is not %s than policy vendor cvss V3 impact score %d, skipping",
+                                new_vuln_pkg_class,
+                                vulnerability_obj.vulnerability_id,
+                                vuln_vendor_cvss_impact_score,
+                                self.vendor_cvss_v3_impact_score_comparison.value(),
+                                vendor_cvss_v3_impact_score,
                             )
                             continue
                         else:
