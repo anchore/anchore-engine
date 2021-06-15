@@ -38,7 +38,10 @@ from anchore_engine.db import VulnDBCpe, VulnDBMetadata, Vulnerability
 from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import select_nvd_classes, session_scope
-from anchore_engine.db.db_grype_db_feed_metadata import get_most_recent_active_grypedb
+from anchore_engine.db.db_grype_db_feed_metadata import (
+    get_most_recent_active_grypedb,
+    NoActiveGrypeDB,
+)
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     SyncConfig,
     get_provider_name,
@@ -1497,10 +1500,13 @@ class GrypeProvider(VulnerabilitiesProvider):
                 )
         else:
             with session_scope() as session:
-                active_db = get_most_recent_active_grypedb(session)
-                for raw_group in active_db.groups:
-                    groups.append(APIFeedGroupMetadata.from_json(raw_group))
-
+                try:
+                    active_db = get_most_recent_active_grypedb(session)
+                    for raw_group in active_db.groups:
+                        groups.append(APIFeedGroupMetadata.from_json(raw_group))
+                except NoActiveGrypeDB:
+                    logger.info("No active grypedb present")
+                    groups = []
         return groups
 
     def update_feed_group_counts(self) -> None:
