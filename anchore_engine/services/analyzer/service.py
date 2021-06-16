@@ -71,11 +71,15 @@ def build_task(message: QueueMessage, config: dict) -> WorkerTask:
         logger.info("Starting image analysis thread")
         return ImageAnalysisTask(
             AnalysisQueueMessage.from_json(message.data),
-            layer_cache_enabled=config.get("layer_cache_enable", False),
+            layer_cache_enabled=config.get(
+                "layer_cache_enable", False, service_config=config
+            ),
         )
     elif is_import_message(message.data):
         logger.info("Starting image import thread")
-        return ImportTask(ImportQueueMessage.from_json(message.data))
+        return ImportTask(
+            ImportQueueMessage.from_json(message.data), service_config=config
+        )
     else:
         raise UnexpectedTaskTypeError(message)
 

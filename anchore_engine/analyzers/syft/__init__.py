@@ -34,15 +34,15 @@ def filter_artifacts(artifacts, relationships):
     return [a for a in artifacts if filter_fn(a)]
 
 
-def catalog_image(imagedir):
+def catalog_image(imagedir, package_filtering_enabled=True):
     """
     Catalog the given image with syft, keeping only select artifacts in the returned results.
     """
     all_results = run_syft(imagedir)
-    return convert_syft_to_engine(all_results)
+    return convert_syft_to_engine(all_results, package_filtering_enabled)
 
 
-def convert_syft_to_engine(all_results):
+def convert_syft_to_engine(all_results, enable_package_filtering=True):
     """
     Do the conversion from syft format to engine format
 
@@ -67,11 +67,12 @@ def convert_syft_to_engine(all_results):
     # take a sub-set of the syft findings and invoke the handler function to
     # craft the artifact document and inject into the "raw" analyzer json
     # document
-    for artifact in filter_artifacts(
-        all_results["artifacts"],
-        dig(all_results, "artifactRelationships", force_default=[]),
-    ):
-        handler = modules_by_artifact_type[artifact["type"]]
-        handler.translate_and_save_entry(findings, artifact)
+    if enable_package_filtering:
+        for artifact in filter_artifacts(
+            all_results["artifacts"],
+            dig(all_results, "artifactRelationships", force_default=[]),
+        ):
+            handler = modules_by_artifact_type[artifact["type"]]
+            handler.translate_and_save_entry(findings, artifact)
 
     return defaultdict_to_dict(findings)

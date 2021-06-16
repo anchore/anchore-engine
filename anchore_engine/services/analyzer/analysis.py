@@ -27,6 +27,10 @@ from anchore_engine.services.analyzer.errors import (
 )
 from anchore_engine.services.analyzer.tasks import WorkerTask
 import typing
+from anchore_engine.services.analyzer.config import (
+    PACKAGE_FILTERING_ENABLED_KEY,
+    get_bool_value,
+)
 
 ANALYSIS_TIME_SECONDS_BUCKETS = [
     1.0,
@@ -137,6 +141,7 @@ def perform_analyze(
     registry_creds,
     layer_cache_enable=False,
     parent_manifest=None,
+    package_filtering_enabled=True,
 ):
     ret_analyze = {}
 
@@ -272,7 +277,9 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
     return True
 
 
-def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
+def process_analyzer_job(
+    request: AnalysisQueueMessage, layer_cache_enable, package_filtering_enabled=True
+):
     """
     Core logic of the analysis process
 
@@ -337,6 +344,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                     registry_creds,
                     layer_cache_enable=layer_cache_enable,
                     parent_manifest=parent_manifest,
+                    package_filtering_enabled=package_filtering_enabled,
                 )
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(
@@ -582,11 +590,20 @@ class ImageAnalysisTask(WorkerTask):
     """
 
     def __init__(
-        self, message: AnalysisQueueMessage, layer_cache_enabled: bool = False
+        self,
+        message: AnalysisQueueMessage,
+        layer_cache_enabled: bool = False,
+        service_config: dict = None,
     ):
         super().__init__()
         self.layer_cache_enabled = layer_cache_enabled
         self.message = message
+        self.config = service_config
 
     def execute(self):
-        return process_analyzer_job(self.message, self.layer_cache_enabled)
+        filtering_enabled = get_bool_value(
+            self.config.get(PACKAGE_FILTERING_ENABLED_KEY)
+        )
+        return process_analyzer_job(
+            self.message, self.layer_cache_enabled, filtering_enabled
+        )

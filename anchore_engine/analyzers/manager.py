@@ -102,8 +102,10 @@ def _run_internal_analyzers(analyzer_report, unpackdir):
     utils.merge_nested_dict(analyzer_report, results)
 
 
-def _run_syft(analyzer_report, copydir):
-    results = syft.catalog_image(imagedir=copydir)
+def _run_syft(analyzer_report, copydir, package_filtering_enabled=True):
+    results = syft.catalog_image(
+        imagedir=copydir, package_filtering_enabled=package_filtering_enabled
+    )
 
     utils.merge_nested_dict(analyzer_report, results)
 

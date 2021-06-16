@@ -1098,7 +1098,10 @@ def analyze_image(
 
         timer = time.time()
         analyzer_report = run_anchore_analyzers(
-            staging_dirs, imageDigest, imageId, localconfig
+            staging_dirs,
+            imageDigest,
+            imageId,
+            localconfig,
         )
 
         logger.debug(
