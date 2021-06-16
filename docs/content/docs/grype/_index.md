@@ -32,13 +32,19 @@ both vulnerability scanners at the same time. This configuration is picked up at
 
 #### Running with helm
 1. Install or update to Anchore Engine 0.10.0.
-2. Update the following value in `stable/anchore-engine/values.yaml`:
+2. Update the following value in your `values.yaml` configuration file. See 
+   [the chart README](https://github.com/anchore/anchore-charts/tree/master/stable/anchore-engine#installing-the-anchore-engine-helm-chart)
+   for more details on configuring this file:
 
 
     anchorePolicyEngine
       ...
       vulnerabilityProvider: grype
+
 3. Redeploy the services
+
+
+    helm upgrade
 
 After making the relevant change above and redeploying, the system will start up with the grype vulnerability scanner enabled and will
 sync the latest version of grype db. Note that legacy feeds will no longer be synced while grype is configured. All vulnerability data
