@@ -319,7 +319,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         user_id = image.user_id
         image_id = image.id
-
+        warns = []
         results = []
 
         if force_refresh:
@@ -354,7 +354,7 @@ class LegacyProvider(VulnerabilitiesProvider):
             vulns = []
             ns = DistroNamespace.for_obj(image)
             if not have_vulnerabilities_for(ns):
-                warns = [
+                warns += [
                     "No vulnerability data available for image distro: {}".format(
                         ns.namespace_name
                     )
