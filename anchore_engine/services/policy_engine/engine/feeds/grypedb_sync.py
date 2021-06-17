@@ -103,7 +103,7 @@ class GrypeDBSyncManager:
         """
         try:
             if grypedb_file_path:
-                cls._stage_and_update_grypedb(active_grypedb, grypedb_file_path)
+                cls._update_grypedb_wrapper(active_grypedb, grypedb_file_path)
             else:
                 catalog_client = internal_client_for(CatalogClient, userId=None)
                 bucket, archive_id = active_grypedb.object_url.split("/")[-2::]
@@ -116,34 +116,22 @@ class GrypeDBSyncManager:
                 with GrypeDBStorage() as grypedb_file:
                     with grypedb_file.create_file(active_grypedb.archive_checksum) as f:
                         f.write(grypedb_document)
-                    cls._stage_and_update_grypedb(active_grypedb, grypedb_file.path)
+                    cls._update_grypedb_wrapper(active_grypedb, grypedb_file.path)
         except Exception as e:
             logger.exception("GrypeDBSyncTask failed to sync")
             raise GrypeDBSyncError(str(e)) from e
 
     @staticmethod
-    def _stage_and_update_grypedb(
+    def _update_grypedb_wrapper(
         active_grypedb: GrypeDBFeedMetadata, grypedb_file_path: Optional[str] = None
     ):
         # Stage the new grype_db
-        engine_metadata = GrypeWrapperSingleton.get_instance().stage_grype_db_update(
+        GrypeWrapperSingleton.get_instance().update_grype_db(
             grypedb_file_path,
             active_grypedb.archive_checksum,
             active_grypedb.schema_version,
+            False,
         )
-        archive_checksum = engine_metadata.archive_checksum
-
-        # Verify that the checksum matches what was expected
-        if archive_checksum == active_grypedb.archive_checksum:
-            # If so, Promote
-            GrypeWrapperSingleton.get_instance().update_grype_db(archive_checksum)
-        else:
-            # Otherwise unstage
-            GrypeWrapperSingleton.get_instance().unstage_grype_db()
-            raise GrypeDBSyncError(
-                "Unable to promote grype_db with archive checksum %s. It has been unstaged.",
-                active_grypedb.archive_checksum,
-            )
 
     @staticmethod
     def _is_sync_necessary(

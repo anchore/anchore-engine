@@ -1082,10 +1082,11 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
 
                     # Call grype-wrapper to stage a db update. Wrapper responds with object containing archive and db checksums.
                     engine_metadata = (
-                        GrypeWrapperSingleton.get_instance().stage_grype_db_update(
+                        GrypeWrapperSingleton.get_instance().update_grype_db(
                             grypedb_file.path,
                             checksum,
                             str(record.metadata["version"]),
+                            True,
                         )
                     )
                     db_metadata = (
