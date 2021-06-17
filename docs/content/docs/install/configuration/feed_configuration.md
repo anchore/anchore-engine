@@ -56,7 +56,7 @@ services:
 ```
 
 ***Note:*** As show above, Anchore Engine now has a new feed for Grype. This feed will only be synced if the
-[tech preview Grype vulnerability scanner]({{< ref "/docs/grype/_index.md" >}}) is also enabled. Furthermore, if it is enabled this will be the only feed that Engine syncs, as it
+[tech preview Grype vulnerability scanner]({{< ref "/docs/grype" >}}) is also enabled. Furthermore, if it is enabled this will be the only feed that Engine syncs, as it
 replaces (and contains vulnerability data from) the other groups.
 
 #### Read Timeout
