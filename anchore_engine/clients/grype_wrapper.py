@@ -557,26 +557,37 @@ class GrypeWrapperSingleton(object):
             )
         return
 
-    def stage_grype_db_update(
+    def update_grype_db(
         self,
         grype_db_archive_local_file_location: str,
         archive_checksum: str,
         grype_db_version: str,
+        use_staging: bool = False,
     ) -> Optional[GrypeDBEngineMetadata]:
         """
-        Stage an update to grype_db, using the provided archive file, archive checksum, and grype db version.
-        Returns the engine metadata for upstream validation. This method has no impact on the currently-in-use
-        version of grype_db from the last sync.
+        Make an update to grype_db, using the provided archive file, archive checksum, and grype db version.
+        use_staging determines if this is the active, production grype db used for scanning images and
+        querying vulnerability data, or if this is a staging db we are validating before promoting globally.
+
+        Returns the engine metadata for upstream validation.
         """
 
-        logger.info(
-            "Updating grype with a new grype_db archive from %s",
-            grype_db_archive_local_file_location,
-        )
+        if use_staging:
+            logger.info(
+                "Updating the staging grype_db at %s to archive checksum %s",
+                grype_db_archive_local_file_location,
+                archive_checksum,
+            )
+        else:
+            logger.info(
+                "Updating the production grype_db at %s to archive checksum %s",
+                grype_db_archive_local_file_location,
+                archive_checksum,
+            )
 
         with self.write_lock_access():
             # Store the db locally and
-            # Create the sqlalchemy engine for the new db
+            # Create the sqlalchemy session maker for the new db
             (
                 latest_grype_db_dir,
                 latest_grype_db_session_maker,
@@ -585,12 +596,27 @@ class GrypeWrapperSingleton(object):
             )
 
             # Store the staged dir and session variables
-            self._staging_grype_db_dir = latest_grype_db_dir
-            self._staging_grype_db_version = grype_db_version
-            self._staging_grype_db_session_maker = latest_grype_db_session_maker
+            if use_staging:
+                self._staging_grype_db_dir = latest_grype_db_dir
+                self._staging_grype_db_version = grype_db_version
+                self._staging_grype_db_session_maker = latest_grype_db_session_maker
 
-            # Return the staging engine metadata as a data object
-            return self.get_grype_db_engine_metadata(use_staging=True)
+                logger.info(
+                    "Staging grype_db updated to archive checksum %s",
+                    archive_checksum,
+                )
+            else:
+                self._grype_db_dir = latest_grype_db_dir
+                self._grype_db_version = grype_db_version
+                self._grype_db_session_maker = latest_grype_db_session_maker
+
+                logger.info(
+                    "Production grype_db updated to archive checksum %s",
+                    archive_checksum,
+                )
+
+            # Return the engine metadata as a data object
+            return self.get_grype_db_engine_metadata(use_staging=use_staging)
 
     def unstage_grype_db(self) -> Optional[GrypeDBEngineMetadata]:
         """
@@ -609,52 +635,6 @@ class GrypeWrapperSingleton(object):
                 "Cannot return production grype_db engine metadata, as none has been set."
             )
             return None
-
-    def update_grype_db(self, archive_checksum: str) -> Optional[GrypeDBEngineMetadata]:
-        """
-        Checks to ensure a new grype_db has been staged, and raises a ValueError if it has not. Otherwise
-        this promotes the staged grype_db to the production grype_db, and unstages the previously-staged
-        grype_db.
-
-        To ensure that the caller is promoting the correct staged grype-db (ie the one it think it is
-        promoting to production, this method is parameterized with archive_checksum, which must be supplied and
-        match the archive_checksum stored in the staging engine metadata.
-        """
-        with self.write_lock_access():
-            # Ensure a grype_db has been staged, and raise an error if not.
-            if (
-                not self._staging_grype_db_dir
-                and not self._staging_grype_db_version
-                and not self._staging_grype_db_session_maker
-            ):
-                raise ValueError(
-                    self.STAGED_GRYPE_DB_NOT_FOUND_ERROR_MESSAGE.format(
-                        archive_checksum
-                    )
-                )
-            else:
-                staging_engine_metadata = self.get_grype_db_engine_metadata(
-                    use_staging=True
-                )
-
-                if staging_engine_metadata.archive_checksum != archive_checksum:
-                    logger.warn(
-                        "Staged grype_db does not match the provide archive checksum: %s. "
-                        + "Returning engine metadata for the staged grype_db",
-                        archive_checksum,
-                    )
-                    return staging_engine_metadata
-                else:
-                    # Promote the staged grype_db to production
-                    self._grype_db_dir = self._staging_grype_db_dir
-                    self._grype_db_version = self._staging_grype_db_version
-                    self._grype_db_session_maker = self._staging_grype_db_session_maker
-
-                    # Unstage the previously-staged grype_db
-                    self.unstage_grype_db()
-
-        # Return the new production engine metadata as a data object
-        return self.get_grype_db_engine_metadata(use_staging=False)
 
     def _get_metadata_file_contents(
         self, metadata_file_name, use_staging: bool = False
