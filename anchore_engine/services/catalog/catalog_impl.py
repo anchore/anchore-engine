@@ -37,6 +37,7 @@ import anchore_engine.subsys.events
 from anchore_engine.db import session_scope
 from collections import namedtuple
 from anchore_engine.util.docker import DockerImageReference
+from anchore_engine.services.catalog.utils import diff_image_vulnerabilities
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 
@@ -1602,12 +1603,11 @@ def perform_vulnerability_scan(
         doqueue = False
 
         vdiff = {}
-        # TODO implement the differ correctly for the new format
-        # if last_vuln_result and curr_vuln_result:
-        #     vdiff = anchore_utils.process_cve_status(
-        #         old_cves_result=last_vuln_result["legacy_report"],
-        #         new_cves_result=curr_vuln_result["legacy_report"],
-        #     )
+        if last_vuln_result and curr_vuln_result:
+            vdiff = diff_image_vulnerabilities(
+                old_result=last_vuln_result,
+                new_result=curr_vuln_result,
+            )
 
         obj_store.put_document(
             userId, "vulnerability_scan", archiveId, curr_vuln_result
