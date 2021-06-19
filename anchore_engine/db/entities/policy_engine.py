@@ -2442,7 +2442,6 @@ class ImageCpe(Base):
                 self.image_user_id,
                 self.image_id,
                 self.name,
-                self.name,
                 self.version,
                 self.pkg_type,
                 self.pkg_path,
