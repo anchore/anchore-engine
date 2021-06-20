@@ -141,6 +141,23 @@ class ApkgMapper(PackageMapper):
     def __init__(self):
         super(ApkgMapper, self).__init__(engine_type="APKG", grype_type="apk")
 
+    def to_grype(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        artifact = super().to_grype(image_package, location_cpes_dict)
+
+        # populate cpes for os packages
+        artifact["cpes"] = [
+            cpe.get_cpe23_fs_for_sbom()
+            for cpe in location_cpes_dict.get(
+                f"pkgdb/{image_package.name}"  # pkgdb/ prefix is added to all os package locations, it's the only way to associate a package with it's cpes
+            )
+        ]
+
+        return artifact
+
 
 class CPEMapper(PackageMapper):
     def to_grype(
