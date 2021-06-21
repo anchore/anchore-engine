@@ -240,10 +240,9 @@ def delete_image(user_id, image_id):
         )
         img = db.query(Image).get((image_id, user_id))
         if img:
-            for pkg_vuln in img.vulnerabilities():
-                db.delete(pkg_vuln)
-            # for pkg_vuln in img.java_vulnerabilities():
-            #    db.delete(pkg_vuln)
+            get_vulnerabilities_provider().delete_image_vulnerabilities(
+                image=img, db_session=db
+            )
             try:
                 conn_timeout = ApiRequestContextProxy.get_service().configuration.get(
                     "catalog_client_conn_timeout", DEFAULT_CACHE_CONN_TIMEOUT

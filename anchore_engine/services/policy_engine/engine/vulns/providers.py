@@ -262,6 +262,13 @@ class VulnerabilitiesProvider(ABC):
                 list(self.__default_sync_config__.keys()),
             )
 
+    @abstractmethod
+    def delete_image_vulnerabilities(self, image: Image, db_session):
+        """
+        Delete image vulnerabilities maintained by the provider
+        """
+        ...
+
 
 class LegacyProvider(VulnerabilitiesProvider):
     """
@@ -1039,6 +1046,10 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         return groups
 
+    def delete_image_vulnerabilities(self, image: Image, db_session):
+        for pkg_vuln in image.vulnerabilities():
+            db_session.delete(pkg_vuln)
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -1531,6 +1542,9 @@ class GrypeProvider(VulnerabilitiesProvider):
         store_manager = self.__store__(image)
 
         return store_manager.is_modified(session=db_session, since=since)
+
+    def delete_image_vulnerabilities(self, image: Image, db_session):
+        ImageVulnerabilitiesStore(image_object=image).delete_all(session=db_session)
 
 
 # Override this map for associating different provider classes
