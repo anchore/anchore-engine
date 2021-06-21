@@ -22,7 +22,7 @@ For most users the only configuration option that is typically updated is the fe
 
 Feed sync configuration is set in the config.yaml file used by policy engine service. The `services.policy_engine.vulnerabilities.sync.data` section
 of the configuration file in the policy engine's container controls the behavior of feed syncs done by that particular container. Note that the location
-and format of this config data changed slightly in Anchore Engine 0.10 to reflect some internal rafactoring.  Ensure this config is synchronized between
+and format of this config data changed slightly in Anchore Engine 0.10 to reflect some internal refactoring.  Ensure this config is synchronized between
 containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.
 
 The Anchore Engine will default to downloading feed data from Anchore's feed service hosted at https://ancho.re/v1/service/feeds and running in AWS in the
