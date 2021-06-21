@@ -1570,6 +1570,7 @@ def set_provider():
         provider_class = LegacyProvider
 
     PROVIDER = provider_class()
+    logger.info("Initialized vulnerabilities provider: %s", PROVIDER.get_config_name())
 
 
 def get_vulnerabilities_provider():

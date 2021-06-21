@@ -400,6 +400,9 @@ ENGINE_DISTRO_MAPPERS = {
     "centos": DistroMapper(
         engine_distro="centos", grype_os="centos", grype_like_os="fedora"
     ),
+    "busybox": DistroMapper(
+        engine_distro="busybox", grype_os="busybox", grype_like_os=""
+    ),
 }
 
 # key is the grype distro
@@ -425,6 +428,9 @@ GRYPE_DISTRO_MAPPERS = {
     "centos": DistroMapper(
         engine_distro="centos", grype_os="centos", grype_like_os="fedora"
     ),
+    "busybox": DistroMapper(
+        engine_distro="busybox", grype_os="busybox", grype_like_os=""
+    ),
 }
 
 # key is the engine package type
@@ -432,6 +438,7 @@ ENGINE_PACKAGE_MAPPERS = {
     "rpm": RpmMapper(),
     "dpkg": DpkgMapper(),
     "APKG": ApkgMapper(),
+    "apkg": ApkgMapper(),
     "python": CPEMapper(
         engine_type="python", grype_type="python", grype_language="python"
     ),
@@ -441,6 +448,13 @@ ENGINE_PACKAGE_MAPPERS = {
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
+    "binary": CPEMapper(engine_type="binary", grype_type="binary"),
+    "maven": CPEMapper(
+        engine_type="maven", grype_type="java-archive", grype_language="java"
+    ),
+    "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
+    "composer": CPEMapper(engine_type="composer", grype_type="composer"),
+    "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
 }
 
 # key is the grype package type
@@ -460,6 +474,10 @@ GRYPE_PACKAGE_MAPPERS = {
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
+    "binary": CPEMapper(engine_type="binary", grype_type="binary"),
+    "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
+    "composer": CPEMapper(engine_type="composer", grype_type="composer"),
+    "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
 }
 
 GRYPE_MATCH_MAPPER = VulnerabilityMapper()
@@ -508,10 +526,12 @@ def to_grype_sbom(
         pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(image_package.pkg_type)
         if not pkg_mapper:
             log.warn(
-                "No package mapper found for engine package type %s",
+                "No mapper found for engine package type %s, defaulting to CPE mapper",
                 image_package.pkg_type,
             )
-            continue
+            pkg_mapper = CPEMapper(
+                engine_type=image_package.pkg_path, grype_type=image_package.pkg_path
+            )
 
         try:
             artifacts.append(pkg_mapper.to_grype(image_package, location_cpes_dict))
@@ -540,7 +560,7 @@ def to_engine_vulnerabilities(grype_response):
         pkg_mapper = GRYPE_PACKAGE_MAPPERS.get(artifact.get("type"))
         if not pkg_mapper:
             log.warn(
-                "No package mapper found for grype package type %s",
+                "No mapper found for grype artifact type %s, skipping vulnerability match",
                 artifact.get("type"),
             )
             continue
