@@ -619,17 +619,23 @@ class EngineGrypeDBMapper:
             grype_vulnerability_metadata = grype_raw_result.GrypeVulnerabilityMetadata
 
             vuln_dict = intermediate_tuple_list.get(
-                (grype_vulnerability.id, grype_vulnerability.namespace)
+                (
+                    grype_vulnerability_metadata.id,
+                    grype_vulnerability_metadata.namespace,
+                )
             )
 
             if not vuln_dict:
                 vuln_dict = copy.deepcopy(return_el_template)
                 intermediate_tuple_list[
-                    (grype_vulnerability.id, grype_vulnerability.namespace)
+                    (
+                        grype_vulnerability_metadata.id,
+                        grype_vulnerability_metadata.namespace,
+                    )
                 ] = vuln_dict
 
                 vuln_dict["id"] = grype_vulnerability_metadata.id
-                vuln_dict["namespace"] = grype_vulnerability.namespace
+                vuln_dict["namespace"] = grype_vulnerability_metadata.namespace
                 vuln_dict["description"] = grype_vulnerability_metadata.description
                 vuln_dict["severity"] = grype_vulnerability_metadata.severity
                 vuln_dict["link"] = grype_vulnerability_metadata.data_source
@@ -660,27 +666,32 @@ class EngineGrypeDBMapper:
                         )
                     else:
                         log.warn(
-                            "Omitting the following cvss with unknown version from vulnerability {}: {}",
-                            grype_vulnerability.id,
+                            "Omitting the following cvss with unknown version from vulnerability %s: %s",
+                            grype_vulnerability_metadata.id,
                             cvss,
                         )
                         continue
 
                 # parse_nvd_data() using grype_vulnerability_metadata
 
-            # Transform the versions block
-            if grype_vulnerability.deserialized_fixed_in_versions:
-                version = ",".join(grype_vulnerability.deserialized_fixed_in_versions)
-            else:
-                version = "*"
+            # results are produced by left outer join, hence the check
+            if grype_vulnerability:
 
-            # Populate affected_packages
-            vuln_dict["affected_packages"].append(
-                {
-                    "name": grype_vulnerability.package_name,
-                    "type": grype_vulnerability.version_format,
-                    "version": version,
-                }
-            )
+                # Transform the versions block
+                if grype_vulnerability.deserialized_fixed_in_versions:
+                    version = ",".join(
+                        grype_vulnerability.deserialized_fixed_in_versions
+                    )
+                else:
+                    version = "*"
+
+                # Populate affected_packages
+                vuln_dict["affected_packages"].append(
+                    {
+                        "name": grype_vulnerability.package_name,
+                        "type": grype_vulnerability.version_format,
+                        "version": version,
+                    }
+                )
 
         return list(intermediate_tuple_list.values())

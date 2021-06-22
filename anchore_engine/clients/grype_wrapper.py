@@ -11,7 +11,7 @@ from typing import Dict, Optional, Tuple
 
 import sqlalchemy
 from readerwriterlock import rwlock
-from sqlalchemy import Column, ForeignKey, Integer, String, func
+from sqlalchemy import Column, ForeignKey, Integer, String, func, and_
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
@@ -832,13 +832,18 @@ class GrypeWrapperSingleton(object):
             )
 
             with self.grype_session_scope() as session:
+                # GrypeVulnerabilityMetadata contains info for the vulnerability. GrypeVulnerability contains info for the affected/fixed package
+                # A vulnerability can impact 0 or more packages i.e. a GrypeVulnerabilityMetadata row can be associated with 0 or more GrypeVulnerability rows
+                # Since the lookup is for vulnerability information, the query should left outer join GrypeVulnerabilityMetadata with GrypeVulnerability
                 query = session.query(
                     GrypeVulnerability, GrypeVulnerabilityMetadata
-                ).join(
-                    GrypeVulnerabilityMetadata,
-                    GrypeVulnerability.id == GrypeVulnerabilityMetadata.id
-                    and GrypeVulnerability.namespace
-                    == GrypeVulnerabilityMetadata.namespace,
+                ).outerjoin(
+                    GrypeVulnerability,
+                    and_(
+                        GrypeVulnerability.id == GrypeVulnerabilityMetadata.id,
+                        GrypeVulnerability.namespace
+                        == GrypeVulnerabilityMetadata.namespace,
+                    ),
                 )
 
                 if vuln_id is not None:
@@ -849,6 +854,8 @@ class GrypeWrapperSingleton(object):
                     query = query.filter(
                         GrypeVulnerability.package_name == affected_package
                     )
+
+                logger.debug("grype_db sql query for vulnerabilities lookup: %s", query)
 
                 return query.all()
 
