@@ -8,14 +8,17 @@ Anchore Engine 0.10 includes a limited-functionality tech preview of an integrat
 for vulnerability scanning. This integration will replace the legacy vulnerability scanner in a future version of Anchore Engine,
 but is provided in this release in a preview capacity so users can try it out.
 
-***Note:*** This tech preview is not intended for use in production environments. It should be installed in sandbox exnvironments,
-and is strictly provided here so users can get start to use it and get a sense for the functionality. It may not include all of the
+***Note:*** This tech preview is not intended for use in production environments. It should be installed in sandbox environments,
+and is strictly provided here to give users an early, hands-on preview of the feature. It may not include all of the
 functionality of the legacy scanner. Please report any issues found with it on the
 [anchore-engine Github repo](https://github.com/anchore/anchore-engine/issues).
 
 ### Installing
 As of 0.10.0, Anchore Engine can be configured to use either the legacy or grype vulnerability scanner. It is not possible to run
-both vulnerability scanners at the same time. This configuration is picked up at bootstrap, and cannot be changed ona running system. 
+both vulnerability scanners at the same time. This configuration is picked up at bootstrap, and cannot be changed on a running system.
+
+The tech preview grype scanner is intended for use in sandbox or staging environments in the current release. Downgrading from the
+grype scanner back to the legacy scanner is not supported and will cause data issues.
 
 #### Running with docker-compose
 1. Install or update to Anchore Engine 0.10.0.
