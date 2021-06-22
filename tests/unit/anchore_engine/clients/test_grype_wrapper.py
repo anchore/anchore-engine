@@ -1055,13 +1055,13 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
                 "CVE-2020-8518",
             ],
         ),
-        ("CVE-2019-16775", None, None, 2, ["CVE-2019-16775"]),
-        (None, "npm", None, 6, ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777"]),
+        ("CVE-2019-16775", None, None, 1, ["CVE-2019-16775"]),
+        (None, "npm", None, 3, ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777"]),
         (
             None,
             None,
             "debian:10",
-            8,
+            4,
             [
                 "CVE-2019-16775",
                 "CVE-2019-16776",
@@ -1069,16 +1069,16 @@ def test_get_vulnerabilities_for_sbom_file_missing_dir():
                 "CVE-2020-10174",
             ],
         ),
-        ("CVE-2019-16775", None, None, 2, ["CVE-2019-16775"]),
-        (None, "npm", None, 6, ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777"]),
+        ("CVE-2019-16775", None, None, 1, ["CVE-2019-16775"]),
+        (None, "npm", None, 3, ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777"]),
         (
             None,
             None,
             "debian:10",
-            8,
+            4,
             ["CVE-2019-16775", "CVE-2019-16776", "CVE-2019-16777", "CVE-2020-10174"],
         ),
-        ("CVE-2019-16775", "npm", "debian:10", 2, ["CVE-2019-16775"]),
+        ("CVE-2019-16775", "npm", "debian:10", 1, ["CVE-2019-16775"]),
     ],
 )
 def test_query_vulnerabilities(
