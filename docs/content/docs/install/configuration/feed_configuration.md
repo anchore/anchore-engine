@@ -28,7 +28,7 @@ containers if you are running more than one policy engine. This is usually handl
 The Anchore Engine will default to downloading feed data from Anchore's feed service hosted at https://ancho.re/v1/service/feeds and running in AWS in the
 us-west-2 region.
 
-By default, Anchore Engine will only sync the non-grype feeds enabled in the config section shown below. Setting additional feed types to True or False will
+By default, Anchore Engine will only sync the non-grype feeds enabled in the config section shown below. Setting additional feed types to true or false will
 enable or disable, respectively, synchronization of the specified feed.
 
 ```
