@@ -888,7 +888,13 @@ def list_analyzers():
     return analyzer_manager.list_modules()
 
 
-def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
+def run_anchore_analyzers(
+    staging_dirs,
+    imageDigest,
+    imageId,
+    localconfig,
+    owned_package_filtering_enabled: bool = True,
+):
     outputdir = staging_dirs["outputdir"]
     unpackdir = staging_dirs["unpackdir"]
     copydir = staging_dirs["copydir"]
@@ -901,7 +907,12 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
             OFH.write(json.dumps({}))
 
     analyzer_report = analyzer_manager.run(
-        configdir, imageId, unpackdir, outputdir, copydir
+        configdir,
+        imageId,
+        unpackdir,
+        outputdir,
+        copydir,
+        owned_package_filtering_enabled,
     )
 
     return dict(analyzer_report)
@@ -984,6 +995,7 @@ def analyze_image(
     image_source="registry",
     image_source_meta=None,
     parent_manifest=None,
+    owned_package_filtering_enabled: bool = True,
 ):
     # need all this
 
@@ -1102,6 +1114,7 @@ def analyze_image(
             imageDigest,
             imageId,
             localconfig,
+            owned_package_filtering_enabled,
         )
 
         logger.debug(

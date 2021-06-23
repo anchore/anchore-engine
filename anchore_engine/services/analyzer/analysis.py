@@ -27,10 +27,6 @@ from anchore_engine.services.analyzer.errors import (
 )
 from anchore_engine.services.analyzer.tasks import WorkerTask
 import typing
-from anchore_engine.services.analyzer.config import (
-    PACKAGE_FILTERING_ENABLED_KEY,
-    get_bool_value,
-)
 
 ANALYSIS_TIME_SECONDS_BUCKETS = [
     1.0,
@@ -141,7 +137,7 @@ def perform_analyze(
     registry_creds,
     layer_cache_enable=False,
     parent_manifest=None,
-    package_filtering_enabled=True,
+    owned_package_filtering_enabled: bool = True,
 ):
     ret_analyze = {}
 
@@ -204,6 +200,7 @@ def perform_analyze(
             registry_creds=registry_creds,
             use_cache_dir=use_cache_dir,
             parent_manifest=registry_parent_manifest,
+            owned_package_filtering_enabled=owned_package_filtering_enabled,
         )
         ret_analyze = analyzed_image_report
 
@@ -278,13 +275,16 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
 
 
 def process_analyzer_job(
-    request: AnalysisQueueMessage, layer_cache_enable, package_filtering_enabled=True
+    request: AnalysisQueueMessage,
+    layer_cache_enable,
+    owned_package_filtering_enabled: bool = True,
 ):
     """
     Core logic of the analysis process
 
     :param request:
     :param layer_cache_enable:
+    :param owned_package_filtering_enabled: feature flag for whether or not the analyzer will perform owned package filtering
     :return:
     """
 
@@ -344,7 +344,7 @@ def process_analyzer_job(
                     registry_creds,
                     layer_cache_enable=layer_cache_enable,
                     parent_manifest=parent_manifest,
-                    package_filtering_enabled=package_filtering_enabled,
+                    owned_package_filtering_enabled=owned_package_filtering_enabled,
                 )
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(
@@ -593,17 +593,14 @@ class ImageAnalysisTask(WorkerTask):
         self,
         message: AnalysisQueueMessage,
         layer_cache_enabled: bool = False,
-        service_config: dict = None,
+        owned_package_filtering_enabled: bool = True,
     ):
         super().__init__()
         self.layer_cache_enabled = layer_cache_enabled
         self.message = message
-        self.config = service_config
+        self.owned_package_filtering_enabled = owned_package_filtering_enabled
 
     def execute(self):
-        filtering_enabled = get_bool_value(
-            self.config.get(PACKAGE_FILTERING_ENABLED_KEY)
-        )
         return process_analyzer_job(
-            self.message, self.layer_cache_enabled, filtering_enabled
+            self.message, self.layer_cache_enabled, self.owned_package_filtering_enabled
         )

@@ -417,26 +417,24 @@ class ImportTask(WorkerTask):
     The task to import an analysis performed externally
     """
 
-    def __init__(self, message: ImportQueueMessage, service_config: dict):
+    def __init__(
+        self, message: ImportQueueMessage, owned_package_filtering_enabled: bool
+    ):
         super().__init__()
         self.message = message
         self.account = message.account
-        self.config = service_config
+        self.owned_package_filtering_enabled = owned_package_filtering_enabled
 
     def execute(self):
         logger.info(
             "Executing import task. Account = %s, Id = %s", self.account, self.task_id
         )
 
-        enable_filtering = get_bool_value(
-            self.config.get(PACKAGE_FILTERING_ENABLED_KEY)
-        )
-
         import_image(
             self.message.manifest.operation_uuid,
             self.account,
             self.message.manifest,
-            enable_package_filtering=enable_filtering,
+            enable_package_filtering=self.owned_package_filtering_enabled,
         )
         logger.info("Import task %s complete", self.task_id)
 

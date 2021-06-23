@@ -19,6 +19,11 @@ from anchore_engine.services.analyzer.analysis import (
     is_analysis_message,
     ImageAnalysisTask,
 )
+from anchore_engine.services.analyzer.config import (
+    PACKAGE_FILTERING_ENABLED_KEY,
+    extract_service_config,
+    get_bool_value,
+)
 from anchore_engine.services.analyzer.layer_cache import handle_layer_cache
 from anchore_engine.services.analyzer.tasks import WorkerTask
 from anchore_engine.services.analyzer.imports import is_import_message, ImportTask
@@ -67,18 +72,21 @@ def handle_metrics(*args, **kwargs):
 
 
 def build_task(message: QueueMessage, config: dict) -> WorkerTask:
+    owned_package_filtering_enabled = get_bool_value(
+        config.get(PACKAGE_FILTERING_ENABLED_KEY, "true")
+    )
     if is_analysis_message(message.data):
         logger.info("Starting image analysis thread")
         return ImageAnalysisTask(
             AnalysisQueueMessage.from_json(message.data),
-            layer_cache_enabled=config.get(
-                "layer_cache_enable", False, service_config=config
-            ),
+            layer_cache_enabled=config.get("layer_cache_enable", False),
+            owned_package_filtering_enabled=owned_package_filtering_enabled,
         )
     elif is_import_message(message.data):
         logger.info("Starting image import thread")
         return ImportTask(
-            ImportQueueMessage.from_json(message.data), service_config=config
+            ImportQueueMessage.from_json(message.data),
+            owned_package_filtering_enabled=owned_package_filtering_enabled,
         )
     else:
         raise UnexpectedTaskTypeError(message)

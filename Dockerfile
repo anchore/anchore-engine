@@ -134,7 +134,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
     ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180 \
     ANCHORE_VULNERABILITIES_PROVIDER="legacy" \
-    ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json"
+    ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json" \
     ANCHORE_ENABLE_PACKAGE_FILTERING="true"
 
 
