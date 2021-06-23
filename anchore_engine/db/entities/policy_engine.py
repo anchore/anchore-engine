@@ -2022,7 +2022,10 @@ class ImagePackage(Base):
     )
 
     vulnerabilities = relationship(
-        "ImagePackageVulnerability", back_populates="package", lazy="dynamic"
+        "ImagePackageVulnerability",
+        back_populates="package",
+        lazy="dynamic",
+        cascade=["all", "delete", "delete-orphan"],
     )
     image = relationship("Image", back_populates="packages")
     pkg_db_entries = relationship(
