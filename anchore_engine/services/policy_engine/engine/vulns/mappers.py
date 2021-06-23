@@ -148,13 +148,11 @@ class ApkgMapper(PackageMapper):
     ):
         artifact = super().to_grype(image_package, location_cpes_dict)
 
-        # populate cpes for os packages
-        artifact["cpes"] = [
-            cpe.get_cpe23_fs_for_sbom()
-            for cpe in location_cpes_dict.get(
-                f"pkgdb/{image_package.name}"  # pkgdb/ prefix is added to all os package locations, it's the only way to associate a package with it's cpes
-            )
-        ]
+        # pkgdb/ prefix is added to all os package locations, it's the only way to associate a package with it's cpes
+        cpes = location_cpes_dict.get(f"pkgdb/{image_package.name}")
+        if cpes:
+            # populate cpes for os packages
+            artifact["cpes"] = [cpe.get_cpe23_fs_for_sbom() for cpe in cpes]
 
         return artifact
 
@@ -537,7 +535,7 @@ def to_grype_sbom(
             artifacts.append(pkg_mapper.to_grype(image_package, location_cpes_dict))
         except Exception:
             log.exception(
-                "Ignoring error in engine->grype transformation for {} package {}, skipping it from sbom",
+                "Ignoring error in engine->grype transformation for %s package %s, skipping it from sbom",
                 image_package.pkg_type,
                 image_package.name,
             )
