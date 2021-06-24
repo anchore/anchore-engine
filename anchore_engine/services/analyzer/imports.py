@@ -37,6 +37,10 @@ from anchore_engine.util.docker import (
 )
 
 import anchore_engine.clients.localanchore_standalone
+from anchore_engine.services.analyzer.config import (
+    PACKAGE_FILTERING_ENABLED_KEY,
+    get_bool_value,
+)
 
 
 class InvalidImageStateException(Exception):
@@ -71,6 +75,7 @@ def process_import(
     image_record: dict,
     sbom: dict,
     import_manifest: InternalImportManifest,
+    enable_package_filtering=True,
 ):
     """
 
@@ -151,7 +156,9 @@ def process_import(
         }
 
         try:
-            syft_results = convert_syft_to_engine(syft_packages)
+            syft_results = convert_syft_to_engine(
+                syft_packages, enable_package_filtering=enable_package_filtering
+            )
             merge_nested_dict(analyzer_report, syft_results)
         except Exception as err:
             raise anchore_engine.clients.localanchore_standalone.AnalysisError(
@@ -232,7 +239,12 @@ def check_required_content(sbom_map: dict):
             )
 
 
-def import_image(operation_id, account, import_manifest: InternalImportManifest):
+def import_image(
+    operation_id,
+    account,
+    import_manifest: InternalImportManifest,
+    enable_package_filtering=True,
+):
     """
     The main thread of exec for importing an image
 
@@ -289,7 +301,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
             try:
                 logger.info("processing image import data")
                 image_data, analysis_manifest = process_import(
-                    image_record, sbom_map, import_manifest
+                    image_record, sbom_map, import_manifest, enable_package_filtering
                 )
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(
@@ -405,17 +417,24 @@ class ImportTask(WorkerTask):
     The task to import an analysis performed externally
     """
 
-    def __init__(self, message: ImportQueueMessage):
+    def __init__(
+        self, message: ImportQueueMessage, owned_package_filtering_enabled: bool
+    ):
         super().__init__()
         self.message = message
         self.account = message.account
+        self.owned_package_filtering_enabled = owned_package_filtering_enabled
 
     def execute(self):
         logger.info(
             "Executing import task. Account = %s, Id = %s", self.account, self.task_id
         )
+
         import_image(
-            self.message.manifest.operation_uuid, self.account, self.message.manifest
+            self.message.manifest.operation_uuid,
+            self.account,
+            self.message.manifest,
+            enable_package_filtering=self.owned_package_filtering_enabled,
         )
         logger.info("Import task %s complete", self.task_id)
 
