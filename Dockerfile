@@ -53,7 +53,7 @@ RUN set -ex && \
     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps v0.13.0
 
 # stage RPM dependency binaries
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+RUN yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg clamav clamav-update
 
 RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
