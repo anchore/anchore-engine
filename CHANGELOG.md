@@ -14,7 +14,7 @@ This release contains a database schema update. There are no data migrations, on
 integrations in place to move to a unified vulnerability scanning core across local tools as well as stateful Engine services. 
 This release adds [Grype](https://github.com/anchore/grype) integration as a new vulnerability scanning option in the policy 
 engine. There is now a configuration option for specifying a vulnerability scanning provider in the policy engine service 
-configuration. The legacy provider (non-Gyrpe) is the default to ensure smooth upgrades and allow operators to choose when to make the switch. 
+configuration. The legacy provider (non-Grype) is the default to ensure smooth upgrades and allow operators to choose when to make the switch.
 The new Grype provider syncs vulnerability data from the same upstream sources as Engine, but uses the Grype DB update mechanism 
 to achieve much faster feed updates, and no longer uses the https://ancho.re endpoint for retrieving data. See 
 [Release Notes](https://engine.anchore.io/docs/releasenotes/0100) for more information and links on Grype mode.

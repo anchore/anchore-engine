@@ -24,12 +24,13 @@ grype scanner back to the legacy scanner is not supported and will cause data is
 1. Install or update to Anchore Engine 0.10.0.
 2. Add the following environment variable to the policy engine container section of the docker compose file:
 
-
+```
     policy-engine:
       ...
       environment:
       ...
       - ANCHORE_VULNERABILITIES_PROVIDER=grype
+```        
 
 3. Redeploy the services.
 
@@ -39,15 +40,17 @@ grype scanner back to the legacy scanner is not supported and will cause data is
    [the chart README](https://github.com/anchore/anchore-charts/tree/master/stable/anchore-engine#installing-the-anchore-engine-helm-chart)
    for more details on configuring this file:
 
-
+```
     anchorePolicyEngine
       ...
       vulnerabilityProvider: grype
+```
 
 3. Redeploy the services
 
-
+```
     helm upgrade
+```
 
 After making the relevant change above and redeploying, the system will start up with the grype vulnerability scanner enabled and will
 sync the latest version of grype db. Note that legacy feeds will no longer be synced while grype is configured. All vulnerability data
