@@ -6,7 +6,7 @@ API version - 0.1.18
 
 DB Schema version - 0.0.15
 
-This release contains a database schema update, but no data migration only new tables added.
+This release contains a database schema update. There are no data migrations, only new tables added.
 
 ### Configurable Vulnerability Providers
 
