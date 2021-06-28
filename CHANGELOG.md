@@ -47,6 +47,7 @@ The vulnerability provider is now configurable in the `policy_engine` service co
 
 + Added - Policy engine should leverage Grype. Fixes #706 and #707
 + Added - Improved alpine vulnerability scanning by using NVD matches for OS packages for CVEs that are not yet present in Alpine SecDB. Fixes #268
++ Added - Analyzer service configuration option to control package-ownership filtering. Allows exposing all packages regardless of ownership relationship. Fixes #1122
 + Fixed - Adds missing fields and fixes errors in the swagger spec for the API
 + Fixed - Restores file package verification data ingress during image load to fix a regression. Fixes #965
 + Fixed - Malware policy gate can fail causing policy eval error when malware not enable and other rules precede malware rule in a policy. Fixes #992
