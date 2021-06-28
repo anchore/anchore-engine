@@ -50,7 +50,7 @@ The vulnerability provider is now configurable in the `policy_engine` service co
 + Added - Analyzer service configuration option to control package-ownership filtering. Allows exposing all packages regardless of ownership relationship. Fixes #1122
 + Fixed - Adds missing fields and fixes errors in the swagger spec for the API
 + Fixed - Restores file package verification data ingress during image load to fix a regression. Fixes #965
-+ Fixed - Malware policy gate can fail causing policy eval error when malware not enable and other rules precede malware rule in a policy. Fixes #992
++ Fixed - Malware policy gate can fail causing policy eval error when malware not enabled and other rules precede malware rule in a policy. Fixes #992
 + Fixed - JSON serialization error in internal policy engine user image listing API. Fixes #1093
 + Fixed - "package_cpe23" field missing in vulnerabilities. Fixes #959
 + Fixed -  Ensure python38 used in the Dockerfile build, and set tox tests to only run py38. Fixes #1025
