@@ -72,12 +72,13 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
             resp = self.client.stat()
             if resp["success"]:
                 return True
-            elif resp.get("error") and resp.get("error").http_status in [401, 403]:
-                raise BadCredentialsError(
-                    self.auth_options, endpoint=None, cause=resp.get("error")
-                )
             elif resp.get("error"):
-                raise DriverConfigurationError(cause=resp.get("error"))
+                error = resp.get("error")
+                if getattr(error, "http_status", None) in [401, 403]:
+                    raise BadCredentialsError(
+                        self.auth_options, endpoint=None, cause=error
+                    )
+                raise DriverConfigurationError(cause=error)
             else:
                 raise DriverConfigurationError(
                     Exception(
