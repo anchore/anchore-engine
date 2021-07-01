@@ -26,6 +26,7 @@ queues_to_bootstrap = {
         "visibility_timeout": 3600,  # Default 1 hour timeout for messages outstanding
     },
     "archive_tasks": {"max_outstanding_messages": -1, "visibility_timeout": 20},
+    "image_vulnerabilities": default_queue_config,
 }
 
 queues = {}

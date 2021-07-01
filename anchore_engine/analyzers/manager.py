@@ -13,10 +13,21 @@ from anchore_engine.analyzers import binary
 from anchore_engine.analyzers import utils
 
 
-def run(configdir, imageId, unpackdir, outputdir, copydir):
+def run(
+    configdir,
+    imageId,
+    unpackdir,
+    outputdir,
+    copydir,
+    owned_package_filtering_enabled=True,
+):
     analyzer_report = collections.defaultdict(dict)
     _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir)
-    _run_syft(analyzer_report, copydir)
+    _run_syft(
+        analyzer_report,
+        copydir,
+        package_filtering_enabled=owned_package_filtering_enabled,
+    )
     _run_internal_analyzers(analyzer_report, unpackdir)
 
     apply_hints(analyzer_report, unpackdir)
@@ -102,8 +113,10 @@ def _run_internal_analyzers(analyzer_report, unpackdir):
     utils.merge_nested_dict(analyzer_report, results)
 
 
-def _run_syft(analyzer_report, copydir):
-    results = syft.catalog_image(imagedir=copydir)
+def _run_syft(analyzer_report, copydir, package_filtering_enabled=True):
+    results = syft.catalog_image(
+        imagedir=copydir, package_filtering_enabled=package_filtering_enabled
+    )
 
     utils.merge_nested_dict(analyzer_report, results)
 

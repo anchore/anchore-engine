@@ -1,0 +1,12 @@
+{
+ "available": {
+  "3": [
+   {
+    "built": "2021-06-03T20:18:03Z",
+    "version": 3,
+    "url": "http://mock-feeds-nginx:8080/v1/service/databases/grypedb/sha256:7f926429366ced0e47fa1264ece7d614008ccf66d03a2cea98aface4b2c9f5ba.tar.gz",
+    "checksum": "sha256:7f926429366ced0e47fa1264ece7d614008ccf66d03a2cea98aface4b2c9f5ba"
+   }
+  ]
+ }
+}

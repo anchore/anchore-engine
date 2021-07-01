@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-builder
+FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-builder
 
 ######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
 
@@ -18,6 +18,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
+    yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y gcc make python38 git python38-wheel python38-devel go
 
 # create anchore binaries
@@ -47,21 +48,25 @@ RUN set -ex && \
     echo "installing Syft" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.15.1
 
+RUN set -ex && \
+    echo "installing Grype" && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps v0.13.0
+
 # stage RPM dependency binaries
-RUN yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+RUN yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg clamav clamav-update
 
 RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
 # Build setup section
 
-FROM registry.access.redhat.com/ubi8/ubi:8.3 as anchore-engine-final
+FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-final
 
 ######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.9.4"
+ARG ANCHORE_ENGINE_VERSION="0.10.0"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -94,7 +99,6 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_WEBHOOK_DESTINATION_URL=null \
     ANCHORE_HINTS_ENABLED=false \
     ANCHORE_FEEDS_ENABLED=true \
-    ANCHORE_FEEDS_SELECTIVE_ENABLED=true \
     ANCHORE_FEEDS_SSL_VERIFY=true \
     ANCHORE_ENDPOINT_HOSTNAME=localhost \
     ANCHORE_EVENTS_NOTIFICATIONS_ENABLED=false \
@@ -128,7 +132,11 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
     AUTHLIB_INSECURE_TRANSPORT=true \
     ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
-    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180
+    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180 \
+    ANCHORE_VULNERABILITIES_PROVIDER="legacy" \
+    ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json" \
+    ANCHORE_ENABLE_PACKAGE_FILTERING="true"
+
 
 # Insecure transport required in case for things like tls sidecars
 
@@ -141,6 +149,7 @@ EXPOSE ${ANCHORE_SERVICE_PORT}
 
 RUN set -ex && \
     yum update -y && \
+    yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y python38 python38-wheel procps psmisc
 
 # Setup container default configs and directories
@@ -174,6 +183,7 @@ RUN set -ex && \
     pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
     cp /build_output/deps/skopeo /usr/bin/skopeo && \
     cp /build_output/deps/syft /usr/bin/syft && \
+    cp /build_output/deps/grype /usr/bin/grype && \
     mkdir -p /etc/containers && \
     cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
     yum install -y /build_output/deps/*.rpm && \

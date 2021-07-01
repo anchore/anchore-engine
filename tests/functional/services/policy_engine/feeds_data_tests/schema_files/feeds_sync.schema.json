@@ -56,7 +56,7 @@
       ]
     }
   },
-  "minItems": 3,
+  "minItems": 1,
   "items": {
     "$ref": "#/definitions/feed"
   }

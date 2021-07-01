@@ -34,7 +34,7 @@ from anchore_engine.db import (
 )
 
 # API models
-from anchore_engine.services.policy_engine.api.models import (
+from anchore_engine.common.models.policy_engine import (
     Image as ImageMsg,
     PolicyEvaluationProblem,
     PolicyEvaluation,
@@ -65,7 +65,9 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
+
 from anchore_engine.subsys import logger as log
+
 
 # Leave this here to ensure gates registry is fully loaded
 from anchore_engine.subsys import metrics
@@ -87,6 +89,11 @@ feed_sync_locking_enabled = True
 
 evaluation_cache_enabled = (
     os.getenv("ANCHORE_POLICY_ENGINE_EVALUATION_CACHE_ENABLED", "true").lower()
+    == "true"
+)
+
+vulnerabilities_cache_enabled = (
+    os.getenv("ANCHORE_POLICY_ENGINE_VULNERABILITIES_CACHE_ENABLED", "true").lower()
     == "true"
 )
 
@@ -233,10 +240,9 @@ def delete_image(user_id, image_id):
         )
         img = db.query(Image).get((image_id, user_id))
         if img:
-            for pkg_vuln in img.vulnerabilities():
-                db.delete(pkg_vuln)
-            # for pkg_vuln in img.java_vulnerabilities():
-            #    db.delete(pkg_vuln)
+            get_vulnerabilities_provider().delete_image_vulnerabilities(
+                image=img, db_session=db
+            )
             try:
                 conn_timeout = ApiRequestContextProxy.get_service().configuration.get(
                     "catalog_client_conn_timeout", DEFAULT_CACHE_CONN_TIMEOUT
@@ -494,23 +500,15 @@ class EvaluationCacheManager(object):
     def _inputs_changed(self, cache_timestamp):
         # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
         db = get_session()
-        # TODO: zhill - test more
-        feed_group_updated_list = [
-            group.last_sync
-            if group.last_sync is not None
-            else datetime.datetime.utcfromtimestamp(0)
-            for feed in get_all_feeds(db)
-            for group in feed.groups
-        ]
-        feed_synced = (
-            max(feed_group_updated_list) > cache_timestamp
-            if feed_group_updated_list
-            else False
-        )
 
         image_updated = self.image.last_modified > cache_timestamp
 
-        return feed_synced or image_updated
+        return (
+            image_updated
+            or get_vulnerabilities_provider().is_image_vulnerabilities_updated(
+                image=self.image, db_session=db, since=cache_timestamp
+            )
+        )
 
     def _should_evaluate(self, cache_entry: CachedPolicyEvaluation):
         if cache_entry is None:
@@ -806,34 +804,6 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
     Return the vulnerability listing for the specified image and load from catalog if not found and specifically asked
     to do so.
 
-
-    Example json output:
-    {
-       "multi" : {
-          "url_column_index" : 7,
-          "result" : {
-             "rows" : [],
-             "rowcount" : 0,
-             "colcount" : 8,
-             "header" : [
-                "CVE_ID",
-                "Severity",
-                "*Total_Affected",
-                "Vulnerable_Package",
-                "Fix_Available",
-                "Fix_Images",
-                "Rebuild_Images",
-                "URL"
-             ]
-          },
-          "querycommand" : "/usr/lib/python2.7/site-packages/anchore/anchore-modules/multi-queries/cve-scan.py /ebs_data/anchore/querytmp/queryimages.7026386 /ebs_data/anchore/data /ebs_data/anchore/querytmp/query.59057288 all",
-          "queryparams" : "all",
-          "warns" : [
-             "0005b136f0fb (prom/prometheus:master) cannot perform CVE scan: no CVE data is currently available for the detected base distro type (busybox:unknown_version,busybox:v1.26.2)"
-          ]
-       }
-    }
-
     :param user_id: user id of image to evaluate
     :param image_id: image id to evaluate
     :param force_refresh: if true, flush and recompute vulnerabilities rather than returning current values
@@ -855,7 +825,7 @@ def get_image_vulnerabilities(user_id, image_id, force_refresh=False, vendor_onl
             vendor_only=vendor_only,
             db_session=db,
             force_refresh=force_refresh,
-            cache=True,
+            use_store=True,
         )
 
         db.commit()

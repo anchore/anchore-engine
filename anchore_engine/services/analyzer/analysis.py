@@ -19,7 +19,7 @@ from anchore_engine.services.analyzer.utils import (
     get_tempdir,
 )
 from anchore_engine.subsys import logger, events as events, metrics, taskstate
-from anchore_engine.common.schemas import AnalysisQueueMessage, ValidationError
+from anchore_engine.common.models.schemas import AnalysisQueueMessage, ValidationError
 from anchore_engine.utils import AnchoreException
 from anchore_engine.services.analyzer.errors import (
     PolicyEngineClientError,
@@ -137,6 +137,7 @@ def perform_analyze(
     registry_creds,
     layer_cache_enable=False,
     parent_manifest=None,
+    owned_package_filtering_enabled: bool = True,
 ):
     ret_analyze = {}
 
@@ -199,6 +200,7 @@ def perform_analyze(
             registry_creds=registry_creds,
             use_cache_dir=use_cache_dir,
             parent_manifest=registry_parent_manifest,
+            owned_package_filtering_enabled=owned_package_filtering_enabled,
         )
         ret_analyze = analyzed_image_report
 
@@ -272,12 +274,17 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
     return True
 
 
-def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
+def process_analyzer_job(
+    request: AnalysisQueueMessage,
+    layer_cache_enable,
+    owned_package_filtering_enabled: bool = True,
+):
     """
     Core logic of the analysis process
 
     :param request:
     :param layer_cache_enable:
+    :param owned_package_filtering_enabled: feature flag for whether or not the analyzer will perform owned package filtering
     :return:
     """
 
@@ -337,6 +344,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                     registry_creds,
                     layer_cache_enable=layer_cache_enable,
                     parent_manifest=parent_manifest,
+                    owned_package_filtering_enabled=owned_package_filtering_enabled,
                 )
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(
@@ -582,11 +590,17 @@ class ImageAnalysisTask(WorkerTask):
     """
 
     def __init__(
-        self, message: AnalysisQueueMessage, layer_cache_enabled: bool = False
+        self,
+        message: AnalysisQueueMessage,
+        layer_cache_enabled: bool = False,
+        owned_package_filtering_enabled: bool = True,
     ):
         super().__init__()
         self.layer_cache_enabled = layer_cache_enabled
         self.message = message
+        self.owned_package_filtering_enabled = owned_package_filtering_enabled
 
     def execute(self):
-        return process_analyzer_job(self.message, self.layer_cache_enabled)
+        return process_analyzer_job(
+            self.message, self.layer_cache_enabled, self.owned_package_filtering_enabled
+        )

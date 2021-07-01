@@ -2,10 +2,60 @@
 Scanners are responsible for finding vulnerabilities in an image.
 A scanner may use persistence context or an external tool to match image content with vulnerability data and return those matches
 """
-from anchore_engine.db.entities.policy_engine import ImageCpe
+import datetime
+import json
+import os
+import typing
+from typing import List
+
+from sqlalchemy.orm.session import Session
+
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
+from anchore_engine.common.models.policy_engine import (
+    ImageVulnerabilitiesReport,
+    VulnerabilitiesReportMetadata,
+    VulnerabilityScanProblem,
+)
+from anchore_engine.configuration import localconfig
+from anchore_engine.db.entities.policy_engine import (
+    Image,
+    ImagePackageVulnerability,
+    ImageCpe,
+    NvdV2Metadata,
+    CpeV2Vulnerability,
+)
+from anchore_engine.services.policy_engine.engine import vulnerabilities
+from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
+    GrypeDBSyncManager,
+    NoActiveDBSyncError,
+)
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
-from anchore_engine.services.policy_engine.engine import vulnerabilities
+from .cpe_matchers import NonOSCpeMatcher, DistroEnabledCpeMatcher
+from .dedup import get_image_vulnerabilities_deduper
+from .mappers import to_grype_sbom, to_engine_vulnerabilities
+
+# debug option for saving image sbom, defaults to not saving
+SAVE_SBOM_TO_FILE = (
+    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "true").lower() == "true"
+)
+
+# Distros that only add a CVE record to their secdb entries when a fix is available
+nvd_distro_matching_enabled = (
+    os.getenv("ANCHORE_ENABLE_DISTRO_NVD_MATCHES", "true").lower() == "true"
+)
+
+FIX_ONLY_DISTROS = ["alpine"]
+
+
+def is_fix_only_distro(distro_name: str) -> bool:
+    """
+    Does the given distro's security feed/db support vulnerability records before a fix is available?
+
+    :param distro_name:
+    :return: bool
+    """
+    return distro_name in FIX_ONLY_DISTROS
 
 
 class LegacyScanner:
@@ -13,115 +63,187 @@ class LegacyScanner:
     Scanner wrapping the legacy vulnerabilities subsystem.
     """
 
-    def flush_and_recompute_vulnerabilities(self, image_obj, db_session):
+    def flush_and_recompute_vulnerabilities(
+        self, image_obj: Image, db_session: Session
+    ) -> typing.List[ImagePackageVulnerability]:
         """
         Wrapper for rescan_image function.
         """
-        vulnerabilities.rescan_image(image_obj, db_session)
+        return vulnerabilities.rescan_image(image_obj, db_session)
 
-    def compute_vulnerabilities(self, image_obj):
-        """
-        Wrapper for vulnerabilities_for_image function
-        """
+    def get_vulnerabilities(
+        self, image: Image
+    ) -> typing.List[ImagePackageVulnerability]:
+        distro_matches = image.vulnerabilities()
+        return distro_matches
 
-        vulnerabilities.vulnerabilities_for_image(image_obj)
-
-    def get_vulnerabilities(self, image):
-        return image.vulnerabilities()
-
-    def get_cpe_vulnerabilities(self, image, nvd_cls: type, cpe_cls: type):
-        with timer("Image vulnerability cpe lookups", log_level="debug"):
-            return self.dedup_cpe_vulnerabilities(
-                image.cpe_vulnerabilities(_nvd_cls=nvd_cls, _cpe_cls=cpe_cls)
-            )
-
-    def compare_fields(self, lhs, rhs):
-        """
-        Comparison function for cpe fields
-        - * is considered least specific and any non-* value is considered greater
-        - if both sides are non-*, comparison defaults to python lexicographic comparison for consistency
-        """
-
-        if lhs == "*":
-            if rhs == "*":
-                return 0
-            else:
-                return 1
+    def get_cpe_vulnerabilities(
+        self,
+        image: Image,
+        nvd_cls: type = NvdV2Metadata,
+        cpe_cls: type = CpeV2Vulnerability,
+    ):
+        if nvd_distro_matching_enabled and is_fix_only_distro(image.distro_name):
+            matcher = DistroEnabledCpeMatcher(nvd_cls, cpe_cls)
         else:
-            if rhs == "*":
-                return -1
-            else:
-                # case where both are not *, i.e. some value. pick a way to compare them, using lexicographic comparison for now
-                if rhs == lhs:
-                    return 0
-                elif rhs > lhs:
-                    return 1
-                else:
-                    return -1
+            matcher = NonOSCpeMatcher(nvd_cls, cpe_cls)
 
-    def compare_cpes(self, lhs: ImageCpe, rhs: ImageCpe):
+        with timer("Image vulnerability cpe lookups", log_level="debug"):
+            matches = matcher.image_cpe_vulnerabilities(image)
+
+        return matches
+
+
+class GrypeScanner:
+    """
+    The scanner sits a level above the grype_wrapper. It orchestrates dependencies such as grype-db for the wrapper
+    and interacts with the wrapper for all things vulnerabilities
+
+    Scanners are typically used by a provider to serve data
+    """
+
+    def _get_image_cpes(self, image: Image, db_session) -> List[ImageCpe]:
         """
-        Compares the cpes based on business logic and returns -1, 0 or 1 if the lhs is lower than, equal to or greater than the rhs respectively
-
-        Business logic here is to compare vendor, name, version, update and meta fields in that order
+        Helper function for returning all the cpes associated with the image. Override this function to change the image cpe content
         """
-        vendor_cmp = self.compare_fields(lhs.vendor, rhs.vendor)
-        if vendor_cmp != 0:
-            return vendor_cmp
 
-        name_cmp = self.compare_fields(lhs.name, rhs.name)
-        if name_cmp != 0:
-            return name_cmp
+        return (
+            db_session.query(ImageCpe)
+            .filter(
+                ImageCpe.image_user_id == image.user_id,
+                ImageCpe.image_id == image.id,
+            )
+            .all()
+        )
 
-        version_cmp = self.compare_fields(lhs.version, rhs.version)
-        if version_cmp != 0:
-            return version_cmp
+    def _get_report_generated_by(self, grype_response):
+        generated_by = {"scanner": self.__class__.__name__}
 
-        update_cmp = self.compare_fields(lhs.update, rhs.update)
-        if update_cmp != 0:
-            return update_cmp
-
-        meta_cmp = self.compare_fields(lhs.meta, rhs.meta)
-        if meta_cmp != 0:
-            return meta_cmp
-
-        # all avenues of comparison have been depleted, the two cpes are same for all practical purposes
-        return 0
-
-    def dedup_cpe_vulnerabilities(self, image_vuln_tuples):
-        """
-        Due to multiple cpes per package in the analysis data, the list of matched vulnerabilities may contain duplicates.
-        This function filters the list and yields one record aka image vulnerability cpe tuple per vulnerability affecting a package
-        """
-        if not image_vuln_tuples:
-            return list()
-
-        # build a hash with vulnerability as the key mapped to a unique set of packages
-        dedup_hash = dict()
-
-        for image_cpe, vuln_cpe in image_vuln_tuples:
-
-            # construct key that ties vulnerability and package - a unique indicator for the vulnerability affecting a package
-            vuln_pkg_key = (
-                vuln_cpe.vulnerability_id,
-                vuln_cpe.namespace_name,
-                image_cpe.pkg_path,
+        try:
+            descriptor_dict = grype_response.get("descriptor", {})
+            db_dict = descriptor_dict.get("db", {})
+            generated_by.update(
+                {
+                    "grype_version": descriptor_dict.get("version"),
+                    "db_checksum": db_dict.get("checksum"),
+                    "db_schema_version": db_dict.get("schemaVersion"),
+                    "db_built_at": db_dict.get("built"),
+                }
+            )
+        except (AttributeError, ValueError):
+            logger.exception(
+                "Ignoring error parsing report metadata from grype response"
             )
 
-            # check if the vulnerability was already recorded for the package
-            if vuln_pkg_key in dedup_hash:
-                # compare the existing cpe to the new cpe
-                current_cpe = dedup_hash[vuln_pkg_key][0]
-                if self.compare_cpes(current_cpe, image_cpe) > 0:
-                    # if the new cpe trumps the existing one, overwrite
-                    dedup_hash[vuln_pkg_key] = (image_cpe, vuln_cpe)
-                else:
-                    # otherwise leave the existing cpe be
-                    pass
-            else:
-                # vulnerability was never recorded for the package, nothing to compare it against
-                dedup_hash[vuln_pkg_key] = (image_cpe, vuln_cpe)
+        return generated_by
 
-        final_results = list(dedup_hash.values())
+    def scan_image_for_vulnerabilities(
+        self, image: Image, db_session
+    ) -> ImageVulnerabilitiesReport:
+        logger.info(
+            "Scanning image %s/%s for vulnerabilities",
+            image.user_id,
+            image.id,
+        )
 
-        return final_results
+        report = ImageVulnerabilitiesReport(
+            account_id=image.user_id,
+            image_id=image.id,
+            results=[],
+            metadata=VulnerabilitiesReportMetadata(
+                schema_version="1.0",
+                generated_at=datetime.datetime.utcnow(),
+                generated_by={"scanner": self.__class__.__name__},
+            ),
+            problems=[],
+        )
+
+        # check and run grype sync if necessary
+        try:
+            GrypeDBSyncManager.run_grypedb_sync(db_session)
+        except NoActiveDBSyncError:
+            logger.exception("Failed to initialize local vulnerability database")
+            report.problems.append(
+                VulnerabilityScanProblem(
+                    details="No vulnerability database found in the system. Retry after a feed sync completes setting up the vulnerability database"
+                )
+            )
+            return report
+
+        # create the image sbom
+        try:
+            sbom = to_grype_sbom(
+                image, image.packages, self._get_image_cpes(image, db_session)
+            )
+        except Exception:
+            logger.exception(
+                "Failed to create the image sbom for %s/%s", image.user_id, image.id
+            )
+            report.problems.append(
+                VulnerabilityScanProblem(details="Failed to create the image sbom")
+            )
+            return report
+
+        # submit the sbom to grype wrapper and get results
+        try:
+            if SAVE_SBOM_TO_FILE:
+                # don't bail on errors writing to file since this is for debugging only
+                try:
+                    file_path = "{}/sbom_{}.json".format(
+                        localconfig.get_config().get("tmp_dir", "/tmp"), image.id
+                    )
+                    logger.debug("Writing image sbom for %s to %s", image.id, file_path)
+
+                    with open(file_path, "w") as fp:
+                        json.dump(sbom, fp, indent=2)
+                except Exception:
+                    logger.exception(
+                        "Ignoring error writing the image sbom to file for  %s/%s Moving on",
+                        image.user_id,
+                        image.id,
+                    )
+
+            # submit the image for analysis to grype
+            grype_response = (
+                GrypeWrapperSingleton.get_instance().get_vulnerabilities_for_sbom(
+                    json.dumps(sbom)
+                )
+            )
+        except Exception:
+            logger.exception(
+                "Failed to scan image sbom for vulnerabilities using grype for %s/%s",
+                image.user_id,
+                image.id,
+            )
+            report.problems.append(
+                VulnerabilityScanProblem(
+                    details="Failed to scan image sbom for vulnerabilities using grype"
+                )
+            )
+            return report
+
+        # transform grype response to engine vulnerabilities and dedup
+        try:
+            results = to_engine_vulnerabilities(grype_response)
+            report.results = get_image_vulnerabilities_deduper().execute(results)
+            report.metadata.generated_by = self._get_report_generated_by(grype_response)
+        except Exception:
+            logger.exception("Failed to transform grype vulnerabilities response")
+            report.problems.append(
+                VulnerabilityScanProblem(
+                    details="Failed to transform grype vulnerabilities response"
+                )
+            )
+            return report
+
+        return report
+
+    def get_vulnerabilities(
+        self, ids, affected_package, affected_package_version, namespace
+    ):
+        return GrypeWrapperSingleton.get_instance().query_vulnerabilities(
+            vuln_id=ids,
+            affected_package=affected_package,
+            affected_package_version=affected_package_version,
+            namespace=namespace,
+        )

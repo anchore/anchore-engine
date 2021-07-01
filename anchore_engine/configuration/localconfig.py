@@ -32,6 +32,7 @@ DEFAULT_CONFIG = {
     "docker_conn_timeout": 600,
     "allow_awsecr_iam_auto": False,
     "skopeo_global_timeout": 0,
+    "grype_db_dir": "grype_db/",
     "global_client_read_timeout": 0,
     "global_client_connect_timeout": 0,
     "user_authentication": {
@@ -39,21 +40,6 @@ DEFAULT_CONFIG = {
         "hashed_passwords": False,
     },
     "keys": {},
-    "feeds": {
-        "url": "https://ancho.re/v1/service/feeds",
-        "connection_timeout_seconds": 3,
-        "read_timeout_seconds": 60,
-        "selective_sync": {
-            "enabled": True,
-            "feeds": {
-                "vulnerabilities": True,
-                "packages": False,
-                "nvdv2": True,
-                "snyk": False,
-                "vulndb": False,
-            },
-        },
-    },
     "policy_bundles_dir": "bundles/",
     "max_compressed_image_size_mb": -1,
 }

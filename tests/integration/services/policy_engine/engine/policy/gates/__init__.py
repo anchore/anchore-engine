@@ -1,11 +1,13 @@
 import unittest
+
 import pytest
+
 from anchore_engine.db import Image, get_thread_scoped_session
-from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine import _init_distro_mappings
-from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
+from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.subsys import logger
+from tests.integration.services.policy_engine.conftest import run_legacy_sync
 
 
 def load_images(request):
@@ -37,10 +39,8 @@ def cls_fully_loaded_test_env(cls_test_data_env2, request):
     :return:
     """
     _init_distro_mappings()
-    DataFeeds.__scratch_dir__ = "/tmp"
-    DataFeeds.sync(
-        to_sync=["vulnerabilities", "packages", "nvdv2", "vulndb"],
-        feed_client=request.cls.test_env.feed_client,
+    run_legacy_sync(
+        request.cls.test_env, ["vulnerabilities", "packages", "nvdv2", "vulndb"]
     )
     load_images(request)
 

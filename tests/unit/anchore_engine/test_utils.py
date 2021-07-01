@@ -1,6 +1,15 @@
 import pytest
-from anchore_engine.utils import parse_dockerimage_string, run_check, CommandException
+import shlex
 
+from anchore_engine.utils import (
+    CommandException,
+    parse_dockerimage_string,
+    PIPED_CMD_VALUE_ERROR_MESSAGE,
+    run_check,
+    run_command_list_with_piped_input,
+    run_sanitize,
+    SANITIZE_CMD_ERROR_MESSAGE,
+)
 
 images = [
     (
@@ -90,6 +99,83 @@ images = [
 def test_parse_dockerimage_string(image, expected):
     result = parse_dockerimage_string(image)
     assert result == expected
+
+
+def test_run_sanitize_good_input():
+    # Setup input
+    input_cmd_list = ["wc", "-l"]
+
+    # Function under test
+    output_cmd_list = run_sanitize(input_cmd_list)
+
+    # Validate output
+    output_cmd_list == input_cmd_list
+
+
+@pytest.mark.parametrize(
+    "input",
+    [";&<>", ";", "&", "<", ">"],
+)
+def test_run_sanitize_bad_input(input):
+    with pytest.raises(Exception) as error:
+        # Function under test
+        run_sanitize(input)
+
+    # Validate error message
+    assert str(error.value) == SANITIZE_CMD_ERROR_MESSAGE
+
+
+@pytest.mark.parametrize(
+    "cmd_list, input_data, expected_return_code, expected_stdout, expected_stderr",
+    [
+        (["wc", "-l"], "", 0, "0", b""),
+    ],
+)
+def test_run_command_list_with_piped_input(
+    cmd_list, input_data, expected_return_code, expected_stdout, expected_stderr
+):
+    # Function under test
+    return_code, stdout, stderr = run_command_list_with_piped_input(
+        cmd_list, input_data
+    )
+
+    # Binary string returned in different environments can be padded with different amounts of whitespace
+    # So convert it to utf-8 and trim it so we get a clean, reliable comparison
+    if stdout is not None:
+        stdout = stdout.decode("utf-8").strip()
+
+    # Validate input
+    assert return_code == expected_return_code
+    assert stdout == expected_stdout
+    assert stderr == expected_stderr
+
+
+@pytest.mark.parametrize(
+    "cmd_list, input_data, expected_stdout, expected_stderr",
+    [
+        (["wc", "-l"], "", "0", ""),
+        (["wc", "-l"], "hello\nworld", "1", ""),
+    ],
+)
+def test_run_check_with_input(cmd_list, input_data, expected_stdout, expected_stderr):
+    # Function under test
+    stdout, stderr = run_check(cmd_list, input_data)
+
+    # Binary string returned in different environments can be padded with different amounts of whitespace
+    # So convert it to utf-8 and trim it so we get a clean, reliable comparison
+    if stdout is not None:
+        stdout = stdout.strip()
+
+    # Validate input
+    assert stdout == expected_stdout
+    assert stderr == expected_stderr
+
+
+@pytest.mark.parametrize("cmd_list", [[], None])
+def test_run_check_invalid_cmd_list(cmd_list):
+    with pytest.raises(Exception) as error:
+        # Function under test
+        run_check(cmd_list)
 
 
 # allows raising from a lambda

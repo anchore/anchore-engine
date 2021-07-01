@@ -23,6 +23,8 @@ from ijson.backends import python as ijpython
 from anchore_engine.subsys import logger
 from anchore_engine.util.docker import parse_dockerimage_string
 
+SANITIZE_CMD_ERROR_MESSAGE = "bad character in shell input"
+PIPED_CMD_VALUE_ERROR_MESSAGE = "Piped command cannot be None or empty"
 
 K_BYTES = 1024
 M_BYTES = 1024 * K_BYTES
@@ -213,16 +215,49 @@ def run_sanitize(cmd_list):
         if not re.search("[;&<>]", x):
             return x
         else:
-            raise Exception("bad character in shell input")
+            raise Exception(SANITIZE_CMD_ERROR_MESSAGE)
 
     return [x for x in cmd_list if shellcheck(x)]
+
+
+def run_command_list_with_piped_input(
+    cmd_list,
+    input_data,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    stdin=subprocess.PIPE,
+    **kwargs
+):
+    """
+    Pipe the input data to the command list and run it with optional environment and return a tuple (rc, stdout_str, stderr_str)
+
+    :param cmd_list: list of command e.g. ['ls', '/tmp']
+    :param input_data: string or bytes to be piped to cmd_list
+    :param stdin:
+    :param stdout:
+    :param stderr:
+    :return: tuple (rc_int, stdout_str, stderr_str)
+    """
+    try:
+        input_data = input_data.encode("utf-8")
+    except AttributeError:
+        # it is a str already, no need to encode
+        pass
+
+    cmd_list = run_sanitize(cmd_list)
+    pipes = subprocess.Popen(
+        cmd_list, **dict(stdout=stdout, stderr=stderr, stdin=stdin, **kwargs)
+    )
+    stdout_result, stderr_result = pipes.communicate(input=input_data)
+
+    return pipes.returncode, stdout_result, stderr_result
 
 
 def run_command_list(
     cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
 ):
     """
-    Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
+    Run a command from a list with optional environment and return a tuple (rc, stdout_str, stderr_str)
     :param cmd_list: list of command e.g. ['ls', '/tmp']
     :param env: dict of env vars for the environment if desired. will replace normal env, not augment
     :return: tuple (rc_int, stdout_str, stderr_str)
@@ -235,15 +270,22 @@ def run_command_list(
     return pipes.returncode, stdout_result, stderr_result
 
 
-def run_check(cmd, **kwargs):
+def run_check(cmd, input_data=None, log_level="debug", **kwargs):
     """
     Run a command (input required to be a list), log the output, and raise an
     exception if a non-zero exit status code is returned.
     """
     cmd = run_sanitize(cmd)
-    logger.debug("running cmd: %s", " ".join(cmd))
+
     try:
-        code, stdout, stderr = run_command_list(cmd, **kwargs)
+        if input_data is not None:
+            logger.debug("running cmd: %s with piped input", " ".join(cmd))
+            code, stdout, stderr = run_command_list_with_piped_input(
+                cmd, input_data, **kwargs
+            )
+        else:
+            logger.debug("running cmd: %s", " ".join(cmd))
+            code, stdout, stderr = run_command_list(cmd, **kwargs)
     except FileNotFoundError:
         msg = "unable to run command. Executable does not exist or not availabe in path"
         raise CommandException(cmd, 1, "", "", msg=msg)
@@ -258,12 +300,18 @@ def run_check(cmd, **kwargs):
     stdout_stream = stdout.splitlines()
     stderr_stream = stderr.splitlines()
 
-    # Always log stdout and stderr as debug
-    for line in stdout_stream:
-        logger.debug("stdout: %s", line)
-
-    for line in stderr_stream:
-        logger.debug("stderr: %s", line)
+    if log_level == "spew":
+        # Some commands (like grype scanning) will generate enough output here that we
+        # need to try to limit the impact of debug logging on system performance
+        for line in stdout_stream:
+            logger.spew("stdout: %s" % line)  # safe formatting not available for spew
+        for line in stderr_stream:
+            logger.spew("stderr: %s" % line)
+    else:  # Always log stdout and stderr as debug, unless spew is specified
+        for line in stdout_stream:
+            logger.debug("stdout: %s", line)
+        for line in stderr_stream:
+            logger.debug("stderr: %s", line)
 
     if code != 0:
         # When non-zero exit status returns, log stderr as error, but only when
