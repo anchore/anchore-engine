@@ -1,15 +1,79 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 0.9.2</title><link>/docs/releasenotes/092/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/092/</guid><description>
-&lt;h2 id="anchore-engine-092">Anchore Engine 0.9.2&lt;/h2>
-&lt;p>Anchore Engine 0.9.2 bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 0.10.0</title><link>/docs/releasenotes/0100/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0100/</guid><description>
+&lt;h2 id="anchore-engine-0100">Anchore Engine 0.10.0&lt;/h2>
+&lt;p>API version - 0.1.18&lt;/p>
+&lt;p>DB Schema version - 0.0.15&lt;/p>
+&lt;p>This release contains a database schema update, but no data migration only new tables added.&lt;/p>
+&lt;h3 id="configurable-vulnerability-providers">Configurable Vulnerability Providers&lt;/h3>
+&lt;p>0.10.0 is a significant release for Engine as it now has both &lt;a href="https://github.com/anchore/syft">Syft&lt;/a> and &lt;a href="https://github.com/anchore/grype">Grype&lt;/a>
+integrations in place to move to a unified vulnerability scanning core across local tools as well as stateful Engine services.
+This release adds &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> integration as a new vulnerability scanning option in the policy
+engine. There is now a configuration option for specifying a vulnerability scanning provider in the policy engine service
+configuration. The legacy provider (non-Grype) is the default to ensure smooth upgrades and allow operators to choose whent to make the switch.
+The new Grype provider syncs vulnerability data from the same upstream sources as Engine, but uses the Grype DB update mechanism
+to achieve much faster feed updates, and no longer uses the &lt;a href="https://ancho.re">https://ancho.re&lt;/a> endpoint for retrieving data. See
+&lt;a href="/docs/grype/">Grype Mode&lt;/a> for more information and links.&lt;/p>
+&lt;p>Note:&lt;/p>
+&lt;ul>
+&lt;li>Grype mode is a beta release and not recommended for production use, but we encourage feedback and use in dev environments.&lt;/li>
+&lt;li>The &lt;code>vulnerability_data_unavailable&lt;/code> and &lt;code>stale_feed_data&lt;/code> policy triggers in the &lt;code>vulnerabilities&lt;/code> gate are not yet
+supported for the Grype provider. They will return incorrect results when used with the Grype provider.&lt;/li>
+&lt;/ul>
+&lt;p>The vulnerability provider is now configurable in the &lt;code>policy_engine&lt;/code> service configuration of the config.yaml. See
+&lt;a href="./conf/default_config.yaml">Default Config&lt;/a> for more info.&lt;/p>
+&lt;h3 id="owned-package-filtering-control">Owned Package Filtering Control&lt;/h3>
+&lt;p>A new configuration option:
+&lt;code>services.analyzer.enable_owned_package_filtering: &amp;lt;bool&amp;gt;&lt;/code> is now available in the analyzer service configuration. By default,
+the analyzer will filter packages that are determined by Syft to be &amp;ldquo;owned&amp;rdquo; by a parent package when that packages is a
+distro-managed package and it installs the child package entirely. That behavior can be disabled by setting this configuration value to &amp;ldquo;false&amp;rdquo;.
+The filtering removes false positives associated with packages installed by yum, apt, or apkg, that also install language packages like python, npms, or gems
+that have backports applied by the distro maintainer but no corresponding language package version change other than the parent package version.
+However, if you package your own applications as rpms, debs, or similar and need to ensure all included packages are scanned directly against NVD sources,
+then you can disable this behavior.&lt;/p>
+&lt;h3 id="deprecations">Deprecations&lt;/h3>
+&lt;ul>
+&lt;li>The &lt;code>affected_package_version&lt;/code> query parameter in &lt;code>GET /query/vulnerabilities&lt;/code> is not supported in Grype mode and has
+known correctness issues in the legacy mode. It is deprecated and will be removed in a future release.&lt;/li>
+&lt;li>The legacy feed service endpoint (&lt;a href="https://ancho.re">https://ancho.re&lt;/a>) used by the legacy vulnerability provider is now officially
+deprecated, and will be replaced by the Grype DB sync introduced in this release. We will be announcing an End-of-Life timeline
+for the service along with the upcoming 1.0 Engine release in the next few months. The timeline will include reasonable
+time to upgrade and migrate deployments to 1.0+ versions. This deprecation notice serves as an early notice ahead of
+the actual 1.0 release and formal timeline announcement. For 0.10.0, there are no changes to the service or user actions required.&lt;/li>
+&lt;/ul>
+&lt;h3 id="breaking-changes">Breaking Changes&lt;/h3>
+&lt;p>&lt;em>Note: the policy engine feed sync configuration is now in the policy engine service configuration as part of the provider configuration. The provided helm charts, docker-compose.yaml and default configurations handle this change automatically.&lt;/em>&lt;/p>
+&lt;h3 id="changes">Changes&lt;/h3>
+&lt;ul>
+&lt;li>Added - Policy engine should leverage Grype. Fixes #706 and #707&lt;/li>
+&lt;li>Added - Improved alpine vulnerability scanning by using NVD matches for OS packages for CVEs that are not yet present in Alpine SecDB. Fixes #268&lt;/li>
+&lt;li>Added - Analyzer service configuration option to control package-ownership filtering. Allows exposing all packages regardless of ownership relationship. Fixes #1122&lt;/li>
+&lt;li>Fixed - Adds missing fields and fixes errors in the swagger spec for the API&lt;/li>
+&lt;li>Fixed - Restores file package verification data ingress during image load to fix a regression. Fixes #965&lt;/li>
+&lt;li>Fixed - Malware policy gate can fail causing policy eval error when malware not enabled and other rules precede malware rule in a policy. Fixes #992&lt;/li>
+&lt;li>Fixed - JSON serialization error in internal policy engine user image listing API. Fixes #1093&lt;/li>
+&lt;li>Fixed - &amp;ldquo;package_cpe23&amp;rdquo; field missing in vulnerabilities. Fixes #959&lt;/li>
+&lt;li>Fixed - Ensure python38 used in the Dockerfile build, and set tox tests to only run py38. Fixes #1025&lt;/li>
+&lt;li>Improved - Performance of GET operations between services improved by better streaming memory management for large payload transfers. Fixes #1010&lt;/li>
+&lt;li>Improved - Use UBI 8.4 as base image in Docker build&lt;/li>
+&lt;li>Improved - Updates skopeo version used to 1.2.1, allowing removal of the &amp;lsquo;lookuptag&amp;rsquo; field in the POST /repositories call for watching repositories that do not have a &lt;code>latest&lt;/code> tag. Fixes #484.&lt;/li>
+&lt;li>Additional minor fixes and improvements&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.9.4</title><link>/docs/releasenotes/094/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/094/</guid><description>
+&lt;h2 id="anchore-engine-094">Anchore Engine 0.9.4&lt;/h2>
+&lt;p>Anchore Engine 0.9.4 bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
 &lt;h2 id="changes-of-note">Changes of Note&lt;/h2>
 &lt;h3 id="fixed">Fixed&lt;/h3>
 &lt;ul>
-&lt;li>Fixed - Fixes empty string value for &amp;ldquo;metadata&amp;rdquo; field which should be empty array in response for GET /images/{digest}/metadata/dockerfile when no actual dockerfile is presented. Fixes #937&lt;/li>
-&lt;li>Fixed - Fixes oauth2_clients table upgrade to include all needed keys in client_metadata field. Fixes #931&lt;/li>
-&lt;li>Fixed - Updates syft to 0.13.1 and adds filtering of packages by new &amp;lsquo;relationship&amp;rsquo; field to remove duplicate packages that are application packages provided by distro packages managers (e.g. RPMs that install python eggs, will only use the RPM version). Fixes #460&lt;/li>
-&lt;li>Fixed - Updates syft to 0.12.7 to fix analysis failure due to malformed python egg files. Fixes #910&lt;/li>
-&lt;li>Fixed - Updates cryptography version from 3.3.1 to 3.3.2. Fixes #909&lt;/li>
-&lt;li>Fixed - Updates jsonschema version to avoid legacy validator import issues.&lt;/li>
+&lt;li>Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990&lt;/li>
+&lt;li>Fixed - Incorrect CPE v2.3 string construction in some cases. Fixes #959&lt;/li>
+&lt;li>Fixed - Hints behavior regression. Fixes #1006&lt;/li>
+&lt;/ul>
+&lt;h3 id="improved">Improved&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Reduced false positive matches for vulnerabilities in java artifacts by update to CPE generation logic via Syft upgrade to 0.15.1&lt;/li>
+&lt;li>Improved - Better vulnerability listing performance by removing unnecessary CPE hashing&lt;/li>
 &lt;/ul>
 &lt;p>Additional minor fixes and enhancements&lt;/p>
 &lt;h3 id="upgrading">Upgrading&lt;/h3>
@@ -28,20 +92,18 @@
 &lt;h3 id="upgrading">Upgrading&lt;/h3>
 &lt;ul>
 &lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
-&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.9.4</title><link>/docs/releasenotes/094/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/094/</guid><description>
-&lt;h2 id="anchore-engine-094">Anchore Engine 0.9.4&lt;/h2>
-&lt;p>Anchore Engine 0.9.4 bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.9.2</title><link>/docs/releasenotes/092/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/092/</guid><description>
+&lt;h2 id="anchore-engine-092">Anchore Engine 0.9.2&lt;/h2>
+&lt;p>Anchore Engine 0.9.2 bug fixes, and improvements. The latest summary can always be found in the Anchore Engine &lt;a href="https://github.com/anchore/anchore-engine/blob/master/CHANGELOG.md">CHANGELOG&lt;/a> on github.&lt;/p>
 &lt;h2 id="changes-of-note">Changes of Note&lt;/h2>
 &lt;h3 id="fixed">Fixed&lt;/h3>
 &lt;ul>
-&lt;li>Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990&lt;/li>
-&lt;li>Fixed - Incorrect CPE v2.3 string construction in some cases. Fixes #959&lt;/li>
-&lt;li>Fixed - Hints behavior regression. Fixes #1006&lt;/li>
-&lt;/ul>
-&lt;h3 id="improved">Improved&lt;/h3>
-&lt;ul>
-&lt;li>Improved - Reduced false positive matches for vulnerabilities in java artifacts by update to CPE generation logic via Syft upgrade to 0.15.1&lt;/li>
-&lt;li>Improved - Better vulnerability listing performance by removing unnecessary CPE hashing&lt;/li>
+&lt;li>Fixed - Fixes empty string value for &amp;ldquo;metadata&amp;rdquo; field which should be empty array in response for GET /images/{digest}/metadata/dockerfile when no actual dockerfile is presented. Fixes #937&lt;/li>
+&lt;li>Fixed - Fixes oauth2_clients table upgrade to include all needed keys in client_metadata field. Fixes #931&lt;/li>
+&lt;li>Fixed - Updates syft to 0.13.1 and adds filtering of packages by new &amp;lsquo;relationship&amp;rsquo; field to remove duplicate packages that are application packages provided by distro packages managers (e.g. RPMs that install python eggs, will only use the RPM version). Fixes #460&lt;/li>
+&lt;li>Fixed - Updates syft to 0.12.7 to fix analysis failure due to malformed python egg files. Fixes #910&lt;/li>
+&lt;li>Fixed - Updates cryptography version from 3.3.1 to 3.3.2. Fixes #909&lt;/li>
+&lt;li>Fixed - Updates jsonschema version to avoid legacy validator import issues.&lt;/li>
 &lt;/ul>
 &lt;p>Additional minor fixes and enhancements&lt;/p>
 &lt;h3 id="upgrading">Upgrading&lt;/h3>

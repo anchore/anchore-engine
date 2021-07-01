@@ -7,23 +7,39 @@ cycle_timers:
 ...
 feed_sync: 14400
 &lt;/code>&lt;/pre>&lt;h3 id="feed-settings">Feed Settings&lt;/h3>
-&lt;p>Feed sync configuration is set in the config.yaml file used by policy engine service. The &lt;code>feeds&lt;/code> section of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Ensure these are synchronized between
+&lt;p>Feed sync configuration is set in the config.yaml file used by policy engine service. The &lt;code>services.policy_engine.vulnerabilities.sync.data&lt;/code> section
+of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Note that the location
+and format of this config data changed slightly in Anchore Engine 0.10 to reflect some internal refactoring. Ensure this config is synchronized between
 containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
-&lt;p>The Anchore Engine will default to downloading feed data from Anchore&amp;rsquo;s feed service hosted at &lt;a href="https://ancho.re/v1/service/feeds">https://ancho.re/v1/service/feeds&lt;/a> and running in AWS in the us-west-2 region.&lt;/p>
-&lt;p>By default the Anchore Engine will perform a selective sync enabling only the vulnerabilities feed. Setting the (selective_sync) enabled flag to false, or updating the other feed types to True will enable synchronization of the specified feed.&lt;/p>
-&lt;pre>&lt;code>feeds:
-selective_sync:
-# If enabled only sync specific feeds instead of all.
-enabled: True
-feeds:
-vulnerabilities: True
-packages: False
-nvdv2: True
-github: True
-url: 'https://ancho.re/v1/service/feeds'
-connection_timeout_seconds: 3
-read_timeout_seconds: 60
-&lt;/code>&lt;/pre>&lt;h4 id="read-timeout">Read Timeout&lt;/h4>
+&lt;p>The Anchore Engine will default to downloading feed data from Anchore&amp;rsquo;s feed service hosted at &lt;a href="https://ancho.re/v1/service/feeds">https://ancho.re/v1/service/feeds&lt;/a> and running in AWS in the
+us-west-2 region.&lt;/p>
+&lt;p>By default, Anchore Engine will only sync the non-grype feeds enabled in the config section shown below. Setting additional feed types to true or false will
+enable or disable, respectively, synchronization of the specified feed.&lt;/p>
+&lt;pre>&lt;code>services:
+...
+policy_engine:
+...
+vulnerabilities:
+...
+sync:
+...
+data:
+grypedb:
+enabled: true
+url: ${ANCHORE_GRYPE_DB_URL}
+vulnerabilities:
+enabled: true
+url: ${ANCHORE_FEEDS_URL}
+nvdv2:
+enabled: true
+url: ${ANCHORE_FEEDS_URL}
+github:
+enabled: true
+url: ${ANCHORE_FEEDS_URL}
+&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> As show above, Anchore Engine now has a new feed for Grype. This feed will only be synced if the
+&lt;a href="/docs/grype/">tech preview Grype vulnerability scanner&lt;/a> is also enabled. Furthermore, if it is enabled this will be the only feed that Engine syncs, as it
+replaces (and contains vulnerability data from) the other groups.&lt;/p>
+&lt;h4 id="read-timeout">Read Timeout&lt;/h4>
 &lt;p>Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
 some other temporary condition. However, if you want to increase the timeout to increate the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
 &lt;pre>&lt;code>feeds:
@@ -84,7 +100,9 @@ vulnerabilities ubuntu:18.04 2020-03-27T20:37:35.077867 12547
 vulnerabilities ubuntu:18.10 2020-03-27T20:39:20.097963 8397
 vulnerabilities ubuntu:19.04 2020-03-27T20:40:18.628869 8664
 vulnerabilities ubuntu:19.10 2020-03-27T20:41:20.828796 7327
-&lt;/code>&lt;/pre>&lt;h3 id="using-the-config-file-to-includeexclude-feeds-at-system-bootstrap">Using the Config File to Include/Exclude Feeds at System Bootstrap&lt;/h3>
+&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> If the tech preview Grype vulnerability scanner is enabled, the Grype feed is the only feed that will be synced. It will
+contain the records from all the other groups. It is not possible to include or exclude groups from the Grype feed.&lt;/p>
+&lt;h3 id="using-the-config-file-to-includeexclude-feeds-at-system-bootstrap">Using the Config File to Include/Exclude Feeds at System Bootstrap&lt;/h3>
 &lt;p>The most common way to set which feeds are synced is in the config.yaml for the policy engine. By default,
 the &lt;em>vulnerabilities&lt;/em>, &lt;em>nvdv2&lt;/em>, and &lt;em>github&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
 and application package types. Normally it will not be necessary to modify that set.&lt;/p>
