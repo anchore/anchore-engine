@@ -22,13 +22,15 @@ from anchore_engine.db import (
     DistroNamespace,
     get_thread_scoped_session,
     db_catalog_image,
+    Image,
 )
 from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
 from anchore_engine.common import nonos_package_types
 import threading
 
 from anchore_engine.subsys import logger
-
+from anchore_engine.services.policy_engine.engine import loaders
+from anchore_engine.services.analyzer.imports import build_image_report
 
 # TODO: introduce a match cache for the fix key and package key to optimize the lookup and updates since its common to
 # see a lot of images with the same versions of packages installed.
@@ -229,7 +231,25 @@ def find_vulnerable_image_packages(vulnerability_obj):
         raise
 
 
-def vulnerabilities_for_image(image_obj):
+def image_from_sbom(sbom: dict) -> Image:
+    """
+    Creates an image and does a fake 'load' to build its collections of packages and cpes
+
+    :param sbom: json output from syft
+    :return: Image object with packages, but not saved to the database
+    """
+    logger.info("Building image object from input sbom")
+    engine_analysis_doc = build_image_report(sbom)
+
+    logger.info("Image analysis doc = %s", engine_analysis_doc)
+    loader = loaders.ImageLoader(engine_analysis_doc)
+    image = loader.load()
+    logger.info("Loaded image object: %s", image)
+
+    return image
+
+
+def vulnerabilities_for_image(image_obj) -> tuple:
     """
     Return the list of vulnerabilities for the specified image id by recalculating the matches for the image. Ignores
     any persisted matches. Query only, does not update the data. Caller must add returned results to a db session and commit
@@ -238,11 +258,10 @@ def vulnerabilities_for_image(image_obj):
     :param image_obj: the image
     :return: list of ImagePackageVulnerability records for the packages in the given image
     """
-
-    # Recompute. Session and persistence in the session is up to the caller
     try:
         ts = time.time()
         computed_vulnerabilties = []
+        fixed_artifacts = []
         for package in image_obj.packages:
             pkg_vulnerabilities = package.find_vulnerabilities()
             for v in pkg_vulnerabilities:
@@ -257,9 +276,12 @@ def vulnerabilities_for_image(image_obj):
                 img_v.vulnerability_id = v.vulnerability_id
                 img_v.vulnerability_namespace_name = v.namespace_name
                 computed_vulnerabilties.append(img_v)
-        # log.debug("TIMER VULNERABILITIES: {}".format(time.time() - ts))
+                fixed_artifacts.append(v)
 
-        return computed_vulnerabilties
+        # when calling ImagePackageVulnerability.fixed_artifact(), it goes back to the database to retrieve it
+        # since we're not saving it, we need to pass the collection of the vulnerabilities back so the lookup
+        # can occur from a data structure vs database call
+        return computed_vulnerabilties, fixed_artifacts
     except Exception as e:
         logger.exception(
             "Error computing full vulnerability set for image {}/{}".format(
@@ -288,7 +310,7 @@ def rescan_image(image_obj, db_session):
         db_session.delete(v)
 
     db_session.flush()
-    vulns = vulnerabilities_for_image(image_obj)
+    vulns, _ = vulnerabilities_for_image(image_obj)
     logger.info(
         "Adding {} vulnerabilities from rescan to {}/{}".format(
             len(vulns), image_obj.user_id, image_obj.id

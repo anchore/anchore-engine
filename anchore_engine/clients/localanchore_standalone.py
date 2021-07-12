@@ -929,9 +929,16 @@ def generate_image_export(
     layers,
     familytree,
     imageArch,
-    rdigest,
+    rdigests,
     analyzer_manifest,
-):
+) -> list:
+    """Builds a data structure of image specific data to be included into the primary document parsed
+    by the ImageLoader.
+
+    :param sbom: json output from syft
+    :return: list containing a nested dictionary
+    """
+
     image_report = []
     image_report.append(
         {
@@ -960,7 +967,9 @@ def generate_image_export(
                         "familytree": familytree,
                         "docker_data": {
                             "Architecture": imageArch,
-                            "RepoDigests": [rdigest],
+                            # changed to work with the image loader which expects to act on a list of digests and
+                            # the sbom repo digests field is already a list
+                            "RepoDigests": rdigests,
                             "RepoTags": [fulltag],
                         },
                     },

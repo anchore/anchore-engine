@@ -47,7 +47,7 @@ def check_all_imgs_vuln():
             if not img:
                 logger.info("No image found with id: {}".format(img.id))
                 raise Exception("Should have image")
-            vulns = vulnerabilities.vulnerabilities_for_image(img)
+            vulns, _ = vulnerabilities.vulnerabilities_for_image(img)
 
             for v in vulns:
                 db.merge(v)

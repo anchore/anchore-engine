@@ -16,7 +16,7 @@ from anchore_engine.utils import timer, AnchoreException
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.analyzers.utils import merge_nested_dict
-from anchore_engine.analyzers.syft import convert_syft_to_engine
+from anchore_engine.analyzers import syft, utils as analyzer_utils
 from anchore_engine.services.analyzer.utils import (
     update_analysis_complete,
     update_analysis_failed,
@@ -68,6 +68,56 @@ def get_image_size(manifest: dict):
     """
 
     return sum([x.get("size", 0) for x in manifest.get("layers", [])])
+
+
+def build_image_report(sbom: dict) -> list:
+    """Builds the data structure needed for the ImageLoader to parse properly from sbom data.
+
+    :param sbom: json output from syft
+    :return: list containing a nested dictionary
+    """
+    # This is all from the analyzer import path
+    distro = sbom.get("distro", {}).get("name")
+    # Map 'redhat' distro to 'rhel' distro for consistency between internal metadata fetch from squashtar and
+    # the syft implementation used for import
+    if distro == "redhat":
+        distro = "rhel"
+
+    # Move data from the syft sbom into the analyzer output
+    analyzer_report = {
+        "analyzer_meta": {
+            "analyzer_meta": {
+                "base": {
+                    "DISTRO": distro,
+                    "DISTROVERS": sbom.get("distro", {}).get("version"),
+                    "LIKEDISTRO": sbom.get("distro", {}).get("idLike"),
+                }
+            }
+        }
+    }
+
+    # TODO (zhill): super hacky
+    syft_results = syft.convert_syft_to_engine(sbom)
+    analyzer_utils.merge_nested_dict(analyzer_report, syft_results)
+
+    tags = sbom.get("source").get("tags", [])
+
+    image_report = anchore_engine.clients.localanchore_standalone.generate_image_export(
+        imageId=sbom.get("source").get("target").get("imageID", ""),
+        analyzer_report=analyzer_report,
+        imageSize=int(sbom.get("source").get("target").get("imageSize", -1)),
+        fulltag=tags[0] if tags else "",
+        docker_history=[],
+        dockerfile_mode=None,
+        dockerfile_contents=None,
+        layers=sbom.get("source").get("layers", []),
+        familytree=[],
+        imageArch=None,
+        rdigests=sbom.get("source").get("target").get("repoDigests", []),
+        analyzer_manifest={},
+    )
+
+    return image_report
 
 
 # Copied and modified from the localanchore_standalone file's analyze_image()
@@ -156,7 +206,7 @@ def process_import(
         }
 
         try:
-            syft_results = convert_syft_to_engine(
+            syft_results = syft.convert_syft_to_engine(
                 syft_packages, enable_package_filtering=enable_package_filtering
             )
             merge_nested_dict(analyzer_report, syft_results)
@@ -183,7 +233,7 @@ def process_import(
                     layers,
                     familytree,
                     image_arch,
-                    pullstring,
+                    [pullstring],
                     analyzer_manifest,
                 )
             )

@@ -67,6 +67,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     get_imageId_to_record,
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
+    vulnerabilities_for_image,
 )
 from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import timer
@@ -326,7 +327,6 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         user_id = image.user_id
         image_id = image.id
-        warns = []
         results = []
 
         if force_refresh:
@@ -354,14 +354,14 @@ class LegacyProvider(VulnerabilitiesProvider):
             db_session.refresh(image)
 
         with timer("Image vulnerability primary lookup", log_level="debug"):
-            vulns = scanner.get_vulnerabilities(image)
+            vulns, fixed_artifacts = vulnerabilities_for_image(image)
 
         # Has vulnerabilities?
         if not vulns:
             vulns = []
             ns = DistroNamespace.for_obj(image)
             if not have_vulnerabilities_for(ns):
-                warns += [
+                warns = [
                     "No vulnerability data available for image distro: {}".format(
                         ns.namespace_name
                     )
@@ -374,7 +374,11 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         with timer("Image vulnerability output formatting", log_level="debug"):
             for vuln, nvd_records in vulns:
-                fixed_artifact = vuln.fixed_artifact()
+                fixed_artifact = [
+                    fa
+                    for fa in fixed_artifacts
+                    if fa.vulnerability_id == vuln.vulnerability_id
+                ][0]
 
                 # Skip the vulnerability if the vendor_only flag is set to True and the issue won't be addressed by the vendor
                 if vendor_only and vuln.fix_has_no_advisory(fixed_in=fixed_artifact):
@@ -416,15 +420,15 @@ class LegacyProvider(VulnerabilitiesProvider):
                         vulnerability=VulnerabilityModel(
                             vulnerability_id=vuln.vulnerability_id,
                             description=None,
-                            severity=vuln.vulnerability.severity,
-                            link=vuln.vulnerability.link,
+                            severity=fixed_artifact.parent.severity,
+                            link=fixed_artifact.parent.link,
                             feed="vulnerabilities",
-                            feed_group=vuln.vulnerability.namespace_name,
+                            feed_group=fixed_artifact.parent.namespace_name,
                             cvss=[],  # backwards compatibility - distro vulns didn't used to provide cvss
                         ),
                         artifact=Artifact(
                             name=vuln.pkg_name,
-                            version=vuln.package.fullversion,
+                            version=fixed_artifact.epochless_version,
                             pkg_type=vuln.pkg_type,
                             location=vuln.pkg_path,
                             cpe=None,
@@ -438,15 +442,15 @@ class LegacyProvider(VulnerabilitiesProvider):
                             else None,
                             advisories=advisories,
                         ),
-                        match=Match(detected_at=vuln.created_at),
+                        match=Match(detected_at=fixed_artifact.created_at),
                         nvd=nvd_refs,
                     )
                 )
 
         try:
             with timer("Image vulnerabilities cpe matches", log_level="debug"):
-                all_cpe_matches = scanner.get_cpe_vulnerabilities(
-                    image, _nvd_cls, _cpe_cls
+                all_cpe_matches = image.cpe_vulnerabilities(
+                    _nvd_cls=_nvd_cls, _cpe_cls=_cpe_cls
                 )
 
                 if not all_cpe_matches:
@@ -516,7 +520,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 schema_version="1.0",
                 generated_at=datetime.datetime.utcnow(),
                 generated_by={
-                    "scanner": self.__scanner__.__name__,
+                    "scanner": "anchore-static-scanner",
                 },
             ),
             problems=[],
