@@ -53,6 +53,7 @@ from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_feed_detached,
     set_feed_enabled,
 )
+
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     GrypeDBFeed,
     have_vulnerabilities_for,
@@ -68,6 +69,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
     vulnerabilities_for_image,
+    image_from_sbom
 )
 from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import timer
@@ -267,6 +269,18 @@ class VulnerabilitiesProvider(ABC):
     def delete_image_vulnerabilities(self, image: Image, db_session):
         """
         Delete image vulnerabilities maintained by the provider
+        """
+        ...
+
+    @abstractmethod
+    def do_stateless_scan(self, sbom: dict) -> ImageVulnerabilitiesReport:
+        """
+        Perform the scan, default to vendor_only=False
+
+        :param sbom: input json object of sbom to san
+        :type sbom: dict
+        :return: vulnerabilities report
+        :rtype: ImageVulnerabilitiesReport
         """
         ...
 
@@ -525,6 +539,25 @@ class LegacyProvider(VulnerabilitiesProvider):
             ),
             problems=[],
         )
+
+    def do_stateless_scan(self, sbom: dict) -> ImageVulnerabilitiesReport:
+        """
+        Perform the scan, default to vendor_only=False
+
+        :param sbom: input json object of sbom to san
+        :type sbom: dict
+        :return: vulnerabilities report
+        :rtype: ImageVulnerabilitiesReport
+        """
+        img = image_from_sbom(sbom)
+
+        db_session = get_thread_scoped_session()
+        try:
+            return self.get_image_vulnerabilities(img, db_session, vendor_only=False)
+        finally:
+            # Do not save
+            db_session.rollback()
+            db_session.close()
 
     def get_vulnerabilities(
         self, ids, package_name_filter, package_version_filter, namespace, db_session
