@@ -1,19 +1,20 @@
 import copy
-from yosai.core.authc.authc import UsernamePasswordToken
 import time
-from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
-from anchore_engine.db import session_scope, get_session
-from anchore_engine.db.entities.identity import OAuth2Client, OAuth2Token
+
 from authlib.integrations.flask_oauth2.authorization_server import AuthorizationServer
 from authlib.oauth2.rfc6749 import grants
+from yosai.core.authc.authc import UsernamePasswordToken
+
 from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.auth.oauth import token_manager
+from anchore_engine.configuration import localconfig
 from anchore_engine.configuration.localconfig import (
-    OauthNotConfiguredError,
     InvalidOauthConfigurationError,
+    OauthNotConfiguredError,
 )
-
+from anchore_engine.db import get_session, session_scope
+from anchore_engine.db.entities.identity import OAuth2Client, OAuth2Token
+from anchore_engine.subsys import logger
 
 # System uses an anonymous client, so that users do not have to register specific clients
 # This could be extended in the future to add client registration and auth support in OAuth2 flows

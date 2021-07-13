@@ -2,12 +2,12 @@
 Separate module for accessing feeds configuration. Does not have any dependencies on rest of the feeds code to avoid import loops
 """
 
+import enum
 from dataclasses import dataclass, field
 from typing import Dict
 
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
-import enum
 
 
 @dataclass

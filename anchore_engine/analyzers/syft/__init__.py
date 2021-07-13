@@ -1,9 +1,10 @@
 import collections
 
-from anchore_engine.analyzers.utils import defaultdict_to_dict, content_hints, dig
+from anchore_engine.analyzers.utils import content_hints, defaultdict_to_dict, dig
 from anchore_engine.clients.syft_wrapper import run_syft
-from .handlers import modules_by_artifact_type, modules_by_engine_type
+
 from ...subsys import logger
+from .handlers import modules_by_artifact_type, modules_by_engine_type
 
 
 def filter_relationships(relationships, **kwargs):

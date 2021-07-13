@@ -3,8 +3,8 @@ By convention, we move eol'd gates into this module to keep them separated and a
 
 """
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    Gate,
     BaseTrigger,
+    Gate,
     LifecycleStates,
 )
 

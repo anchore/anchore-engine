@@ -5,15 +5,16 @@ Module for generating and validing oauth tokens for use in the API layer
 import copy
 import datetime
 import uuid
-from authlib.jose import jwt
-from authlib.jose import JWTClaims
+
+from authlib.jose import JWTClaims, jwt
+
 from anchore_engine.configuration import localconfig
 from anchore_engine.configuration.localconfig import (
-    OauthNotConfiguredError,
     InvalidOauthConfigurationError,
+    OauthNotConfiguredError,
 )
-from anchore_engine.utils import ensure_bytes
 from anchore_engine.subsys import logger
+from anchore_engine.utils import ensure_bytes
 
 ANCHORE_ISSUER = "anchore-engine"
 ANCHORE_AUDIENCE = "anchore-engine"

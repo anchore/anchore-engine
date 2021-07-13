@@ -4,21 +4,20 @@ import urllib.parse
 import zlib
 
 from anchore_engine import utils
-from anchore_engine.db import session_scope, db_archivemetadata
-from anchore_engine.subsys import object_store, logger
+from anchore_engine.db import db_archivemetadata, session_scope
+from anchore_engine.subsys import logger, object_store
 from anchore_engine.subsys.object_store.config import (
-    DRIVER_SECTION_KEY,
-    DRIVER_NAME_KEY,
-    COMPRESSION_SECTION_KEY,
+    ALT_OBJECT_STORE_CONFIG_KEY,
     COMPRESSION_ENABLED_KEY,
     COMPRESSION_LEVEL,
     COMPRESSION_MIN_SIZE_KEY,
+    COMPRESSION_SECTION_KEY,
     DEFAULT_OBJECT_STORE_MANAGER_ID,
+    DRIVER_NAME_KEY,
+    DRIVER_SECTION_KEY,
     normalize_config,
-    ALT_OBJECT_STORE_CONFIG_KEY,
     validate_config,
 )
-
 
 manager_singleton = {}
 

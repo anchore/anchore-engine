@@ -7,15 +7,17 @@ any state necessary (e.g. for garbage collection or time-out)
 """
 
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.object_store.manager import get_manager, initialize
 
-from .drivers import ObjectStorageDriverMeta, ObjectStorageDriver, interface
 from .drivers import (
+    DbDriver,
+    FilesystemObjectStorageDriver,
+    ObjectStorageDriver,
+    ObjectStorageDriverMeta,
     S3ObjectStorageDriver,
     SwiftObjectStorageDriver,
-    FilesystemObjectStorageDriver,
-    DbDriver,
+    interface,
 )
-from anchore_engine.subsys.object_store.manager import get_manager, initialize
 
 
 def _from_config(configuration):

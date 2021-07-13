@@ -1,18 +1,18 @@
+from collections import namedtuple
 from typing import List, Tuple
 
 from sqlalchemy.orm import Session
-from collections import namedtuple
 
 from anchore_engine.db import (
-    NvdV2Metadata,
     CpeV2Vulnerability,
+    DistroNamespace,
     Image,
-    get_thread_scoped_session,
     ImageCpe,
+    ImagePackage,
+    NvdV2Metadata,
     VulnDBCpe,
     Vulnerability,
-    DistroNamespace,
-    ImagePackage,
+    get_thread_scoped_session,
 )
 from anchore_engine.services.policy_engine.engine.vulns.cpes import (
     FuzzyCandidateCpeGenerator,

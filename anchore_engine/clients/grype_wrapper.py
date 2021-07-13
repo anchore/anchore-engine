@@ -11,7 +11,7 @@ from typing import Dict, Optional, Tuple
 
 import sqlalchemy
 from readerwriterlock import rwlock
-from sqlalchemy import Column, ForeignKey, Integer, String, func, and_
+from sqlalchemy import Column, ForeignKey, Integer, String, and_, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 

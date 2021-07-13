@@ -3,24 +3,24 @@ Base types for gate implementations and triggers.
 
 """
 import copy
+import enum
 import hashlib
 import inspect
-import enum
 
 import anchore_engine
-from anchore_engine.utils import ensure_str, ensure_bytes
-from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.policy.params import (
-    TriggerParameter,
-    LinkedValidator,
-)
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
-    ParameterValueInvalidError,
     InvalidParameterError,
-    TriggerEvaluationError,
+    ParameterValueInvalidError,
     PolicyRuleValidationErrorCollection,
+    TriggerEvaluationError,
     ValidationError,
 )
+from anchore_engine.services.policy_engine.engine.policy.params import (
+    LinkedValidator,
+    TriggerParameter,
+)
+from anchore_engine.subsys import logger
+from anchore_engine.utils import ensure_bytes, ensure_str
 
 
 class LifecycleStates(enum.Enum):

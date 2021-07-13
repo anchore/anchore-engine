@@ -2,8 +2,8 @@ import time
 
 import anchore_engine.subsys
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import get_config
+from anchore_engine.subsys import logger
 
 
 def get_tempdir(config=None):

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
+import hashlib
 import os
 import re
+import sys
 import time
-import hashlib
 
 import anchore_engine.analyzers.utils
 

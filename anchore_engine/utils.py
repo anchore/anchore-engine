@@ -5,20 +5,20 @@ import datetime
 import decimal
 import hashlib
 import json
+import os
 import platform
+import re
+import shlex
 import subprocess
-import uuid
 import threading
+import time
+import uuid
 from collections import OrderedDict
 from contextlib import contextmanager
 from operator import itemgetter
-import time
-import os
-import re
-import shlex
+
 from ijson import common as ijcommon
 from ijson.backends import python as ijpython
-
 
 from anchore_engine.subsys import logger
 from anchore_engine.util.docker import parse_dockerimage_string

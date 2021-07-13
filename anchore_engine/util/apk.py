@@ -2,8 +2,8 @@
 Utilities for working with APK packages in Alpine images
 
 """
-import enum
 import copy
+import enum
 
 
 class ComparisonResult(enum.IntEnum):

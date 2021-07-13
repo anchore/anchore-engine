@@ -1,10 +1,4 @@
-from . import alpine
-from . import gem
-from . import java
-from . import npm
-from . import python
-from . import rpm
-from . import debian
+from . import alpine, debian, gem, java, npm, python, rpm
 
 # This is a mapping of **syft** artifact types to modules to transform syft output into engine-compliant output.
 # Each module has two functions: translate_and_save_entry & save_entry

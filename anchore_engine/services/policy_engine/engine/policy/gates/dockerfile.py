@@ -1,17 +1,17 @@
 import re
+
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
-    delim_parser,
-    TypeValidator,
-    InputValidator,
-    EnumStringParameter,
-    TriggerParameter,
-    CommaDelimitedStringListParameter,
-    CommaDelimitedNumberListParameter,
     BooleanStringParameter,
+    CommaDelimitedNumberListParameter,
+    CommaDelimitedStringListParameter,
+    EnumStringParameter,
+    InputValidator,
+    TriggerParameter,
+    TypeValidator,
+    delim_parser,
 )
 from anchore_engine.subsys import logger
-
 
 DIRECTIVES = [
     "ADD",

@@ -1,5 +1,5 @@
 import re
-from collections import namedtuple, OrderedDict
+from collections import OrderedDict, namedtuple
 
 # TODO: complete dockerfile parser for easy checks and validation against any part of it
 #

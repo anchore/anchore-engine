@@ -39,8 +39,8 @@ from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import select_nvd_classes, session_scope
 from anchore_engine.db.db_grype_db_feed_metadata import (
-    get_most_recent_active_grypedb,
     NoActiveGrypeDB,
+    get_most_recent_active_grypedb,
 )
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     SyncConfig,
