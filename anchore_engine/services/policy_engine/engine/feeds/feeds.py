@@ -4,13 +4,25 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence, Tuple
 
-from sqlalchemy.orm import Query
 from sqlalchemy.orm.session import Session
 
+from anchore_engine.clients.grype_wrapper import (
+    GrypeDBEngineMetadata,
+    GrypeDBMetadata,
+    GrypeWrapperSingleton,
+    RecordSource,
+)
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
-from anchore_engine.common.schemas import GroupDownloadResult
+from anchore_engine.common.models.policy_engine import (
+    FeedGroupMetadata as APIFeedGroupMetadata,
+)
+from anchore_engine.common.models.schemas import (
+    BatchImageVulnerabilitiesQueueMessage,
+    GroupDownloadResult,
+    ImageVulnerabilitiesQueueMessage,
+)
 from anchore_engine.db import (
     CpeV2Vulnerability,
     CpeVulnerability,
@@ -19,7 +31,7 @@ from anchore_engine.db import (
     FixedArtifact,
     GemMetadata,
     GenericFeedDataRecord,
-    GrypeDBMetadata,
+    GrypeDBFeedMetadata,
     Image,
     NpmMetadata,
     NvdMetadata,
@@ -66,6 +78,9 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
 from anchore_engine.subsys import logger
 from anchore_engine.utils import rfc3339str_to_datetime
 
+IMAGE_VULNERABILITIES_QUEUE = "image_vulnerabilities"
+MESSAGE_BATCH_SIZE = 10
+
 
 @dataclass
 class GroupSyncResult:
@@ -101,9 +116,32 @@ class LogContext:
         )
 
 
+class LogContextMixin:
+    def __init__(self, metadata: Optional[FeedMetadata] = None):
+        self._log_ctx: LogContext = LogContext(None, None, None)
+        super().__init__(metadata)
+
+    @property
+    def _log_context(self):
+        """
+        Getter for log context.
+        """
+        return self._log_ctx
+
+    @_log_context.setter
+    def _log_context(self, log_context: LogContext) -> None:
+        """
+        Setter for log context.
+
+        :param log_context: log context object to replace what's currently stored
+        :type log_context: LogContext
+        """
+        self._log_ctx = log_context
+
+
 class DataFeed(ABC):
     """
-    Interface for a data feed. A DataFeed is a combination of a means to connect to the feed, metadata about the feed actions
+    Base class for a data feed. A DataFeed is a combination of a means to connect to the feed, metadata about the feed actions
     locally, and mapping data ingesting the feed data itself.
 
     :param metadata: existing FeedMetadata instance to use to store stateful information about this feed (if available for bootstrapping)
@@ -115,8 +153,35 @@ class DataFeed(ABC):
         MapperFactory
     ] = None  # A dict/map of group names to mapper objects for translating group data into db types
 
-    def __init__(self, metadata: FeedMetadata):
+    def __init__(self, metadata: Optional[FeedMetadata] = None):
+        if not metadata:
+            db = get_session()
+            metadata = lookup_feed(db, self.__feed_name__)
+            if not metadata:
+                raise Exception(
+                    "Must have feed metadata in db already, should sync metadata before invoking instance operations"
+                )
         self.metadata: FeedMetadata = metadata
+
+    def _update_last_full_sync_timestamp(self) -> None:
+        """
+        Update the last sync timestamp of the FeedMetadata record for this feed
+        """
+        db = get_session()
+        try:
+            if self.metadata:
+                db.refresh(self.metadata)
+            else:
+                raise ValueError("metadata object not found")
+
+            # Update timestamps
+            self.metadata.last_update = datetime.datetime.utcnow()
+            self.metadata.last_full_sync = self.metadata.last_update
+            db.commit()
+        except Exception as e:
+            logger.exception("Failed updating feed metadata timestamps.")
+            db.rollback()
+            raise e
 
     @abstractmethod
     def sync(
@@ -171,6 +236,18 @@ class DataFeed(ABC):
         ...
 
     @abstractmethod
+    def group_by_name(self, group_name: str) -> Optional[FeedGroupMetadata]:
+        """
+        Gets the metadata record for the group with the given name.
+
+        :param group_name: the name of the group for which to retreive the metadata record
+        :type group_name: str
+        :return: the metadata record if it exists
+        :rtype: Optional[FeedGroupMetadata]
+        """
+        ...
+
+    @abstractmethod
     def flush_group(self, group_name: str) -> FeedGroupMetadata:
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
@@ -193,16 +270,13 @@ class DataFeed(ABC):
         ...
 
 
-class AnchoreServiceFeed(DataFeed, ABC):
+class AnchoreServiceFeed(LogContextMixin, DataFeed, ABC):
     """
     A data feed provided by the Anchore Feeds service.
 
     Metadata persisted in the backing db.
     Instance load will fire a load from the db to get the latest metadata in db, and sync
     operations will sync data and metadata from the upstream service.
-
-    :param metadata: existing FeedMetadata instance to use to store stateful information about this feed (if available for bootstrapping)
-    :type metadata: Optional[FeedMetadata], defaults to None
     """
 
     __feed_name__ = "base"
@@ -210,34 +284,6 @@ class AnchoreServiceFeed(DataFeed, ABC):
     __flush_helper_fn__ = None
 
     RECORDS_PER_CHUNK = 500
-
-    def __init__(self, metadata=None):
-        if not metadata:
-            db = get_session()
-            metadata = lookup_feed(db, self.__feed_name__)
-            if not metadata:
-                raise Exception(
-                    "Must have feed metadata in db already, should sync metadata before invoking instance operations"
-                )
-        self._log_ctx: LogContext = LogContext(None, self.__feed_name__, None)
-        super(AnchoreServiceFeed, self).__init__(metadata=metadata)
-
-    @property
-    def _log_context(self):
-        """
-        Getter for log context.
-        """
-        return self._log_ctx
-
-    @_log_context.setter
-    def _log_context(self, log_context: LogContext) -> None:
-        """
-        Setter for log context.
-
-        :param log_context: log context object to replace what's currently stored
-        :type log_context: LogContext
-        """
-        self._log_ctx = log_context
 
     def update_counts(self) -> None:
         """
@@ -608,26 +654,6 @@ class AnchoreServiceFeed(DataFeed, ABC):
 
         return result
 
-    def _update_last_full_sync_timestamp(self) -> None:
-        """
-        Update the last sync timestamp of the FeedMetadata record for this feed
-        """
-        db = get_session()
-        try:
-            if self.metadata:
-                db.refresh(self.metadata)
-            else:
-                raise ValueError("metadata object not found")
-
-            # Update timestamps
-            self.metadata.last_update = datetime.datetime.utcnow()
-            self.metadata.last_full_sync = self.metadata.last_update
-            db.commit()
-        except Exception as e:
-            logger.exception("Failed updating feed metadata timestamps.")
-            db.rollback()
-            raise e
-
     def group_by_name(self, group_name: str) -> Optional[FeedGroupMetadata]:
         """
         Gets the metadata record for the group with the given name.
@@ -675,7 +701,16 @@ class RefreshTaskCreationError(GrypeDBFeedSyncError):
         )
 
 
-class GrypeDBFeed(AnchoreServiceFeed):
+class GrypeDBStagingFailure(GrypeDBFeedSyncError):
+    def __init__(
+        self, engine_metadata: GrypeDBEngineMetadata, db_metadata: GrypeDBMetadata
+    ):
+        super().__init__(
+            f"Staging new Grype DB file was unsuccessful. (engine_metadata: {engine_metadata}, db_metadata: {engine_metadata})"
+        )
+
+
+class GrypeDBFeed(LogContextMixin, DataFeed):
     """
     AnchoreServiceFeed used to sync Grype DB data.
 
@@ -711,11 +746,11 @@ class GrypeDBFeed(AnchoreServiceFeed):
         return self._catalog_svc_client
 
     @staticmethod
-    def _find_match(
+    def _get_db_metadata_records(
         db: Session, checksum: Optional[str] = None, active: Optional[bool] = None
-    ) -> Query:
+    ) -> List[GrypeDBFeedMetadata]:
         """
-        Utility Method, queries GrypeDBMetadata and optionally filters on checksum or active attribute.
+        Utility Method, queries GrypeDBFeedMetadata and optionally filters on checksum or active attribute.
 
         :param db: sqlalchemy database session
         :type db: Session
@@ -723,19 +758,22 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :type checksum: Optional[str], defaults to None
         :param active: whether or not to filter on the active record
         :type active: Optional[bool], defaults to None
-        :return: sqlalchemy query object
-        :rtype: Query
+        :return: list of GrypeDBFeedMetadata
+        :rtype: List[GrypeDBFeedMetadata]
         """
-        results = db.query(GrypeDBMetadata)
+        # sort by created at so the first index would be the correct active one if more than one returned
+        results = db.query(GrypeDBFeedMetadata).order_by(
+            GrypeDBFeedMetadata.created_at.desc()
+        )
         if checksum:
-            results = results.filter(GrypeDBMetadata.checksum == checksum)
-        if not isinstance(active, type(None)):
-            results = results.filter(GrypeDBMetadata.active == active)
-        return results
+            results = results.filter(GrypeDBFeedMetadata.archive_checksum == checksum)
+        if isinstance(active, bool):
+            results = results.filter(GrypeDBFeedMetadata.active.is_(active))
+        return results.all()
 
     def record_count(self, group_name: str, db: Session) -> int:
         """
-        Returns number of records present in the database for a given group (GrypeDBMetadata records)
+        Returns number of records present in the database for a given group (GrypeDBFeedMetadata records)
 
         :param group_name: name of the group
         :type group_name: str
@@ -744,107 +782,190 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :return: number of records
         :rtype: int
         """
-        return self._find_match(db).count()
+        return len(self._get_db_metadata_records(db))
 
-    def _flush_group(self, group_obj: FeedGroupMetadata) -> None:
+    def flush_group(self, group_name: str) -> FeedGroupMetadata:
         """
         Flush a specific data group. Do a db flush, but not a commit at the end to keep the transaction open.
 
-        :param group_obj: feed group metadata record
-        :type group_obj: FeedGroupMetadata
+        :param group_name: name of group to flush
+        :type group_name: str
+        :return: db record containing metadata of group flushed
+        :rtype: FeedGroupMetadata
+        """
+        raise NotImplementedError
+
+    def group_by_name(self, group_name: str) -> Optional[FeedGroupMetadata]:
+        """
+        Gets the metadata record for the group with the given name.
+
+        :param group_name: the name of the group for which to retreive the metadata record
+        :type group_name: str
+        :return: the metadata record if it exists
+        :rtype: Optional[FeedGroupMetadata]
+        """
+        return None
+
+    def update_counts(self) -> None:
+        """
+        Self-contained unit of work to update the row counts for each feed group in the feed group metadata
+        """
+        return
+
+    def flush_all(self) -> FeedMetadata:
+        """
+        Flush all groups for the feed, unset the last full sync timestamp, but leave metadata records for feed.
+
+        :return: db record containing feed metadata
+        :rtype: FeedMetadata
         """
         db = get_session()
+        deleted_records = []
+        try:
+            records = self._get_db_metadata_records(db)
+            for record in records:
+                deleted_records.append(record.archive_checksum)
+                db.delete(record)
+            db.refresh(self.metadata)
+
+            # Remove all groups
+            self.metadata.groups = []
+            self.metadata.last_full_sync = None
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
         catalog_client = self._catalog_client
-
-        logger.info(
-            self._log_context.format_msg(
-                "Flushing group records",
-            )
-        )
-
-        records = self._find_match(db)
-        for record in records.all():
-            catalog_client.delete_document(record.group_name, record.checksum)
-        records.delete(synchronize_session="evaluate")
-        group_obj.last_sync = None  # Null the update timestamp to reflect the flush
-        group_obj.count = 0
-        db.flush()
+        for archive_checksum in deleted_records:
+            catalog_client.delete_document(self.__feed_name__, archive_checksum)
+        return self.metadata
 
     @staticmethod
     def _enqueue_refresh_tasks(db: Session) -> None:
         """
-        Places a refresh task on the simple queue service for every image id in the image table.
+        Queues a task for refreshing image vulnerabilities report for each image in policy-engine persistence context
 
         :param db: sqlalchemy database session
         :type db: Session
         """
+        logger.debug("Enqueuing image vulnerabilities refresh tasks")
+        all_images = db.query(Image.user_id, Image.id, Image.digest).all()
+
+        if not all_images:
+            logger.debug("No images in the system to refresh")
+            return
+
+        queue_messages = GrypeDBFeed._create_refresh_tasks(
+            all_images, MESSAGE_BATCH_SIZE
+        )
         q_client = internal_client_for(SimpleQueueClient, None)
-        subscription_type = "refresh_tasks"
-        image_ids = db.query(Image.id).all()
         errors = []
-        for result in image_ids:
-            task_body = {"image_id": result.id}
+        for task in queue_messages:
             try:
-                # if not q_client.is_inqueue(subscription_type, task_body):
-                q_client.enqueue(subscription_type, task_body)
+                q_client.enqueue(name=IMAGE_VULNERABILITIES_QUEUE, inobj=task.to_json())
             except Exception as err:
-                errors.append((result.id, err))
+                errors.append((task.to_json_str(), err))
+
         if len(errors) > 0:
             logger.error(
-                f"Failed to create/enqueue {len(errors)}/{len(image_ids)} refresh tasks."
+                f"Failed to create/enqueue %d/%d refresh tasks.",
+                len(errors),
+                len(queue_messages),
             )
             raise RefreshTaskCreationError(errors)
+
+        logger.debug(
+            "Queued %d task(s) for %d image(s)", len(queue_messages), len(all_images)
+        )
+
+    @staticmethod
+    def _create_refresh_tasks(
+        all_images: List[Tuple[str, str, str]], batch_size: int = MESSAGE_BATCH_SIZE
+    ) -> List[BatchImageVulnerabilitiesQueueMessage]:
+        """
+        Creates a list of queue messages to be added to the queue. Each queue message is a list of images to be refreshed.
+        This is to avoid queue overheads for message per image in a system with a large number of images
+
+        :param all_images: List of tuples where each tuple is (account_id, image_id, image_digest)
+        :param batch_size: Number of messages in a batch
+        """
+        tasks = []
+
+        if not all_images or not isinstance(batch_size, int) or batch_size < 1:
+            return tasks
+
+        for start in range(0, len(all_images), batch_size):
+            tasks.append(
+                BatchImageVulnerabilitiesQueueMessage(
+                    messages=[
+                        ImageVulnerabilitiesQueueMessage(
+                            account_id=account_id,
+                            image_id=image_id,
+                            image_digest=image_digest,
+                        )
+                        for account_id, image_id, image_digest in all_images[
+                            start : start + batch_size
+                        ]
+                    ]
+                )
+            )
+
+        return tasks
 
     def _switch_active_grypedb(
         self,
         db: Session,
-        group_download_result: GroupDownloadResult,
         record: FileData,
-        checksum: str,
+        engine_metadata: GrypeDBEngineMetadata,
+        db_metadata: GrypeDBMetadata,
     ) -> None:
         """
-        Inserts a new active GrypeDBMetadata record. Before doing so, it deletes all inactive records and then
-        marks the currently active record as inactive. No more than two GrypeDBMetadata records are persisted at once.
+        Inserts a new active GrypeDBFeedMetadata record. Before doing so, it deletes all inactive records and then
+        marks the currently active record as inactive. No more than two GrypeDBFeedMetadata records are persisted at once.
 
         :param db: sqlalchemy database session
         :type db: Session
-        :param group_download_result: group download result record to update
-        :type group_download_result: GroupDownloadResult
         :param record: FileData record retrieved from download.FileListIterator
         :type record: FileData
-        :param checksum: grype DB file checksum
-        :type checksum: str
+        :param engine_metadata: metadata from staged Grype DB file
+        :type engine_metadata: GrypeDBEngineMetadata
+        :param db_metadata: metadata from staged Grype DB file
+        :type db_metadata: GrypeDBMetadata
         """
         catalog_client = self._catalog_client
+
         # delete all records not active
-        inactive_records = self._find_match(db, active=False)
-        for inactive_record in inactive_records.all():
+        inactive_records = self._get_db_metadata_records(db, active=False)
+        for inactive_record in inactive_records:
             catalog_client.delete_document(
-                inactive_record.group_name, inactive_record.checksum
+                self.__feed_name__, inactive_record.archive_checksum
             )
-        inactive_records.delete(synchronize_session="evaluate")
+            db.delete(inactive_record)
+
         # search for active and mark inactive
-        self._find_match(db, active=True).update(
-            {GrypeDBMetadata.active: False}, synchronize_session="evaluate"
-        )
+        active_records = self._get_db_metadata_records(db, active=True)
+        for active_record in active_records:
+            active_record.active = False
+
         # insert new as active
         object_url = catalog_client.create_raw_object(
-            group_download_result.group, checksum, record.data
+            self.__feed_name__, engine_metadata.archive_checksum, record.data
         )
-        date_generated = rfc3339str_to_datetime(record.metadata["built"])
-        grypedb_meta = GrypeDBMetadata(
-            checksum=checksum,
-            schema_version=record.metadata["version"],
-            feed_name=GrypeDBFeed.__feed_name__,
-            group_name=group_download_result.group,
-            date_generated=date_generated,
+        built_at = rfc3339str_to_datetime(db_metadata.built)
+        self.grypedb_meta = GrypeDBFeedMetadata(
+            archive_checksum=engine_metadata.archive_checksum,
+            db_checksum=engine_metadata.db_checksum,
+            schema_version=engine_metadata.grype_db_version,
             object_url=object_url,
             active=True,
+            built_at=built_at,
         )
-        db.add(grypedb_meta)
+        db.add(self.grypedb_meta)
 
     @staticmethod
-    def _run_grypedb_sync_task(checksum: str, grype_db_data: bytes) -> None:
+    def _run_grypedb_sync_task(
+        db: Session, checksum: str, grype_db_data: bytes
+    ) -> None:
         """
         Write the Grype DB to a tar.gz in a temporary directory and pass to GrypeDBSyncManager.
         The GrypeDBSyncManager updates the working copy of GrypeDB on this instance of policy engine.
@@ -857,31 +978,88 @@ class GrypeDBFeed(AnchoreServiceFeed):
         with GrypeDBStorage() as grypedb_file:
             with grypedb_file.create_file(checksum) as f:
                 f.write(grype_db_data)
-            GrypeDBSyncManager.run_grypedb_sync(grypedb_file.path)
+            GrypeDBSyncManager.run_grypedb_sync(db, grypedb_file.path)
 
-    def _process_group_file_records(
+    def _set_group_counts(self, db, source_counts: List[RecordSource]) -> None:
+        """
+        Uses grype wrapper to query the source counts in the grypedb
+        casts these source counts to FeedGroupMetadata and saves it to GrypeDBFeedMetadata groups column
+        certain timestamps like the last_sync are not set in this process the first time around because it has not yet
+        been set on the GrypeDBFeedMetadata object
+        """
+        if source_counts and isinstance(source_counts, list):
+            groups = []
+
+            for source in source_counts:
+                logger.debug(
+                    "Adding group %s consisting of %d vulns to GrypeDBFeedMetadata record",
+                    source.group,
+                    source.count,
+                )
+                groups.append(
+                    APIFeedGroupMetadata(
+                        name=source.group,
+                        last_sync=self.grypedb_meta.synced_at,
+                        created_at=self.grypedb_meta.created_at,
+                        updated_at=self.grypedb_meta.last_updated,
+                        enabled=True,
+                        record_count=source.count,
+                    ).to_json()
+                )
+
+            self.grypedb_meta.groups = groups
+            db.flush()
+        else:
+            raise ValueError(
+                "GrypeDBFeedMetadata type is non iterable and incorrectly set"
+            )
+
+    def _update_group_timestamps(self, db):
+        """
+        Updates the tiemstamps
+        """
+
+        if self.grypedb_meta.groups and isinstance(self.grypedb_meta.groups, list):
+            # Set last_sync and updated_at on dict so from_json can be used
+            groups = []
+            for group in self.grypedb_meta.groups:
+                groups.append(
+                    APIFeedGroupMetadata(
+                        name=group["name"],
+                        last_sync=self.grypedb_meta.synced_at,
+                        created_at=self.grypedb_meta.created_at,
+                        updated_at=self.grypedb_meta.last_updated,
+                        enabled=True,
+                        record_count=group["record_count"],
+                    ).to_json()
+                )
+
+            self.grypedb_meta.groups = groups
+
+            db.flush()
+        else:
+            raise ValueError(
+                "GrypeDBFeedMetadata type is non iterable and incorrectly set"
+            )
+
+    def _process_grype_file_records(
         self,
         db: Session,
         group_download_result: GroupDownloadResult,
-        group_obj: FeedGroupMetadata,
         local_repo: Optional[LocalFeedDataRepo],
-    ) -> int:
+    ) -> bool:
         """
         Convert the download results for Grype DB into database records and write to the database session.
-        While transactions are batched by the integer specified in AnchoreServiceFeed.RECORDS_PER_CHUNK, we are only
-        expecting a single Grype DB file to be downloaded at any one point in time, so there should only be one
-        transaction. The transaction can be rolled back in _sync_group() if an exception is encountered.
+        Returns true or false based upon whether downloaded db is new or not
         :param db: sqlalchemy database session
         :type db: Session
         :param group_download_result: group download result record to update
         :type group_download_result: GroupDownloadResult
-        :param group_obj: metadata record for this feed group
-        :type group_obj: FeedGroupMetadata
         :param local_repo: LocalFeedDataRepo (disk cache for download results)
         :type local_repo: Optional[LocalFeedDataRepo], defaults to None
-        :return: int
-        :rtype: total number of records updated
+        :return: True if new grypedb, false if existing one
         """
+        is_new = False
         total_records_updated = 0
         for record in local_repo.read_files(
             group_download_result.feed, group_download_result.group
@@ -894,54 +1072,228 @@ class GrypeDBFeed(AnchoreServiceFeed):
             checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
             # If there aren't any other database files with the same checksum, then this is a new database file.
-            if self._find_match(db, checksum).count() == 0:
-                # Update the database and the catalog with the new Grype DB file.
-                self._switch_active_grypedb(
-                    db,
-                    group_download_result,
-                    record,
-                    checksum,
-                )
-                # Cache the file to temporary storage and call GrypeDBSyncTask
-                # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
-                # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
-                # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
-                try:
-                    self._run_grypedb_sync_task(checksum, record.data)
-                except GrypeDBSyncError:
-                    logger.exception(
-                        self._log_context.format_msg(
-                            "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
+            matches = self._get_db_metadata_records(db, checksum)
+            if len(matches) == 0:
+                # Cache the file to temporary storage
+                with GrypeDBStorage() as grypedb_file:
+                    with grypedb_file.create_file(checksum) as f:
+                        f.write(record.data)
+                    logger.info("Staging new Grype DB file for update.")
+
+                    # Call grype-wrapper to stage a db update. Wrapper responds with object containing archive and db checksums.
+                    engine_metadata = (
+                        GrypeWrapperSingleton.get_instance().update_grype_db(
+                            grypedb_file.path,
+                            checksum,
+                            str(record.metadata["version"]),
+                            True,
                         )
                     )
+                    db_metadata = (
+                        GrypeWrapperSingleton.get_instance().get_grype_db_metadata(
+                            use_staging=True
+                        )
+                    )
+
+                    # get source counts on grypedb syncing for use upstream. Raise error if it fails
+                    self.source_counts = (
+                        GrypeWrapperSingleton.get_instance().query_record_source_counts(
+                            use_staging=True
+                        )
+                    )
+                    if not self.source_counts:
+                        raise GrypeDBStagingFailure(engine_metadata, db_metadata)
+
+                    GrypeWrapperSingleton.get_instance().unstage_grype_db()
+
+                    if engine_metadata and db_metadata:
+                        logger.info(
+                            "Staging Grype DB was successful. Switching active Grype DB file to new DB."
+                        )
+                        # Based on the response policy-engine creates an active grypedbfeed record and marks the rest inactive.
+                        # Update the database and the catalog with the new Grype DB file.
+                        self._switch_active_grypedb(
+                            db, record, engine_metadata, db_metadata
+                        )
+                        is_new = True
+                        # Changes are unstaged to allow GrypeDBSyncTask to control swapping of working copy.
+                        # GrypeDBSyncTask swaps out working Grype DB on this instance of policy engine
+                        # Even if the GrypeDBSyncTask fails, we still want the FeedSync to succeed.
+                        # The GrypeDBSyncTask is also registered to a watcher, so it will try to sync again later.
+                        try:
+                            GrypeDBSyncManager.run_grypedb_sync(db, grypedb_file.path)
+                        except GrypeDBSyncError:
+                            logger.exception(
+                                self._log_context.format_msg(
+                                    "Error running GrypeDBSyncTask. Working copy of GrypeDB could not be updated.",
+                                )
+                            )
+
+                        # best effort at queuing refresh tasks, DO NOT bail on errors
+                        try:
+                            self._enqueue_refresh_tasks(db)
+                        except RefreshTaskCreationError:
+                            logger.exception(
+                                "Logging and ignoring error queuing report refresh tasks post GrypeDB sync"
+                            )
+                    else:
+                        raise GrypeDBStagingFailure(engine_metadata, db_metadata)
                 # Update number of records processed
                 total_records_updated += 1
                 logger.info(
                     self._log_context.format_msg(
-                        "DB Update Progress: {}/{}".format(
-                            total_records_updated,
-                            group_download_result.total_records,
-                        ),
-                    )
+                        "DB Update Progress: %d/%d"
+                        % (total_records_updated, group_download_result.total_records)
+                    ),
                 )
+            else:
+                # If checksum already exists and  updating, assign to instance variable so timestamps can be updated
+                self.grypedb_meta = matches[0]
         else:
-            group_obj.count = self.record_count(group_obj.name, db)
             db.commit()
             logger.info(
                 self._log_context.format_msg(
-                    "DB Update Complete, Progress: {}/{}".format(
+                    "DB Update Complete, Progress: %d/%d"
+                    % (
                         total_records_updated,
                         group_download_result.total_records,
                     ),
                 )
             )
-        logger.debug(
-            self._log_context.format_msg(
-                "Enqueuing image refresh tasks.",
-            )
+
+        return is_new
+
+    def _sync_grype_groups(
+        self,
+        group_download_result: GroupDownloadResult,
+        full_flush=False,
+        local_repo=None,
+    ) -> List[GroupSyncResult]:
+        """
+        Sync data from download file and update group data
+
+        :param group_download_result: group download result record to update
+        :type group_download_result: GroupDownloadResult
+        :param full_flush: whether or not to flush out old records before syncing
+        :type full_flush: bool, defaults to False
+        :param local_repo: LocalFeedDataRepo (disk cache for download results)
+        :type local_repo: Optional[LocalFeedDataRepo], defaults to None
+        :return: GroupSyncResult as a dict
+        :rtype: dict
+        """
+        results = []
+        sync_time = total_time_seconds = None
+
+        db = get_session()
+
+        download_started = group_download_result.started.replace(
+            tzinfo=datetime.timezone.utc
         )
-        self._enqueue_refresh_tasks(db)
-        return total_records_updated
+        sync_started = time.time()
+
+        try:
+            if full_flush:
+                logger.info(
+                    self._log_context.format_msg(
+                        "Performing data flush prior to sync as requested",
+                    )
+                )
+                self.flush_all()
+
+            # Iterate thru the records and commit
+
+            logger.info(
+                self._log_context.format_msg(
+                    "Syncing %d total update records into db"
+                    % group_download_result.total_records,
+                )
+            )
+            is_new = self._process_grype_file_records(
+                db, group_download_result, local_repo
+            )
+
+            logger.debug(
+                self._log_context.format_msg(
+                    "Updating last sync timestamp to %s" % download_started,
+                )
+            )
+
+            # process group logic for grype db if it is a new record. Set on metadata record if it is a new record
+            # If not new, use grype wrapper to get source counts for existing db
+            if is_new:
+                source_counts = self.source_counts
+                self._set_group_counts(db, source_counts)
+            else:
+                source_counts = (
+                    GrypeWrapperSingleton.get_instance().query_record_source_counts()
+                )
+
+            sync_time = time.time() - sync_started
+            total_time_seconds = time.time() - download_started.timestamp()
+            for source in source_counts:
+                if is_new:
+                    updated_count = source.count
+                else:
+                    updated_count = 0
+
+                results.append(
+                    GroupSyncResult(
+                        group=source.group,
+                        updated_record_count=updated_count,
+                        total_time_seconds=total_time_seconds,
+                        status="success",
+                    )
+                )
+
+            db.commit()
+        except Exception as e:
+            logger.exception(
+                self._log_context.format_msg(
+                    "Error syncing",
+                )
+            )
+            db.rollback()
+            raise e
+        finally:
+            if not sync_time or not sync_started:
+                sync_time = time.time() - sync_started
+                total_time_seconds = time.time() - download_started.timestamp()
+            logger.info(
+                self._log_context.format_msg(
+                    "Sync to db duration: %d sec" % sync_time,
+                )
+            )
+            logger.info(
+                self._log_context.format_msg(
+                    "Total sync, including download, duration: {} sec".format(
+                        total_time_seconds
+                    ),
+                )
+            )
+
+        return results
+
+    def _update_last_full_sync_timestamp(self) -> None:
+        """
+        Overrides the base class update function to update both the feed last sync, the grype db metadata record, and its groups
+        """
+        super()._update_last_full_sync_timestamp()
+        last_sync = self.metadata.last_full_sync
+
+        db = get_session()
+
+        try:
+            if self.grypedb_meta:
+                db.refresh(self.grypedb_meta)
+            else:
+                logger.error("No grypedb meta found to update last sync timestamp")
+                raise ValueError("Grype DB Meta not found")
+
+            self.grypedb_meta.synced_at = last_sync
+            self._update_group_timestamps(db)
+            db.commit()
+        finally:
+            db.rollback()
 
     def sync(
         self,
@@ -974,7 +1326,59 @@ class GrypeDBFeed(AnchoreServiceFeed):
         :rtype: FeedSyncResult
         """
         self._catalog_svc_client = event_client
-        return super().sync(fetched_data, full_flush, event_client, operation_id, group)
+        result = FeedSyncResult(feed=self.__feed_name__)
+        failed_count = 0
+
+        # Each group update is a unique session and can roll itself back.
+        sync_start_time = time.time()
+
+        logger.info(
+            LogContext(operation_id, self.__feed_name__, None).format_msg(
+                "Starting feed sync"
+            )
+        )
+
+        # Only iterate thru what was fetched
+        for group_download_result in filter(
+            # if `group` is none or empty string OR if `group` matches the name attribute in group download result
+            lambda x: x.feed == self.__feed_name__ and (not group or group == x.name),
+            fetched_data.metadata.download_result.results,
+        ):
+            self._log_context = LogContext(
+                operation_id, group_download_result.feed, group_download_result.group
+            )
+            logger.info(
+                self._log_context.format_msg(
+                    "Processing group for db update",
+                )
+            )
+
+            try:
+                new_data = self._sync_grype_groups(
+                    group_download_result,
+                    full_flush=full_flush,
+                    local_repo=fetched_data,
+                )  # Each group sync is a transaction
+                result.groups.extend(new_data)
+            except Exception:
+                logger.exception(
+                    self._log_context.format_msg(
+                        "Failed syncing group data",
+                    )
+                )
+                failed_count += 1
+                fail_result = GroupSyncResult(group=group_download_result.group)
+                result.groups.append(fail_result)
+
+        result.total_time_seconds = time.time() - sync_start_time
+        self._update_last_full_sync_timestamp()
+
+        # This is the merge/update only time, not including download time. Caller can compute total from this return value
+
+        if failed_count == 0:
+            result.status = "success"
+
+        return result
 
 
 class VulnerabilityFeed(AnchoreServiceFeed):
@@ -1537,7 +1941,7 @@ class GithubFeed(VulnerabilityFeed):
     )
 
 
-def feed_instance_by_name(name: str) -> AnchoreServiceFeed:
+def feed_instance_by_name(name: str) -> DataFeed:
     """
     Returns an instance of the feed using the given name, raises KeyError if name not found
 

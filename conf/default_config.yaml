@@ -149,6 +149,7 @@ services:
     external_port: ${ANCHORE_EXTERNAL_PORT}
     external_tls: ${ANCHORE_EXTERNAL_TLS}
     enable_hints: ${ANCHORE_HINTS_ENABLED}
+    enable_owned_package_filtering: ${ANCHORE_ENABLE_PACKAGE_FILTERING}
   policy_engine:
     enabled: true
     require_auth: true

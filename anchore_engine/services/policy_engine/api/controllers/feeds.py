@@ -1,4 +1,3 @@
-import typing
 from dataclasses import asdict
 
 from flask import jsonify
@@ -8,7 +7,7 @@ from anchore_engine.apis.exceptions import (
     AnchoreApiError,
     BadRequest,
     ConflictingRequest,
-    InternalError,
+    HTTPNotImplementedError,
     ResourceNotFound,
 )
 from anchore_engine.clients.services.simplequeue import (
@@ -17,14 +16,18 @@ from anchore_engine.clients.services.simplequeue import (
 )
 from anchore_engine.common.errors import AnchoreError
 from anchore_engine.common.helpers import make_response_error
+from anchore_engine.common.models.policy_engine import FeedGroupMetadata, FeedMetadata
 from anchore_engine.db import FeedGroupMetadata as DbFeedGroupMetadata
 from anchore_engine.db import FeedMetadata as DbFeedMetadata
-from anchore_engine.services.policy_engine.api.models import (
-    FeedGroupMetadata,
-    FeedMetadata,
-)
 from anchore_engine.services.policy_engine.engine.feeds import db, sync
+from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
+    GRYPE_DB_FEED_NAME,
+)
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    InvalidFeed,
+    get_vulnerabilities_provider,
+)
 from anchore_engine.subsys import logger as log
 
 authorizer = get_authorizer()
@@ -35,30 +38,22 @@ def list_feeds(refresh_counts=False):
     """
     GET /feeds
 
-    :param include_counts (ignored since counts are handled in the record now)
     :param refresh_counts: forcibly update the group counts (not normally necessary)
     :return:
     """
 
+    provider = get_vulnerabilities_provider()
+
     if refresh_counts:
-        sync.DataFeeds.update_counts()
+        provider.update_feed_group_counts()
 
-    response = [x.to_json() for x in _marshall_feeds_response()]
-
-    return jsonify(response)
-
-
-def _marshall_feeds_response() -> typing.List[FeedMetadata]:
-    response = []
-    meta = db.get_all_feeds_detached()
-
-    for feed in meta:
-        response.append(_marshall_feed_response(feed))
-
-    return response
+    return [feed.to_json() for feed in provider.get_feeds()]
 
 
 def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
+    """
+    Old method for marshaling a feed. Currently being replaced by workflows driven by providers
+    """
     if not feed:
         return ValueError(feed)
 
@@ -77,6 +72,9 @@ def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
 
 
 def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
+    """
+    Old method for marshaling a feed's groups. Currently being replaced by workflows driven by providers
+    """
     if not group:
         raise ValueError(group)
 
@@ -133,23 +131,22 @@ def toggle_feed_enabled(feed, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
 
-    session = db.get_session()
     try:
-        f = db.set_feed_enabled(session, feed, enabled)
-        if not f:
+        provider = get_vulnerabilities_provider()
+        feed = provider.update_feed_enabled_status(feed, enabled)
+
+        if not feed:
             raise ResourceNotFound(feed, detail={})
-        session.flush()
 
-        updated = _marshall_feed_response(f).to_json()
-        session.commit()
+        return feed.to_json(), 200
 
-        return jsonify(updated), 200
-    except AnchoreApiError:
-        session.rollback()
-        raise
+    except InvalidFeed:
+        raise BadRequest(
+            message="Feed not supported on configured vulnerability provider",
+            detail={"feed": feed, "configured_provider": provider.get_config_name()},
+        )
     except Exception as e:
         log.error("Could not update feed enabled status")
-        session.rollback()
         return jsonify(make_response_error(e, in_httpcode=500)), 500
 
 
@@ -157,7 +154,11 @@ def toggle_feed_enabled(feed, enabled):
 def toggle_group_enabled(feed, group, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-
+    if feed == GRYPE_DB_FEED_NAME:
+        raise HTTPNotImplementedError(
+            message="Enabling and disabling groups for grypedb feed is not currently supported.",
+            detail={},
+        )
     session = db.get_session()
     try:
         g = db.set_feed_group_enabled(session, feed, group, enabled)
@@ -181,6 +182,11 @@ def toggle_group_enabled(feed, group, enabled):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_feed(feed):
+    if feed == GRYPE_DB_FEED_NAME:
+        raise HTTPNotImplementedError(
+            message="Deleting the grypedb feed is not yet supported.",
+            detail={},
+        )
     session = db.get_session()
     try:
         f = db.lookup_feed(db_session=session, feed_name=feed)
@@ -214,6 +220,11 @@ def delete_feed(feed):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_group(feed, group):
+    if feed == GRYPE_DB_FEED_NAME:
+        raise HTTPNotImplementedError(
+            message="Deleting individual groups for the grypedb feed is not yet supported.",
+            detail={},
+        )
     session = db.get_session()
     try:
         f = db.lookup_feed_group(db_session=session, feed_name=feed, group_name=group)

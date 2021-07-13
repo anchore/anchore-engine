@@ -122,3 +122,12 @@ Each service implements its own API, and all APIs are defined in Swagger/OpenAPI
 ## More Information
 
 For further details on the use of the Anchore CLI with the Anchore Engine, please refer to the [Anchore Engine Documentation](https://engine.anchore.io/)
+
+## Developing
+
+This repo was reformatted using [Black](https://black.readthedocs.io/en/stable/) in Nov. 2020. This commit can
+be ignored in your local environment when using `git blame` since it impacted so many files. To ignore the commit you need
+to configure git-blame to use the provided file:  .git-blame-ignore-revs as a list of commits to ignore for blame.
+
+Set your local git configuration to use the provided file by running this from within the root of this source tree:
+`git config blame.ignoreRevsFile .git-blame-ignore-revs`

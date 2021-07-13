@@ -8,7 +8,7 @@
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
-  LATEST_RELEASE_MAJOR_VERSION: 0.9
+  LATEST_RELEASE_MAJOR_VERSION: 0.10.0
   TERM: xterm
 
 .attach_workspace: &attach_workspace
@@ -205,6 +205,9 @@ jobs:
     parameters:
       tox_env:
         type: string
+      vulnerabilities_provider:
+        type: string
+        default: ""
 
     machine:
       image: ubuntu-1604:202007-01
@@ -220,7 +223,7 @@ jobs:
           echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: Run functional tests
-          command: make setup-and-test-functional
+          command: make setup-and-test-functional<< parameters.vulnerabilities_provider >>
 
   e2e_tests:
     parameters:
@@ -280,7 +283,14 @@ workflows:
             - lint_38
             - unit_tests_38
       - functional_tests:
-          name: functional_tests_38
+          name: functional_tests_38_legacy
+          tox_env: "py38"
+          vulnerabilities_provider: ""
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38_grype
+          vulnerabilities_provider: "-grype"
           tox_env: "py38"
           requires:
             - build
@@ -290,7 +300,8 @@ workflows:
           context: dockerhub
           filters: *filter_release_branch
           requires:
-            - functional_tests_38
+            - functional_tests_38_grype
+            - functional_tests_38_legacy
             - integration_tests_38
       - anchore/image_scan:
           context: dockerhub
@@ -303,7 +314,7 @@ workflows:
   nightly_build:
     triggers:
       - schedule:
-          cron: "0 10 * * *"
+          cron: "0 5 * * *"
           filters:
             branches:
               only:

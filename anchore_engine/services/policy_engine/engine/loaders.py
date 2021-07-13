@@ -18,7 +18,10 @@ from anchore_engine.db import (
 from anchore_engine.subsys import logger
 from anchore_engine.util.rpm import split_rpm_filename
 from anchore_engine.common.helpers import safe_extract_json_value
-
+from anchore_engine.services.policy_engine.engine.feeds.config import (
+    get_provider_name,
+    get_section_for_vulnerabilities,
+)
 
 # this is a static mapping of known package names (keys) to official cpe names for each package
 nomatch_inclusions = {
@@ -527,7 +530,10 @@ class ImageLoader(object):
         if pkgs:
             return pkgs, handled_pkgtypes
         else:
+            # todo is this even correct?
             logger.warn("Pkg Allinfo not found, reverting to using pkgs.all")
+
+        # below logic doesn't do anything, ImagePackage instances are created and dropped
 
         all_pkgs = package_analysis_json["pkgs.all"]["base"]
         all_pkgs_src = package_analysis_json["pkgs_plus_source.all"]["base"]
@@ -1177,6 +1183,15 @@ class ImageLoader(object):
         cpes.extend(self.get_fuzzy_go_cpes(analysis_json, allcpes, image))
         cpes.extend(self.get_fuzzy_binary_cpes(analysis_json, allcpes, image))
 
+        # temporary workaround for supporting nvd matching for alpine os packages in grype integration
+        if get_provider_name(get_section_for_vulnerabilities()) == "grype":
+            os_pkgs_base = package_list.get("pkgs.allinfo", {}).get("base", {})
+            if os_pkgs_base:
+                os_pkgs_cpes = self.extract_syft_cpes_for_os_packages(
+                    allcpes, os_pkgs_base, image
+                )
+                cpes.extend(os_pkgs_cpes)
+
         return cpes
 
     def extract_syft_cpes(self, allcpes, package_dict, image, pkg_type):
@@ -1184,24 +1199,53 @@ class ImageLoader(object):
         for pkg_key, pkg_json_str in package_dict.items():
             pkg = safe_extract_json_value(pkg_json_str)
             pkg_cpes = pkg.get("cpes", [])
-            for cpe in pkg_cpes:
-                decomposed_cpe = self.decompose_cpe(cpe)
-                cpekey = ":".join(decomposed_cpe + [pkg_key])
 
-                if cpekey not in allcpes:
-                    allcpes[cpekey] = True
-                    image_cpe = ImageCpe()
-                    image_cpe.pkg_type = pkg_type
-                    image_cpe.pkg_path = pkg_key
-                    image_cpe.cpetype = decomposed_cpe[2]
-                    image_cpe.vendor = decomposed_cpe[3]
-                    image_cpe.name = decomposed_cpe[4]
-                    image_cpe.version = decomposed_cpe[5]
-                    image_cpe.update = decomposed_cpe[6]
-                    image_cpe.meta = decomposed_cpe[7]
-                    image_cpe.image_user_id = image.user_id
-                    image_cpe.image_id = image.id
-                    cpes.append(image_cpe)
+            cpes.extend(
+                self._make_image_cpes(image, allcpes, pkg_cpes, pkg_type, pkg_key)
+            )
+
+        return cpes
+
+    def _make_image_cpes(self, image, allcpes, pkg_cpes, pkg_type, pkg_path):
+        cpes = []
+        for cpe in pkg_cpes:
+            decomposed_cpe = self.decompose_cpe(cpe)
+            cpekey = ":".join(decomposed_cpe + [pkg_path])
+
+            if cpekey not in allcpes:
+                allcpes[cpekey] = True
+                image_cpe = ImageCpe()
+                image_cpe.pkg_type = pkg_type
+                image_cpe.pkg_path = pkg_path
+                image_cpe.cpetype = decomposed_cpe[2]
+                image_cpe.vendor = decomposed_cpe[3]
+                image_cpe.name = decomposed_cpe[4]
+                image_cpe.version = decomposed_cpe[5]
+                image_cpe.update = decomposed_cpe[6]
+                image_cpe.meta = decomposed_cpe[7]
+                image_cpe.image_user_id = image.user_id
+                image_cpe.image_id = image.id
+                cpes.append(image_cpe)
+
+        return cpes
+
+    def extract_syft_cpes_for_os_packages(self, allcpes, package_dict, image):
+        """
+        Utility function for parsing cpes for os packages only. Mostly a duplicate of extract_syft_cpes with the exception of pkg_type and pkg_path.
+        For os packages pkg_path is always pkgdb. pkg_type is picked up from the data instead of passing it as a function argument
+
+        """
+        cpes = []
+        for pkg_key, pkg_json_str in package_dict.items():
+            pkg = safe_extract_json_value(pkg_json_str)
+            pkg_path = f"pkgdb/{pkg_key}"  # os package location is always pkgdb. this is a deviation to tie a package with it's cpes
+            pkg_cpes = pkg.get("cpes", [])
+            pkg_type = pkg.get("type")
+
+            cpes.extend(
+                self._make_image_cpes(image, allcpes, pkg_cpes, pkg_type, pkg_path)
+            )
+
         return cpes
 
     @staticmethod

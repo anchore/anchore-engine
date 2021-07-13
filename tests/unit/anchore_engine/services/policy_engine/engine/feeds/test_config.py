@@ -1,15 +1,18 @@
+from dataclasses import dataclass
+from typing import List
+
 import pytest
 
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     compute_selected_configs_to_sync,
-    get_section_for_vulnerabilities,
     get_provider_name,
+    get_section_for_vulnerabilities,
     is_sync_enabled,
 )
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
-    LegacyProvider,
     GrypeProvider,
+    LegacyProvider,
 )
 
 
@@ -124,8 +127,8 @@ def test_get_selected_configs_to_sync_defaults(provider, test_config, expected):
         pytest.param(
             LegacyProvider,
             {"provider": "legacy", "sync": {"data": {"vulndb": {"enabled": True}}}},
-            {"vulndb"},
-            id="valid-legacy-vulndb",
+            set(),
+            id="invalid-legacy-vulndb",
         ),
         pytest.param(
             GrypeProvider,
@@ -250,3 +253,126 @@ def test_get_provider(test_input, expected):
 )
 def test_is_sync_enabled(test_input, expected):
     assert is_sync_enabled(test_input) == expected
+
+
+@dataclass
+class FeedConfiguration:
+    feed_name: str
+    enabled: bool
+
+
+def get_config_for_params(provider: str, feed_configurations: List[FeedConfiguration]):
+    return {
+        "provider": provider,
+        "sync": {
+            "enabled": True,
+            "ssl_verify": True,
+            "connection_timeout_seconds": 3,
+            "read_timeout_seconds": 60,
+            "data": {
+                feed_configuration.feed_name: {
+                    "enabled": feed_configuration.enabled,
+                    "url": "www.anchore.com",
+                }
+                for feed_configuration in feed_configurations
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    "provider, feed_configurations, expected_to_sync_after_compute",
+    [
+        (  # Legacy provider with one invalid config (vulndb), one grype config, and two legacy configs
+            "legacy",
+            [
+                FeedConfiguration("vulnerabilities", True),
+                FeedConfiguration("nvdv2", True),
+                FeedConfiguration("vulndb", True),
+                FeedConfiguration("grypedb", True),
+            ],
+            ["nvdv2", "vulnerabilities"],
+        ),
+        (  # Grype provider with one invalid config (vulndb) one grype config, and two legacy configs
+            "grype",
+            [
+                FeedConfiguration("vulnerabilities", True),
+                FeedConfiguration("nvdv2", True),
+                FeedConfiguration("vulndb", True),
+                FeedConfiguration("grypedb", True),
+            ],
+            ["grypedb"],
+        ),
+        (  # Legacy provider with two disabled configs and one grypedb config that is enabled
+            "legacy",
+            [
+                FeedConfiguration("vulnerabilities", False),
+                FeedConfiguration("nvdv2", False),
+                FeedConfiguration("grypedb", True),
+            ],
+            [],
+        ),
+        (  # Grype provider disabled grypedb config and two legacy configs enabled
+            "grype",
+            [
+                FeedConfiguration("vulnerabilities", True),
+                FeedConfiguration("nvdv2", True),
+                FeedConfiguration("grypedb", False),
+            ],
+            [],
+        ),
+        (  # Legacy provider all disabled configs
+            "legacy",
+            [
+                FeedConfiguration("vulnerabilities", False),
+                FeedConfiguration("nvdv2", False),
+                FeedConfiguration("grypedb", False),
+            ],
+            [],
+        ),
+        (  # Grype provider with all disabled configs
+            "grype",
+            [
+                FeedConfiguration("vulnerabilities", False),
+                FeedConfiguration("nvdv2", False),
+                FeedConfiguration("grypedb", False),
+            ],
+            [],
+        ),
+        (  # Grype provider with packages and grypedb enabled
+            "grype",
+            [
+                FeedConfiguration("vulnerabilities", False),
+                FeedConfiguration("nvdv2", False),
+                FeedConfiguration("grypedb", True),
+                FeedConfiguration("packages", True),
+            ],
+            ["grypedb", "packages"],
+        ),
+        (  # legacy provider with packages and grypedb enabled
+            "legacy",
+            [
+                FeedConfiguration("vulnerabilities", False),
+                FeedConfiguration("nvdv2", False),
+                FeedConfiguration("grypedb", True),
+                FeedConfiguration("packages", True),
+            ],
+            ["packages"],
+        ),
+    ],
+)
+def test_compute_selected_configs_to_sync(
+    provider: str,
+    feed_configurations: List[FeedConfiguration],
+    expected_to_sync_after_compute: List[str],
+):
+    if provider == "legacy":
+        vulnerabilities_provider = LegacyProvider()
+    else:
+        vulnerabilities_provider = GrypeProvider()
+    sync_configs = compute_selected_configs_to_sync(
+        provider=vulnerabilities_provider.get_config_name(),
+        vulnerabilities_config=get_config_for_params(provider, feed_configurations),
+        default_provider_sync_config=vulnerabilities_provider.get_default_sync_config(),
+    )
+    assert set(sync_configs.keys()) == set(expected_to_sync_after_compute)

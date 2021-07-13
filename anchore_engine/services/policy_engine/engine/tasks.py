@@ -23,10 +23,6 @@ from anchore_engine.db import Image, end_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import session_scope
 from anchore_engine.services.policy_engine.engine.exc import *
-from anchore_engine.services.policy_engine.engine.feeds.client import (
-    get_feeds_client,
-    get_grype_db_client,
-)
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     compute_selected_configs_to_sync,
     get_section_for_vulnerabilities,
@@ -34,7 +30,7 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
 from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedSyncResult
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncManager,
-    NoActiveGrypeDB,
+    NoActiveDBSyncError,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import (
     DataFeeds,
@@ -42,6 +38,8 @@ from anchore_engine.services.policy_engine.engine.feeds.sync import (
 )
 from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    GrypeProvider,
+    LegacyProvider,
     get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import identities, logger
@@ -51,6 +49,7 @@ from anchore_engine.subsys.events import (
     FeedSyncTaskStarted,
 )
 from anchore_engine.utils import timer
+from anchore_engine.common.models.schemas import ImageVulnerabilitiesQueueMessage
 
 
 def construct_task_from_json(json_obj):
@@ -240,35 +239,26 @@ class FeedsUpdateTask(IAsyncTask):
             start_time = datetime.datetime.utcnow()
 
             updated_data_feeds = list()
-            grype_db_sync_config = self.sync_configs.get("grypedb")
-            if grype_db_sync_config:
-                updated_data_feeds.extend(
-                    DataFeeds.sync(
-                        get_grype_db_client(grype_db_sync_config),
-                        to_sync=["grypedb"],
-                        full_flush=self.full_flush,
-                        catalog_client=catalog_client,
-                        operation_id=self.uuid,
-                    )
+            updated_data_feeds.extend(
+                DataFeeds.sync(
+                    sync_util_provider=GrypeProvider().get_sync_utils(
+                        self.sync_configs
+                    ),
+                    full_flush=self.full_flush,
+                    catalog_client=catalog_client,
+                    operation_id=self.uuid,
                 )
-
-            other_sync_configs = {
-                feed_name: sync_config
-                for feed_name, sync_config in self.sync_configs.items()
-                if feed_name != "grypedb"
-            }
-            if other_sync_configs:
-                # using the same sync config for all feeds
-                sync_config = list(other_sync_configs.values())[0]
-                updated_data_feeds.extend(
-                    DataFeeds.sync(
-                        get_feeds_client(sync_config),
-                        to_sync=list(other_sync_configs.keys()),
-                        full_flush=self.full_flush,
-                        catalog_client=catalog_client,
-                        operation_id=self.uuid,
-                    )
+            )
+            updated_data_feeds.extend(
+                DataFeeds.sync(
+                    sync_util_provider=LegacyProvider().get_sync_utils(
+                        self.sync_configs
+                    ),
+                    full_flush=self.full_flush,
+                    catalog_client=catalog_client,
+                    operation_id=self.uuid,
                 )
+            )
 
             logger.info("Feed sync complete (operation_id={})".format(self.uuid))
             return updated_data_feeds
@@ -313,8 +303,8 @@ class FeedsUpdateTask(IAsyncTask):
                 )
 
             try:
-                self.rescan_images_created_between(
-                    from_time=start_time, to_time=end_time
+                get_vulnerabilities_provider().rescan_images_loaded_during_feed_sync(
+                    self.uuid, from_time=start_time, to_time=end_time
                 )
             except:
                 logger.exception(
@@ -325,87 +315,6 @@ class FeedsUpdateTask(IAsyncTask):
                 raise
             finally:
                 end_session()
-
-    def rescan_images_created_between(self, from_time, to_time):
-        """
-        If this was a vulnerability update (e.g. timestamps vuln feeds lies in that interval), then look for any images that were loaded in that interval and
-        re-scan the cves for those to ensure that no ordering of transactions caused cves to be missed for an image.
-
-        This is an alternative to a blocking approach by which image loading is blocked during feed syncs.
-
-        :param from_time:
-        :param to_time:
-        :return: count of updated images
-        """
-
-        if from_time is None or to_time is None:
-            raise ValueError("Cannot process None timestamp")
-
-        logger.info(
-            "Rescanning images loaded between {} and {} (operation_id={})".format(
-                from_time.isoformat(), to_time.isoformat(), self.uuid
-            )
-        )
-        count = 0
-
-        db = get_session()
-        try:
-            # it is critical that these tuples are in proper index order for the primary key of the Images object so that subsequent get() operation works
-            imgs = [
-                (x.id, x.user_id)
-                for x in db.query(Image).filter(
-                    Image.created_at >= from_time, Image.created_at <= to_time
-                )
-            ]
-            logger.info(
-                "Detected images: {} for rescan (operation_id={})".format(
-                    " ,".join([str(x) for x in imgs]) if imgs else "[]", self.uuid
-                )
-            )
-        finally:
-            db.rollback()
-
-        retry_max = 3
-        for img in imgs:
-            for i in range(retry_max):
-                try:
-                    # New transaction for each image to get incremental progress
-                    db = get_session()
-                    try:
-                        # If the type or ordering of 'img' tuple changes, this needs to be updated as it relies on symmetry of that tuple and the identity key of the Image entity
-                        image_obj = db.query(Image).get(img)
-                        if image_obj:
-                            logger.info(
-                                "Rescanning image {} post-vuln sync. (operation_id={})".format(
-                                    img, self.uuid
-                                )
-                            )
-                            get_vulnerabilities_provider().load_image(
-                                image_obj, db_session=db
-                            )
-                            count += 1
-                        else:
-                            logger.warn(
-                                "Failed to lookup image with tuple: {} (operation_id={})".format(
-                                    str(img), self.uuid
-                                )
-                            )
-
-                        db.commit()
-
-                    finally:
-                        db.rollback()
-
-                    break
-                except Exception as e:
-                    logger.exception(
-                        "Caught exception updating vulnerability scan results for image {}. Waiting and retrying (operation_id={})".format(
-                            img, self.uuid
-                        )
-                    )
-                    time.sleep(5)
-
-        return count
 
     @classmethod
     def from_json(cls, json_obj):
@@ -540,7 +449,7 @@ class ImageLoadTask(IAsyncTask):
                     get_vulnerabilities_provider().load_image(
                         image=image_obj,
                         db_session=db,
-                        cache=True,  # save results to cache
+                        use_store=True,  # save results to cache
                     )
 
                 db.commit()
@@ -663,16 +572,62 @@ class GrypeDBSyncTask(IAsyncTask):
     def __init__(self, grypedb_file_path: Optional[str] = None):
         self.grypedb_file_path: Optional[str] = grypedb_file_path
 
-    def execute(self) -> bool:
+    def execute(self):
         """
         Runs the GrypeDBSyncTask by calling the GrypeDBSyncManager.
-
-        return: Returns True if the grypedb was updated or False if the local instance is up to date
-        rtype: bool
         """
-        try:
-            return GrypeDBSyncManager.run_grypedb_sync(self.grypedb_file_path)
-        except NoActiveGrypeDB:
-            logger.info("Grype DB not yet initialized. Waiting for initial sync...")
-        finally:
-            end_session()
+        with session_scope() as session:
+            try:
+                GrypeDBSyncManager.run_grypedb_sync(session, self.grypedb_file_path)
+            except NoActiveDBSyncError:
+                logger.warn(
+                    "Cannot initialize grype db locally since no record was found"
+                )
+
+
+class ImageVulnerabilitiesRefreshTask(IAsyncTask):
+    __task_name__ = "image_vulnerabilities_refresh_task"
+
+    def __init__(self, message: ImageVulnerabilitiesQueueMessage):
+        self.message = message
+
+    def execute(self):
+        with timer(
+            "image vulnerabilities refresh for %s/%s"
+            % (self.message.account_id, self.message.image_id),
+            log_level="info",
+        ):
+            logger.debug(
+                "Refreshing image vulnerabilities report for account_id=%s, image_id=%s, image_digest=%s",
+                self.message.account_id,
+                self.message.image_id,
+                self.message.image_digest,
+            )
+
+            with session_scope() as session:
+                img = (
+                    session.query(Image)
+                    .filter(
+                        Image.user_id == self.message.account_id,
+                        Image.id == self.message.image_id,
+                    )
+                    .one_or_none()
+                )
+
+                # lookup image first
+                if not img:
+                    logger.debug(
+                        "No record found for image account=%s, image_id=%s, skipping refresh",
+                        self.message.account_id,
+                        self.message.image_id,
+                    )
+                    return
+
+                # call the provider with vendor_only and force disabled
+                get_vulnerabilities_provider().get_image_vulnerabilities_json(
+                    image=img,
+                    vendor_only=False,
+                    db_session=session,
+                    force_refresh=False,
+                    use_store=True,
+                )

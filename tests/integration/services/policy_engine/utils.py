@@ -6,7 +6,7 @@ import datetime
 import json
 import os
 
-from anchore_engine.common.schemas import FeedAPIGroupRecord, FeedAPIRecord
+from anchore_engine.common.models.schemas import FeedAPIGroupRecord, FeedAPIRecord
 from anchore_engine.db.entities.policy_engine import FeedMetadata
 from anchore_engine.services.policy_engine.engine.feeds import (
     FeedGroupList,
