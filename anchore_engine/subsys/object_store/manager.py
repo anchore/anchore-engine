@@ -15,9 +15,11 @@ from anchore_engine.subsys.object_store.config import (
     DEFAULT_OBJECT_STORE_MANAGER_ID,
     DRIVER_NAME_KEY,
     DRIVER_SECTION_KEY,
+    extract_config,
     normalize_config,
     validate_config,
 )
+from anchore_engine.subsys.object_store.drivers import ObjectStorageDriver
 
 manager_singleton = {}
 
@@ -49,7 +51,7 @@ class ObjectStorageManager(object):
                 raise Exception(
                     "Archive driver set in config.yaml ({}) is not a valid driver. Valid drivers are: {}".format(
                         str(self.config[DRIVER_SECTION_KEY][DRIVER_NAME_KEY]),
-                        str(list(object_store.ObjectStorageDriver.registry.keys())),
+                        str(list(ObjectStorageDriver.registry.keys())),
                     )
                 )
 
@@ -304,7 +306,7 @@ class ObjectStorageManager(object):
         except Exception as err:
             raise err
 
-    def _client_for(self, content_uri: str) -> object_store.ObjectStorageDriver:
+    def _client_for(self, content_uri: str) -> ObjectStorageDriver:
         """
         Return the configured client for the given uri, if one exists. If not found, raises a KeyError exception
         :param content_uri: str uri of content to fetch
@@ -357,9 +359,7 @@ def initialize(
         # Already initialized, no-op
         return False
 
-    obj_store_config = object_store.config.extract_config(
-        service_config, config_keys=config_keys
-    )
+    obj_store_config = extract_config(service_config, config_keys=config_keys)
     archive_config = normalize_config(
         obj_store_config,
         legacy_fallback=allow_legacy_fallback,
@@ -403,4 +403,4 @@ def get_driver_list():
 
     :return: list of strings from driver names
     """
-    return list(object_store.ObjectStorageDriver.registry.keys())
+    return list(ObjectStorageDriver.registry.keys())
