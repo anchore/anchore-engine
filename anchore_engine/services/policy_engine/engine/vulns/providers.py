@@ -69,7 +69,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
     vulnerabilities_for_image,
-    image_from_sbom
+    image_from_sbom,
 )
 from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import timer
@@ -1302,6 +1302,30 @@ class GrypeProvider(VulnerabilitiesProvider):
             )
 
             return new_report
+
+    def do_stateless_scan(self, sbom: dict) -> ImageVulnerabilitiesReport:
+        """
+        Perform the scan, default to vendor_only=False
+
+        :param sbom: input json object of sbom to san
+        :type sbom: dict
+        :return: vulnerabilities report
+        :rtype: ImageVulnerabilitiesReport
+        """
+        image = image_from_sbom(sbom)
+        db_session = get_thread_scoped_session()
+        try:
+            return self.get_image_vulnerabilities(
+                image,
+                db_session,
+                vendor_only=False,
+                force_refresh=True,
+                use_store=False,
+            )
+        finally:
+            # Do not save
+            db_session.rollback()
+            db_session.close()
 
     def get_vulnerabilities(
         self, ids, affected_package, affected_package_version, namespace, session
