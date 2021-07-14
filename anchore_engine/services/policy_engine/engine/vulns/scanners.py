@@ -10,7 +10,7 @@ from typing import List
 
 from sqlalchemy.orm.session import Session
 
-from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
+from anchore_engine.clients.grype_wrapper import CommandException, GrypeWrapperSingleton
 from anchore_engine.common.models.policy_engine import (
     ImageVulnerabilitiesReport,
     VulnerabilitiesReportMetadata,
@@ -18,11 +18,11 @@ from anchore_engine.common.models.policy_engine import (
 )
 from anchore_engine.configuration import localconfig
 from anchore_engine.db.entities.policy_engine import (
-    Image,
-    ImagePackageVulnerability,
-    ImageCpe,
-    NvdV2Metadata,
     CpeV2Vulnerability,
+    Image,
+    ImageCpe,
+    ImagePackageVulnerability,
+    NvdV2Metadata,
 )
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
@@ -31,9 +31,10 @@ from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
-from .cpe_matchers import NonOSCpeMatcher, DistroEnabledCpeMatcher
+
+from .cpe_matchers import DistroEnabledCpeMatcher, NonOSCpeMatcher
 from .dedup import get_image_vulnerabilities_deduper
-from .mappers import to_grype_sbom, to_engine_vulnerabilities
+from .mappers import to_engine_vulnerabilities, to_grype_sbom
 
 # debug option for saving image sbom, defaults to not saving
 SAVE_SBOM_TO_FILE = (
@@ -218,6 +219,75 @@ class GrypeScanner:
             report.problems.append(
                 VulnerabilityScanProblem(
                     details="Failed to scan image sbom for vulnerabilities using grype"
+                )
+            )
+            return report
+
+        # transform grype response to engine vulnerabilities and dedup
+        try:
+            results = to_engine_vulnerabilities(grype_response)
+            report.results = get_image_vulnerabilities_deduper().execute(results)
+            report.metadata.generated_by = self._get_report_generated_by(grype_response)
+        except Exception:
+            logger.exception("Failed to transform grype vulnerabilities response")
+            report.problems.append(
+                VulnerabilityScanProblem(
+                    details="Failed to transform grype vulnerabilities response"
+                )
+            )
+            return report
+
+        return report
+
+    def static_scan_sbom_for_vulnerabilities(
+        self, sbom, db_session
+    ) -> ImageVulnerabilitiesReport:
+        image_id = sbom.get("source").get("target").get("imageID", "")
+        logger.info(
+            "Static scanning image %s for vulnerabilities",
+            image_id,
+        )
+
+        report = ImageVulnerabilitiesReport(
+            account_id=None,
+            image_id=image_id,
+            results=[],
+            metadata=VulnerabilitiesReportMetadata(
+                schema_version="1.0",
+                generated_at=datetime.datetime.utcnow(),
+                generated_by={"scanner": self.__class__.__name__},
+            ),
+            problems=[],
+        )
+
+        # check and run grype sync if necessary
+        try:
+            GrypeDBSyncManager.run_grypedb_sync(db_session)
+        except NoActiveDBSyncError:
+            logger.exception("Failed to initialize local vulnerability database")
+            report.problems.append(
+                VulnerabilityScanProblem(
+                    details="No vulnerability database found in the system. Retry after a feed sync completes setting up the vulnerability database"
+                )
+            )
+            return report
+
+        # submit the sbom to grype wrapper and get results
+        try:
+            # submit the image for analysis to grype
+            grype_response = (
+                GrypeWrapperSingleton.get_instance().get_vulnerabilities_for_sbom(
+                    json.dumps(sbom)
+                )
+            )
+        except (CommandException, TypeError):
+            logger.exception(
+                "Failed to static scan image sbom for vulnerabilities using grype for %s",
+                image_id,
+            )
+            report.problems.append(
+                VulnerabilityScanProblem(
+                    details="Failed to static scan image sbom for vulnerabilities using grype"
                 )
             )
             return report

@@ -1312,16 +1312,9 @@ class GrypeProvider(VulnerabilitiesProvider):
         :return: vulnerabilities report
         :rtype: ImageVulnerabilitiesReport
         """
-        image = image_from_sbom(sbom)
         db_session = get_thread_scoped_session()
         try:
-            return self.get_image_vulnerabilities(
-                image,
-                db_session,
-                vendor_only=False,
-                force_refresh=True,
-                use_store=False,
-            )
+            return self.__scanner__().static_scan_sbom_for_vulnerabilities(sbom, db_session)
         finally:
             # Do not save
             db_session.rollback()
