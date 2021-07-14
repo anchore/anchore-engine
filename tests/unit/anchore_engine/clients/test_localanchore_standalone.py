@@ -1,9 +1,13 @@
+from unittest import TestCase
+
 import pytest
-from anchore_engine.clients.localanchore_standalone import (
-    retrying_pull_image,
-    AnalysisError,
-)
+
 from anchore_engine.clients import localanchore_standalone
+from anchore_engine.clients.localanchore_standalone import (
+    AnalysisError,
+    generate_image_export,
+    retrying_pull_image,
+)
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging(level="DEBUG")
@@ -84,3 +88,58 @@ def test_retrying_image_pull_partial_failure(fail2_pull):
 
     assert fail_counter == 2
     fail_counter = 0
+
+
+expected_blank_image_export = {
+    "image": {
+        "imageId": "",
+        "imagedata": {
+            "analyzer_manifest": {},
+            "analysis_report": {},
+            "image_report": {
+                "meta": {
+                    "shortparentId": "",
+                    "sizebytes": -1,
+                    "imageId": "",
+                    "usertype": None,
+                    "shortId": "",
+                    "imagename": "",
+                    "parentId": "",
+                    "shortname": "",
+                    "humanname": "",
+                },
+                "docker_history": [],
+                "dockerfile_mode": None,
+                "dockerfile_contents": None,
+                "layers": [],
+                "familytree": [],
+                "docker_data": {
+                    "Architecture": None,
+                    "RepoDigests": [],
+                    "RepoTags": [""],
+                },
+            },
+        },
+    }
+}
+
+
+def test_blank_generate_image_export():
+    actual_blank_image_export = generate_image_export(
+        imageId="",
+        analyzer_report={},
+        imageSize=-1,
+        fulltag="",
+        docker_history=[],
+        dockerfile_mode=None,
+        dockerfile_contents=None,
+        layers=[],
+        familytree=[],
+        imageArch=None,
+        rdigests=[],
+        analyzer_manifest={},
+    )
+
+    TestCase().assertDictEqual(
+        expected_blank_image_export, actual_blank_image_export[0]
+    )
