@@ -3,9 +3,9 @@ This is a deprecated module. Archive model has changed to use the db_archivemeta
 """
 
 import time
+
 from anchore_engine import db
 from anchore_engine.db import LegacyArchiveDocument
-
 
 # specific DB interface helpers for the 'services' table
 

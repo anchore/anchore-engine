@@ -1,32 +1,32 @@
 import json
 import os
 import time
+import typing
 
 import anchore_engine.clients
-from anchore_engine.common import helpers
-from anchore_engine.configuration.localconfig import get_config
 import anchore_engine.subsys
 from anchore_engine.clients import localanchore_standalone
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.services.analyzer.utils import (
-    fulltag_from_detail,
-    emit_events,
-    update_analysis_started,
-    update_analysis_complete,
-    update_analysis_failed,
-    get_tempdir,
-)
-from anchore_engine.subsys import logger, events as events, metrics, taskstate
+from anchore_engine.common import helpers
 from anchore_engine.common.models.schemas import AnalysisQueueMessage, ValidationError
-from anchore_engine.utils import AnchoreException
+from anchore_engine.configuration.localconfig import get_config
 from anchore_engine.services.analyzer.errors import (
-    PolicyEngineClientError,
     CatalogClientError,
+    PolicyEngineClientError,
 )
 from anchore_engine.services.analyzer.tasks import WorkerTask
-import typing
+from anchore_engine.services.analyzer.utils import (
+    emit_events,
+    fulltag_from_detail,
+    get_tempdir,
+    update_analysis_complete,
+    update_analysis_failed,
+    update_analysis_started,
+)
+from anchore_engine.subsys import events, logger, metrics, taskstate
+from anchore_engine.utils import AnchoreException
 
 ANALYSIS_TIME_SECONDS_BUCKETS = [
     1.0,

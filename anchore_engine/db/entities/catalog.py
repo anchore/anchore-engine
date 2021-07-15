@@ -5,31 +5,33 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 import datetime
 import enum
 import uuid
+
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    BigInteger,
-    DateTime,
-    LargeBinary,
-    Index,
     JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
     Enum,
     ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    inspect,
 )
-from sqlalchemy import inspect
 from sqlalchemy.orm import relationship
+
+from anchore_engine.utils import datetime_to_rfc3339
 
 from .common import (
     Base,
-    anchore_now,
-    anchore_uuid,
-    UtilMixin,
     StringJSON,
+    UtilMixin,
+    anchore_now,
     anchore_now_datetime,
+    anchore_uuid,
 )
-from anchore_engine.utils import datetime_to_rfc3339
 
 
 class Anchore(Base, UtilMixin):

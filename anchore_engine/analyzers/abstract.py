@@ -1,5 +1,6 @@
-from abc import ABC, abstractmethod
 import os
+from abc import ABC, abstractmethod
+
 from anchore_engine.analyzers import utils as analyzer_utils
 
 

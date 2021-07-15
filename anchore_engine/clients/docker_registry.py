@@ -1,17 +1,17 @@
 import json
 import re
-import time
 import shlex
+import time
 
 import requests
 
-import anchore_engine.configuration.localconfig
 import anchore_engine.auth.common
-from anchore_engine.subsys import logger
+import anchore_engine.configuration.localconfig
 from anchore_engine.clients.skopeo_wrapper import (
     get_image_manifest_skopeo,
     get_repo_tags_skopeo,
 )
+from anchore_engine.subsys import logger
 
 
 def get_image_manifest_docker_registry(

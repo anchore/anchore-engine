@@ -1,43 +1,42 @@
-import collections
-import json
-import hashlib
-import time
 import base64
+import collections
+import hashlib
+import json
 import re
+import time
+from collections import namedtuple
 
 from dateutil import parser as dateparser
 
 import anchore_engine.apis.authorization
 import anchore_engine.common
-import anchore_engine.configuration.localconfig
 import anchore_engine.common.helpers
 import anchore_engine.common.images
-import anchore_engine.subsys.object_store.manager
-from anchore_engine.auth import aws_ecr
+import anchore_engine.configuration.localconfig
 import anchore_engine.services.catalog
-import anchore_engine.utils
-
-from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, notifications, object_store
+import anchore_engine.subsys.events
 import anchore_engine.subsys.metrics
+import anchore_engine.subsys.object_store.manager
+import anchore_engine.utils
+from anchore_engine import utils as anchore_utils
+from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
+from anchore_engine.auth import aws_ecr
 from anchore_engine.clients import docker_registry
-from anchore_engine.db import (
-    db_subscriptions,
-    db_catalog_image,
-    db_policybundle,
-    db_policyeval,
-    db_events,
-    db_registries,
-    db_services,
-)
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
-import anchore_engine.subsys.events
-from anchore_engine.db import session_scope
-from collections import namedtuple
-from anchore_engine.util.docker import DockerImageReference
+from anchore_engine.db import (
+    db_catalog_image,
+    db_events,
+    db_policybundle,
+    db_policyeval,
+    db_registries,
+    db_services,
+    db_subscriptions,
+    session_scope,
+)
 from anchore_engine.services.catalog.utils import diff_image_vulnerabilities
+from anchore_engine.subsys import logger, notifications, object_store, taskstate
+from anchore_engine.util.docker import DockerImageReference
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 

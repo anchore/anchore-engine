@@ -1,35 +1,32 @@
 import calendar
-import time
 import re
+import time
 from collections import OrderedDict
 
+from anchore_engine.common import nonos_package_types
+from anchore_engine.db import DistroNamespace
+from anchore_engine.db.entities.common import get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_feed_group_detached,
 )
-from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    feed_registry,
     have_vulnerabilities_for,
 )
-from anchore_engine.db import (
-    DistroNamespace,
-)
-from anchore_engine.subsys import logger
+from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
-    IntegerStringParameter,
+    CommaDelimitedStringListParameter,
     EnumCommaDelimStringListParameter,
     EnumStringParameter,
     FloatStringParameter,
+    IntegerStringParameter,
     SimpleStringParameter,
-    CommaDelimitedStringListParameter,
 )
-from anchore_engine.common import nonos_package_types
-from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
-from anchore_engine.db.entities.common import get_thread_scoped_session
-
+from anchore_engine.subsys import logger
 
 SEVERITY_ORDERING = ["unknown", "negligible", "low", "medium", "high", "critical"]
 

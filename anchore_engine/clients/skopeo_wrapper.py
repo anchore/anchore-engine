@@ -3,17 +3,17 @@ import json
 import os
 import re
 import tempfile
+from urllib.request import urlretrieve
 
 import anchore_engine.configuration.localconfig
+from anchore_engine.common.errors import AnchoreError
+from anchore_engine.subsys import logger
 from anchore_engine.utils import (
+    AnchoreException,
+    manifest_to_digest,
     run_command,
     run_command_list,
-    manifest_to_digest,
-    AnchoreException,
 )
-from anchore_engine.subsys import logger
-from anchore_engine.common.errors import AnchoreError
-from urllib.request import urlretrieve
 
 
 def manifest_to_digest_shellout(rawmanifest):

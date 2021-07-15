@@ -1,9 +1,10 @@
+from marshmallow import fields, post_load
+
 from anchore_engine.common.models.schemas import (
-    Schema,
     JsonSerializable,
     RFC3339DateTime,
+    Schema,
 )
-from marshmallow import fields, post_load
 
 
 class DistroMapping(JsonSerializable):

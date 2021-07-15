@@ -10,46 +10,45 @@ import tarfile
 import tempfile
 import time
 import uuid
+from threading import RLock
+
 from marshmallow import Schema, fields, post_load
 
-from anchore_engine.common.models.schemas import JsonSerializable
-from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
-from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
+from anchore_engine.common.models.schemas import JsonSerializable
 from anchore_engine.configuration import localconfig
 from anchore_engine.db import (
+    ArchivedImage,
+    ArchiveTransitionRule,
+    ArchiveTransitions,
+    CatalogImage,
+    CatalogImageDocker,
+    Session,
+    db_archived_images,
     db_catalog_image,
     db_catalog_image_docker,
     db_policyeval,
     session_scope,
-    db_archived_images,
-    ArchivedImage,
-    CatalogImageDocker,
-    CatalogImage,
-    Session,
-    ArchiveTransitionRule,
-    ArchiveTransitions,
 )
 from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.catalog.catalog_impl import image_imageDigest
-from anchore_engine.subsys import logger, archive, object_store
+from anchore_engine.subsys import archive, logger, object_store
 from anchore_engine.subsys.events import (
-    ImageArchiveDeleted,
-    ImageRestored,
     ImageArchived,
+    ImageArchiveDeleted,
     ImageArchiveDeleteFailed,
     ImageArchivingFailed,
+    ImageRestored,
     ImageRestoreFailed,
 )
 from anchore_engine.subsys.object_store.manager import ObjectStorageManager
-from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
+from anchore_engine.utils import datetime_to_rfc3339, ensure_bytes, ensure_str
 
 DRY_RUN_ENV_VAR = "ANCHORE_ANALYSIS_ARCHIVE_DRYRUN_ENABLED"
 DRY_RUN_MODE = os.getenv(DRY_RUN_ENV_VAR, "false").lower() == "true"
 
 _add_event_fn = None
-from threading import RLock
 
 event_init_lock = RLock()
 

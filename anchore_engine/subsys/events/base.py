@@ -1,7 +1,7 @@
-from collections import namedtuple
 import datetime
 import enum
 import json
+from collections import namedtuple
 
 from anchore_engine.subsys.servicestatus import get_my_service_record
 

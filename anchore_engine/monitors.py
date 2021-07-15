@@ -2,8 +2,9 @@
 Common threading utils for anchore engine services.
 
 """
-import time
 import threading
+import time
+
 from anchore_engine.subsys import logger
 
 # generic monitor_func implementation

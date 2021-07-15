@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import shlex
 
 from anchore_engine.utils import run_check

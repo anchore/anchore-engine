@@ -5,17 +5,20 @@ point.
 This is primarily used for the analysis archive feature of the system, but is not specific to that usage.
 
 """
-from anchore_engine.subsys.object_store.manager import initialize_direct
-from anchore_engine.subsys import object_store
+from anchore_engine.subsys import logger, object_store
 from anchore_engine.subsys.object_store.config import (
     ANALYSIS_ARCHIVE_MANAGER_ID,
     DEFAULT_OBJECT_STORE_MANAGER_ID,
-    default_config as DEFAULT_OBJ_STORE_CONFIG,
-    DRIVER_SECTION_KEY,
     DRIVER_NAME_KEY,
+    DRIVER_SECTION_KEY,
+)
+from anchore_engine.subsys.object_store.config import (
+    default_config as DEFAULT_OBJ_STORE_CONFIG,
+)
+from anchore_engine.subsys.object_store.config import (
     extract_config as obj_store_extract_config,
 )
-from anchore_engine.subsys import logger
+from anchore_engine.subsys.object_store.manager import initialize_direct
 
 DEFAULT_BUCKET_PREFIX = "anchore_analysis_archive"
 

@@ -1,17 +1,17 @@
 import copy
+import json
 import os
 import re
-import json
-import uuid
-import time
-import yaml
 import shutil
+import time
+import uuid
 
+import yaml
 from pkg_resources import resource_filename
 
-from anchore_engine.subsys import logger
-from anchore_engine.db.entities.identity import AccountTypes
 from anchore_engine.common import image_content_types, image_metadata_types
+from anchore_engine.db.entities.identity import AccountTypes
+from anchore_engine.subsys import logger
 
 DEFAULT_CONFIG = {
     "service_dir": os.path.join(
