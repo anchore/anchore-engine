@@ -16,7 +16,7 @@ from anchore_engine.subsys.logger import enable_test_logging
 
 enable_test_logging()
 
-
+@pytest.mark.skip()
 def test_serial_lock(anchore_db):
     """
     Simple test of serial lease access ensuring it transfers between holders properly in simple cases (acquire, release, acquire, release)
@@ -57,7 +57,7 @@ def test_serial_lock(anchore_db):
     good_release = db_locks.release_lease(r3["id"], r3["held_by"], r3["epoch"])
     assert good_release is None, "Should have no lock/None: {}".format(good_release)
 
-
+@pytest.mark.skip()
 def test_expiration(anchore_db):
     """
     Test lease expiration by acquiring and holding past expiration. Ensures others can acquire the lock after the ttl.
@@ -85,7 +85,7 @@ def test_expiration(anchore_db):
         db_locks.release_lease(l2["id"], l2["held_by"], l2["epoch"]) is None
     ), "No lock should be held"
 
-
+@pytest.mark.skip()
 def test_contextmgr(anchore_db):
     lockid = "testlock"
     lockid2 = "test_lock_2"
@@ -100,7 +100,7 @@ def test_contextmgr(anchore_db):
 
     logger.info(str(lt))
 
-
+@pytest.mark.skip()
 def run_thread_lock_fn(wait_sleep_seconds):
     """
     Function run by each thread that tries to acquire the lease and backs off if not acquired.
@@ -138,7 +138,7 @@ def run_thread_lock_fn(wait_sleep_seconds):
 
     return "Complete"
 
-
+@pytest.mark.skip()
 def test_threads(anchore_db):
     """
     Test concurrent lease contention and acquisition
@@ -158,7 +158,7 @@ def test_threads(anchore_db):
         r = thread.result()
         logger.info(("Thread result {}".format(r)))
 
-
+@pytest.mark.skip()
 def test_refresh_lease(anchore_db):
     # Setup
     client_id = uuid.uuid4().hex

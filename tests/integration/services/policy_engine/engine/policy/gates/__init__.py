@@ -54,8 +54,11 @@ def cls_no_feeds_test_env(cls_test_data_env2, request):
     :param request:
     :return:
     """
+    logger.error("In the cls_no_feeds_test_env fixture")
     _init_distro_mappings()
+    logger.error("Finished initing distor mappings")
     load_images(request)
+    logger.error("Finished loading images")
 
 
 class GateUnitTest(unittest.TestCase):

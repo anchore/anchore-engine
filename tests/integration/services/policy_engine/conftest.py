@@ -51,7 +51,9 @@ def cls_test_data_env(anchore_db, request):
 
 @pytest.fixture(scope="class")
 def cls_test_data_env2(cls_anchore_db, request):
+    logger.error("in the cls_test_data_env2 fixture")
     request.cls.test_env = _init_te(True)
+    logger.error("Finished init_te")
 
 
 def _load_images(test_env):

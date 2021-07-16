@@ -61,7 +61,7 @@ def cls_anchore_db(connection_str=None, do_echo=False):
     This is for use in legacy unittest frameworks where it is set once at the class level, not on each function.
     :return:
     """
-
+    logger.error("in the cls_anchore_db fixture")
     from anchore_engine.db.entities.common import (
         get_engine,
         initialize,
@@ -76,20 +76,26 @@ def cls_anchore_db(connection_str=None, do_echo=False):
     config = {"credentials": {"database": {"db_connect": conn_str, "db_echo": do_echo}}}
 
     try:
-        logger.info("Initializing connection: {}".format(config))
+        logger.error("Initializing connection: {}".format(config))
         ret = initialize(localconfig=config)
+        logger.error("finished initialize")
         init_thread_session(force_new=True)
 
+        logger.error("Before getting engine")
         engine = get_engine()
-        logger.info("Dropping db if found")
+        logger.error("After getting engine")
+        logger.error(str(engine.__dict__))
+        logger.error("Dropping db if found")
         engine.execute("DROP SCHEMA public CASCADE")
+        logger.error("After first execute")
         engine.execute("CREATE SCHEMA public")
         engine.execute("GRANT ALL ON SCHEMA public TO postgres")
         engine.execute("GRANT ALL ON SCHEMA public TO public")
 
         # Now ready for anchore init (tables etc)
-        logger.info("Creating tables")
+        logger.error("Creating tables")
         do_create_tables()
+        logger.error("Finished creating tables")
 
         yield ret
     finally:

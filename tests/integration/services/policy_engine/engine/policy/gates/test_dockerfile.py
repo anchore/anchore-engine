@@ -124,6 +124,7 @@ class DockerfileGateTest(GateUnitTest):
         logger.info("Fired: {}".format([x.json() for x in t.fired]))
 
     def test_directivechecktrigger_equals(self):
+        logger.error("In the actual test")
         t, gate, test_context = self.get_initialized_trigger(
             InstructionCheckTrigger.__trigger_name__,
             instruction="RUN",
@@ -131,8 +132,11 @@ class DockerfileGateTest(GateUnitTest):
             value="yum update -y",
         )
         test_image.dockerfile_contents = "RUN yum update -y\nENV abs\nCMD echo hi\n"
+        logger.error("finished initializing trigger in test itself")
         test_context = gate.prepare_context(test_image, test_context)
+        logger.error("finished preparing contesxt")
         t.evaluate(test_image, test_context)
+        logger.error("finished evaluation")
         self.assertEqual(len(t.fired), 1)
         logger.info("Fired: {}".format([x.json() for x in t.fired]))
 
