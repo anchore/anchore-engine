@@ -1,4 +1,5 @@
 import datetime
+
 from anchore_engine.common.models.policy_engine import (
     FeedMetadata,
     FeedGroupMetadata,
@@ -13,7 +14,6 @@ from anchore_engine.common.models.policy_engine import (
     LegacyTableReport,
     LegacyMultiReport,
 )
-
 from anchore_engine.utils import datetime_to_rfc3339
 
 

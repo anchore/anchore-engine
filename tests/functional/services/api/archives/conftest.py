@@ -1,7 +1,7 @@
 import pytest
 
-from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional import get_logger
+from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional.services.api.images import (
     wait_for_image_to_analyze,
     get_image_id,

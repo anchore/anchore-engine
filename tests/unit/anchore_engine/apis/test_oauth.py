@@ -1,10 +1,11 @@
-import pytest
 import time
+
+import pytest
+
 from anchore_engine.apis.oauth import merge_client_metadata
 from anchore_engine.apis.oauth import (
     setup_oauth_client,
     OAuth2Client,
-    CLIENT_GRANT_KEY,
     ANONYMOUS_CLIENT_ID,
 )
 

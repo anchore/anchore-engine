@@ -1,14 +1,14 @@
-import json
 import pytest
+
+from anchore_engine.common.models.policy_engine import (
+    VulnerabilityMatch,
+    ImageVulnerabilitiesReport,
+)
 from anchore_engine.services.catalog.utils import (
     get_normalized_map_from_table,
     get_normalized_map_from_report,
     diff_identity_summary_maps,
     VulnerabilitySummary,
-)
-from anchore_engine.common.models.policy_engine import (
-    VulnerabilityMatch,
-    ImageVulnerabilitiesReport,
 )
 
 

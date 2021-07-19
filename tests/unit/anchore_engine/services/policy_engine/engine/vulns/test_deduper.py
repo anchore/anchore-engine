@@ -1,3 +1,6 @@
+import copy
+import datetime
+
 import pytest
 
 from anchore_engine.common.models.policy_engine import (
@@ -15,8 +18,6 @@ from anchore_engine.services.policy_engine.engine.vulns.dedup import (
     FeedGroupRank,
     transfer_vulnerability_timestamps,
 )
-import datetime
-import copy
 
 
 class TestFeedGroupRank:

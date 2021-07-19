@@ -8,7 +8,6 @@ import json
 import os
 import threading
 import time
-import traceback
 from pathlib import Path
 
 import connexion
@@ -24,7 +23,6 @@ from anchore_engine.common.helpers import make_response_error
 from anchore_engine.configuration import localconfig
 from anchore_engine.configuration.localconfig import (
     InvalidOauthConfigurationError,
-    OauthNotConfiguredError,
 )
 from anchore_engine.db import db_services
 from anchore_engine.db import initialize as initialize_db

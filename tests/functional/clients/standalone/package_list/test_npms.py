@@ -1,7 +1,8 @@
 # from ['image']['imagedata']['analysis_report']['package_list']
-from .fixtures import npms
-from . import path_params, metadata_params
 import pytest
+
+from . import path_params, metadata_params
+from .fixtures import npms
 
 
 class TestJSPaths:

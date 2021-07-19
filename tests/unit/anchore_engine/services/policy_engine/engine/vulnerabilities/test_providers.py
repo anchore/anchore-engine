@@ -1,3 +1,5 @@
+import pytest
+
 from anchore_engine.common.models.policy_engine import (
     FixedArtifact,
     VulnerabilityMatch,
@@ -5,7 +7,6 @@ from anchore_engine.common.models.policy_engine import (
     Artifact,
 )
 from anchore_engine.services.policy_engine.engine.vulns.providers import GrypeProvider
-import pytest
 
 
 class TestGrypeProvider:

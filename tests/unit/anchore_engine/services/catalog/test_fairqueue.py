@@ -1,11 +1,6 @@
-import pytest
-import os
-import json
-import time
 import random
 
 from anchore_engine.services.catalog import _perform_queue_rebalance
-from anchore_engine.utils import ensure_bytes, ensure_str
 
 queue_rebalance_template = {
     "fooacct0": {},

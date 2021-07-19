@@ -1,13 +1,15 @@
-import pytest
-import zlib
 import json
-from anchore_engine.services.policy_engine.engine.policy.gates import files
-from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+import zlib
+
+import pytest
+
 from anchore_engine.db.entities.policy_engine import (
     Image,
     FilesystemAnalysis,
     AnalysisArtifact,
 )
+from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from anchore_engine.services.policy_engine.engine.policy.gates import files
 
 image_id = "1"
 user = "admin"

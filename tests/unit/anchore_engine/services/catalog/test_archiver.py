@@ -1,7 +1,8 @@
-import pytest
-import os
 import json
+import os
 import time
+
+import pytest
 
 from anchore_engine.db.entities.catalog import (
     CatalogImage,
@@ -11,7 +12,7 @@ from anchore_engine.db.entities.catalog import (
     ArchiveTransitions,
 )
 from anchore_engine.services.catalog import archiver
-from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.utils import ensure_bytes
 
 
 def test_archive_basic():

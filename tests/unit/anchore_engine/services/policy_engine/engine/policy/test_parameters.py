@@ -1,5 +1,10 @@
 import unittest
 
+from anchore_engine.services.policy_engine.engine.policy import gate
+from anchore_engine.services.policy_engine.engine.policy import params
+from anchore_engine.services.policy_engine.engine.policy.exceptions import (
+    ValidationError,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     JsonSchemaValidator,
     BooleanStringValidator,
@@ -15,13 +20,6 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     nested_item_delim_parser,
     delim_parser,
     LinkedValidator,
-)
-from anchore_engine.services.policy_engine.engine.policy import params
-from anchore_engine.services.policy_engine.engine.policy import gate
-from anchore_engine.services.policy_engine.engine.policy.exceptions import (
-    ParameterValueInvalidError,
-    ValidationError,
-    RequiredParameterNotSetError,
 )
 
 

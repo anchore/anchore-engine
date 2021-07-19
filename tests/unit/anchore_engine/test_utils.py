@@ -1,10 +1,8 @@
 import pytest
-import shlex
 
 from anchore_engine.utils import (
     CommandException,
     parse_dockerimage_string,
-    PIPED_CMD_VALUE_ERROR_MESSAGE,
     run_check,
     run_command_list_with_piped_input,
     run_sanitize,

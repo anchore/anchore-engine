@@ -1,8 +1,9 @@
 import unittest
+
+from anchore_engine.db.entities.policy_engine import Image
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     PolicyMappingRule,
 )
-from anchore_engine.db.entities.policy_engine import Image
 
 
 def matcher_for_tag(registry="*", repository="*", tag="*"):

@@ -1,8 +1,9 @@
+from itertools import chain
+
 import pytest
 
-from .fixtures import transformation_data
 from anchore_engine.db.entities import policy_engine as pe
-from itertools import chain
+from .fixtures import transformation_data
 
 
 class TestPolicyEngine:

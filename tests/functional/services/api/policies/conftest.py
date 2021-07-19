@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional import get_logger
+from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional.services.utils.http_utils import (
     http_post,
     RequestFailedError,
