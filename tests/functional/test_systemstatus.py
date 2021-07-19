@@ -1,11 +1,7 @@
-from . import *
-
-from distutils.version import LooseVersion
-import requests
-import uuid
-import time
-import json
 import os
+from distutils.version import LooseVersion
+
+from . import *
 
 # Functional tests for system status as a basic connectivity/anchore-engine up test
 anchore_user = os.environ["ANCHORE_CLI_USER"]

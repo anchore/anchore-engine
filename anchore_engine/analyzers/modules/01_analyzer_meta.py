@@ -2,7 +2,6 @@
 
 import json
 import os
-import shutil
 import sys
 
 import anchore_engine.analyzers.utils

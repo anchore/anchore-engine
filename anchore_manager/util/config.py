@@ -1,5 +1,6 @@
 import copy
 import os
+
 from . import logging
 
 DEFAULT_CONFIG = {"jsonmode": False, "debug": False, "configdir": "/config"}

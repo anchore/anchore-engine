@@ -13,8 +13,7 @@ from anchore_engine import db
 from anchore_engine import utils as anchore_utils
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.common.helpers import make_response_error
-from anchore_engine.subsys import archive, logger
+from anchore_engine.subsys import archive
 from anchore_engine.subsys.metrics import flask_metrics
 
 authorizer = get_authorizer()

@@ -15,7 +15,7 @@ from anchore_engine.db.entities.catalog import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store import manager
-from anchore_engine.utils import datetime_to_rfc3339, ensure_bytes, ensure_str
+from anchore_engine.utils import datetime_to_rfc3339, ensure_str
 
 authorizer = get_authorizer()
 

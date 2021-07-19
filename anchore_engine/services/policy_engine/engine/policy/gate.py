@@ -15,12 +15,9 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     TriggerEvaluationError,
     ValidationError,
 )
-from anchore_engine.services.policy_engine.engine.policy.params import (
-    LinkedValidator,
-    TriggerParameter,
-)
+from anchore_engine.services.policy_engine.engine.policy.params import LinkedValidator
 from anchore_engine.subsys import logger
-from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.utils import ensure_bytes
 
 
 class LifecycleStates(enum.Enum):

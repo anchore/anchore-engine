@@ -3,11 +3,9 @@ Tests for the internal simplequeue client lease convenience functions.
 """
 import pytest
 
-from anchore_engine.clients.services.simplequeue import (
-    run_target_with_lease,
-)
+from anchore_engine.clients.services.simplequeue import run_target_with_lease
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.identities import IdentityManager, HttpBasicCredential
+from anchore_engine.subsys.identities import HttpBasicCredential, IdentityManager
 
 logger.enable_test_logging()
 

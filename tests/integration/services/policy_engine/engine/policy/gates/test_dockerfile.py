@@ -2,21 +2,17 @@
 Gate Unit tests
 """
 import pytest
-from anchore_engine.subsys import logger
-from tests.integration.services.policy_engine.engine.policy.gates import (
-    GateUnitTest,
-    cls_no_feeds_test_env,
-)
-from anchore_engine.db import Image
 
+from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import (
     DockerfileGate,
+    EffectiveUserTrigger,
     ExposedPortsTrigger,
     InstructionCheckTrigger,
-    EffectiveUserTrigger,
     NoDockerfile,
 )
-
+from anchore_engine.subsys import logger
+from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 
 logger.enable_test_logging()
 

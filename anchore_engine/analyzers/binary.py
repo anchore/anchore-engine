@@ -2,7 +2,6 @@ import collections
 import json
 import os
 import re
-import sys
 import tarfile
 
 import anchore_engine.utils

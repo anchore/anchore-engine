@@ -7,7 +7,6 @@ from anchore_engine import utils
 from anchore_engine.db import db_archivemetadata, session_scope
 from anchore_engine.subsys import logger, object_store
 from anchore_engine.subsys.object_store.config import (
-    ALT_OBJECT_STORE_CONFIG_KEY,
     COMPRESSION_ENABLED_KEY,
     COMPRESSION_LEVEL,
     COMPRESSION_MIN_SIZE_KEY,

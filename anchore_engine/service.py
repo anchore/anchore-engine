@@ -21,9 +21,7 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.configuration import localconfig
-from anchore_engine.configuration.localconfig import (
-    InvalidOauthConfigurationError,
-)
+from anchore_engine.configuration.localconfig import InvalidOauthConfigurationError
 from anchore_engine.db import db_services
 from anchore_engine.db import initialize as initialize_db
 from anchore_engine.db import session_scope

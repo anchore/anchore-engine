@@ -2,9 +2,7 @@
 
 import json
 import os
-import re
 import stat
-import subprocess
 import sys
 
 import anchore_engine.analyzers.utils

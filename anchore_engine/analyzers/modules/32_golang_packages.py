@@ -2,9 +2,7 @@
 
 import json
 import os
-import re
 import sys
-import traceback
 
 import anchore_engine.analyzers.utils
 

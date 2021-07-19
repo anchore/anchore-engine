@@ -7,11 +7,9 @@ from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     EnumStringParameter,
-    PipeDelimitedStringListParameter,
     TriggerParameter,
     TypeValidator,
 )
-from anchore_engine.subsys import logger
 from anchore_engine.utils import ensure_bytes, ensure_str
 
 

@@ -3,6 +3,7 @@ from itertools import chain
 import pytest
 
 from anchore_engine.db.entities import policy_engine as pe
+
 from .fixtures import transformation_data
 
 

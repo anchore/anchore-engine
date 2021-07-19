@@ -5,9 +5,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 
 from anchore_engine.db import GrypeDBFeedMetadata
-from anchore_engine.db.db_grype_db_feed_metadata import (
-    NoActiveGrypeDB,
-)
+from anchore_engine.db.db_grype_db_feed_metadata import NoActiveGrypeDB
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
     GrypeDBSyncLock,
     GrypeDBSyncLockAquisitionTimeout,

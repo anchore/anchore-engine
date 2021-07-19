@@ -1,15 +1,15 @@
 import pytest
 
 from anchore_engine.services.apiext.api.helpers.image_content_response import (
-    _build_os_response,
-    _build_npm_response,
-    _build_gem_response,
-    _build_python_response,
-    _build_java_response,
+    _build_default_response,
     _build_docker_history_response,
     _build_dockerfile_response,
+    _build_gem_response,
+    _build_java_response,
     _build_manifest_response,
-    _build_default_response,
+    _build_npm_response,
+    _build_os_response,
+    _build_python_response,
 )
 
 

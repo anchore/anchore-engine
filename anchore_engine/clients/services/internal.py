@@ -17,11 +17,7 @@ from anchore_engine.clients.services.common import (
 from anchore_engine.clients.services.http import anchy_get
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.identities import (
-    AccessCredential,
-    HttpBasicCredential,
-    HttpBearerCredential,
-)
+from anchore_engine.subsys.identities import HttpBasicCredential, HttpBearerCredential
 from anchore_engine.utils import ensure_str
 
 

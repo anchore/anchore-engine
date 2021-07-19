@@ -17,7 +17,6 @@ from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     CommaDelimitedStringListParameter,
-    EnumCommaDelimStringListParameter,
     EnumStringParameter,
     FloatStringParameter,
     IntegerStringParameter,

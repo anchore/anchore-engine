@@ -1,7 +1,7 @@
 # from ['image']['imagedata']['analysis_report']['package_list']
 import pytest
 
-from . import path_params, metadata_params
+from . import metadata_params, path_params
 from .fixtures import npms
 
 

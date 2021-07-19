@@ -44,7 +44,6 @@ from anchore_engine.db import (
     ImagePackage,
 )
 from anchore_engine.db import get_thread_scoped_session as get_session
-from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     build_bundle,
     build_empty_error_execution,

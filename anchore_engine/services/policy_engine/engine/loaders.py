@@ -1,6 +1,5 @@
 import base64
 import hashlib
-import json
 import re
 
 from anchore_engine.common.helpers import safe_extract_json_value
@@ -21,7 +20,7 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.util.rpm import split_rpm_filename
-from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.utils import ensure_bytes
 
 # this is a static mapping of known package names (keys) to official cpe names for each package
 nomatch_inclusions = {

@@ -36,7 +36,6 @@ from anchore_engine.db import (
 )
 from anchore_engine.services.catalog.utils import diff_image_vulnerabilities
 from anchore_engine.subsys import logger, notifications, object_store, taskstate
-from anchore_engine.util.docker import DockerImageReference
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 

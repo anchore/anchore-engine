@@ -1,7 +1,7 @@
 #!/usr/bin/python3
-import sys
 import re
 import subprocess
+import sys
 
 if len(sys.argv) != 2:
     print("Must have source tag to compare to")

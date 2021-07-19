@@ -27,7 +27,6 @@ from anchore_engine.common.models.policy_engine import (
 from anchore_engine.common.models.policy_engine import VulnerabilityMatch
 from anchore_engine.db import (
     DistroNamespace,
-    FeedGroupMetadata,
     FeedMetadata,
     Image,
     ImageCpe,
@@ -35,7 +34,6 @@ from anchore_engine.db import (
 )
 from anchore_engine.db import ImageVulnerabilitiesReport as DBImageVulnerabilitiesReport
 from anchore_engine.db import VulnDBCpe, VulnDBMetadata, Vulnerability
-from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.db import select_nvd_classes, session_scope
 from anchore_engine.db.db_grype_db_feed_metadata import (
@@ -50,7 +48,6 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_all_feeds,
     get_all_feeds_detached,
-    get_feed_detached,
     set_feed_enabled,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (

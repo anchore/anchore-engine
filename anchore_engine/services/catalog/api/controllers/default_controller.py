@@ -9,16 +9,10 @@ import anchore_engine.subsys.servicestatus
 from anchore_engine import db
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.apis.exceptions import (
-    AnchoreApiError,
-    BadRequest,
-    ConflictingRequest,
-    InternalError,
-)
-from anchore_engine.common import helpers
+from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.common.models.schemas import ImportManifest
-from anchore_engine.services.catalog import CatalogService, archiver
+from anchore_engine.services.catalog import archiver
 from anchore_engine.services.catalog.archiver import ImageConflict
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics

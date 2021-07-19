@@ -4,7 +4,6 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 """
 import datetime
 import enum
-import uuid
 
 from sqlalchemy import (
     JSON,

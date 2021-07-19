@@ -15,7 +15,6 @@ from anchore_engine.apis.authorization import (
 )
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.subsys import logger
 
 authorizer = get_authorizer()
 

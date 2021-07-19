@@ -1,10 +1,11 @@
 import json
+import logging
 import sys
 from collections import OrderedDict
+
 from anchore_engine.subsys import logger
-from anchore_manager.util.proc import ExitCode
 from anchore_manager.util.config import DEFAULT_CONFIG
-import logging
+from anchore_manager.util.proc import ExitCode
 
 # Sane default
 _log_config = DEFAULT_CONFIG

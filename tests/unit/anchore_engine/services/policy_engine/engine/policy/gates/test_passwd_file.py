@@ -1,6 +1,6 @@
 import pytest
 
-from anchore_engine.db.entities.policy_engine import Image, AnalysisArtifact
+from anchore_engine.db.entities.policy_engine import AnalysisArtifact, Image
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.gates import passwd_file
 

@@ -4,8 +4,8 @@ import time
 import pytest
 
 from anchore_engine.auth.common import (
-    get_docker_registry_userpw,
     get_creds_by_registry,
+    get_docker_registry_userpw,
     registry_record_matches,
 )
 

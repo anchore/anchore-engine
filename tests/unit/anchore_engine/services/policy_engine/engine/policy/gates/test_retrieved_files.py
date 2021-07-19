@@ -1,6 +1,6 @@
 import pytest
 
-from anchore_engine.db.entities.policy_engine import Image, AnalysisArtifact
+from anchore_engine.db.entities.policy_engine import AnalysisArtifact, Image
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     PolicyRuleValidationErrorCollection,
 )

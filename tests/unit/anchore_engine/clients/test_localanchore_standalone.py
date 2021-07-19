@@ -2,8 +2,8 @@ import pytest
 
 from anchore_engine.clients import localanchore_standalone
 from anchore_engine.clients.localanchore_standalone import (
-    retrying_pull_image,
     AnalysisError,
+    retrying_pull_image,
 )
 from anchore_engine.subsys import logger
 

@@ -4,7 +4,7 @@ Async tasks that the worker component uses
 import datetime
 import enum
 import threading
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from uuid import uuid4
 
 

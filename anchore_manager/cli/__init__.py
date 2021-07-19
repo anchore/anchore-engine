@@ -1,8 +1,9 @@
 import click
 
-from . import db, objectstorage, service, analyzers
 from anchore_manager import version
 from anchore_manager.util.config import init_all
+
+from . import analyzers, db, objectstorage, service
 
 
 @click.group()

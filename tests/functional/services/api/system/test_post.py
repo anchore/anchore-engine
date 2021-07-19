@@ -1,6 +1,6 @@
 import pytest
 
-from tests.functional.services.utils.http_utils import http_post, APIResponse
+from tests.functional.services.utils.http_utils import APIResponse, http_post
 
 
 class TestSystemAPIPostReturns200:

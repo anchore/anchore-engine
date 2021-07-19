@@ -21,7 +21,6 @@ from ijson import common as ijcommon
 from ijson.backends import python as ijpython
 
 from anchore_engine.subsys import logger
-from anchore_engine.util.docker import parse_dockerimage_string
 
 SANITIZE_CMD_ERROR_MESSAGE = "bad character in shell input"
 PIPED_CMD_VALUE_ERROR_MESSAGE = "Piped command cannot be None or empty"

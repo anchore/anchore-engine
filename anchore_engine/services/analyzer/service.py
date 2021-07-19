@@ -1,6 +1,5 @@
 import copy
 import os
-import threading
 import time
 
 import pkg_resources
@@ -21,7 +20,6 @@ from anchore_engine.services.analyzer.analysis import (
 )
 from anchore_engine.services.analyzer.config import (
     PACKAGE_FILTERING_ENABLED_KEY,
-    extract_service_config,
     get_bool_value,
 )
 from anchore_engine.services.analyzer.imports import ImportTask, is_import_message

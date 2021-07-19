@@ -7,8 +7,8 @@ from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional.services.api.registries import get_registry_info
 from tests.functional.services.utils.http_utils import (
     RequestFailedError,
-    http_post,
     http_del,
+    http_post,
 )
 
 _logger = get_logger(__name__)

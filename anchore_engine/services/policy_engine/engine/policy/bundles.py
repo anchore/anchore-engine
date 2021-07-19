@@ -11,7 +11,6 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     DeprecationWarning,
     DuplicateIdentifierFoundError,
     EndOfLifedError,
-    GateEvaluationError,
     GateNotFoundError,
     InitializationError,
     InvalidGateAction,
@@ -22,20 +21,11 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     PolicyRuleValidationErrorCollection,
     ReferencedObjectNotFoundError,
     TriggerEvaluationError,
-    TriggerNotAvailableError,
     TriggerNotFoundError,
     UnsupportedVersionError,
     ValidationError,
 )
-from anchore_engine.services.policy_engine.engine.policy.formatting import (
-    policy_json_to_txt,
-    whitelist_json_to_txt,
-)
-from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseTrigger,
-    Gate,
-    TriggerMatch,
-)
+from anchore_engine.services.policy_engine.engine.policy.gate import TriggerMatch
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *

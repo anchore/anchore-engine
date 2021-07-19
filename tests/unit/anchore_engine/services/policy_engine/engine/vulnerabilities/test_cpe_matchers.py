@@ -7,17 +7,17 @@ import anchore_engine.db.entities.common
 import anchore_engine.services.policy_engine.engine.vulns.cpe_matchers
 import anchore_engine.services.policy_engine.engine.vulns.db
 from anchore_engine.db.entities.policy_engine import (
-    Vulnerability,
     CpeV2Vulnerability,
-    ImageCpe,
     DistroNamespace,
     DistroTuple,
+    ImageCpe,
     ImagePackage,
+    Vulnerability,
 )
 from anchore_engine.services.policy_engine.engine.vulns.cpe_matchers import (
+    cpes_for_image_packages,
     cve_ids_for_vuln_record,
     filter_secdb_entries,
-    cpes_for_image_packages,
 )
 from anchore_engine.services.policy_engine.engine.vulns.cpes import (
     dedup_cpe_vulnerabilities,

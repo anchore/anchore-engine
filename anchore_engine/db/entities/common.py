@@ -2,7 +2,6 @@
 Common functions and variables for all entity types including some bootstrap and init functions
 """
 import datetime
-import decimal
 import json
 import time
 import traceback
@@ -13,8 +12,6 @@ import sqlalchemy
 from sqlalchemy import types
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
-
-from anchore_engine.utils import datetime_to_rfc3339
 
 try:
     # Separate logger for use during bootstrap when logging may not be fully configured

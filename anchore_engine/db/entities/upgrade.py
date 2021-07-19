@@ -587,8 +587,6 @@ def fixed_artifact_upgrade_005_006():
     """
     from sqlalchemy import Boolean, Column, Text
 
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     table_name = "feed_data_vulnerabilities_fixed_artifacts"
@@ -1311,7 +1309,6 @@ def update_users_010_011():
     :return:
     """
     from anchore_engine.configuration import localconfig
-    from anchore_engine.db import session_scope
     from anchore_engine.db.entities.identity import UserTypes, anchore_uuid
 
     engine = anchore_engine.db.entities.common.get_engine()
@@ -1588,7 +1585,6 @@ def db_upgrade_012_013():
 
 def upgrade_014_archive_rules():
     from anchore_engine.db import session_scope
-    from anchore_engine.db.entities.identity import UserTypes
 
     engine = anchore_engine.db.entities.common.get_engine()
 
