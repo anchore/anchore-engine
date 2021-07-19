@@ -1,5 +1,5 @@
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.object_store import ObjectStorageDriver
+from anchore_engine.subsys.object_store.drivers import ObjectStorageDriver
 
 
 def _from_config(configuration):

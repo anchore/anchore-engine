@@ -3,7 +3,16 @@ import time
 from contextlib import contextmanager
 from distutils.version import StrictVersion
 
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Integer, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Integer,
+    String,
+    Text,
+)
 
 import anchore_engine.common.helpers
 import anchore_engine.db.entities.common
@@ -444,7 +453,6 @@ def db_upgrade_003_004():
 
 def db_upgrade_004_005():
     engine = anchore_engine.db.entities.common.get_engine()
-    from sqlalchemy import Column, String
 
     newcolumns = [
         Column("annotations", String, primary_key=False),
@@ -585,8 +593,6 @@ def fixed_artifact_upgrade_005_006():
     Upgrade the feed_data_vulnerabilities_fixed_artifacts schema with new columns and fill in the defaults
 
     """
-    from sqlalchemy import Boolean, Column, Text
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     table_name = "feed_data_vulnerabilities_fixed_artifacts"

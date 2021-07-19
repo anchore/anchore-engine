@@ -3,8 +3,6 @@ Generic utilities
 """
 import datetime
 import decimal
-import hashlib
-import json
 import os
 import platform
 import re
@@ -13,7 +11,6 @@ import subprocess
 import threading
 import time
 import uuid
-from collections import OrderedDict
 from contextlib import contextmanager
 from operator import itemgetter
 
@@ -328,20 +325,6 @@ def run_check(cmd, input_data=None, log_level="debug", **kwargs):
 
 def run_command(cmdstr, **kwargs):
     return run_command_list(shlex.split(cmdstr), **kwargs)
-
-
-def manifest_to_digest(rawmanifest):
-    from anchore_engine.clients.skopeo_wrapper import manifest_to_digest_shellout
-
-    ret = None
-    d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
-    if d["schemaVersion"] != 1:
-        ret = "sha256:" + str(hashlib.sha256(rawmanifest.encode("utf-8")).hexdigest())
-    else:
-        ret = manifest_to_digest_shellout(rawmanifest)
-
-    ret = ensure_str(ret)
-    return ret
 
 
 def get_threadbased_id(guarantee_uniq=False):

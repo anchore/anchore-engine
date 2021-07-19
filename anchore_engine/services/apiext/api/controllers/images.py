@@ -31,7 +31,7 @@ from anchore_engine.services.apiext.api.controllers.utils import (  # make_respo
 )
 from anchore_engine.subsys import logger, taskstate
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.utils import parse_dockerimage_string
+from anchore_engine.util.docker import parse_dockerimage_string
 
 authorizer = get_authorizer()
 
@@ -1080,7 +1080,7 @@ def analyze_image(
                 img_source = source.get("digest")
 
                 tag = img_source["tag"]
-                digest_info = anchore_engine.utils.parse_dockerimage_string(
+                digest_info = anchore_engine.util.docker.parse_dockerimage_string(
                     img_source["pullstring"]
                 )
                 digest = digest_info["digest"]

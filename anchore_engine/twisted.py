@@ -9,6 +9,7 @@ import json
 import os
 import sys
 
+from twisted.application import service
 from twisted.application.internet import StreamServerEndpointService, TimerService
 from twisted.internet import reactor, ssl
 from twisted.internet.endpoints import SSL4ServerEndpoint, TCP4ServerEndpoint
@@ -31,7 +32,7 @@ enable_thread_dumper = (
 )
 
 if enable_dangerous_debug_cli or enable_thread_dumper:
-    from twisted.application import internet, service  # pylint: disable=C0412
+    from twisted.application import internet  # pylint: disable=C0412
     from twisted.conch.insults import insults  # pylint: disable=C0412
     from twisted.conch.manhole import ColoredManhole  # pylint: disable=C0412
     from twisted.conch.telnet import TelnetBootstrapProtocol  # pylint: disable=C0412

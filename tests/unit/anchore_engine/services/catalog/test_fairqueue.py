@@ -1,6 +1,6 @@
 import random
 
-from anchore_engine.services.catalog import _perform_queue_rebalance
+from anchore_engine.services.catalog.service import _perform_queue_rebalance
 
 queue_rebalance_template = {
     "fooacct0": {},

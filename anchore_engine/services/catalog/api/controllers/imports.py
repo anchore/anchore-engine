@@ -411,7 +411,7 @@ def save_import_content(
     db_session.add(content_record)
     db_session.flush()
 
-    mgr = manager.object_store.get_manager()
+    mgr = manager.get_manager()
     resp = mgr.put_document(
         ApiRequestContextProxy.namespace(), import_bucket, key, ensure_str(content)
     )

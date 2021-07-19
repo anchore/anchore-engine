@@ -10,15 +10,12 @@ import click
 import anchore_engine.common.helpers
 from anchore_engine.clients import localanchore_standalone
 from anchore_engine.clients.localanchore_standalone import analyze_image
+from anchore_engine.clients.skopeo_wrapper import manifest_to_digest
 from anchore_engine.common.images import make_image_record
 from anchore_engine.configuration import localconfig
 from anchore_engine.services.catalog.archiver import ImageArchive, ObjectStoreLocation
-from anchore_engine.utils import (
-    ensure_bytes,
-    ensure_str,
-    manifest_to_digest,
-    parse_dockerimage_string,
-)
+from anchore_engine.util.docker import parse_dockerimage_string
+from anchore_engine.utils import ensure_bytes, ensure_str
 from anchore_manager.util.logging import log_error, logger
 from anchore_manager.util.proc import fail_exit
 

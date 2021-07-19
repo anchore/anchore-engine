@@ -5,7 +5,8 @@ import zlib
 
 from anchore_engine import utils
 from anchore_engine.db import db_archivemetadata, session_scope
-from anchore_engine.subsys import logger, object_store
+from anchore_engine.subsys import logger
+from anchore_engine.subsys.object_store import driver_utils
 from anchore_engine.subsys.object_store.config import (
     COMPRESSION_ENABLED_KEY,
     COMPRESSION_LEVEL,
@@ -41,7 +42,7 @@ class ObjectStorageManager(object):
         self.archive_clients = {}
 
         try:
-            driver = object_store.init_driver(self.config[DRIVER_SECTION_KEY])
+            driver = driver_utils.init_driver(self.config[DRIVER_SECTION_KEY])
             self.archive_clients[driver.__uri_scheme__] = driver
             self.primary_client = driver
 
