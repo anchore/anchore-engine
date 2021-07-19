@@ -1,5 +1,6 @@
 import pytest
 
+from anchore_engine.util.docker import parse_dockerimage_string
 from anchore_engine.utils import (
     SANITIZE_CMD_ERROR_MESSAGE,
     CommandException,
@@ -7,8 +8,6 @@ from anchore_engine.utils import (
     run_command_list_with_piped_input,
     run_sanitize,
 )
-
-from anchore_engine.util.docker import parse_dockerimage_string
 
 images = [
     (

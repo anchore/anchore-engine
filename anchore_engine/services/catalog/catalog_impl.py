@@ -16,6 +16,7 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.events
 import anchore_engine.subsys.metrics
 import anchore_engine.subsys.object_store.manager
+from anchore_engine import utils as anchore_utils
 from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
 from anchore_engine.auth import aws_ecr
 from anchore_engine.clients import docker_registry
@@ -31,10 +32,9 @@ from anchore_engine.db import (
     db_subscriptions,
     session_scope,
 )
-from anchore_engine import utils as anchore_utils
 from anchore_engine.services.catalog import utils
-from anchore_engine.util.docker import parse_dockerimage_string
 from anchore_engine.subsys import logger, notifications, object_store, taskstate
+from anchore_engine.util.docker import parse_dockerimage_string
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 
