@@ -5,14 +5,14 @@ Entities for task management.
 import datetime
 
 from sqlalchemy import (
-    Column,
-    Integer,
-    Enum,
-    DateTime,
-    String,
-    ForeignKey,
-    Boolean,
     JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
 )
 
 from anchore_engine.db.entities.common import Base, UtilMixin

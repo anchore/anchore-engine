@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import base64
-import sys
+import json
 import os
 import re
-import json
+import sys
 import tarfile
 
 import anchore_engine.analyzers.utils

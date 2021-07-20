@@ -1,4 +1,4 @@
-from sqlalchemy import desc, and_, or_, func
+from sqlalchemy import and_, desc, func, or_
 
 import anchore_engine.db.db_catalog_image_docker
 from anchore_engine import db

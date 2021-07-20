@@ -1,12 +1,13 @@
-import sys
+import collections
+import json
 import os
 import re
-import json
+import sys
 import tarfile
-import collections
 
 import anchore_engine.utils
 from anchore_engine.subsys import logger
+
 from . import utils
 
 binary_package_el = {

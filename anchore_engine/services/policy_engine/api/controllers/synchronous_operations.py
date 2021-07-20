@@ -13,38 +13,37 @@ import os
 import time
 
 import connexion
-from sqlalchemy import or_, func
+from sqlalchemy import func, or_
 from werkzeug.exceptions import HTTPException
 
 import anchore_engine.subsys.servicestatus
-from anchore_engine import utils, apis
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+from anchore_engine import apis, utils
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.clients.services import internal_client_for, catalog
+from anchore_engine.clients.services import catalog, internal_client_for
 from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 
-from anchore_engine.db import (
-    AnalysisArtifact,
-    Image,
-    get_thread_scoped_session as get_session,
-    ImageCpe,
-    ImagePackage,
-    CachedPolicyEvaluation,
-)
-
 # API models
+from anchore_engine.common.models.policy_engine import GateSpec
+from anchore_engine.common.models.policy_engine import Image as ImageMsg
 from anchore_engine.common.models.policy_engine import (
-    Image as ImageMsg,
-    PolicyEvaluationProblem,
-    PolicyEvaluation,
     ImageIngressRequest,
     ImageIngressResponse,
+    PolicyEvaluation,
+    PolicyEvaluationProblem,
     PolicyValidationResponse,
     TriggerParamSpec,
     TriggerSpec,
-    GateSpec,
 )
+from anchore_engine.db import (
+    AnalysisArtifact,
+    CachedPolicyEvaluation,
+    Image,
+    ImageCpe,
+    ImagePackage,
+)
+from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.feeds.db import get_all_feeds
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     build_bundle,
@@ -66,13 +65,11 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
 
-from anchore_engine.subsys import logger as log
-
-
 # Leave this here to ensure gates registry is fully loaded
+from anchore_engine.subsys import logger as log
 from anchore_engine.subsys import metrics
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.utils import ensure_str, ensure_bytes
+from anchore_engine.utils import ensure_bytes, ensure_str
 
 authorizer = get_authorizer()
 

@@ -1,12 +1,11 @@
 import json
 import uuid
+
 import jsonschema
 
 import anchore_engine.configuration.localconfig
 from anchore_engine.apis.context import ApiRequestContextProxy
-import anchore_engine.configuration.localconfig
-from anchore_engine.clients.services import http
-from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services import http, internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.db.entities.common import anchore_now
 from anchore_engine.subsys import logger

@@ -1,15 +1,14 @@
-from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
+from anchore_engine.db import GemMetadata
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    feed_instance_by_name,
+)
+from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
     TriggerParameter,
     TypeValidator,
 )
-from anchore_engine.db import GemMetadata
 from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    feed_instance_by_name,
-)
-
 
 # TODO; generalize these for any feed, with base classes and children per feed type
 

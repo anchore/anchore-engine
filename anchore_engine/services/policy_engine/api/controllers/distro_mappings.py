@@ -5,17 +5,16 @@ Async operations are handled by teh async_operations controller.
 
 """
 
-import logging
 import datetime
+import logging
 
 from flask import abort
-from anchore_engine.db import (
-    get_thread_scoped_session as get_session,
-    DistroMapping as DbDistroMapping,
-)
-from anchore_engine.common.models.policy_engine import DistroMapping
 from sqlalchemy.exc import IntegrityError
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
+from anchore_engine.common.models.policy_engine import DistroMapping
+from anchore_engine.db import DistroMapping as DbDistroMapping
+from anchore_engine.db import get_thread_scoped_session as get_session
 
 log = logging.getLogger()
 ANCHORE_PUBLIC_USER = "0"

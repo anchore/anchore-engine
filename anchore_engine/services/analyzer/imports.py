@@ -2,45 +2,44 @@ import base64
 import json
 import time
 
-from .tasks import WorkerTask
-from anchore_engine.subsys import logger
-from anchore_engine.common.models.schemas import (
-    InternalImportManifest,
-    ImportQueueMessage,
-    ValidationError,
-    InternalImportManifest,
-    ImportContentReference,
-)
-
-from anchore_engine.utils import timer, AnchoreException
+import anchore_engine.clients.localanchore_standalone
+from anchore_engine.analyzers.syft import convert_syft_to_engine
+from anchore_engine.analyzers.utils import merge_nested_dict
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.analyzers.utils import merge_nested_dict
-from anchore_engine.analyzers.syft import convert_syft_to_engine
-from anchore_engine.services.analyzer.utils import (
-    update_analysis_complete,
-    update_analysis_failed,
-    update_analysis_started,
-    emit_events,
-)
-from anchore_engine.services.analyzer.analysis import (
-    notify_analysis_complete,
-    analysis_failed_metrics,
-    store_analysis_results,
-    ANALYSIS_TIME_SECONDS_BUCKETS as IMPORT_TIME_SECONDS_BUCKETS,
+from anchore_engine.common.models.schemas import (
+    ImportContentReference,
+    ImportQueueMessage,
+    InternalImportManifest,
+    ValidationError,
 )
 from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import metrics, events, taskstate
-from anchore_engine.util.docker import (
-    DockerV2ManifestMetadata,
-    DockerV1ManifestMetadata,
+from anchore_engine.services.analyzer.analysis import (
+    ANALYSIS_TIME_SECONDS_BUCKETS as IMPORT_TIME_SECONDS_BUCKETS,
 )
-
-import anchore_engine.clients.localanchore_standalone
+from anchore_engine.services.analyzer.analysis import (
+    analysis_failed_metrics,
+    notify_analysis_complete,
+    store_analysis_results,
+)
 from anchore_engine.services.analyzer.config import (
     PACKAGE_FILTERING_ENABLED_KEY,
     get_bool_value,
 )
+from anchore_engine.services.analyzer.utils import (
+    emit_events,
+    update_analysis_complete,
+    update_analysis_failed,
+    update_analysis_started,
+)
+from anchore_engine.subsys import events, logger, metrics, taskstate
+from anchore_engine.util.docker import (
+    DockerV1ManifestMetadata,
+    DockerV2ManifestMetadata,
+)
+from anchore_engine.utils import AnchoreException, timer
+
+from .tasks import WorkerTask
 
 
 class InvalidImageStateException(Exception):

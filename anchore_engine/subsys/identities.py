@@ -1,26 +1,25 @@
 import datetime
 import re
 import time
+from threading import RLock
 
-from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import logger
-from anchore_engine.db import (
-    db_accounts,
-    db_account_users,
-    AccountTypes,
-    UserAccessCredentialTypes,
-    AccountStates,
-    UserTypes,
-)
-from anchore_engine.db.db_accounts import AccountNotFoundError
 from anchore_engine.auth.oauth import (
-    token_manager,
     InvalidOauthConfigurationError,
     OauthNotConfiguredError,
+    token_manager,
 )
-from threading import RLock
+from anchore_engine.configuration import localconfig
+from anchore_engine.db import (
+    AccountStates,
+    AccountTypes,
+    UserAccessCredentialTypes,
+    UserTypes,
+    db_account_users,
+    db_accounts,
+)
+from anchore_engine.db.db_accounts import AccountNotFoundError
+from anchore_engine.subsys import logger
 from anchore_engine.subsys.caching import TTLCache
-
 
 # Not currently used because upgrade...
 name_validator_regex = re.compile(

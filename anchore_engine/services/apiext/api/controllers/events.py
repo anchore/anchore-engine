@@ -1,17 +1,17 @@
-import anchore_engine.apis
-import anchore_engine.common.helpers
-from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.clients.services import internal_client_for
 from flask import request
-from anchore_engine.apis.authorization import (
-    get_authorizer,
-    RequestingAccountValue,
-    ActionBoundPermission,
-)
-from anchore_engine.subsys.events import EventBase
-from anchore_engine.subsys import logger
 
+import anchore_engine.apis
 import anchore_engine.common
+import anchore_engine.common.helpers
+from anchore_engine.apis.authorization import (
+    ActionBoundPermission,
+    RequestingAccountValue,
+    get_authorizer,
+)
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.subsys import logger
+from anchore_engine.subsys.events import EventBase
 
 authorizer = get_authorizer()
 

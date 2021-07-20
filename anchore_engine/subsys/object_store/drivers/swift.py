@@ -1,23 +1,23 @@
 import copy
-import json
-import urllib.parse
 import io
-from swiftclient.service import SwiftService, SwiftUploadObject, SwiftError
+import json
+
+# Deal with the verbose logging verbosity of swiftclient
+import logging
+import urllib.parse
+
+from swiftclient.service import SwiftError, SwiftService, SwiftUploadObject
 
 from anchore_engine import utils
+from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store.drivers.interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import (
+    BadCredentialsError,
     DriverBackendError,
     DriverConfigurationError,
     ObjectKeyNotFoundError,
     ObjectStorageDriverError,
-    BadCredentialsError,
 )
-from anchore_engine.subsys import logger
-
-
-# Deal with the verbose logging verbosity of swiftclient
-import logging
 
 l = logging.getLogger("swiftclient")
 l.setLevel(logging.WARN)

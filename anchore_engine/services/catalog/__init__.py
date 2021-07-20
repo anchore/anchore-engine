@@ -1,5 +1,5 @@
-import datetime
 import copy
+import datetime
 import json
 import os
 import threading
@@ -20,51 +20,45 @@ import anchore_engine.subsys.metrics
 import anchore_engine.subsys.servicestatus
 from anchore_engine import db
 from anchore_engine.clients import docker_registry
-from anchore_engine.clients.services import internal_client_for
-from anchore_engine.clients.services import simplequeue
+from anchore_engine.clients.services import internal_client_for, simplequeue
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.common.helpers import make_policy_record
 from anchore_engine.db import (
+    AccountStates,
+    AccountTypes,
+    db_anchore,
     db_catalog_image,
     db_policybundle,
     db_queues,
     db_registries,
-    db_subscriptions,
-    db_anchore,
     db_services,
-    AccountStates,
-    AccountTypes,
+    db_subscriptions,
 )
+from anchore_engine.db.entities.catalog import ImageImportOperation, ImportState
 from anchore_engine.service import ApiService, LifeCycleStages
-from anchore_engine.services.catalog import archiver
-from anchore_engine.services.catalog import catalog_impl
+from anchore_engine.services.catalog import archiver, catalog_impl
 from anchore_engine.services.catalog.exceptions import (
-    TagManifestParseError,
     TagManifestNotFoundError,
+    TagManifestParseError,
 )
 from anchore_engine.services.catalog.image_content.get_image_content import (
-    ImageManifestContentGetter,
-    ImageDockerfileContentGetter,
     ImageContentGetter,
-)
-from anchore_engine.db.entities.catalog import (
-    ImageImportOperation,
-    ImportState,
+    ImageDockerfileContentGetter,
+    ImageManifestContentGetter,
 )
 from anchore_engine.subsys import (
-    notifications,
-    taskstate,
-    logger,
     archive,
+    logger,
+    notifications,
     object_store,
+    taskstate,
 )
 from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.subsys.object_store.config import (
-    DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
+    DEFAULT_OBJECT_STORE_MANAGER_ID,
 )
 from anchore_engine.utils import AnchoreException, bytes_to_mb
-
 
 ##########################################################
 

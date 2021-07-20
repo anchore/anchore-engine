@@ -1,26 +1,24 @@
-from collections import namedtuple
-import enum
 import datetime
-import time
+import enum
 import re
+import time
+from collections import namedtuple
 
+from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
+from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
 from sqlalchemy import (
-    Column,
-    String,
     Boolean,
-    Enum,
-    Integer,
-    ForeignKey,
-    Text,
+    Column,
     DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 
 from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
-
-from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
-
-from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
 
 
 class AccountTypes(enum.Enum):
