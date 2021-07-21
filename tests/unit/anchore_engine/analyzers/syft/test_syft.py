@@ -108,25 +108,6 @@ class TestFilterArtifacts:
     @pytest.mark.parametrize(
         "pkg_type",
         [
-            "bogus",
-            "",
-        ],
-    )
-    def test_filter_artifact_by_type(self, pkg_type):
-        artifacts = [
-            {
-                "id": "pkg-id",
-                "name": "pkg-name",
-                "type": pkg_type,
-            },
-        ]
-
-        actual = filter_artifacts(artifacts, [])
-        assert not [a["name"] for a in actual]
-
-    @pytest.mark.parametrize(
-        "pkg_type",
-        [
             "npm",
             "apk",
             "deb",
