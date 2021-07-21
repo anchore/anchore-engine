@@ -64,12 +64,12 @@ class RPMHint(BaseHint):
     def resolve_rpm_fields(self):
         from anchore_engine.util.rpm import split_rpm_filename
 
-        # if self.release:
-        #     rpm = "{}-{}-{}.{}.rpm".format(
-        #         self.name, self.version, self.release, self.arch
-        #     )
-        # else:
-        rpm = "{}-{}.{}.rpm".format(self.name, self.version, self.arch)
+        if self.release:
+            rpm = "{}-{}-{}.{}.rpm".format(
+                self.name, self.version, self.release, self.arch
+            )
+        else:
+            rpm = "{}-{}.{}.rpm".format(self.name, self.version, self.arch)
         (
             parsed_name,
             parsed_version,
