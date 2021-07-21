@@ -1,10 +1,12 @@
 import collections
 
+from anchore_engine.analyzers.syft.handlers import (
+    modules_by_artifact_type,
+    modules_by_engine_type,
+)
 from anchore_engine.analyzers.utils import content_hints, defaultdict_to_dict, dig
 from anchore_engine.clients.syft_wrapper import run_syft
-
-from ...subsys import logger
-from .handlers import modules_by_artifact_type, modules_by_engine_type
+from anchore_engine.subsys import logger
 
 
 def filter_relationships(relationships, **kwargs):
@@ -19,11 +21,6 @@ def filter_relationships(relationships, **kwargs):
 
 def filter_artifacts(artifacts, relationships):
     def filter_fn(artifact):
-        # syft may do more work than what is supported in engine, ensure we only include artifacts
-        # of select package types.
-        if artifact["type"] not in modules_by_artifact_type:
-            return False
-
         # some packages are owned by other packages (e.g. a python package that was installed
         # from an RPM instead of with pip), filter out any packages that are not "root" packages.
         if filter_relationships(
@@ -78,6 +75,15 @@ def convert_syft_to_engine(all_results, enable_package_filtering=True):
     else:
         artifacts = all_results["artifacts"]
     for artifact in artifacts:
+        # syft may do more work than what is supported in engine, ensure we only include artifacts
+        # of select package types.
+        if artifact["type"] not in modules_by_artifact_type:
+            logger.warn(
+                "Handler for artifact type {} not available. Skipping package {}.".format(
+                    artifact["type"], artifact["name"]
+                )
+            )
+            continue
         handler = modules_by_artifact_type[artifact["type"]]
         handler.translate_and_save_entry(findings, artifact)
 
