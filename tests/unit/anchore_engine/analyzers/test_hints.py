@@ -196,9 +196,15 @@ class TestRPMHint:
                         "version": "35",
                         "release": "0.7",
                         "arch": "noarch",
-                        "type": "rpm"
+                        "type": "rpm",
                     },
-                    "expected": ("fedora-release-identity-container", "35", "0.7", "", "noarch"),
+                    "expected": (
+                        "fedora-release-identity-container",
+                        "35",
+                        "0.7",
+                        "",
+                        "noarch",
+                    ),
                     "expected_error": "",
                 },
                 id="valid-release-no-source",
@@ -210,8 +216,7 @@ class TestRPMHint:
                         "version": "2021a",
                         "release": "1.fc34",
                         "arch": "noarch",
-                        "type": "rpm"
-
+                        "type": "rpm",
                     },
                     "expected": ("tzdata", "2021a", "1.fc34", "", "noarch"),
                     "expected_error": "",
