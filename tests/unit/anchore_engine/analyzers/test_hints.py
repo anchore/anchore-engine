@@ -192,6 +192,40 @@ class TestRPMHint:
             pytest.param(
                 {
                     "pkg": {
+                        "name": "fedora-release-identity-container",
+                        "version": "35",
+                        "release": "0.7",
+                        "arch": "noarch",
+                        "type": "rpm",
+                    },
+                    "expected": (
+                        "fedora-release-identity-container",
+                        "35",
+                        "0.7",
+                        "",
+                        "noarch",
+                    ),
+                    "expected_error": "",
+                },
+                id="valid-release-no-source",
+            ),
+            pytest.param(
+                {
+                    "pkg": {
+                        "name": "tzdata",
+                        "version": "2021a",
+                        "release": "1.fc34",
+                        "arch": "noarch",
+                        "type": "rpm",
+                    },
+                    "expected": ("tzdata", "2021a", "1.fc34", "", "noarch"),
+                    "expected_error": "",
+                },
+                id="valid-release-no-source",
+            ),
+            pytest.param(
+                {
+                    "pkg": {
                         "name": "zlib",
                         "version": "zlib-16.el8_2",
                         "arch": "x86_64",
