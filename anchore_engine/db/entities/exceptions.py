@@ -4,20 +4,14 @@ Exception handling utilities and functions.
 NOTE: these are PostgreSQL specific, so any dialect change will require updates here.
 
 """
-from sqlalchemy.exc import ProgrammingError
-
-from anchore_engine.subsys import logger
 
 try:
     # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
-
-    from anchore_engine.subsys import identities, logger  # pylint: disable=C0412,C0413
+    from anchore_engine.subsys import logger  # pylint: disable=C0412,C0413
 except:
     import logging
 
     logger = logging.getLogger(__name__)
-    log = logger
 
 PG_UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505"
 PG_COULD_NOT_GET_ROWLOCK_CODE = "55P03"

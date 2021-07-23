@@ -1,6 +1,3 @@
-import pytest
-
-
 class TestOwnershipOverlap:
     def test_package_ownership_deduplication(self, analyzed_data):
         result = analyzed_data("ownership-overlap")

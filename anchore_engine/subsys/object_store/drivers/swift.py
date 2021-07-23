@@ -1,6 +1,5 @@
 import copy
 import io
-import json
 
 # Deal with the verbose logging verbosity of swiftclient
 import logging
@@ -13,7 +12,6 @@ from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store.drivers.interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import (
     BadCredentialsError,
-    DriverBackendError,
     DriverConfigurationError,
     ObjectKeyNotFoundError,
     ObjectStorageDriverError,

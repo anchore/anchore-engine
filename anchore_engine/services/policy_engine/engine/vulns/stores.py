@@ -1,10 +1,8 @@
 import datetime
 import enum
-from typing import Dict
 
 import retrying
 
-from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
 from anchore_engine.db import Image
 from anchore_engine.db import ImageVulnerabilitiesReport as DbImageVulnerabilities

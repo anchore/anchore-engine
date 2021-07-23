@@ -1,4 +1,3 @@
-import base64
 import json
 import time
 
@@ -8,7 +7,6 @@ from anchore_engine.analyzers.utils import merge_nested_dict
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.common.models.schemas import (
-    ImportContentReference,
     ImportQueueMessage,
     InternalImportManifest,
     ValidationError,
@@ -22,10 +20,6 @@ from anchore_engine.services.analyzer.analysis import (
     notify_analysis_complete,
     store_analysis_results,
 )
-from anchore_engine.services.analyzer.config import (
-    PACKAGE_FILTERING_ENABLED_KEY,
-    get_bool_value,
-)
 from anchore_engine.services.analyzer.utils import (
     emit_events,
     update_analysis_complete,
@@ -37,7 +31,7 @@ from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
     DockerV2ManifestMetadata,
 )
-from anchore_engine.utils import AnchoreException, timer
+from anchore_engine.utils import AnchoreException
 
 from .tasks import WorkerTask
 

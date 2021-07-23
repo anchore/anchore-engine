@@ -1,6 +1,3 @@
-import re
-from collections import OrderedDict, namedtuple
-
 # TODO: complete dockerfile parser for easy checks and validation against any part of it
 #
 # def parse_dockerfile(dockerfile_content, is_guessed=False):

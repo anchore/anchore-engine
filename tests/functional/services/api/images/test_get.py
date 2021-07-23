@@ -1,13 +1,13 @@
 import pytest
 
 from tests.functional.services.api.images import (
-    get_image_id,
     get_image_digest,
+    get_image_id,
     get_image_tag,
     wait_for_image_to_analyze,
 )
 from tests.functional.services.api.policies import get_first_policy_id
-from tests.functional.services.utils.http_utils import http_get, APIResponse
+from tests.functional.services.utils.http_utils import APIResponse, http_get
 
 
 class TestImageAPIGetReturns200:

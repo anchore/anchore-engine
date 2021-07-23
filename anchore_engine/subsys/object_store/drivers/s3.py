@@ -4,12 +4,10 @@ import uuid
 import boto3
 
 from anchore_engine import utils
-from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store.exc import (
     BadCredentialsError,
     BucketNotFoundError,
     DriverConfigurationError,
-    ObjectKeyNotFoundError,
 )
 
 from .interface import ObjectStorageDriver

@@ -1,13 +1,8 @@
 import datetime
 import re
-import time
 from threading import RLock
 
-from anchore_engine.auth.oauth import (
-    InvalidOauthConfigurationError,
-    OauthNotConfiguredError,
-    token_manager,
-)
+from anchore_engine.auth.oauth import OauthNotConfiguredError, token_manager
 from anchore_engine.configuration import localconfig
 from anchore_engine.db import (
     AccountStates,

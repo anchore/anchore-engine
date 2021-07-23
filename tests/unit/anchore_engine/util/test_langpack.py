@@ -1,4 +1,5 @@
 import pytest
+
 from anchore_engine.util.langpack import compare_versions
 
 enable_training = False

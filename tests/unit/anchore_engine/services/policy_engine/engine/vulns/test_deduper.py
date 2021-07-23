@@ -1,22 +1,23 @@
+import copy
+import datetime
+
 import pytest
 
 from anchore_engine.common.models.policy_engine import (
-    VulnerabilityMatch,
-    Vulnerability,
     Artifact,
+    FixedArtifact,
     Match,
     NVDReference,
-    FixedArtifact,
+    Vulnerability,
+    VulnerabilityMatch,
 )
 from anchore_engine.services.policy_engine.engine.vulns.dedup import (
-    ImageVulnerabilitiesDeduplicator,
-    VulnerabilityIdentity,
-    RankedVulnerabilityMatch,
     FeedGroupRank,
+    ImageVulnerabilitiesDeduplicator,
+    RankedVulnerabilityMatch,
+    VulnerabilityIdentity,
     transfer_vulnerability_timestamps,
 )
-import datetime
-import copy
 
 
 class TestFeedGroupRank:

@@ -1,13 +1,8 @@
 import base64
-import datetime
-import json
-import os
-import re
 import time
 from urllib.parse import urlparse
 
 import boto3
-import pytz
 
 import anchore_engine.configuration.localconfig
 from anchore_engine import utils

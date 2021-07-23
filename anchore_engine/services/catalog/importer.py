@@ -1,10 +1,8 @@
 import enum
-import json
 
 import retrying
 
 from anchore_engine.apis import exceptions as api_exceptions
-from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.common.models.schemas import (

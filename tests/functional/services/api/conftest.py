@@ -10,12 +10,12 @@ from tests.functional import get_logger
 from tests.functional.services.api.images import get_image_id
 from tests.functional.services.utils.docker_utils import create_docker_client
 from tests.functional.services.utils.http_utils import (
-    http_get,
-    http_post,
-    http_del,
-    http_put,
     RequestFailedError,
     get_api_conf,
+    http_del,
+    http_get,
+    http_post,
+    http_put,
 )
 
 FT_ACCOUNT = "functional_test"

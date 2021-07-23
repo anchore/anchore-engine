@@ -4,7 +4,7 @@ from zope.interface import implementer
 
 # anchore modules
 from anchore_engine.services.simplequeue import SimpleQueueService
-from anchore_engine.twisted import WsgiApiServiceMaker, CommonOptions
+from anchore_engine.twisted import CommonOptions, WsgiApiServiceMaker
 
 
 @implementer(IServiceMaker, IPlugin)

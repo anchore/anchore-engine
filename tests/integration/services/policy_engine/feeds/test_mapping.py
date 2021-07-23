@@ -2,14 +2,16 @@
 Tests Feed mapping objects
 """
 import json
+
 import pytest
+
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
+    GemMetadata,
+    GemPackageDataMapper,
+    NpmMetadata,
+    NpmPackageDataMapper,
     Vulnerability,
     VulnerabilityFeedDataMapper,
-    GemPackageDataMapper,
-    NpmPackageDataMapper,
-    GemMetadata,
-    NpmMetadata,
 )
 
 test_cve = {

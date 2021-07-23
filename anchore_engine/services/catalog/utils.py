@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import Dict, List, Tuple
+from typing import Dict, Tuple
 
 from marshmallow.exceptions import ValidationError
 

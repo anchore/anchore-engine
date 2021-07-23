@@ -25,7 +25,7 @@ from anchore_engine.services.analyzer.utils import (
     update_analysis_failed,
     update_analysis_started,
 )
-from anchore_engine.subsys import events, logger, metrics, taskstate
+from anchore_engine.subsys import events, logger
 from anchore_engine.utils import AnchoreException
 
 ANALYSIS_TIME_SECONDS_BUCKETS = [

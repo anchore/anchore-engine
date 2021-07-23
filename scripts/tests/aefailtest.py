@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
-import subprocess
 import json
-import time
+import subprocess
 import sys
 
 analysis_maxtime = 900

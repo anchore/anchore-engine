@@ -2,22 +2,21 @@
 Tests the feed data fetcher
 """
 
-import tempfile
 import os
+import tempfile
 import uuid
 
-from tests.utils import init_test_logging
-from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.feeds.download import FeedDownloader
 from anchore_engine.common.models.schemas import (
     DownloadOperationConfiguration,
     GroupDownloadOperationConfiguration,
     GroupDownloadOperationParams,
-    LocalFeedDataRepoMetadata,
 )
 from anchore_engine.services.policy_engine.engine.feeds.client import get_feeds_client
 from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
-from anchore_engine.utils import ensure_bytes, timer
+from anchore_engine.services.policy_engine.engine.feeds.download import FeedDownloader
+from anchore_engine.subsys import logger
+from anchore_engine.utils import timer
+from tests.utils import init_test_logging
 
 init_test_logging(level="debug")
 

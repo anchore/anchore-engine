@@ -1,17 +1,17 @@
 import pytest
 
 from anchore_engine.analyzers.hints import (
+    AlpineHint,
     BaseHint,
-    HintsTypeError,
-    RPMHint,
-    PythonHint,
-    GoHint,
     BinaryHint,
     DebianHint,
-    AlpineHint,
     GemHint,
-    NPMHint,
+    GoHint,
+    HintsTypeError,
     JavaHint,
+    NPMHint,
+    PythonHint,
+    RPMHint,
 )
 
 

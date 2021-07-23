@@ -1,6 +1,7 @@
 import sys
-from anchore_engine.configuration import localconfig
+
 from anchore_engine import db
+from anchore_engine.configuration import localconfig
 from anchore_engine.db.entities import upgrade
 from anchore_engine.subsys import logger
 

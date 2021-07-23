@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from anchore_engine.services.catalog.catalog_impl import is_image_valid_size
 
 max_image_size_tests = [

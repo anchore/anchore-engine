@@ -1,14 +1,12 @@
-from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
-from anchore_engine.db import get_thread_scoped_session, Image
+import pytest
+
+from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.gates.retrieved_files import (
-    RetrievedFileChecksGate,
     FileContentRegexMatchTrigger,
+    RetrievedFileChecksGate,
 )
 from anchore_engine.subsys import logger
-import pytest
-from tests.integration.services.policy_engine.engine.policy.gates import (
-    cls_no_feeds_test_env,
-)
+from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 
 logger.enable_test_logging()
 

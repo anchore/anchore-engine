@@ -6,10 +6,8 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedNumberListParameter,
     CommaDelimitedStringListParameter,
     EnumStringParameter,
-    InputValidator,
     TriggerParameter,
     TypeValidator,
-    delim_parser,
 )
 from anchore_engine.subsys import logger
 

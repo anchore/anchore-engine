@@ -4,9 +4,7 @@ from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
-    EnumCommaDelimStringListParameter,
     EnumStringParameter,
-    NameVersionStringListParameter,
     TriggerParameter,
     TypeValidator,
 )
