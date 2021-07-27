@@ -4,7 +4,6 @@ from connexion import request
 
 from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.apis.authorization import (
-    INTERNAL_SERVICE_ALLOWED,
     ActionBoundPermission,
     RequestingAccountValue,
     get_authorizer,

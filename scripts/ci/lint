@@ -11,6 +11,6 @@ print_colorized INFO "Linting Anchore Engine code."; echo
 
 # This is specifically enabling checks because the output is too large to
 # fix in one go. As cleanups are done, more checks can be enabled
-pylint -s n --disable=all --enable=C0325,C0410,C0411,C0412,C0413,C0414 anchore_engine
+pylint -s n --disable=all --enable=C0325,C0410,C0411,C0412,C0413,C0414,W0611,R0401,W0404,W0406,W0410 anchore_engine
 
 print_colorized INFO "Finished linting Anchore Engine code."; echo

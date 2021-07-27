@@ -1,7 +1,7 @@
 import pytest
 
 from tests.functional.services.api.conftest import USER_API_CONFS
-from tests.functional.services.utils.http_utils import http_get, APIResponse
+from tests.functional.services.utils.http_utils import APIResponse, http_get
 
 
 @pytest.mark.parametrize("api_conf", USER_API_CONFS)

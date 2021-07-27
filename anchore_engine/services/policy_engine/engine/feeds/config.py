@@ -2,7 +2,6 @@
 Separate module for accessing feeds configuration. Does not have any dependencies on rest of the feeds code to avoid import loops
 """
 
-import enum
 from dataclasses import dataclass, field
 from typing import Dict
 

@@ -1,27 +1,20 @@
-import datetime
+import copy
+import json
 
 import pytest
-import json
-import copy
 
-from anchore_engine.db.entities.common import anchore_now_datetime
-from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from anchore_engine.db import Image, get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
-    build_bundle,
     GateAction,
-    ExecutableWhitelistItem,
+    build_bundle,
 )
-from anchore_engine.db import get_thread_scoped_session, Image, end_session
-from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
-from anchore_engine.db import get_thread_scoped_session, Image
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
+    BundleTargetTagMismatchError,
     InitializationError,
     UnsupportedVersionError,
-    BundleTargetTagMismatchError,
 )
-
+from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.subsys import logger
-from anchore_engine.utils import datetime_to_rfc3339
 
 logger.enable_test_logging()
 

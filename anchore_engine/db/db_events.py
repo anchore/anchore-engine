@@ -6,7 +6,6 @@ from sqlalchemy import func
 
 from anchore_engine import db
 from anchore_engine.db import Event
-from anchore_engine.subsys import logger
 
 
 def get_byfilter(

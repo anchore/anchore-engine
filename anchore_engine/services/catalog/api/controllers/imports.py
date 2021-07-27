@@ -15,7 +15,7 @@ from anchore_engine.db.entities.catalog import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.object_store import manager
-from anchore_engine.utils import datetime_to_rfc3339, ensure_bytes, ensure_str
+from anchore_engine.utils import datetime_to_rfc3339, ensure_str
 
 authorizer = get_authorizer()
 
@@ -411,7 +411,7 @@ def save_import_content(
     db_session.add(content_record)
     db_session.flush()
 
-    mgr = manager.object_store.get_manager()
+    mgr = manager.get_manager()
     resp = mgr.put_document(
         ApiRequestContextProxy.namespace(), import_bucket, key, ensure_str(content)
     )

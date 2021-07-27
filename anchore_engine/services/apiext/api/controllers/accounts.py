@@ -3,8 +3,6 @@ API handlers for /accounts routes in the External API
 
 """
 import datetime
-import json
-import os
 
 from anchore_engine.apis import ApiRequestContextProxy
 from anchore_engine.apis.authorization import (
@@ -18,12 +16,10 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.configuration.localconfig import (
-    ADMIN_USERNAME,
     DELETE_PROTECTED_ACCOUNT_TYPES,
     DELETE_PROTECTED_USER_NAMES,
     GLOBAL_RESOURCE_DOMAIN,
     RESERVED_ACCOUNT_NAMES,
-    SYSTEM_USERNAME,
     USER_MOD_PROTECTED_ACCOUNT_NAMES,
     get_config,
     load_policy_bundles,

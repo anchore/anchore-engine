@@ -1,6 +1,9 @@
 #!/usr/bin/python
-from setuptools import setup, find_packages
-import os, shutil, errno, re
+import os
+import re
+
+from setuptools import find_packages, setup
+
 from anchore_engine import version
 
 version = version.version

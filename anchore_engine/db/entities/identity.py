@@ -1,21 +1,9 @@
-import datetime
 import enum
-import re
 import time
-from collections import namedtuple
 
 from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
 from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
-from sqlalchemy import (
-    Boolean,
-    Column,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-)
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid

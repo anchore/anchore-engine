@@ -7,11 +7,9 @@ import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 from anchore_engine import db
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
-from anchore_engine.db import db_policyeval
 
 # import catalog_impl
 from anchore_engine.services.catalog import catalog_impl
-from anchore_engine.subsys import logger, object_store
 
 authorizer = get_authorizer()
 

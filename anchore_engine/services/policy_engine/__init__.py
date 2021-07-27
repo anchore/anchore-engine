@@ -38,7 +38,6 @@ from anchore_engine.subsys import logger
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
-from anchore_engine.utils import timer
 
 feed_sync_queuename = "feed_sync_tasks"
 system_user_auth = None

@@ -1,7 +1,7 @@
 from tests.functional.services.utils.http_utils import (
-    http_post_url_encoded,
     APIResponse,
     get_api_conf,
+    http_post_url_encoded,
 )
 
 

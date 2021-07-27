@@ -1,13 +1,12 @@
 import gzip
-import os
-import pytest
-import pathlib
 import json
+import os
 import pathlib
 import tarfile
-import pytest
-from anchore_engine.clients import skopeo_wrapper
 
+import pytest
+
+from anchore_engine.clients import skopeo_wrapper
 
 oci_manifest_digest = "2a8ca7db7332bc6c3b825a4540c33b47ad588947aa130f07b7493a863daa3ba3"
 

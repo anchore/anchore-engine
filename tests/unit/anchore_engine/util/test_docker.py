@@ -3,9 +3,10 @@ Tests for docker utils
 
 """
 import pytest
+
 from anchore_engine.util.docker import (
-    DockerV2ManifestMetadata,
     DockerV1ManifestMetadata,
+    DockerV2ManifestMetadata,
 )
 
 cloudfleet_nginx_v1_manifest = {

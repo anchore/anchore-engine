@@ -1,7 +1,7 @@
 from urllib.parse import quote
 
 from tests.functional.services.api.registries import get_registry_info
-from tests.functional.services.utils.http_utils import http_get, APIResponse
+from tests.functional.services.utils.http_utils import APIResponse, http_get
 
 
 class TestRegistriesAPIGetReturns200:

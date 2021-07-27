@@ -1,5 +1,6 @@
 import copy
 import datetime
+
 from anchore_engine.db import ImagePackageVulnerability
 from anchore_engine.subsys import logger
 

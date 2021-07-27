@@ -3,7 +3,16 @@ import time
 from contextlib import contextmanager
 from distutils.version import StrictVersion
 
-from sqlalchemy import BigInteger, Column, DateTime, Enum, Integer, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Integer,
+    String,
+    Text,
+)
 
 import anchore_engine.common.helpers
 import anchore_engine.db.entities.common
@@ -444,7 +453,6 @@ def db_upgrade_003_004():
 
 def db_upgrade_004_005():
     engine = anchore_engine.db.entities.common.get_engine()
-    from sqlalchemy import Column, String
 
     newcolumns = [
         Column("annotations", String, primary_key=False),
@@ -585,10 +593,6 @@ def fixed_artifact_upgrade_005_006():
     Upgrade the feed_data_vulnerabilities_fixed_artifacts schema with new columns and fill in the defaults
 
     """
-    from sqlalchemy import Boolean, Column, Text
-
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     table_name = "feed_data_vulnerabilities_fixed_artifacts"
@@ -1311,7 +1315,6 @@ def update_users_010_011():
     :return:
     """
     from anchore_engine.configuration import localconfig
-    from anchore_engine.db import session_scope
     from anchore_engine.db.entities.identity import UserTypes, anchore_uuid
 
     engine = anchore_engine.db.entities.common.get_engine()
@@ -1588,7 +1591,6 @@ def db_upgrade_012_013():
 
 def upgrade_014_archive_rules():
     from anchore_engine.db import session_scope
-    from anchore_engine.db.entities.identity import UserTypes
 
     engine = anchore_engine.db.entities.common.get_engine()
 

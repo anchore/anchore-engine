@@ -13,7 +13,7 @@ import sqlalchemy
 from readerwriterlock import rwlock
 from sqlalchemy import Column, ForeignKey, Integer, String, and_, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import anchore_engine.configuration.localconfig
 from anchore_engine.db.entities.common import UtilMixin

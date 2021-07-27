@@ -1,5 +1,4 @@
 import base64
-import collections
 import copy
 import filecmp
 import json
@@ -14,7 +13,6 @@ import uuid
 import retrying
 import treelib
 import yaml
-from pkg_resources import resource_filename
 
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
@@ -39,8 +37,6 @@ IMAGE_PULL_RETRY_WAIT_INCREMENT_MS = 1000
 
 try:
     # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
-
     from anchore_engine.subsys import logger  # pylint: disable=C0412
 except:
     import logging

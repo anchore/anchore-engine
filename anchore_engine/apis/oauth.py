@@ -7,7 +7,6 @@ from yosai.core.authc.authc import UsernamePasswordToken
 
 from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.auth.oauth import token_manager
-from anchore_engine.configuration import localconfig
 from anchore_engine.configuration.localconfig import (
     InvalidOauthConfigurationError,
     OauthNotConfiguredError,

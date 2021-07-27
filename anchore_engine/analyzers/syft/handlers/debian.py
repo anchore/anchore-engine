@@ -1,5 +1,3 @@
-import re
-
 from anchore_engine.analyzers.utils import dig
 
 

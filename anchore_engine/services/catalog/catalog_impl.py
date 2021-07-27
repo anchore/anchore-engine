@@ -13,11 +13,9 @@ import anchore_engine.common
 import anchore_engine.common.helpers
 import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
-import anchore_engine.services.catalog
 import anchore_engine.subsys.events
 import anchore_engine.subsys.metrics
 import anchore_engine.subsys.object_store.manager
-import anchore_engine.utils
 from anchore_engine import utils as anchore_utils
 from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
 from anchore_engine.auth import aws_ecr
@@ -34,9 +32,9 @@ from anchore_engine.db import (
     db_subscriptions,
     session_scope,
 )
-from anchore_engine.services.catalog.utils import diff_image_vulnerabilities
+from anchore_engine.services.catalog import utils
 from anchore_engine.subsys import logger, notifications, object_store, taskstate
-from anchore_engine.util.docker import DockerImageReference
+from anchore_engine.util.docker import parse_dockerimage_string
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 
@@ -291,7 +289,9 @@ def repo(dbsession, request_inputs, bodycontent={}):
 
             # check and kick a repo watcher task if necessary
             try:
-                rc = anchore_engine.services.catalog.schedule_watcher("repo_watcher")
+                rc = anchore_engine.services.catalog.service.schedule_watcher(
+                    "repo_watcher"
+                )
                 logger.debug("scheduled repo_watcher task")
             except Exception as err:
                 logger.warn("failed to schedule repo_watcher task: " + str(err))
@@ -1603,7 +1603,7 @@ def perform_vulnerability_scan(
 
         vdiff = {}
         if last_vuln_result and curr_vuln_result:
-            vdiff = diff_image_vulnerabilities(
+            vdiff = utils.diff_image_vulnerabilities(
                 old_result=last_vuln_result,
                 new_result=curr_vuln_result,
             )
@@ -1921,7 +1921,7 @@ def add_or_update_image(
 
     image_ids = {}
     for d in digests:
-        image_info = anchore_engine.utils.parse_dockerimage_string(d)
+        image_info = parse_dockerimage_string(d)
         registry = image_info["registry"]
         repo = image_info["repo"]
         digest = image_info["digest"]
@@ -1936,7 +1936,7 @@ def add_or_update_image(
             image_ids[registry][repo]["digests"].append(digest)
 
     for d in tags:
-        image_info = anchore_engine.utils.parse_dockerimage_string(d)
+        image_info = parse_dockerimage_string(d)
         registry = image_info["registry"]
         repo = image_info["repo"]
         digest = image_info["tag"]

@@ -3,11 +3,11 @@ import click
 from anchore_engine.subsys import logger
 from anchore_manager.util.db import (
     db_context,
-    init_db_context,
     db_preflight,
     do_upgrade,
+    init_db_context,
 )
-from anchore_manager.util.logging import log_config, log_error
+from anchore_manager.util.logging import log_error
 from anchore_manager.util.proc import ExitCode, doexit, fail_exit
 
 config = {}

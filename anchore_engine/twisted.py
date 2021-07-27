@@ -3,18 +3,12 @@ Twisted framework specific code for base plugin functionality. Used by each plug
 
 """
 
-import copy
 import datetime
 import faulthandler
 import json
 import os
 import sys
 
-from anchore_engine import utils
-from anchore_engine.apis.ssl import _load_ssl_cert, _load_ssl_key
-from anchore_engine.configuration import localconfig
-from anchore_engine.service import ApiService
-from anchore_engine.subsys import logger
 from twisted.application import service
 from twisted.application.internet import StreamServerEndpointService, TimerService
 from twisted.internet import reactor, ssl
@@ -23,6 +17,11 @@ from twisted.internet.task import LoopingCall
 from twisted.python import log, usage
 from twisted.web import rewrite, server, wsgi
 from twisted.web.resource import Resource
+
+from anchore_engine.apis.ssl import _load_ssl_cert, _load_ssl_key
+from anchore_engine.configuration import localconfig
+from anchore_engine.service import ApiService
+from anchore_engine.subsys import logger
 
 # For the debug CLI, require a code modification to enable it. This allows on-host edits of the script and restart, but no accidental config from env vars or config.
 enable_dangerous_debug_cli = False
@@ -33,7 +32,7 @@ enable_thread_dumper = (
 )
 
 if enable_dangerous_debug_cli or enable_thread_dumper:
-    from twisted.application import internet, service  # pylint: disable=C0412
+    from twisted.application import internet  # pylint: disable=C0412
     from twisted.conch.insults import insults  # pylint: disable=C0412
     from twisted.conch.manhole import ColoredManhole  # pylint: disable=C0412
     from twisted.conch.telnet import TelnetBootstrapProtocol  # pylint: disable=C0412

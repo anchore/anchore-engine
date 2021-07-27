@@ -11,8 +11,6 @@ work the way they do and often the behavior is a result of the range of cleanlin
 
 """
 import datetime
-import hashlib
-import json
 import re
 import threading
 import time

@@ -21,7 +21,7 @@ from anchore_engine.common.models.policy_engine import (
     Vulnerability,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.utils import parse_dockerimage_string
+from anchore_engine.util.docker import parse_dockerimage_string
 
 REGISTRY_TAG_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryTagSource"
 REGISTRY_DIGEST_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryDigestSource"

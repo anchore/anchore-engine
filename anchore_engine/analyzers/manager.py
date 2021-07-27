@@ -1,7 +1,6 @@
 import collections
 import os
 import re
-import time
 
 from pkg_resources import resource_filename
 

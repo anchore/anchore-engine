@@ -1,19 +1,16 @@
 import pytest
-from tests.integration.services.policy_engine.engine.policy.gates import (
-    GateUnitTest,
-    cls_no_feeds_test_env,
-    cls_fully_loaded_test_env,
-)
+
 from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.gates.npms import (
-    NpmCheckGate,
-    NotOfficialTrigger,
-    NotLatestTrigger,
-    NoFeedTrigger,
     BadVersionTrigger,
+    NoFeedTrigger,
+    NotLatestTrigger,
+    NotOfficialTrigger,
+    NpmCheckGate,
     PkgMatchTrigger,
 )
 from anchore_engine.subsys import logger
+from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
 
 logger.enable_test_logging()
 
