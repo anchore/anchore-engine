@@ -1,6 +1,6 @@
 import pytest
-from anchore_engine.common import helpers
 
+from anchore_engine.common import helpers
 
 values = [
     pytest.param("{}", {}, id="'{}'"),

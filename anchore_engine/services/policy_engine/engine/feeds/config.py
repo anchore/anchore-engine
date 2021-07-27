@@ -7,7 +7,6 @@ from typing import Dict
 
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
-import enum
 
 
 @dataclass

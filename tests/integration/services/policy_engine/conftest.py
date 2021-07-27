@@ -14,7 +14,6 @@ from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import LegacyProvider
 from anchore_engine.subsys import logger
-from tests.fixtures import anchore_db, cls_anchore_db
 from tests.integration.services.policy_engine.utils import LocalTestDataEnvironment
 
 

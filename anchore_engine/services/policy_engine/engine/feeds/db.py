@@ -115,6 +115,8 @@ def get_feed_detached(feed_name: str) -> Optional[FeedMetadata]:
             feed_name,
         )
         raise e
+    finally:
+        db_session.rollback()
 
 
 def get_all_feeds_detached():

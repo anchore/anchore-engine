@@ -1,0 +1,53 @@
+{
+    "distro": {
+        "name": "ubuntu",
+        "version": "18.04",
+        "idLike": "debian"
+    },
+    "artifactRelationships": [],
+    "artifacts": [
+        {
+            "id": "5953b29b-74b5-452e-b6b4-ec55a4a8cdc8",
+            "name": "UNSUPPORTED-PACKAGE",
+            "version": "v0.4.1",
+            "type": "TEST-TYPE"
+        },
+        {
+            "id": "bb512892-a598-4efe-b8fb-9d377e1e77cc",
+            "name": "SUPPORTED-PACKAGE",
+            "version": "3.5.44",
+            "type": "deb",
+            "foundBy": "dpkgdb-cataloger",
+            "locations": [
+                {
+                    "path": "/usr/share/doc/SUPPORTED-PACKAGE/copyright",
+                    "layerID": "sha256:8f8f0266f8349dd17fdca5a1c827a7c8b11d84903b1226b05c6fbdc7edd30652"
+                }
+            ],
+            "licenses": ["GPL-2", "PD"],
+            "language": "",
+            "cpes": ["cpe:2.3:a:*:base_passwd:3.5.44:*:*:*:*:*:*:*"],
+            "purl": "pkg:deb/ubuntu/SUPPORTED-PACKAGE@3.5.44?arch=amd64",
+            "metadataType": "DpkgMetadata",
+            "metadata": {
+                "package": "SUPPORTED-PACKAGE",
+                "source": "",
+                "version": "3.5.44",
+                "sourceVersion": "",
+                "architecture": "amd64",
+                "maintainer": "Sherlock Holmes <person@debian.org>",
+                "installedSize": 228,
+                "files": [
+                    {
+                        "path": "/usr/sbin/update-passwd",
+                        "digest": {
+                            "algorithm": "md5",
+                            "value": "6eb1a51290610f95397b6b2f7761ddc7"
+                        },
+                        "isConfigFile": false
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -4,16 +4,15 @@ This is an integration-level test for checking CVE updates at fine granularity.
 import sqlalchemy.exc
 
 from anchore_engine.db import (
-    get_thread_scoped_session as get_session,
+    FixedArtifact,
     Image,
     ImagePackage,
     Vulnerability,
     VulnerableArtifact,
-    FixedArtifact,
 )
+from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.feeds import feeds
 from anchore_engine.subsys import logger
-
 
 logger.enable_test_logging(level="DEBUG")
 

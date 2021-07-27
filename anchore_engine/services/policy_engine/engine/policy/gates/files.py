@@ -1,17 +1,16 @@
+import base64
 import re
 import stat
-import base64
-from anchore_engine.utils import ensure_str, ensure_bytes
-from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.subsys import logger
+
+from anchore_engine.db import AnalysisArtifact
+from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
-    PipeDelimitedStringListParameter,
+    BooleanStringParameter,
+    EnumStringParameter,
     TriggerParameter,
     TypeValidator,
-    EnumStringParameter,
-    BooleanStringParameter,
 )
-from anchore_engine.db import AnalysisArtifact
+from anchore_engine.utils import ensure_bytes, ensure_str
 
 
 class ContentMatchTrigger(BaseTrigger):

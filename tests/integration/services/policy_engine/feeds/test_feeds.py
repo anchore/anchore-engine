@@ -3,23 +3,23 @@ import time
 
 import pytest
 
+from anchore_engine.common.models.schemas import (
+    BatchImageVulnerabilitiesQueueMessage,
+    ImageVulnerabilitiesQueueMessage,
+)
 from anchore_engine.db import GemMetadata, NpmMetadata, Vulnerability, session_scope
 from anchore_engine.services.policy_engine.engine.feeds.download import (
     LocalFeedDataRepo,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    feed_instance_by_name,
     GrypeDBFeed,
+    feed_instance_by_name,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     MetadataSyncUtils,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.common.models.schemas import (
-    BatchImageVulnerabilitiesQueueMessage,
-    ImageVulnerabilitiesQueueMessage,
-)
 
 logger.enable_test_logging()
 

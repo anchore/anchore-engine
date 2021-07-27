@@ -1,7 +1,7 @@
-from sqlalchemy import and_, or_, desc
+from sqlalchemy import and_, desc, or_
 
 from anchore_engine import db
-from anchore_engine.db import CatalogImageDocker, CatalogImage
+from anchore_engine.db import CatalogImage, CatalogImageDocker
 from anchore_engine.subsys import logger
 
 

@@ -1,17 +1,15 @@
 import connexion
 
 import anchore_engine.apis
+import anchore_engine.common
 import anchore_engine.common.helpers
+import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.servicestatus
 from anchore_engine import db
-from anchore_engine.db import db_policyeval
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 
 # import catalog_impl
 from anchore_engine.services.catalog import catalog_impl
-import anchore_engine.common
-from anchore_engine.subsys import logger, object_store
-import anchore_engine.configuration.localconfig
-import anchore_engine.subsys.servicestatus
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 
 authorizer = get_authorizer()
 

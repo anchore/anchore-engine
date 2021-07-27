@@ -1,8 +1,8 @@
 import json
 import os
 from os.path import dirname, realpath
-import pytest
 
+import pytest
 
 dir_path = dirname(realpath(__file__))
 top_dir = dirname(dir_path)

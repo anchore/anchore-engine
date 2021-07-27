@@ -1,8 +1,8 @@
 import pytest
-from anchore_engine.services.policy_engine.engine.policy.gates import always
-from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
-from anchore_engine.db.entities.policy_engine import Image
 
+from anchore_engine.db.entities.policy_engine import Image
+from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from anchore_engine.services.policy_engine.engine.policy.gates import always
 
 image_id = "1"
 user = "admin"

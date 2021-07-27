@@ -1,7 +1,8 @@
-from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
-from anchore_engine.db.entities.policy_engine import ImageCpe
-from anchore_engine.services.policy_engine.engine.vulns import cpes
 import pytest
+
+from anchore_engine.db.entities.policy_engine import ImageCpe
+from anchore_engine.services.policy_engine.engine.loaders import ImageLoader
+from anchore_engine.services.policy_engine.engine.vulns import cpes
 
 
 @pytest.fixture

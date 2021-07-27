@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 
-import sys
-import os
-import re
 import json
-import traceback
+import os
+import sys
 
 import anchore_engine.analyzers.utils
 

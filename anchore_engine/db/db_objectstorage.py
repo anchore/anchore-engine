@@ -1,4 +1,5 @@
 import json
+
 from anchore_engine import db
 from anchore_engine.db import ObjectStorageRecord
 

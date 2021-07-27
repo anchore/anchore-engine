@@ -1,13 +1,13 @@
-import json
-import os
 import hashlib
+import os
 import re
 import urllib.parse
 
 from anchore_engine import utils
 from anchore_engine.subsys import logger
-from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError
+
+from .interface import ObjectStorageDriver
 
 
 class FilesystemObjectStorageDriver(ObjectStorageDriver):

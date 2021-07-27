@@ -1,13 +1,11 @@
 import datetime
 
+import sqlalchemy
 from dateutil import parser as dateparser
+from sqlalchemy import func
 
 from anchore_engine import db
 from anchore_engine.db import Event
-from anchore_engine.subsys import logger
-
-import sqlalchemy
-from sqlalchemy import func
 
 
 def get_byfilter(

@@ -2,9 +2,9 @@ import datetime
 import hashlib
 import json
 import re
+import typing
 import zlib
 from collections import namedtuple
-import typing
 from typing import List
 
 from sqlalchemy import (
@@ -30,13 +30,13 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload, relationship, synonym
 
-from anchore_engine.db.entities.common import anchore_now_datetime, anchore_uuid
+from anchore_engine.common.models.policy_engine import CVSS, NVDReference
+from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
 from anchore_engine.util.rpm import compare_versions as rpm_compare_versions
 from anchore_engine.utils import ensure_bytes, ensure_str
-from anchore_engine.common.models.policy_engine import NVDReference, CVSS
 
 try:
     from anchore_engine.subsys import logger as log

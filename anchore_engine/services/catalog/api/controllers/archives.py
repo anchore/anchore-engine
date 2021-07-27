@@ -13,13 +13,13 @@ from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db import (
-    session_scope,
     ArchivedImage,
     ArchivedImageDocker,
-    db_archived_images,
-    ArchiveTransitionRule,
     ArchiveTransitionHistoryEntry,
+    ArchiveTransitionRule,
     ArchiveTransitions,
+    db_archived_images,
+    session_scope,
 )
 from anchore_engine.services.catalog.archiver import (
     ArchiveImageTask,

@@ -1,16 +1,16 @@
-import boto3
 import urllib.parse
 import uuid
 
+import boto3
+
 from anchore_engine import utils
-from anchore_engine.subsys import logger
-from .interface import ObjectStorageDriver
 from anchore_engine.subsys.object_store.exc import (
-    DriverConfigurationError,
-    ObjectKeyNotFoundError,
     BadCredentialsError,
     BucketNotFoundError,
+    DriverConfigurationError,
 )
+
+from .interface import ObjectStorageDriver
 
 
 class S3ObjectStorageDriver(ObjectStorageDriver):

@@ -1,6 +1,7 @@
 import json
 
 import pytest
+
 from anchore_engine.subsys import logger
 from tests.functional.services.api import imports
 from tests.functional.services.utils.http_utils import (

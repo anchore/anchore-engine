@@ -1,5 +1,7 @@
 import json
 import os
+from pathlib import Path
+
 import pytest
 
 from anchore_engine.configuration.localconfig import (
@@ -11,7 +13,6 @@ from anchore_engine.configuration.localconfig import (
     load_policy_bundles,
     validate_config,
 )
-from pathlib import Path
 
 DEFAULT_CONFIG_FN = "config.yaml"
 DEFAULT_ANALYZER_CONFIG_FN = "analyzer_config.yaml"

@@ -14,9 +14,9 @@ import anchore_engine.subsys.metrics
 from anchore_engine import utils
 from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.apis.authorization import (
-    get_authorizer,
-    RequestingAccountValue,
     ActionBoundPermission,
+    RequestingAccountValue,
+    get_authorizer,
 )
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services import internal_client_for
@@ -24,15 +24,14 @@ from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db.entities.common import anchore_now
-from anchore_engine.services.apiext.api.controllers.utils import (
+from anchore_engine.services.apiext.api.controllers.utils import (  # make_response_vulnerability,
+    make_response_vulnerability_report,
     normalize_image_add_source,
     validate_image_add_source,
-    # make_response_vulnerability,
-    make_response_vulnerability_report,
 )
-from anchore_engine.subsys import taskstate, logger
+from anchore_engine.subsys import logger, taskstate
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.utils import parse_dockerimage_string
+from anchore_engine.util.docker import parse_dockerimage_string
 
 authorizer = get_authorizer()
 
@@ -1081,7 +1080,7 @@ def analyze_image(
                 img_source = source.get("digest")
 
                 tag = img_source["tag"]
-                digest_info = anchore_engine.utils.parse_dockerimage_string(
+                digest_info = anchore_engine.util.docker.parse_dockerimage_string(
                     img_source["pullstring"]
                 )
                 digest = digest_info["digest"]

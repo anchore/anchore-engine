@@ -1,9 +1,8 @@
 import pytest
 
 from tests.functional.services.api.accounts.users import create_ft_account_user
-from tests.functional.services.api.conftest import FT_ACCOUNT
-from tests.functional.services.api.conftest import USER_API_CONFS
-from tests.functional.services.utils.http_utils import http_del, APIResponse
+from tests.functional.services.api.conftest import FT_ACCOUNT, USER_API_CONFS
+from tests.functional.services.utils.http_utils import APIResponse, http_del
 
 
 @pytest.mark.parametrize("api_conf", USER_API_CONFS)

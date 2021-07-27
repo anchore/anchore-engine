@@ -2,15 +2,13 @@
 Utilities for the manager cli's db operations
 """
 import copy
-import json
-import sys
-import time
 import importlib
+import json
+import time
 
 import anchore_engine.db
-from anchore_engine.subsys import logger
-from anchore_manager.util.logging import format_error_output, log_config, log_error
 from anchore_engine.db.entities.common import normalize_db_params
+from anchore_engine.subsys import logger
 
 ENGINE_UPGRADE_MODULE_NAME = "anchore_engine.db.entities.upgrade"
 

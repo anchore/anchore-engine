@@ -1,4 +1,6 @@
-from flask import g as request_globals, request
+from flask import g as request_globals
+from flask import request
+
 from anchore_engine.apis.authentication import IdentityContext
 
 

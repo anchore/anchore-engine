@@ -6,7 +6,6 @@ from anchore_engine.db import get_thread_scoped_session
 from anchore_engine.services.catalog import catalog_impl
 
 # This looks unused, but it is
-from tests.fixtures import anchore_db
 
 
 @pytest.mark.skip(

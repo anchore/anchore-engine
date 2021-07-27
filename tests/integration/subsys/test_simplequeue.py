@@ -1,6 +1,7 @@
 import datetime
+
 import pytest
-from tests.fixtures import anchore_db
+
 from anchore_engine.subsys import logger, simplequeue
 from anchore_engine.subsys.logger import enable_test_logging
 

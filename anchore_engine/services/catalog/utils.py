@@ -1,12 +1,14 @@
+from dataclasses import dataclass
+from operator import itemgetter
+from typing import Dict, Tuple
+
+from marshmallow.exceptions import ValidationError
+
 from anchore_engine.common.models.policy_engine import (
     ImageVulnerabilitiesReport,
     VulnerabilityMatch,
 )
-from dataclasses import dataclass
-from typing import List, Dict, Tuple
-from operator import itemgetter
 from anchore_engine.subsys import logger
-from marshmallow.exceptions import ValidationError
 
 
 @dataclass(eq=True, frozen=True)  # for comparison ops

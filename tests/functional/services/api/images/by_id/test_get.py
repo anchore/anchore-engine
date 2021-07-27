@@ -6,7 +6,7 @@ from tests.functional.services.api.images import (
     wait_for_image_to_analyze,
 )
 from tests.functional.services.api.policies import get_first_policy_id
-from tests.functional.services.utils.http_utils import http_get, APIResponse
+from tests.functional.services.utils.http_utils import APIResponse, http_get
 
 
 class TestImagesByIDAPIGetReturns200:
