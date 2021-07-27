@@ -1,17 +1,18 @@
 import pytest
-from anchore_engine.subsys import logger
+
 from anchore_engine.auth.oauth import (
-    load_keys,
-    TokenVerifier,
-    TokenIssuer,
     JwtTokenManager,
+    TokenIssuer,
+    TokenVerifier,
+    load_keys,
     token_manager,
 )
 from anchore_engine.configuration.localconfig import (
-    OauthNotConfiguredError,
     InvalidOauthConfigurationError,
+    OauthNotConfiguredError,
 )
-from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.subsys import logger
+from anchore_engine.utils import ensure_str
 
 logger.enable_test_logging()
 

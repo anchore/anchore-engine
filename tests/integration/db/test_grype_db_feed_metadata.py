@@ -7,7 +7,6 @@ from anchore_engine.db.db_grype_db_feed_metadata import (
     NoActiveGrypeDB,
     get_most_recent_active_grypedb,
 )
-from tests.fixtures import anchore_db
 
 meta_objs = [
     GrypeDBFeedMetadata(

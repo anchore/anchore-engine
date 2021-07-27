@@ -1,4 +1,5 @@
 import unittest
+
 from anchore_engine.util.deb import compare_versions, strict_compare_versions
 
 

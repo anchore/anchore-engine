@@ -1,20 +1,21 @@
 import datetime
 from hashlib import sha256
+
 from connexion import request
 
 from anchore_engine.apis import exceptions as api_exceptions
-from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.subsys.object_store import manager
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.subsys import logger
 from anchore_engine.db import session_scope
 from anchore_engine.db.entities.catalog import (
-    ImageImportOperation,
     ImageImportContent,
+    ImageImportOperation,
     ImportState,
 )
-from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
+from anchore_engine.subsys import logger
+from anchore_engine.subsys.object_store import manager
+from anchore_engine.utils import datetime_to_rfc3339, ensure_str
 
 authorizer = get_authorizer()
 
@@ -410,7 +411,7 @@ def save_import_content(
     db_session.add(content_record)
     db_session.flush()
 
-    mgr = manager.object_store.get_manager()
+    mgr = manager.get_manager()
     resp = mgr.put_document(
         ApiRequestContextProxy.namespace(), import_bucket, key, ensure_str(content)
     )

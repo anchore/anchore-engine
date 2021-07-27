@@ -4,13 +4,13 @@
 Simple example of an import flow of data output from `syft docker:nginx --output json` into Anchore. Uses syft v0.10.0 output.
 """
 
-import sys
-import requests
-import json
 import base64
+import json
 import subprocess
+import sys
 import time
 
+import requests
 
 JSON_HEADER = {"Content-Type": "application/json"}
 # endpoint = "http://localhost:8088"

@@ -5,24 +5,17 @@ NOTE: these are PostgreSQL specific, so any dialect change will require updates 
 
 """
 
-from sqlalchemy.exc import ProgrammingError
-
 try:
-    from anchore_engine.subsys import logger, identities
-
     # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
+    from anchore_engine.subsys import logger  # pylint: disable=C0412,C0413
 except:
     import logging
 
     logger = logging.getLogger(__name__)
-    log = logger
 
 PG_UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505"
 PG_COULD_NOT_GET_ROWLOCK_CODE = "55P03"
 PG_RELATION_NOT_FOUND_CODE = "42P01"
-
-from anchore_engine.subsys import logger
 
 
 def _get_pgcode_from_ex(ex):

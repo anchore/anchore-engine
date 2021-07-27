@@ -1,12 +1,12 @@
 import pytest
 
-from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional import get_logger
+from tests.functional.services.api.conftest import USER_API_CONFS
 from tests.functional.services.utils.http_utils import (
-    http_post,
-    http_get,
     RequestFailedError,
     http_del,
+    http_get,
+    http_post,
 )
 
 ALPINE_LATEST_SUBSCRIPTION = {

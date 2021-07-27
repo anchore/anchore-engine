@@ -6,16 +6,15 @@ in the engine. The old 'archive' system is now call the 'object store' and uses 
 """
 
 import json
+
 import anchore_engine.apis
 import anchore_engine.services
-
 from anchore_engine import db
 from anchore_engine import utils as anchore_utils
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.common.helpers import make_response_error
+from anchore_engine.subsys import archive
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.subsys import archive, logger
 
 authorizer = get_authorizer()
 

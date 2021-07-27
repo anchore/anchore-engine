@@ -4,8 +4,8 @@ import stat
 
 import anchore_engine.configuration.localconfig
 from anchore_engine import utils
-from anchore_engine.subsys import logger
 from anchore_engine.common import os_package_types
+from anchore_engine.subsys import logger
 
 
 def make_image_content_response(content_type, content_data):

@@ -7,7 +7,7 @@ These functions may raise/use api exception types
 import copy
 import json
 import re
-from typing import List, Dict
+from typing import Dict, List
 
 import jsonschema
 
@@ -15,13 +15,13 @@ import anchore_engine.common
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.common import nonos_package_types
 from anchore_engine.common.models.policy_engine import (
-    ImageVulnerabilitiesReport,
-    Vulnerability,
-    NVDReference,
     CVSS,
+    ImageVulnerabilitiesReport,
+    NVDReference,
+    Vulnerability,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.utils import parse_dockerimage_string
+from anchore_engine.util.docker import parse_dockerimage_string
 
 REGISTRY_TAG_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryTagSource"
 REGISTRY_DIGEST_SOURCE_SCHEMA_DEFINITION_NAME = "RegistryDigestSource"

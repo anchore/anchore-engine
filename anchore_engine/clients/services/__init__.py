@@ -1,6 +1,7 @@
-from .internal import InternalServiceClient
-from anchore_engine.subsys.identities import manager_factory
 from anchore_engine.db import session_scope
+from anchore_engine.subsys.identities import manager_factory
+
+from .internal import InternalServiceClient
 
 
 def _system_creds_provider():

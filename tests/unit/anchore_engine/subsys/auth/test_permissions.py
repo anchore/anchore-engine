@@ -1,5 +1,5 @@
-from anchore_engine.subsys.auth.realms import CaseSensitivePermission
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.auth.realms import CaseSensitivePermission
 
 logger.enable_test_logging()
 

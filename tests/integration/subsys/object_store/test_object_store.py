@@ -3,30 +3,31 @@ Tests for the archive subsys. With each configured driver.
 """
 
 import os
+
 import pytest
-from anchore_engine.subsys import object_store
-from anchore_engine.subsys.object_store.config import (
-    DEFAULT_OBJECT_STORE_MANAGER_ID,
-    ALT_OBJECT_STORE_CONFIG_KEY,
-)
+
+from anchore_engine.subsys import logger, object_store
 from anchore_engine.subsys.object_store import get_manager
-from anchore_engine.subsys.object_store.exc import (
-    DriverConfigurationError,
-    BadCredentialsError,
+from anchore_engine.subsys.object_store.config import (
+    ALT_OBJECT_STORE_CONFIG_KEY,
+    DEFAULT_OBJECT_STORE_MANAGER_ID,
 )
-from tests.fixtures import anchore_db
+from anchore_engine.subsys.object_store.exc import (
+    BadCredentialsError,
+    DriverConfigurationError,
+)
+
 from .conftest import (
-    test_s3_secret_key,
-    test_s3_key,
     test_s3_bucket,
-    test_s3_url,
+    test_s3_key,
     test_s3_region,
+    test_s3_secret_key,
+    test_s3_url,
     test_swift_auth_url,
     test_swift_container,
     test_swift_key,
     test_swift_user,
 )
-from anchore_engine.subsys import logger
 
 logger.enable_test_logging()
 

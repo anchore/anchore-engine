@@ -1,4 +1,5 @@
 import copy
+
 from anchore_engine.subsys import logger
 
 COMPRESSION_LEVEL = 3

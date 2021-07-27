@@ -2,16 +2,16 @@ import typing
 from typing import List, Tuple
 
 import sqlalchemy.orm
-from sqlalchemy import func, and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from anchore_engine.db import (
-    ImageCpe,
-    VulnDBCpe,
-    Image,
-    Vulnerability,
     CpeV2Vulnerability,
     DistroNamespace,
+    Image,
+    ImageCpe,
+    VulnDBCpe,
+    Vulnerability,
 )
 from anchore_engine.subsys import logger
 

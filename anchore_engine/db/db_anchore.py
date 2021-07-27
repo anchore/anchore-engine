@@ -1,7 +1,6 @@
 from anchore_engine import db
 from anchore_engine.db import Anchore
 
-
 # for the Anchore class/table
 
 

@@ -5,8 +5,9 @@ import copy
 import hashlib
 import json
 
-from .context import ApiRequestContextProxy
 from anchore_engine.subsys import logger
+
+from .context import ApiRequestContextProxy
 
 
 def do_request_prep(request, default_params=None):

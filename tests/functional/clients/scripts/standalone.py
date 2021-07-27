@@ -22,6 +22,7 @@ from os.path import abspath, dirname, join
 from uuid import uuid4
 
 import click
+
 from anchore_engine.clients.localanchore_standalone import analyze_image
 
 current = dirname(abspath(__file__))

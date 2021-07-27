@@ -1,6 +1,6 @@
 import os
 
-from twisted.python import logfile, log
+from twisted.python import log, logfile
 
 
 def logger():

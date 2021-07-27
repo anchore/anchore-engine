@@ -1,15 +1,12 @@
-import urllib.parse
 import base64
-
-from .interface import ObjectStorageDriver
+import urllib.parse
 
 from anchore_engine import db, utils
 from anchore_engine.db import db_archivedocument, db_objectstorage
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.object_store.exc import (
-    ObjectKeyNotFoundError,
-    DriverNotInitializedError,
-)
+from anchore_engine.subsys.object_store.exc import ObjectKeyNotFoundError
+
+from .interface import ObjectStorageDriver
 
 
 class LegacyDbDriver(ObjectStorageDriver):

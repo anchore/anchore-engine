@@ -64,15 +64,19 @@ class RPMHint(BaseHint):
     def resolve_rpm_fields(self):
         from anchore_engine.util.rpm import split_rpm_filename
 
+        if self.release:
+            rpm = "{}-{}-{}.{}.rpm".format(
+                self.name, self.version, self.release, self.arch
+            )
+        else:
+            rpm = "{}-{}.{}.rpm".format(self.name, self.version, self.arch)
         (
             parsed_name,
             parsed_version,
             parsed_release,
             parsed_epoch,
             parsed_arch,
-        ) = split_rpm_filename(
-            "{}-{}.{}.rpm".format(self.name, self.version, self.arch)
-        )
+        ) = split_rpm_filename(rpm)
         if self.name == parsed_version:
             raise HintsTypeError(
                 "hints package version for hints package ({}) is not valid for RPM package type".format(
