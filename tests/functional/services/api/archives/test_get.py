@@ -1,7 +1,7 @@
 import pytest
 
 from tests.functional.services.api.images import get_image_digest
-from tests.functional.services.utils.http_utils import APIResponse, http_get
+from tests.functional.services.utils.http_utils import http_get, APIResponse
 
 
 class TestArchivesAPIGetReturns200:

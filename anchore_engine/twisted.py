@@ -3,25 +3,30 @@ Twisted framework specific code for base plugin functionality. Used by each plug
 
 """
 
-import datetime
-import faulthandler
+import copy
 import json
 import os
 import sys
-
+import datetime
+from twisted import web
 from twisted.application import service
-from twisted.application.internet import StreamServerEndpointService, TimerService
-from twisted.internet import reactor, ssl
-from twisted.internet.endpoints import SSL4ServerEndpoint, TCP4ServerEndpoint
-from twisted.internet.task import LoopingCall
-from twisted.python import log, usage
-from twisted.web import rewrite, server, wsgi
-from twisted.web.resource import Resource
+from twisted.application.internet import TimerService, StreamServerEndpointService
+from twisted.internet.endpoints import TCP4ServerEndpoint, SSL4ServerEndpoint
 
-from anchore_engine.apis.ssl import _load_ssl_cert, _load_ssl_key
+from twisted.internet import ssl, reactor
+from twisted.internet.task import LoopingCall
+from twisted.python import log
+from twisted.python import usage
+from twisted.web.resource import Resource
+from twisted.web import wsgi, rewrite
+from twisted.web import server
+
+from anchore_engine.apis.ssl import _load_ssl_key, _load_ssl_cert
+from anchore_engine.subsys import logger
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService
-from anchore_engine.subsys import logger
+from anchore_engine import utils
+import faulthandler
 
 # For the debug CLI, require a code modification to enable it. This allows on-host edits of the script and restart, but no accidental config from env vars or config.
 enable_dangerous_debug_cli = False
@@ -32,12 +37,11 @@ enable_thread_dumper = (
 )
 
 if enable_dangerous_debug_cli or enable_thread_dumper:
-    from twisted.application import internet  # pylint: disable=C0412
-    from twisted.conch.insults import insults  # pylint: disable=C0412
-    from twisted.conch.manhole import ColoredManhole  # pylint: disable=C0412
-    from twisted.conch.telnet import TelnetBootstrapProtocol  # pylint: disable=C0412
-    from twisted.conch.telnet import TelnetTransport  # pylint: disable=C0412
-    from twisted.internet import protocol  # pylint: disable=C0412
+    from twisted.application import internet, service
+    from twisted.conch.insults import insults
+    from twisted.conch.manhole import ColoredManhole
+    from twisted.conch.telnet import TelnetTransport, TelnetBootstrapProtocol
+    from twisted.internet import protocol
 
 
 class CommonOptions(usage.Options):
@@ -325,7 +329,7 @@ class WsgiApiServiceMaker(object):
             )
             self._add_resource(b"threads", ThreadDumperResource())
 
-        self.root_resource = Resource()
+        self.root_resource = web.resource.Resource()
 
         # Add nodes
         for name, resource in self.resource_nodes.items():

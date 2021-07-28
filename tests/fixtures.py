@@ -4,9 +4,7 @@ Common fixtures for use in any test, not specific to a thing being tested.
 """
 
 import os
-
 import pytest
-
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging()
@@ -20,11 +18,11 @@ def anchore_db(connection_str=None, do_echo=False):
     """
 
     from anchore_engine.db.entities.common import (
-        do_disconnect,
-        end_session,
         get_engine,
-        init_thread_session,
         initialize,
+        do_disconnect,
+        init_thread_session,
+        end_session,
     )
     from anchore_engine.db.entities.upgrade import do_create_tables
 
@@ -65,11 +63,11 @@ def cls_anchore_db(connection_str=None, do_echo=False):
     """
 
     from anchore_engine.db.entities.common import (
-        do_disconnect,
-        end_session,
         get_engine,
-        init_thread_session,
         initialize,
+        do_disconnect,
+        init_thread_session,
+        end_session,
     )
     from anchore_engine.db.entities.upgrade import do_create_tables
 
@@ -111,11 +109,11 @@ def echo_anchore_db():
 @pytest.fixture
 def mem_db(do_echo=False):
     from anchore_engine.db.entities.common import (
-        do_disconnect,
-        end_session,
         get_engine,
-        init_thread_session,
         initialize,
+        do_disconnect,
+        init_thread_session,
+        end_session,
     )
     from anchore_engine.db.entities.upgrade import do_create_tables
 

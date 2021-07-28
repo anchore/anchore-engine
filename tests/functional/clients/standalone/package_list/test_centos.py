@@ -1,7 +1,6 @@
-import pytest
-
-from . import path_params
 from .fixtures import centos
+from . import path_params
+import pytest
 
 
 class TestRpm:

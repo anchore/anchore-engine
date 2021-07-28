@@ -6,9 +6,9 @@ Operations for CRUD on document references and metadata. Actual document content
 
 import time
 import urllib.parse
-
 from anchore_engine import db
 from anchore_engine.db import ObjectStorageMetadata
+from anchore_engine.subsys import logger
 
 
 def add(

@@ -1,6 +1,5 @@
-from threading import RLock
-
 from anchore_engine.db import db_locks
+from threading import RLock
 
 _lease_manager = None
 mgr_lock = RLock()

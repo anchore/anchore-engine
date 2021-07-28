@@ -1,14 +1,14 @@
 import time
-
 import pkg_resources
 
 # anchore modules
 import anchore_engine.common
-import anchore_engine.subsys.metrics
-import anchore_engine.subsys.servicestatus
 import anchore_engine.subsys.simplequeue
-from anchore_engine.service import ApiService, LifeCycleStages
+import anchore_engine.subsys.servicestatus
 from anchore_engine.subsys import logger
+import anchore_engine.subsys.metrics
+from anchore_engine.service import ApiService, LifeCycleStages
+
 
 # A regular queue configuration with no extra features enabled
 default_queue_config = {"max_outstanding_messages": -1, "visibility_timeout": 0}

@@ -1,12 +1,11 @@
 import json
-
+from anchore_engine.clients.services.internal import InternalServiceClient
 from anchore_engine.clients.services.http import (
-    anchy_delete,
     anchy_get,
     anchy_post,
+    anchy_delete,
     anchy_put,
 )
-from anchore_engine.clients.services.internal import InternalServiceClient
 
 
 class PolicyEngineClient(InternalServiceClient):

@@ -3,23 +3,25 @@ API Handlers for /policies routes
 
 """
 
+import connexion
 import hashlib
 import json
-
-import connexion
 
 import anchore_engine.apis
 import anchore_engine.common
 import anchore_engine.common.helpers
-import anchore_engine.configuration.localconfig
+from anchore_engine import db
 import anchore_engine.services.catalog.catalog_impl
-import anchore_engine.subsys.events
+from anchore_engine.subsys import logger
+import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.servicestatus
 import anchore_engine.utils
-from anchore_engine import db
-from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
+
 from anchore_engine.db import db_policybundle, db_policyeval
-from anchore_engine.subsys import logger, object_store
+from anchore_engine.subsys import object_store
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
+
+import anchore_engine.subsys.events
 
 authorizer = get_authorizer()
 

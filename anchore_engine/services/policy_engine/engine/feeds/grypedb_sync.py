@@ -184,9 +184,9 @@ class GrypeDBSyncManager:
 
             if is_sync_necessary:
                 logger.info(
-                    "Local policy engine updating local grype db with checksum of %s to the new globally active db with checksum %s",
-                    local_grypedb_checksum,
+                    "Grypedb sync is needed to replace local db with checksum %s with current active db with checksum %s",
                     active_grypedb.archive_checksum,
+                    local_grypedb_checksum,
                 )
                 cls._update_grypedb(
                     active_grypedb=active_grypedb,

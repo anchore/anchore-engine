@@ -1,24 +1,25 @@
-import importlib
 import os
 import re
-import subprocess
 import sys
-import threading
 import time
-
 import click
 import psutil
-from watchdog.events import RegexMatchingEventHandler
-from watchdog.observers import Observer
-
+import importlib
+import threading
+import subprocess
 import anchore_engine.configuration.localconfig
-import anchore_engine.db.entities.common
+
+from watchdog.observers import Observer
+from watchdog.events import RegexMatchingEventHandler
+
 import anchore_manager.util
 import anchore_manager.util.db
 import anchore_manager.util.logging
 import anchore_manager.util.proc
+from anchore_manager.util.proc import ExitCode, fail_exit, doexit
 from anchore_manager.util.logging import log_error, logger
-from anchore_manager.util.proc import ExitCode, doexit
+
+import anchore_engine.db.entities.common
 
 service_map = {
     "analyzer": "anchore-worker",

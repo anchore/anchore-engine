@@ -1,11 +1,9 @@
-import copy
-import datetime
-import json
-from urllib import parse as urlparse
-
 import requests
-
+import copy
+import json
+import datetime
 from anchore_engine.subsys import logger
+from urllib import parse as urlparse
 from anchore_engine.utils import datetime_to_rfc3339
 
 

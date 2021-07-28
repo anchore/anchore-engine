@@ -1,17 +1,16 @@
 import time
-
-from yosai.core.authc.abcs import AuthenticationToken, CredentialsVerifier
+from yosai.core.authc.abcs import CredentialsVerifier
 from yosai.core.authc.authc import (
-    IncorrectCredentialsException,
-    PasslibVerifier,
-    TokenError,
     UsernamePasswordToken,
+    IncorrectCredentialsException,
+    TokenError,
+    PasslibVerifier,
 )
-
-from anchore_engine.auth.oauth import token_manager
-from anchore_engine.configuration import localconfig
+from yosai.core.authc.abcs import AuthenticationToken
 from anchore_engine.subsys import logger
 from anchore_engine.utils import ensure_bytes
+from anchore_engine.auth.oauth import token_manager
+from anchore_engine.configuration import localconfig
 
 
 class ConfigurableVerifier(CredentialsVerifier):

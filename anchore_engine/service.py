@@ -3,31 +3,34 @@ Base types for all anchore engine services
 """
 
 import copy
+import connexion
 import enum
+from flask import g, jsonify
 import json
 import os
-import threading
-import time
 from pathlib import Path
-
-import connexion
 import yaml
-from flask import g, jsonify
 
+
+import time
+import threading
+import traceback
+
+from anchore_engine.configuration import localconfig
+from anchore_engine.subsys import logger, metrics, servicestatus, taskstate
 from anchore_engine import monitors
-from anchore_engine.apis.authorization import get_authorizer, init_authz_handler
-from anchore_engine.apis.exceptions import AnchoreApiError
+from anchore_engine.db import db_services, session_scope, initialize as initialize_db
+from anchore_engine.subsys.identities import manager_factory
+from anchore_engine.apis.authorization import init_authz_handler, get_authorizer
+from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFailed
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.configuration.localconfig import (
+    OauthNotConfiguredError,
+    InvalidOauthConfigurationError,
+)
+from anchore_engine.apis.exceptions import AnchoreApiError
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.configuration import localconfig
-from anchore_engine.configuration.localconfig import InvalidOauthConfigurationError
-from anchore_engine.db import db_services
-from anchore_engine.db import initialize as initialize_db
-from anchore_engine.db import session_scope
-from anchore_engine.subsys import logger, metrics, servicestatus, taskstate
-from anchore_engine.subsys.events import ServiceAuthzPluginHealthCheckFailed
-from anchore_engine.subsys.identities import manager_factory
 
 
 class LifeCycleStages(enum.IntEnum):

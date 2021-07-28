@@ -16,9 +16,9 @@ from anchore_engine.clients.services.simplequeue import SimpleQueueClient
 from anchore_engine.common.models.schemas import BatchImageVulnerabilitiesQueueMessage
 from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService, LifeCycleStages
-from anchore_engine.services.policy_engine.engine.feeds import (  # Import grypedb_sync so that class variables are initialized before twistd threads start
+from anchore_engine.services.policy_engine.engine.feeds import (
     grypedb_sync,
-)
+)  # Import grypedb_sync so that class variables are initialized before twistd threads start
 from anchore_engine.services.policy_engine.engine.feeds.config import (
     get_provider_name,
     get_section_for_vulnerabilities,
@@ -38,6 +38,7 @@ from anchore_engine.subsys import logger
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
+from anchore_engine.utils import timer
 
 feed_sync_queuename = "feed_sync_tasks"
 system_user_auth = None

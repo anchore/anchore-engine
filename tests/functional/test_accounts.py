@@ -1,9 +1,11 @@
-import os
-import time
-import uuid
-from distutils.version import LooseVersion
-
 from . import *
+
+from distutils.version import LooseVersion
+import requests
+import uuid
+import time
+import json
+import os
 
 # Functional tests for user management flows for the api
 anchore_user = os.environ["ANCHORE_CLI_USER"]

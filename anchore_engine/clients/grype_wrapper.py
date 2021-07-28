@@ -11,9 +11,9 @@ from typing import Dict, Optional, Tuple
 
 import sqlalchemy
 from readerwriterlock import rwlock
-from sqlalchemy import Column, ForeignKey, Integer, String, and_, func
+from sqlalchemy import Column, ForeignKey, Integer, String, func, and_
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker
 
 import anchore_engine.configuration.localconfig
 from anchore_engine.db.entities.common import UtilMixin

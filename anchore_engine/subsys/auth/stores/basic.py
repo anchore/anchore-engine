@@ -1,10 +1,8 @@
-import json
-
 from yosai.core import account_abcs
-
-from anchore_engine.apis.authentication import IdentityContext, idp_factory
-from anchore_engine.db import AccountTypes, session_scope
+from anchore_engine.db import session_scope, AccountTypes
 from anchore_engine.subsys import logger
+from anchore_engine.apis.authentication import idp_factory, IdentityContext
+import json
 
 
 class DbAccountStore(

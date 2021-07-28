@@ -1,30 +1,32 @@
 import copy
 import os
+import threading
 import time
 
 import pkg_resources
 
+from anchore_engine.common.models.schemas import (
+    QueueMessage,
+    AnalysisQueueMessage,
+    ImportQueueMessage,
+)
+from anchore_engine.configuration import localconfig
 import anchore_engine.subsys
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
-from anchore_engine.common.models.schemas import (
-    AnalysisQueueMessage,
-    ImportQueueMessage,
-    QueueMessage,
-)
-from anchore_engine.configuration import localconfig
 from anchore_engine.service import ApiService
 from anchore_engine.services.analyzer.analysis import (
-    ImageAnalysisTask,
     is_analysis_message,
+    ImageAnalysisTask,
 )
 from anchore_engine.services.analyzer.config import (
     PACKAGE_FILTERING_ENABLED_KEY,
+    extract_service_config,
     get_bool_value,
 )
-from anchore_engine.services.analyzer.imports import ImportTask, is_import_message
 from anchore_engine.services.analyzer.layer_cache import handle_layer_cache
 from anchore_engine.services.analyzer.tasks import WorkerTask
+from anchore_engine.services.analyzer.imports import is_import_message, ImportTask
 from anchore_engine.subsys import logger, metrics
 
 IMAGE_ANALYSIS_QUEUE = "images_to_analyze"

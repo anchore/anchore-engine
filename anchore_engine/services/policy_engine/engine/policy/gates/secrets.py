@@ -1,14 +1,14 @@
-import base64
 import re
-
-from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.params import (
-    EnumStringParameter,
-    TriggerParameter,
-    TypeValidator,
-)
+import base64
 from anchore_engine.utils import ensure_bytes, ensure_str
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
+from anchore_engine.services.policy_engine.engine.policy.params import (
+    TypeValidator,
+    TriggerParameter,
+    EnumStringParameter,
+)
+from anchore_engine.db import AnalysisArtifact
+
 
 default_included_regex_names = [
     "AWS_ACCESS_KEY",

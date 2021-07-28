@@ -1,14 +1,16 @@
-import collections
 import os
 import re
-
-from pkg_resources import resource_filename
+import time
+import collections
 
 import anchore_engine.utils
-from anchore_engine.analyzers import binary, hints, syft, utils
 from anchore_engine.analyzers.hints import HintsTypeError
-from anchore_engine.configuration.localconfig import analyzer_paths
 from anchore_engine.subsys import logger
+from anchore_engine.configuration.localconfig import analyzer_paths
+from pkg_resources import resource_filename
+from anchore_engine.analyzers import syft, hints
+from anchore_engine.analyzers import binary
+from anchore_engine.analyzers import utils
 
 
 def run(

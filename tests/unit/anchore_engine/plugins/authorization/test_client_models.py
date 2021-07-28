@@ -1,5 +1,4 @@
 import pytest
-
 from anchore_engine.plugins.authorization.client import (
     Action,
     AuthorizationDecision,

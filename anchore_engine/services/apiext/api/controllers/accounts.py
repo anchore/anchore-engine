@@ -3,44 +3,47 @@ API handlers for /accounts routes in the External API
 
 """
 import datetime
-
-from anchore_engine.apis import ApiRequestContextProxy
-from anchore_engine.apis.authorization import (
-    ActionBoundPermission,
-    NotificationTypes,
-    ParameterBoundValue,
-    RequestingAccountValue,
-    get_authorizer,
-)
+import os, json
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.common.helpers import make_response_error
-from anchore_engine.configuration.localconfig import (
-    DELETE_PROTECTED_ACCOUNT_TYPES,
-    DELETE_PROTECTED_USER_NAMES,
-    GLOBAL_RESOURCE_DOMAIN,
-    RESERVED_ACCOUNT_NAMES,
-    USER_MOD_PROTECTED_ACCOUNT_NAMES,
-    get_config,
-    load_policy_bundles,
-)
+from anchore_engine.apis import ApiRequestContextProxy
 from anchore_engine.db import (
-    AccountStates,
     AccountTypes,
     UserAccessCredentialTypes,
-    UserTypes,
     session_scope,
+    AccountStates,
+    UserTypes,
 )
-from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
 from anchore_engine.db.db_accounts import (
     AccountAlreadyExistsError,
     AccountNotFoundError,
-    DisableAdminAccountError,
     InvalidStateError,
+    DisableAdminAccountError,
 )
+from anchore_engine.db.db_account_users import UserAlreadyExistsError, UserNotFoundError
+from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.common.helpers import make_response_error
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.apis.authorization import (
+    get_authorizer,
+    ParameterBoundValue,
+    ActionBoundPermission,
+    NotificationTypes,
+    RequestingAccountValue,
+)
+from anchore_engine.configuration.localconfig import (
+    ADMIN_USERNAME,
+    SYSTEM_USERNAME,
+    GLOBAL_RESOURCE_DOMAIN,
+    USER_MOD_PROTECTED_ACCOUNT_NAMES,
+    RESERVED_ACCOUNT_NAMES,
+    get_config,
+    load_policy_bundles,
+    DELETE_PROTECTED_USER_NAMES,
+    DELETE_PROTECTED_ACCOUNT_TYPES,
+)
+
 
 authorizer = get_authorizer()
 

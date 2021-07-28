@@ -1,13 +1,13 @@
+import base64
 import re
-
-from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.utils import ensure_str, ensure_bytes
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import (
-    EnumStringParameter,
     SimpleStringParameter,
+    EnumStringParameter,
 )
+from anchore_engine.db import AnalysisArtifact
 from anchore_engine.subsys import logger
-from anchore_engine.utils import ensure_str
 
 
 class RetrievedFileMixin(object):

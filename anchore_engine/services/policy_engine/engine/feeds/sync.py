@@ -31,6 +31,7 @@ from anchore_engine.services.policy_engine.engine.feeds.download import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     FeedSyncResult,
+    GroupSyncResult,
     NvdV2Feed,
     PackagesFeed,
     VulnDBFeed,

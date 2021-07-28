@@ -1,9 +1,9 @@
 """
 Interface to the accounts table. Data format is dicts, not objects.
 """
-from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
-from anchore_engine.db import Account, AccountStates, AccountTypes
+from anchore_engine.db import Account, AccountTypes, AccountStates
 from anchore_engine.db.entities.common import anchore_now
+from anchore_engine.configuration.localconfig import ADMIN_ACCOUNT_NAME
 
 
 class AccountNotFoundError(Exception):

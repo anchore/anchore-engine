@@ -1,21 +1,27 @@
 import connexion
 
 import anchore_engine.apis
+import anchore_engine.services.catalog.importer
 import anchore_engine.common
 import anchore_engine.configuration.localconfig
 import anchore_engine.services.catalog.catalog_impl
-import anchore_engine.services.catalog.importer
 import anchore_engine.subsys.servicestatus
 from anchore_engine import db
-from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
+from anchore_engine.apis.authorization import get_authorizer, INTERNAL_SERVICE_ALLOWED
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
+from anchore_engine.common import helpers
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.common.models.schemas import ImportManifest
-from anchore_engine.services.catalog import archiver
+from anchore_engine.services.catalog import archiver, CatalogService
 from anchore_engine.services.catalog.archiver import ImageConflict
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
+from anchore_engine.common.models.schemas import ImportManifest
+from anchore_engine.apis.exceptions import (
+    AnchoreApiError,
+    BadRequest,
+    InternalError,
+    ConflictingRequest,
+)
 
 authorizer = get_authorizer()
 

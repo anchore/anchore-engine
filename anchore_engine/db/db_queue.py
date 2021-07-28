@@ -4,10 +4,12 @@ import hashlib
 import json
 import uuid
 
-from sqlalchemy import and_, asc, desc, or_
+from sqlalchemy import asc, desc, or_, and_
 
 from anchore_engine import db
 from anchore_engine.db import Queue, QueueMeta
+
+from anchore_engine.subsys import logger
 from anchore_engine.subsys.caching import local_named_cache
 
 

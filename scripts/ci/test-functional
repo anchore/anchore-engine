@@ -17,8 +17,8 @@ tox_env="${TOX_ENV:-$default_tox_envs}"
 for e in $(echo "${tox_env}"); do
     docker-compose -f ${CI_COMPOSE_FILE} exec job-runner bash -c "\
         set -x && \
-        /anchore-cli/bin/anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system wait --feedsready '' && \
-        /anchore-cli/bin/anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system status && \
+        anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system wait --feedsready '' && \
+        anchore-cli --u admin --p foobar --url http://engine-api:8228/v1 system status && \
         /home/anchore/.local/bin/tox -e '${e}' -vv tests/functional --result-json .tox/test-reports.log ;\
         "
 done

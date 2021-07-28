@@ -1,17 +1,32 @@
-import pytest
-
-from anchore_engine.db import Image, get_thread_scoped_session
+from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
+from anchore_engine.db import get_thread_scoped_session, Image
+from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
+    FileparsePasswordGate,
+)
 from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
     FileNotStoredTrigger,
-    FileparsePasswordGate,
-    GroupIdMatchTrigger,
-    PEntryMatchTrigger,
-    ShellMatchTrigger,
-    UserIdMatchTrigger,
+)
+from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
     UsernameMatchTrigger,
 )
+from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
+    UserIdMatchTrigger,
+)
+from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
+    GroupIdMatchTrigger,
+)
+from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
+    ShellMatchTrigger,
+)
+from anchore_engine.services.policy_engine.engine.policy.gates.passwd_file import (
+    PEntryMatchTrigger,
+)
 from anchore_engine.subsys import logger
-from tests.integration.services.policy_engine.engine.policy.gates import GateUnitTest
+import pytest
+from tests.integration.services.policy_engine.engine.policy.gates import (
+    cls_fully_loaded_test_env,
+    cls_no_feeds_test_env,
+)
 
 logger.enable_test_logging()
 

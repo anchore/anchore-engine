@@ -1,6 +1,5 @@
-import json
 import time
-
+import json
 from anchore_engine.subsys import logger
 
 

@@ -3,7 +3,7 @@ Provides a unified abstraction of the ArchivedImage and ArchivedImageDocker tabl
 
 """
 
-from sqlalchemy import and_, func, or_
+from sqlalchemy import or_, func, and_
 from sqlalchemy.orm import Session, lazyload
 
 from anchore_engine.db import ArchivedImage, ArchivedImageDocker

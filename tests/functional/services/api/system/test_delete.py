@@ -1,11 +1,11 @@
 import pytest
 
 from tests.functional.services.utils.http_utils import (
-    APIResponse,
-    RequestFailedError,
-    http_del,
     http_get,
+    APIResponse,
     http_put,
+    http_del,
+    RequestFailedError,
 )
 
 

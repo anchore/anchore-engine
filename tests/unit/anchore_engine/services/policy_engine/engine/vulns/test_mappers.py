@@ -1,10 +1,11 @@
 import pytest
 
+
 from anchore_engine.services.policy_engine.engine.vulns.mappers import (
-    ENGINE_DISTRO_MAPPERS,
-    ENGINE_PACKAGE_MAPPERS,
-    GRYPE_DISTRO_MAPPERS,
     GRYPE_PACKAGE_MAPPERS,
+    GRYPE_DISTRO_MAPPERS,
+    ENGINE_PACKAGE_MAPPERS,
+    ENGINE_DISTRO_MAPPERS,
 )
 
 

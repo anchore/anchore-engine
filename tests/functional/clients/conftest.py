@@ -1,11 +1,9 @@
-import importlib.util
+from functools import lru_cache
 import json
 import os
-from functools import lru_cache
+import importlib.util
 from os.path import join
-
 import pytest
-
 from .scripts import standalone
 
 pre_baked_images = {

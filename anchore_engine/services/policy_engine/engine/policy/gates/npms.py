@@ -1,13 +1,14 @@
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
+from anchore_engine.services.policy_engine.engine.policy.params import (
+    TypeValidator,
+    TriggerParameter,
+)
 from anchore_engine.db import NpmMetadata
+from anchore_engine.subsys import logger
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
-from anchore_engine.services.policy_engine.engine.policy.params import (
-    TriggerParameter,
-    TypeValidator,
-)
-from anchore_engine.subsys import logger
+
 
 # TODO; generalize these for any feed, with base classes and children per feed type
 

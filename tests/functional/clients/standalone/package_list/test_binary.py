@@ -1,6 +1,6 @@
-import pytest
-
 from .fixtures import binary
+from . import path_params, metadata_params
+import pytest
 
 
 class TestBinary:

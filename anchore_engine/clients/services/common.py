@@ -1,7 +1,7 @@
-import copy
-import random
 import re
+import copy
 import time
+import random
 
 import anchore_engine.configuration.localconfig
 from anchore_engine.db import db_services, session_scope

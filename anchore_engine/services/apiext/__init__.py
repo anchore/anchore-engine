@@ -1,10 +1,9 @@
 import pkg_resources
-
-import anchore_engine.subsys.metrics
 import anchore_engine.subsys.servicestatus
-from anchore_engine.apis.oauth import PasswordGrant, init_oauth
+import anchore_engine.subsys.metrics
+from anchore_engine.apis.oauth import init_oauth, PasswordGrant
+from anchore_engine.service import ApiService, UserFacingApiService, LifeCycleStages
 from anchore_engine.configuration import localconfig
-from anchore_engine.service import ApiService, LifeCycleStages, UserFacingApiService
 
 
 class ExternalApiService(UserFacingApiService):

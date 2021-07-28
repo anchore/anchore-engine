@@ -11,22 +11,24 @@ work the way they do and often the behavior is a result of the range of cleanlin
 
 """
 import datetime
+import hashlib
+import json
 import re
-import threading
 import time
 
 from sqlalchemy import or_
 
-from anchore_engine.common import nonos_package_types
 from anchore_engine.db import (
     DistroNamespace,
-    ImagePackage,
-    ImagePackageVulnerability,
-    Vulnerability,
-    db_catalog_image,
     get_thread_scoped_session,
+    db_catalog_image,
 )
+from anchore_engine.db import Vulnerability, ImagePackage, ImagePackageVulnerability
+from anchore_engine.common import nonos_package_types
+import threading
+
 from anchore_engine.subsys import logger
+
 
 # TODO: introduce a match cache for the fix key and package key to optimize the lookup and updates since its common to
 # see a lot of images with the same versions of packages installed.

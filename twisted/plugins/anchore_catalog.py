@@ -2,8 +2,9 @@ from twisted.application.service import IServiceMaker
 from twisted.plugin import IPlugin
 from zope.interface import implementer
 
-from anchore_engine.services.catalog.service import CatalogService
-from anchore_engine.twisted import CommonOptions, WsgiApiServiceMaker
+
+from anchore_engine.services.catalog import CatalogService
+from anchore_engine.twisted import WsgiApiServiceMaker, CommonOptions
 
 
 @implementer(IServiceMaker, IPlugin)

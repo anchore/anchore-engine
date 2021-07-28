@@ -6,18 +6,20 @@ Internal service client base and common functions
 import copy
 import urllib
 import urllib.parse
-from contextlib import contextmanager
-
 from requests.auth import AuthBase, HTTPBasicAuth
-
+from anchore_engine.configuration import localconfig
+from anchore_engine.clients.services.http import anchy_get
 from anchore_engine.clients.services.common import (
     get_service_endpoint,
     get_service_endpoints,
 )
-from anchore_engine.clients.services.http import anchy_get
-from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
-from anchore_engine.subsys.identities import HttpBasicCredential, HttpBearerCredential
+from anchore_engine.subsys.identities import (
+    AccessCredential,
+    HttpBearerCredential,
+    HttpBasicCredential,
+)
+from contextlib import contextmanager
 from anchore_engine.utils import ensure_str
 
 

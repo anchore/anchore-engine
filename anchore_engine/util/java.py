@@ -3,7 +3,6 @@ Java-related utilities for interacting with Java packages.
 """
 
 import re
-
 import anchore_engine.utils
 
 
