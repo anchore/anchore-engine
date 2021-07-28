@@ -280,20 +280,6 @@ class ImageLoader(object):
 
         return True
 
-        # records = []
-        # for pkg_name, paths in packages.items():
-        #
-        #     r = AnalysisArtifact()
-        #     r.image_user_id = image_obj.user_id
-        #     r.image_id = image_obj.id
-        #     r.analyzer_type = 'base'
-        #     r.analyzer_id = 'file_package_verify'
-        #     r.analyzer_artifact = 'distro.pkgfilemeta'
-        #     r.artifact_key = pkg_name
-        #     r.json_value = paths
-        #     records.append(r)
-        # return records
-
     def load_retrieved_files(self, analysis_report, image_obj):
         """
         Loads the analyzer retrieved files from the image, saves them in the db
