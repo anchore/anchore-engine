@@ -7,11 +7,16 @@ import time
 import traceback
 import uuid
 from contextlib import contextmanager
+from typing import Generator, Optional
 
 import sqlalchemy
 from sqlalchemy import types
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm.session import Session as SessionObject
+
+from anchore_engine.utils import AnchoreException
 
 try:
     # Separate logger for use during bootstrap when logging may not be fully configured
@@ -24,9 +29,11 @@ except:
     logger = logging.getLogger(__name__)
     log = logger
 
-Session = None  # Standard session maker
-ThreadLocalSession = None  # Separate thread-local session maker
-engine = None
+Session: Optional[SessionObject] = None  # Standard session maker
+ThreadLocalSession: Optional[
+    scoped_session
+] = None  # Separate thread-local session maker
+engine: Optional[Engine] = None
 Base = declarative_base()
 
 
@@ -301,16 +308,23 @@ def initialize(localconfig=None, versions=None):
     return ret
 
 
-def get_session():
+class ScopedSessionNotInitializedError(AnchoreException):
+    def __init__(self):
+        super().__init__(
+            "Invoked get_thread_scoped_session without first calling init_thread_session to initialize "
+            "the engine and session factory"
+        )
+
+
+def get_session() -> SessionObject:
     global Session
     return Session()
 
 
 @contextmanager
-def session_scope():
+def session_scope() -> Generator[SessionObject, None, None]:
     """Provide a transactional scope around a series of operations."""
-    global Session
-    session = Session()
+    session = get_session()
 
     # session.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
@@ -329,7 +343,7 @@ def session_scope():
         session.close()
 
 
-def get_thread_scoped_session():
+def get_thread_scoped_session() -> SessionObject:
     """
     Return a thread scoped session for use. Caller must remove it when complete to ensure no leaks
 
@@ -337,10 +351,7 @@ def get_thread_scoped_session():
     """
     global ThreadLocalSession
     if not ThreadLocalSession:
-        raise Exception(
-            "Invoked get_session without first calling init_db to initialize the engine and session factory"
-        )
-
+        raise ScopedSessionNotInitializedError
     # Will re-use a session if already in this thread-local context, otherwise will create a new one
     sess = ThreadLocalSession()
     return sess
