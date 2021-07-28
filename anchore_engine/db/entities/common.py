@@ -16,6 +16,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session as SessionObject
 
+from anchore_engine.utils import AnchoreException
+
 try:
     # Separate logger for use during bootstrap when logging may not be fully configured
     from twisted.python import log
@@ -306,25 +308,16 @@ def initialize(localconfig=None, versions=None):
     return ret
 
 
-class SessionNotInitializedError(Exception):
-    def __init__(self, message):
-        if message:
-            self.message = message
-        else:
-            self.message = "Invoked get_session without first calling do_connect to initialize the engine and session factory"
-        super().__init__(self.message)
-
-
-class ScopedSessionNotInitializedError(SessionNotInitializedError):
+class ScopedSessionNotInitializedError(AnchoreException):
     def __init__(self):
-        self.message = "Invoked get_thread_scoped_session without first calling init_thread_session to initialize the engine and session factory"
-        super().__init__(self.message)
+        super().__init__(
+            "Invoked get_thread_scoped_session without first calling init_thread_session to initialize "
+            "the engine and session factory"
+        )
 
 
 def get_session() -> SessionObject:
     global Session
-    if not Session:
-        raise SessionNotInitializedError
     return Session()
 
 
