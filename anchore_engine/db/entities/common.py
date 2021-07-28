@@ -11,7 +11,7 @@ from typing import Generator, Optional
 
 import sqlalchemy
 from sqlalchemy import types
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.orm.session import Session as SessionObject
@@ -307,8 +307,11 @@ def initialize(localconfig=None, versions=None):
 
 
 class SessionNotInitializedError(Exception):
-    def __init__(self):
-        self.message = "Invoked get_session without first calling do_connect to initialize the engine and session factory"
+    def __init__(self, message):
+        if message:
+            self.message = message
+        else:
+            self.message = "Invoked get_session without first calling do_connect to initialize the engine and session factory"
         super().__init__(self.message)
 
 
@@ -328,8 +331,7 @@ def get_session() -> SessionObject:
 @contextmanager
 def session_scope() -> Generator[SessionObject, None, None]:
     """Provide a transactional scope around a series of operations."""
-    global Session
-    session = Session()
+    session = get_session()
 
     # session.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
