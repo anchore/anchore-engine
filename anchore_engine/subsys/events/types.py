@@ -1,6 +1,6 @@
 import random
 
-from .base import CategoryDescriptor, EventBase, EventLevel
+from .base import EventLevel, EventBase, CategoryDescriptor
 
 _image_digest_resource_type = "image_digest"
 _image_tag_resource_type = "image_tag"

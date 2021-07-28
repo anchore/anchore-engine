@@ -1,7 +1,7 @@
-import pytest
-
-from . import path_params
+import sys
 from .fixtures import alpine
+from . import path_params
+import pytest
 
 
 class TestAlpinePaths:

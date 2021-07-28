@@ -2,8 +2,6 @@ from typing import Dict, Tuple
 
 import pytest
 
-pytest_plugins = "tests.fixtures"
-
 
 @pytest.fixture(scope="session")
 def monkeysession(request):

@@ -1,10 +1,8 @@
-from unittest.mock import Mock
-
 import pytest
-
-from anchore_engine.db.entities.policy_engine import GemMetadata, Image, ImagePackage
-from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from unittest.mock import Mock
 from anchore_engine.services.policy_engine.engine.policy.gates import gems
+from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
+from anchore_engine.db.entities.policy_engine import Image, ImagePackage, GemMetadata
 
 image_id = "1"
 user = "admin"

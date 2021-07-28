@@ -1,12 +1,11 @@
 import inspect
+import sys
+import threading
+from twisted.python import log
+from functools import wraps
 
 # Configure a standard python logger for stdout use during bootstrap
 import logging
-import sys
-import threading
-from functools import wraps
-
-from twisted.python import log
 
 bootstrap_logger = None
 bootstrap_logger_enabled = False

@@ -4,15 +4,20 @@ Functions for migrating between driver backends.
 """
 import datetime
 import json
-from collections import namedtuple
-from contextlib import contextmanager
 
+from contextlib import contextmanager
 import anchore_engine.db.entities.common
-from anchore_engine.db import ArchiveMigrationTask, ObjectStorageMetadata, session_scope
-from anchore_engine.db.db_locks import application_lock_ids, db_application_lock
-from anchore_engine.subsys import logger
-from anchore_engine.subsys.object_store.manager import ObjectStorageManager
 from anchore_engine.utils import get_threadbased_id
+from anchore_engine.db import session_scope, ObjectStorageMetadata
+from anchore_engine.db import ArchiveMigrationTask
+
+from anchore_engine.subsys import logger
+from anchore_engine.db.db_locks import db_application_lock, application_lock_ids
+
+from anchore_engine.subsys.object_store.manager import ObjectStorageManager
+
+from collections import namedtuple
+
 
 MigrationContext = namedtuple(
     "MigrationContext", field_names=["from_archive", "to_archive"]

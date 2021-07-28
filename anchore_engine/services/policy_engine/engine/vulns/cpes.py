@@ -2,8 +2,8 @@ import re
 import typing
 from typing import List, Tuple
 
-from anchore_engine.common import os_package_types
 from anchore_engine.db.entities.policy_engine import ImageCpe, ImagePackage
+from anchore_engine.common import os_package_types
 
 
 def compare_fields(lhs, rhs):

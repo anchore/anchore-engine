@@ -1,11 +1,9 @@
+import pytest
 import json
 import time
-
-import pytest
-
 from anchore_engine.auth.common import (
-    get_creds_by_registry,
     get_docker_registry_userpw,
+    get_creds_by_registry,
     registry_record_matches,
 )
 

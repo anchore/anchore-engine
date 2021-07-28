@@ -1,12 +1,11 @@
-import pytest
-
 from anchore_engine.common.models.policy_engine import (
-    Artifact,
     FixedArtifact,
-    Vulnerability,
     VulnerabilityMatch,
+    Vulnerability,
+    Artifact,
 )
 from anchore_engine.services.policy_engine.engine.vulns.providers import GrypeProvider
+import pytest
 
 
 class TestGrypeProvider:

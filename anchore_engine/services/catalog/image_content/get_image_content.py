@@ -1,13 +1,14 @@
 import base64
 import json
 
+from anchore_engine.services.apiext.api import helpers
+
 import anchore_engine
-from anchore_engine import db, utils
-from anchore_engine.apis.exceptions import BadRequest, ResourceNotFound
+from anchore_engine import utils, db
+from anchore_engine.apis.exceptions import ResourceNotFound, BadRequest
 from anchore_engine.common.helpers import make_anchore_exception
 from anchore_engine.db import db_catalog_image
-from anchore_engine.services.apiext.api import helpers
-from anchore_engine.subsys import logger, taskstate
+from anchore_engine.subsys import taskstate, logger
 
 
 class ImageContentGetter:

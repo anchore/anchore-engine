@@ -1,8 +1,8 @@
 # from ['image']['imagedata']['analysis_report']['package_list']
+from .fixtures import java
+from . import path_params, metadata_params
 import pytest
 
-from . import metadata_params, path_params
-from .fixtures import java
 
 #
 # Preloaded fixtures, with pytest.param that allows a nicer repr when the test runs, instead of the

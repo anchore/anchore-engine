@@ -1,18 +1,17 @@
 import re
-
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.gates.util import (
     CheckOperation,
 )
 from anchore_engine.services.policy_engine.engine.policy.params import (
     EnumStringParameter,
-    IntegerValidator,
+    TypeValidator,
+    TriggerParameter,
     LinkedValidator,
     RegexParamValidator,
-    TriggerParameter,
-    TypeValidator,
+    IntegerValidator,
 )
-from anchore_engine.utils import BYTES_REGEX, convert_bytes_size
+from anchore_engine.utils import convert_bytes_size, BYTES_REGEX
 
 
 class ImageMetadataAttributeCheckTrigger(BaseTrigger):

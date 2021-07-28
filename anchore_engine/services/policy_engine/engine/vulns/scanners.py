@@ -18,11 +18,11 @@ from anchore_engine.common.models.policy_engine import (
 )
 from anchore_engine.configuration import localconfig
 from anchore_engine.db.entities.policy_engine import (
-    CpeV2Vulnerability,
     Image,
-    ImageCpe,
     ImagePackageVulnerability,
+    ImageCpe,
     NvdV2Metadata,
+    CpeV2Vulnerability,
 )
 from anchore_engine.services.policy_engine.engine import vulnerabilities
 from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
@@ -31,10 +31,9 @@ from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
-
-from .cpe_matchers import DistroEnabledCpeMatcher, NonOSCpeMatcher
+from .cpe_matchers import NonOSCpeMatcher, DistroEnabledCpeMatcher
 from .dedup import get_image_vulnerabilities_deduper
-from .mappers import to_engine_vulnerabilities, to_grype_sbom
+from .mappers import to_grype_sbom, to_engine_vulnerabilities
 
 # debug option for saving image sbom, defaults to not saving
 SAVE_SBOM_TO_FILE = (

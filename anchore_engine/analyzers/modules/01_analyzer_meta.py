@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import json
-import os
 import sys
-
+import os
+import shutil
+import json
 import anchore_engine.analyzers.utils
 
 analyzer_name = "analyzer_meta"

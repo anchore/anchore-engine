@@ -17,7 +17,6 @@ import requests
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.simplequeue import run_target_with_lease
-from anchore_engine.common.models.schemas import ImageVulnerabilitiesQueueMessage
 
 # A hack to get admin credentials for executing api ops
 from anchore_engine.db import Image, end_session
@@ -50,6 +49,7 @@ from anchore_engine.subsys.events import (
     FeedSyncTaskStarted,
 )
 from anchore_engine.utils import timer
+from anchore_engine.common.models.schemas import ImageVulnerabilitiesQueueMessage
 
 
 def construct_task_from_json(json_obj):

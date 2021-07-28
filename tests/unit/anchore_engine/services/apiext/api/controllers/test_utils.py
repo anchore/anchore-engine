@@ -3,10 +3,8 @@ Unit tests for the api controller utils of external API service
 """
 import base64
 import json
-
-import pytest
 import yaml
-
+import pytest
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.common.models.policy_engine import CVSS, NVDReference, Vulnerability
 from anchore_engine.services.apiext.api.controllers import utils as api_utils

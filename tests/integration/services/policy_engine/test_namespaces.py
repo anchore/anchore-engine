@@ -1,21 +1,22 @@
 import pytest
 
-from anchore_engine.db import get_thread_scoped_session
-from anchore_engine.db.entities.policy_engine import (
-    DistroMapping,
-    DistroNamespace,
-    DistroTuple,
-    FeedGroupMetadata,
-    FeedMetadata,
-)
-from anchore_engine.services.policy_engine import (  # _init_distro_mappings
-    process_preflight,
-)
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    feed_registry,
     have_vulnerabilities_for,
+    feed_registry,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.db.entities.policy_engine import (
+    DistroTuple,
+    FeedMetadata,
+    FeedGroupMetadata,
+    DistroMapping,
+    DistroNamespace,
+)
+from anchore_engine.db import get_thread_scoped_session
+from anchore_engine.services.policy_engine import (
+    process_preflight,
+)  # _init_distro_mappings
+
 
 logger.enable_test_logging()
 

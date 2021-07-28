@@ -1,12 +1,12 @@
-from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.utils import ensure_str, ensure_bytes
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedNumberListParameter,
     CommaDelimitedStringListParameter,
     TriggerParameter,
     TypeValidator,
 )
-from anchore_engine.utils import ensure_str
+from anchore_engine.db import AnalysisArtifact
 
 
 class FileNotStoredTrigger(BaseTrigger):

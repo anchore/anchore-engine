@@ -1,10 +1,10 @@
 import re
 
 from anchore_engine.apis.authorization import (
-    ActionBoundPermission,
-    Permission,
-    RequestingAccountValue,
     get_authorizer,
+    ActionBoundPermission,
+    RequestingAccountValue,
+    Permission,
 )
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.apis.exceptions import BadRequest
@@ -12,8 +12,8 @@ from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.configuration.localconfig import (
-    ADMIN_ACCOUNT_NAME,
     GLOBAL_RESOURCE_DOMAIN,
+    ADMIN_ACCOUNT_NAME,
 )
 
 authorizer = get_authorizer()

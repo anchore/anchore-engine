@@ -1,24 +1,23 @@
 import json
 import time
-
 import pytest
 
-from anchore_engine.configuration import localconfig
+from anchore_engine.subsys import logger
 from anchore_engine.db import (
-    FeedGroupMetadata,
-    FeedMetadata,
-    GemMetadata,
-    Image,
-    NpmMetadata,
-    NvdMetadata,
-    Vulnerability,
     session_scope,
+    Image,
+    FeedMetadata,
+    FeedGroupMetadata,
+    Vulnerability,
+    NvdMetadata,
+    NpmMetadata,
+    GemMetadata,
 )
 from anchore_engine.services.policy_engine.engine.tasks import (
-    FeedsUpdateTask,
     ImageLoadTask,
+    FeedsUpdateTask,
 )
-from anchore_engine.subsys import logger
+from anchore_engine.configuration import localconfig
 
 logger.enable_test_logging()
 

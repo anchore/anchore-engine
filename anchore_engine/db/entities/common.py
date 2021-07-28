@@ -1,23 +1,25 @@
 """
 Common functions and variables for all entity types including some bootstrap and init functions
 """
-import datetime
+import decimal
 import json
+import uuid
 import time
 import traceback
-import uuid
 from contextlib import contextmanager
 
 import sqlalchemy
 from sqlalchemy import types
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
+import datetime
+from anchore_engine.utils import datetime_to_rfc3339
 
 try:
+    from anchore_engine.subsys import logger
+
     # Separate logger for use during bootstrap when logging may not be fully configured
     from twisted.python import log
-
-    from anchore_engine.subsys import logger  # pylint: disable=C0412
 except:
     import logging
 

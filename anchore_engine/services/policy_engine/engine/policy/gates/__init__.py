@@ -1,21 +1,21 @@
 # Import all valid gates
 
+from .dockerfile import DockerfileGate
+from .files import FileCheckGate
+from .passwd_file import FileparsePasswordGate
+from .packages import PackagesCheckGate
+from .vulnerabilities import VulnerabilitiesGate
+from .licenses import LicensesGate
+from .gems import GemCheckGate
+from .npms import NpmCheckGate
+from .secrets import SecretCheckGate
+from .image_metadata import ImageMetadataGate
 from .always import AlwaysGate
+from .retrieved_files import RetrievedFileChecksGate
+from .malware import MalwareGate
 
 # Bring in deprecated gates
 from .deprecated import *
-from .dockerfile import DockerfileGate
 
 # Bring in eol'd gates
 from .eol import *
-from .files import FileCheckGate
-from .gems import GemCheckGate
-from .image_metadata import ImageMetadataGate
-from .licenses import LicensesGate
-from .malware import MalwareGate
-from .npms import NpmCheckGate
-from .packages import PackagesCheckGate
-from .passwd_file import FileparsePasswordGate
-from .retrieved_files import RetrievedFileChecksGate
-from .secrets import SecretCheckGate
-from .vulnerabilities import VulnerabilitiesGate

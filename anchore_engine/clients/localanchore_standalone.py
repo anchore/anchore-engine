@@ -1,31 +1,34 @@
 import base64
-import copy
 import filecmp
-import json
 import os
 import re
+import json
+import threading
+import uuid
 import shutil
 import tarfile
-import threading
+import copy
 import time
-import uuid
-
-import retrying
 import treelib
-import yaml
+import collections
 
+import yaml
+from pkg_resources import resource_filename
+
+import anchore_engine.configuration
+import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
-import anchore_engine.common
 import anchore_engine.common.images
-import anchore_engine.configuration
-from anchore_engine import utils
 from anchore_engine.analyzers import manager as analyzer_manager
+from anchore_engine.utils import AnchoreException
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
     DockerV2ManifestMetadata,
 )
-from anchore_engine.utils import AnchoreException
+import retrying
+
+from anchore_engine import utils
 
 anchorelock = threading.Lock()
 anchorelocks = {}
@@ -36,8 +39,10 @@ IMAGE_PULL_RETRY_WAIT_INCREMENT_MS = 1000
 
 
 try:
+    from anchore_engine.subsys import logger
+
     # Separate logger for use during bootstrap when logging may not be fully configured
-    from anchore_engine.subsys import logger  # pylint: disable=C0412
+    from twisted.python import log
 except:
     import logging
 

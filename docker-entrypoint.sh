@@ -5,6 +5,10 @@ if [[ "${SET_HOSTID_TO_HOSTNAME}" == "true" ]]; then
     export ANCHORE_HOST_ID=${HOSTNAME}
 fi
 
+if [[ -f "/opt/rh/rh-python36/enable" ]]; then
+    source /opt/rh/rh-python36/enable
+fi
+
 # check if /home/anchore/certs/ exists & has files in it
 if [[ -d "/home/anchore/certs" ]] && [[ ! -z "$(ls -A /home/anchore/certs)" ]]; then
     mkdir -p /home/anchore/certs_override/python
@@ -27,8 +31,5 @@ if [[ -d "/home/anchore/certs" ]] && [[ ! -z "$(ls -A /home/anchore/certs)" ]]; 
     export REQUESTS_CA_BUNDLE=/home/anchore/certs_override/python/cacert.pem
     export SSL_CERT_DIR=/home/anchore/certs_override/os/
 fi
-
-# Add the CLI virtual env bin path
-export PATH=$PATH:/anchore-cli/bin
 
 exec "$@"

@@ -5,15 +5,15 @@ These are handlers for routes available to standard users for managing their own
 
 """
 
-from anchore_engine.apis.authorization import get_authorizer
-from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.db import session_scope, UserAccessCredentialTypes
+from anchore_engine.subsys import logger, identities
 from anchore_engine.common.helpers import make_response_error
-from anchore_engine.db import UserAccessCredentialTypes, session_scope
 from anchore_engine.services.apiext.api.controllers.accounts import (
-    credential_db_to_msg,
     user_db_to_msg,
+    credential_db_to_msg,
 )
-from anchore_engine.subsys import identities, logger
+from anchore_engine.apis.context import ApiRequestContextProxy
+from anchore_engine.apis.authorization import get_authorizer
 
 authorizer = get_authorizer()
 

@@ -6,18 +6,19 @@ from connexion import request
 
 # anchore modules
 import anchore_engine.apis
-import anchore_engine.common
 import anchore_engine.common.helpers
-import anchore_engine.configuration.localconfig
-from anchore_engine.apis.authorization import (
-    ActionBoundPermission,
-    RequestingAccountValue,
-    get_authorizer,
-)
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
+
+import anchore_engine.common
+import anchore_engine.configuration.localconfig
 from anchore_engine.subsys import logger
+from anchore_engine.apis.authorization import (
+    get_authorizer,
+    RequestingAccountValue,
+    ActionBoundPermission,
+)
 
 authorizer = get_authorizer()
 

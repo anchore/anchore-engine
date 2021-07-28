@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-import json
-import os
-import stat
 import sys
+import os
+import re
+import json
+import subprocess
+import stat
 
 import anchore_engine.analyzers.utils
 

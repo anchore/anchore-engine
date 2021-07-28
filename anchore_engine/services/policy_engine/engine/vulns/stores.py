@@ -1,15 +1,19 @@
-import datetime
 import enum
+from typing import Dict
 
 import retrying
+import datetime
 
-from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
-from anchore_engine.db import Image
-from anchore_engine.db import ImageVulnerabilitiesReport as DbImageVulnerabilities
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db.db_grype_db_feed_metadata import (
-    NoActiveGrypeDB,
     get_most_recent_active_grypedb,
+    NoActiveGrypeDB,
 )
+from anchore_engine.db import (
+    Image,
+    ImageVulnerabilitiesReport as DbImageVulnerabilities,
+)
+from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
 from anchore_engine.subsys import logger
 
 # Disabled by default, can be set in config file. Seconds for connection to store

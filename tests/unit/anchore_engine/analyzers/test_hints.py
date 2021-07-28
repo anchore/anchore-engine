@@ -1,17 +1,17 @@
 import pytest
 
 from anchore_engine.analyzers.hints import (
-    AlpineHint,
     BaseHint,
+    HintsTypeError,
+    RPMHint,
+    PythonHint,
+    GoHint,
     BinaryHint,
     DebianHint,
+    AlpineHint,
     GemHint,
-    GoHint,
-    HintsTypeError,
-    JavaHint,
     NPMHint,
-    PythonHint,
-    RPMHint,
+    JavaHint,
 )
 
 
@@ -188,40 +188,6 @@ class TestRPMHint:
                     "expected_error": "",
                 },
                 id="valid",
-            ),
-            pytest.param(
-                {
-                    "pkg": {
-                        "name": "fedora-release-identity-container",
-                        "version": "35",
-                        "release": "0.7",
-                        "arch": "noarch",
-                        "type": "rpm",
-                    },
-                    "expected": (
-                        "fedora-release-identity-container",
-                        "35",
-                        "0.7",
-                        "",
-                        "noarch",
-                    ),
-                    "expected_error": "",
-                },
-                id="valid-release-no-source",
-            ),
-            pytest.param(
-                {
-                    "pkg": {
-                        "name": "tzdata",
-                        "version": "2021a",
-                        "release": "1.fc34",
-                        "arch": "noarch",
-                        "type": "rpm",
-                    },
-                    "expected": ("tzdata", "2021a", "1.fc34", "", "noarch"),
-                    "expected_error": "",
-                },
-                id="valid-release-no-source",
             ),
             pytest.param(
                 {

@@ -1,11 +1,11 @@
 from tests.functional import get_logger
 from tests.functional.services.api.images import (
     get_alpine_latest_image_os_content,
-    get_alpine_latest_image_os_vuln,
-    get_image_digest,
     get_image_id,
+    get_image_digest,
+    get_alpine_latest_image_os_vuln,
 )
-from tests.functional.services.utils.http_utils import APIResponse, http_get
+from tests.functional.services.utils.http_utils import http_get, APIResponse
 
 
 class TestQueryAPIGetReturns200:

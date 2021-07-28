@@ -2,13 +2,14 @@
 Brings up each api in a test process to ensure spec is clean and works
 """
 
-import os
-
-import connexion
 import pytest
+import connexion
 from connexion.mock import MockResolver
-
+import os
+import signal
+import time
 from tests.utils import init_test_logging
+from anchore_engine.subsys import logger
 
 init_test_logging()
 

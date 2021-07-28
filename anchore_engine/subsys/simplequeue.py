@@ -1,5 +1,5 @@
 from anchore_engine import db
-from anchore_engine.db import db_queue
+from anchore_engine.db import db_queue, db_locks
 
 queues = {}
 queues_persist_files = {}

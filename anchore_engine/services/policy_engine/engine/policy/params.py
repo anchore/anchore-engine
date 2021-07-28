@@ -1,13 +1,12 @@
-import copy
-import json
 import re
-
 import jsonschema
+import json
+import copy
 
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
-    ParameterValidationError,
     RequiredParameterNotSetError,
     ValidationError,
+    ParameterValidationError,
 )
 from anchore_engine.subsys import logger
 

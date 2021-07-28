@@ -1,5 +1,4 @@
 import os
-
 import docker
 import pytest
 from docker.errors import DockerException

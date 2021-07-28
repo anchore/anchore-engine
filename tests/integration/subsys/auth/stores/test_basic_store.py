@@ -1,13 +1,11 @@
 import json
 import unittest
-
-from passlib.context import CryptContext
-from yosai.core import DefaultPermission, UsernamePasswordToken
-
 from anchore_engine.db import session_scope
 from anchore_engine.subsys import identities
-from anchore_engine.subsys.auth.stores import basic as basic_accountstore
 from anchore_engine.subsys.identities import AccountTypes, UserAccessCredentialTypes
+from anchore_engine.subsys.auth.stores import basic as basic_accountstore
+from yosai.core import UsernamePasswordToken, DefaultPermission
+from passlib.context import CryptContext
 
 
 class TestBasicStore(unittest.TestCase):
@@ -43,14 +41,14 @@ class TestBasicStore(unittest.TestCase):
         """
         conf = cls.setup_engine_config(connect_str)
         from anchore_engine.db import (
-            AccessCredential,
+            initialize,
             Account,
             AccountUser,
+            AccessCredential,
             Anchore,
-            initialize,
         )
         from anchore_engine.db.entities.common import do_create
-        from anchore_engine.version import db_version, version
+        from anchore_engine.version import version, db_version
 
         initialize(
             versions={"service_version": version, "db_version": db_version},

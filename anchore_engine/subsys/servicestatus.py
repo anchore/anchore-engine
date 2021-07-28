@@ -1,11 +1,11 @@
 import json
 import time
 
-import anchore_engine.configuration.localconfig
-import anchore_engine.subsys.metrics
-import anchore_engine.version
 from anchore_engine.db import db_services, session_scope
 from anchore_engine.subsys import logger
+import anchore_engine.subsys.metrics
+import anchore_engine.configuration.localconfig
+import anchore_engine.version
 
 service_statuses = {}
 my_service_record = None

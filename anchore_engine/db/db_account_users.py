@@ -4,10 +4,9 @@ Interface to the account_users table. Data format is dicts, not objects.
 
 from passlib import pwd
 from passlib.context import CryptContext
-
-from anchore_engine.configuration import localconfig
-from anchore_engine.db import AccessCredential, AccountUser, UserAccessCredentialTypes
+from anchore_engine.db import AccountUser, AccessCredential, UserAccessCredentialTypes
 from anchore_engine.db.entities.common import anchore_now
+from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
 
 

@@ -1,21 +1,19 @@
 import gzip
-import hashlib
 import json
 import os
 import re
 import tempfile
-from collections import OrderedDict
-from urllib.request import urlretrieve
 
 import anchore_engine.configuration.localconfig
-from anchore_engine.common.errors import AnchoreError
-from anchore_engine.subsys import logger
 from anchore_engine.utils import (
-    AnchoreException,
-    ensure_str,
     run_command,
     run_command_list,
+    manifest_to_digest,
+    AnchoreException,
 )
+from anchore_engine.subsys import logger
+from anchore_engine.common.errors import AnchoreError
+from urllib.request import urlretrieve
 
 
 def manifest_to_digest_shellout(rawmanifest):
@@ -63,18 +61,6 @@ def manifest_to_digest_shellout(rawmanifest):
         if tmpmanifest:
             os.remove(tmpmanifest)
 
-    return ret
-
-
-def manifest_to_digest(rawmanifest):
-    ret = None
-    d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
-    if d["schemaVersion"] != 1:
-        ret = "sha256:" + str(hashlib.sha256(rawmanifest.encode("utf-8")).hexdigest())
-    else:
-        ret = manifest_to_digest_shellout(rawmanifest)
-
-    ret = ensure_str(ret)
     return ret
 
 
@@ -594,6 +580,8 @@ class SkopeoError(AnchoreException):
         out=None,
         msg="Error encountered in skopeo operation",
     ):
+        from anchore_engine.common.errors import AnchoreError
+
         self.cmd = " ".join(cmd) if isinstance(cmd, list) else cmd
         self.exitcode = rc
         self.stderr = (

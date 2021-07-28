@@ -1,11 +1,13 @@
 from connexion import request
 from werkzeug.datastructures import ImmutableMultiDict
 
-from anchore_engine.apis.authorization import get_authorizer
+
 from anchore_engine.apis.context import ApiRequestContextProxy
-from anchore_engine.apis.exceptions import AccessDeniedError
-from anchore_engine.auth.oauth import token_manager
+from anchore_engine.apis.authorization import get_authorizer
 from anchore_engine.subsys import logger
+from anchore_engine.auth.oauth import token_manager
+from anchore_engine.apis.exceptions import AccessDeniedError
+
 
 authorizer = get_authorizer()
 

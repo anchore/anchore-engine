@@ -1,6 +1,5 @@
 import subprocess
 import unittest
-
 from anchore_engine.util.apk import compare_versions
 
 enable_training = False

@@ -1,19 +1,19 @@
 import datetime
-
 from anchore_engine.common.models.policy_engine import (
-    CpeVulnerability,
-    CvssCombined,
-    CvssScore,
-    FeedGroupMetadata,
     FeedMetadata,
+    FeedGroupMetadata,
     Image,
-    ImageIngressRequest,
     ImageIngressResponse,
+    ImageIngressRequest,
     ImageVulnerabilityListing,
-    LegacyMultiReport,
-    LegacyTableReport,
+    CpeVulnerability,
+    CvssScore,
+    CvssCombined,
     LegacyVulnerabilityReport,
+    LegacyTableReport,
+    LegacyMultiReport,
 )
+
 from anchore_engine.utils import datetime_to_rfc3339
 
 

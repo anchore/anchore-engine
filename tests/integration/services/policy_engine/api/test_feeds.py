@@ -1,13 +1,15 @@
 import pytest
-
+from tests.fixtures import anchore_db
+from anchore_engine.db import session_scope
 from anchore_engine.db import (
-    FeedGroupMetadata,
-    FeedMetadata,
-    FixedArtifact,
     Image,
     ImagePackage,
+    ImagePackageVulnerability,
     Vulnerability,
-    session_scope,
+    FeedMetadata,
+    FeedGroupMetadata,
+    VulnerableArtifact,
+    FixedArtifact,
 )
 
 mock_feeds = [

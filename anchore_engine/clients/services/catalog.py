@@ -1,14 +1,14 @@
-import hashlib
 import json
+import hashlib
 
-import anchore_engine.clients.services.common
-import anchore_engine.common
 import anchore_engine.common.helpers
-import anchore_engine.configuration.localconfig
 from anchore_engine.clients.services import http
-from anchore_engine.clients.services.internal import InternalServiceClient
+import anchore_engine.configuration.localconfig
+import anchore_engine.common
+import anchore_engine.clients.services.common
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.events import EventBase
+from anchore_engine.clients.services.internal import InternalServiceClient
 
 
 class CatalogClient(InternalServiceClient):

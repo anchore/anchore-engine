@@ -1,6 +1,5 @@
 import re
-
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
 )
