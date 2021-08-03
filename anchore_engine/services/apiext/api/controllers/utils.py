@@ -46,6 +46,7 @@ eltemplate = {
     "feed_group": "None",
     "nvd_data": "None",
     "vendor_data": "None",
+    "wont_fix": "None",
 }
 
 
@@ -528,6 +529,7 @@ def make_response_vulnerability_report(vulnerability_type, vulnerability_report)
         vuln_dict["package_path"] = result.artifact.location
         vuln_dict["feed"] = result.vulnerability.feed
         vuln_dict["feed_group"] = result.vulnerability.feed_group
+        vuln_dict["wont_fix"] = result.fix.wont_fix
         # backwards compatibility hack
         if result.vulnerability.feed_group and "nvd" in result.vulnerability.feed_group:
             vuln_dict["nvd_data"] = get_nvd_data_from_vulnerability(
