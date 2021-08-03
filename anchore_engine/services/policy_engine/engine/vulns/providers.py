@@ -612,6 +612,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             "name": v_pkg.name,
                             "version": v_pkg.version,
                             "type": "*",
+                            "wont_fix": False,
                         }
                         namespace_el["affected_packages"].append(pkg_el)
 
@@ -686,6 +687,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             "name": v_pkg.name,
                             "version": v_pkg.version,
                             "type": v_pkg.version_format,
+                            "wont_fix": v_pkg.vendor_no_advisory,
                         }
                         if not v_pkg.version or v_pkg.version.lower() == "none":
                             pkg_el["version"] = "*"

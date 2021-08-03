@@ -689,6 +689,7 @@ class EngineGrypeDBMapper:
                         "name": grype_vulnerability.package_name,
                         "type": grype_vulnerability.version_format,
                         "version": version,
+                        "wont_fix": grype_vulnerability.fix_state == "wont-fix",
                     }
                 )
 
