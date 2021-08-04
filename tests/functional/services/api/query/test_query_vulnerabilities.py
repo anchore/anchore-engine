@@ -35,5 +35,5 @@ class TestQueryVulnerabilities:
 
         for vuln in resp.body["vulnerabilities"]:
             for package in vuln["affected_packages"]:
-                assert "wont_fix" in package
-                assert isinstance(package["wont_fix"], bool) is True
+                assert "will_not_fix" in package
+                assert isinstance(package["will_not_fix"], bool) is True

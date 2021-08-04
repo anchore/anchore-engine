@@ -429,7 +429,9 @@ class LegacyProvider(VulnerabilitiesProvider):
                         ),
                         fix=FixedArtifact(
                             versions=[fixed_in] if fixed_in else [],
-                            wont_fix=vuln.fix_has_no_advisory(fixed_in=fixed_artifact),
+                            will_not_fix=vuln.fix_has_no_advisory(
+                                fixed_in=fixed_artifact
+                            ),
                             observed_at=fixed_artifact.fix_observed_at
                             if fixed_artifact
                             else None,
@@ -491,7 +493,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             ),
                             fix=FixedArtifact(
                                 versions=vulnerability_cpe.get_fixed_in(),
-                                wont_fix=False,
+                                will_not_fix=False,
                                 observed_at=vulnerability_cpe.created_at
                                 if vulnerability_cpe.get_fixed_in()
                                 else None,
@@ -612,7 +614,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             "name": v_pkg.name,
                             "version": v_pkg.version,
                             "type": "*",
-                            "wont_fix": False,
+                            "will_not_fix": False,
                         }
                         namespace_el["affected_packages"].append(pkg_el)
 
@@ -687,7 +689,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             "name": v_pkg.name,
                             "version": v_pkg.version,
                             "type": v_pkg.version_format,
-                            "wont_fix": v_pkg.vendor_no_advisory,
+                            "will_not_fix": v_pkg.vendor_no_advisory,
                         }
                         if not v_pkg.version or v_pkg.version.lower() == "none":
                             pkg_el["version"] = "*"
@@ -1084,7 +1086,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                 if not isinstance(report, ImageVulnerabilitiesReport):
                     report = ImageVulnerabilitiesReport.from_json(report)
 
-                report.results = self._exclude_wont_fix(report.results)
+                report.results = self._exclude_will_not_fix(report.results)
                 report = report.to_json()
             else:
                 if isinstance(report, ImageVulnerabilitiesReport):
@@ -1110,20 +1112,22 @@ class GrypeProvider(VulnerabilitiesProvider):
                 report = ImageVulnerabilitiesReport.from_json(report)
 
             if vendor_only:
-                report.results = self._exclude_wont_fix(report.results)
+                report.results = self._exclude_will_not_fix(report.results)
 
             return report
 
     @staticmethod
-    def _exclude_wont_fix(matches: List[VulnerabilityMatch]):
+    def _exclude_will_not_fix(matches: List[VulnerabilityMatch]):
         """
-        Exclude matches that are explicitly marked wont_fix = True. Includes all other matches, wont_fix = False, None or any string which should never be the case
+        Exclude matches that are explicitly marked will_not_fix = True. Includes all other matches, will_not_fix = False, None or any string which should never be the case
         """
         return (
             list(
                 filter(
                     lambda x: not (
-                        x.fix and isinstance(x.fix.wont_fix, bool) and x.fix.wont_fix
+                        x.fix
+                        and isinstance(x.fix.will_not_fix, bool)
+                        and x.fix.will_not_fix
                     ),
                     matches,
                 )
@@ -1329,7 +1333,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         #                         "advisories": [],
         #                         "observed_at": "2021-06-04T02:27:35Z",
         #                         "versions": ["8.232.09-r0"],
-        #                         "wont_fix": False,
+        #                         "will_not_fix": False,
         #                     },
         #                     "match": {"detected_at": "2021-06-03T05:20:09Z"},
         #                     "nvd": [],
@@ -1448,7 +1452,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                 if (
                     isinstance(vendor_only, bool)
                     and vendor_only  # true means vendor may fix
-                    and match.fix.wont_fix  # true means vendor won't fix
+                    and match.fix.will_not_fix  # true means vendor won't fix
                 ):
                     continue
 

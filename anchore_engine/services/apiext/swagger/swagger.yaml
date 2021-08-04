@@ -745,7 +745,7 @@ paths:
           in: query
           type: boolean
           required: false
-          description: Filter results to include only vulnerabilities that are not marked as invalid by upstream OS vendor data. When set to true, it will filter out all vulnerabilities where `wont_fix` is False. If false all vulnerabilities are returned regardless of `wont_fix`
+          description: Filter results to include only vulnerabilities that are not marked as invalid by upstream OS vendor data. When set to true, it will filter out all vulnerabilities where `will_not_fix` is False. If false all vulnerabilities are returned regardless of `will_not_fix`
         - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -2951,7 +2951,7 @@ definitions:
       type:
         type: string
         description: Package type (e.g. package, rpm, deb, apk, jar, npm, gem, ...)
-      wont_fix:
+      will_not_fix:
         type: boolean
         description: Whether a vendor will or will not fix a vulnerabitlity
     description: A record of a software item which is vulnerable or carries a fix for a vulnerability
@@ -3940,7 +3940,7 @@ definitions:
       package_path:
         type: string
         description: The location (if applicable) of the vulnerable package in the container filesystem
-      wont_fix:
+      will_not_fix:
         type: string
         description: Whether a vendor will fix or not fix the vulnerability
       nvd_data:

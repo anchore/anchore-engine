@@ -14,19 +14,19 @@ class TestGrypeProvider:
         "test_input",
         [
             pytest.param(
-                [VulnerabilityMatch(fix=FixedArtifact(wont_fix="true"))],
+                [VulnerabilityMatch(fix=FixedArtifact(will_not_fix="true"))],
                 id="str",
             ),
             pytest.param(
-                [VulnerabilityMatch(fix=FixedArtifact(wont_fix="  "))],
+                [VulnerabilityMatch(fix=FixedArtifact(will_not_fix="  "))],
                 id="whitespace",
             ),
             pytest.param(
-                [VulnerabilityMatch(fix=FixedArtifact(wont_fix=""))],
+                [VulnerabilityMatch(fix=FixedArtifact(will_not_fix=""))],
                 id="blank",
             ),
             pytest.param(
-                [VulnerabilityMatch(fix=FixedArtifact(wont_fix=False))],
+                [VulnerabilityMatch(fix=FixedArtifact(will_not_fix=False))],
                 id="boolean_false",
             ),
             pytest.param(
@@ -35,20 +35,20 @@ class TestGrypeProvider:
             ),
         ],
     )
-    def test_exclude_wont_fix_false(self, test_input):
-        assert len(GrypeProvider._exclude_wont_fix(test_input)) == 1
+    def test_exclude_will_not_fix_false(self, test_input):
+        assert len(GrypeProvider._exclude_will_not_fix(test_input)) == 1
 
     @pytest.mark.parametrize(
         "test_input",
         [
             pytest.param(
-                [VulnerabilityMatch(fix=FixedArtifact(wont_fix=True))],
+                [VulnerabilityMatch(fix=FixedArtifact(will_not_fix=True))],
                 id="boolean_true",
             ),
         ],
     )
-    def test_exclude_wont_fix_true(self, test_input):
-        assert len(GrypeProvider._exclude_wont_fix(test_input)) == 0
+    def test_exclude_will_not_fix_true(self, test_input):
+        assert len(GrypeProvider._exclude_will_not_fix(test_input)) == 0
 
     @pytest.mark.parametrize(
         "test_input, expected_output",
@@ -173,7 +173,7 @@ class TestGrypeProvider:
         vuln_match = VulnerabilityMatch(
             vulnerability=Vulnerability(vulnerability_id="CVE-xyz"),
             artifact=Artifact(name="foo"),
-            fix=FixedArtifact(wont_fix=test_input),
+            fix=FixedArtifact(will_not_fix=test_input),
         )
 
         results = GrypeProvider._filter_vulnerability_matches(

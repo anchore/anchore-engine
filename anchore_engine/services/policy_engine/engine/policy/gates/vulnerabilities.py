@@ -335,7 +335,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Check vendor_only flag specified by the user in policy
                     if is_vendor_only:
-                        if fix_obj.wont_fix:
+                        if fix_obj.will_not_fix:
                             logger.debug(
                                 "{} vulnerability {} for package {} is marked by vendor as won't fix, skipping".format(
                                     new_vuln_pkg_class,
@@ -731,7 +731,7 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
             matches = context.data.get("loaded_vulnerabilities")
             for match in matches:
                 if is_vendor_only:
-                    if match.fix.wont_fix:
+                    if match.fix.will_not_fix:
                         continue
                 # search for vid in all vulns
                 if vid == match.vulnerability.vulnerability_id:

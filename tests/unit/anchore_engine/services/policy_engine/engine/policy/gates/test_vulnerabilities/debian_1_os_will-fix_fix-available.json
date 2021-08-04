@@ -4,7 +4,7 @@
   "results": [
     {
       "fix": {
-        "wont_fix": false,
+        "will_not_fix": false,
         "advisories": [],
         "versions": [
           "0.6.1-3"

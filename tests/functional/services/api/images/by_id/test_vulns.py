@@ -39,4 +39,4 @@ class TestVulns:
         assert resp == APIResponse(200)
 
         for vuln in resp.body["vulnerabilities"]:
-            assert "wont_fix" in vuln
+            assert "will_not_fix" in vuln
