@@ -79,28 +79,3 @@ class TestImagesByIDAPIGetReturns200:
         resp = http_get(["images", "by_id", image_id, "content", "os"], config=api_conf)
 
         assert resp == APIResponse(200)
-
-    def test_get_image_vuln_types(self, add_alpine_latest_image):
-        add_resp, api_conf = add_alpine_latest_image
-        image_id = get_image_id(add_resp)
-
-        resp = http_get(["images", "by_id", image_id, "vuln"], config=api_conf)
-
-        assert resp == APIResponse(200)
-
-    def test_get_all_image_vulns_by_type(self, add_alpine_latest_image):
-        add_resp, api_conf = add_alpine_latest_image
-        image_id = get_image_id(add_resp)
-
-        resp = http_get(["images", "by_id", image_id, "vuln"], config=api_conf)
-
-        assert resp == APIResponse(200)
-
-        wait_for_image_to_analyze(image_id, api_conf)
-
-        vuln_types = resp.body
-        for v_type in vuln_types:
-            resp = http_get(
-                ["images", "by_id", image_id, "vuln", v_type], config=api_conf
-            )
-            assert resp == APIResponse(200)

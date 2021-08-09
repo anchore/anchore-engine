@@ -1428,7 +1428,7 @@ definitions:
           properties:
             version:
               type: string
-            wont_fix:
+            will_not_fix:
               type: boolean
             observed_at:
               type: string
