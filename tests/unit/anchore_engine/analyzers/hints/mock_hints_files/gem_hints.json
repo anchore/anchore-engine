@@ -1,0 +1,14 @@
+{
+  "packages": [
+	{
+	    "name": "wicked",
+	    "version": "0.6.1",
+	    "location": "/app/gems/specifications/wicked-0.9.0.gemspec",
+	    "origin": "schneems",
+	    "license": "MIT",
+	    "source": "http://github.com/schneems/wicked",
+	    "files": ["README.md"],
+	    "type": "gem"
+	}
+  ]
+}
