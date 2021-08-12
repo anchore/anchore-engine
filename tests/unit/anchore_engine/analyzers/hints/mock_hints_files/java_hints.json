@@ -1,0 +1,10 @@
+{
+  "packages": [
+	{
+	    "name": "maven",
+	    "version": "0.6.1",
+	    "location": "/java/maven/somepath",
+	    "type": "java"
+	}
+  ]
+}

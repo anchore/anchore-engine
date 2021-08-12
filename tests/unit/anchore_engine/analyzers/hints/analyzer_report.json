@@ -1,0 +1,128 @@
+{
+  "package_list": {
+    "pkgs.python": {
+      "base": {
+        "/usr/lib64/python3.10/site-packages/gpg": {
+          "name": "gpg",
+          "version": "1.15.1",
+          "latest": "1.15.1",
+          "files": [],
+          "origin": "The GnuPG hackers <gnupg-devel@gnupg.org>",
+          "license": "LGPL2.1+ (the library), GPL2+ (tests and examples)",
+          "location": "/usr/lib64/python3.10/site-packages",
+          "type": "python",
+          "cpes": [
+            "cpe:2.3:a:gpg:python-gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:gpg:python_gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python-gpg:python_gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:gpg:gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python_gpg:python-gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python-gpg:gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python-gpg:python-gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python_gpg:gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python_gpg:python_gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python-gpg:python-gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gpg:python-gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:python-gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python_gpg:python_gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:python_gpg:gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:python_gpg:python-gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:python-gpg:gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:gpg:gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:python_gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:gpg:python_gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:gpg:1.15.1:*:*:*:*:python:*:*",
+            "cpe:2.3:a:python-gpg:python_gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:python_gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:python-gpg:1.15.1:*:*:*:*:*:*:*",
+            "cpe:2.3:a:*:gpg:1.15.1:*:*:*:*:*:*:*"
+          ]
+        }
+      }
+    },
+    "pkgs.binary": {
+      "base": {
+        "/usr/bin/python3.10": {
+          "name": "python",
+          "version": "3.10.0",
+          "location": "/usr/bin/python3.10",
+          "type": "binary",
+          "files": [],
+          "license": "N/A",
+          "origin": "N/A",
+          "metadata": "{\"evidence_type\": \"binary\"}"
+        }
+      }
+    },
+    "pkgs.allinfo": {
+      "base": {
+        "testdata": {
+          "type": "APKG",
+          "name": "testdata",
+          "version": "2021a",
+          "origin": "",
+          "license": "",
+          "arch": "noarch",
+          "release": "1.fc34",
+          "sourcepkg": "testdata",
+          "size": "0",
+          "files": []
+        }
+      }
+    },
+    "pkgs.gems": {
+      "base": {
+        "/app/gems/specifications/test-gem": {
+          "type": "gem",
+          "name": "test-gem",
+          "versions": [
+            "1.0.0"
+          ],
+          "latest": "1.0.0",
+          "origins": [
+            "test"
+          ],
+          "lics": [
+            "MIT"
+          ],
+          "sourcepkg": "http://github.com/schneems/wicked",
+          "files": [
+            "README.md"
+          ],
+          "location": "/app/gems/specifications/test-gem"
+        }
+      }
+    },
+    "pkgs.java": {
+      "base": {
+        "/java/jetty/somepath": {
+          "type": "java-jar",
+          "name": "jetty",
+          "origin": "",
+          "specification-version": "1.0.0",
+          "implementation-version": "1.0.0",
+          "maven-version": "1.0.0",
+          "metadata": {},
+          "location": "/java/jetty/somepath"
+        }
+      }
+    },
+    "pkgs.npms": {
+      "base": {
+        "/src/pkg/lodash": {
+          "type": "npm",
+          "name": "lodash",
+          "versions": [
+            "3.0"
+          ],
+          "latest": "3.0",
+          "origins": [],
+          "lics": [],
+          "sourcepkg": "lodash",
+          "files": [],
+          "location": "/src/pkg/lodash"
+        }
+      }
+    }
+  }
+}

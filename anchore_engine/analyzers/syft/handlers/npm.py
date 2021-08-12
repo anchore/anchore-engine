@@ -1,3 +1,4 @@
+from anchore_engine.analyzers.syft.handlers.common import save_entry_to_findings
 from anchore_engine.analyzers.utils import dig
 
 
@@ -15,10 +16,7 @@ def save_entry(findings, engine_entry, pkg_key=None):
             )  # rethink this... ensure it's right
             pkg_key = "/virtual/npmpkg/{}-{}".format(pkg_name, pkg_version)
 
-    if "pkgs.npms" in findings.get("package_list", {}):
-        findings["package_list"]["pkgs.npms"]["base"][pkg_key] = engine_entry
-    else:
-        findings["package_list"]["pkgs.npms"] = {"base": {pkg_key: engine_entry}}
+    save_entry_to_findings(findings, engine_entry, "pkgs.npms", pkg_key)
 
 
 def translate_and_save_entry(findings, artifact):

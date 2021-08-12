@@ -1,0 +1,10 @@
+{
+  "packages": [
+	{
+	    "name": "react",
+	    "version": "2.0",
+	    "location": "/src/pkg/react",
+	    "type": "npm"
+	}
+  ]
+}
