@@ -1,6 +1,10 @@
 import json
 
 
+def is_overwrite_msg_in_log(caplog, pkg, pkg_type):
+    return f"{pkg} package already present under {pkg_type}" in caplog.text
+
+
 class TestHintsNPM:
     def test_npm_hints(self, hints_image, caplog):
         hints = {
@@ -32,9 +36,6 @@ class TestHintsNPM:
             "pkgs.npms"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         # Package not already present in report so verify it matches hint
         path = "/usr/lib/node_modules/npm/node_modules/string_decoder/node_modules/safe-buffer/package.json"
         package = pkgs.get(path)
@@ -54,6 +55,12 @@ class TestHintsNPM:
         assert package["name"] == "lodash"
         assert package["lics"] != ["Not a real license"]
         assert package["versions"] != ["1.9.4"]
+        assert (
+            is_overwrite_msg_in_log(
+                caplog, "/node_modules/lodash/package.json", "pkgs.npm"
+            )
+            is True
+        )
 
 
 class TestHintsRPM:
@@ -81,14 +88,12 @@ class TestHintsRPM:
             "pkgs.allinfo"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         # Package already in report so verify hint did not overwrite it
         package = pkgs.get("zlib")
         assert package["type"] == "rpm"
         assert package["license"] != "test some other license"
         assert "987654:1.2.11" not in package["version"]
+        assert is_overwrite_msg_in_log(caplog, "zlib", "pkgs.allinfo") is True
 
         # Package not already present in report so verify it matches hint
         package = pkgs.get("fedora-gpg-keys")
@@ -120,14 +125,12 @@ class TestHintsDPKG:
             "pkgs.allinfo"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         # Package already in report so verify hint did not overwrite it
         package = pkgs.get("adduser")
         assert package["type"] == "dpkg"
         assert package["version"] != "43"
         assert package["license"] != "GPL"
+        assert is_overwrite_msg_in_log(caplog, "adduser", "pkgs.allinfo") is True
 
         # Package not already present in report so verify it matches hint
         package = pkgs.get("master-alex")
@@ -160,15 +163,15 @@ class TestHintsJava:
             "pkgs.java"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         # Package already in report so verify hint did not overwrite it
         packages = pkgs.get("/TwilioNotifier.hpi")
         assert packages["type"] == "java-hpi"
         assert packages["location"] == "/TwilioNotifier.hpi"
         assert packages["origin"] != "com.twilio.test-override"
         assert packages["name"] != "TwilioNotifier-test-override"
+        assert (
+            is_overwrite_msg_in_log(caplog, "/TwilioNotifier.hpi", "pkgs.java") is True
+        )
 
         # Package already in report so verify hint did not overwrite it
         packages = pkgs.get("/virtual/javapkg/developer-dan-193.28.jar")
@@ -211,15 +214,13 @@ class TestHintsAPKG:
             "pkgs.allinfo"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         # Package already in report so verify hint did not overwrite it
         packages = pkgs.get("alpine-keys")
         assert packages["type"] == "APKG"
         assert packages["size"] != "1000"
         assert packages["license"] != "Apache"
         assert packages["release"] != "r3"
+        assert is_overwrite_msg_in_log(caplog, "alpine-keys", "pkgs.allinfo") is True
 
         # Package not already present in report so verify it matches hint
         packages = pkgs.get("test-pkg")
@@ -258,9 +259,6 @@ class TestHintsPython:
             "pkgs.python"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         # Package not already present in report so verify it matches hint
         packages = pkgs.get("/usr/lib/python3.8/my-site-packages")
         assert packages["type"] == "python"
@@ -278,6 +276,12 @@ class TestHintsPython:
         assert packages["type"] == "python"
         assert packages["name"] != "hintstest"
         assert packages["version"] != "3.2.1"
+        assert (
+            is_overwrite_msg_in_log(
+                caplog, "/usr/lib/python3.8/my-site-packages", "pkgs.python"
+            )
+            is True
+        )
 
 
 class TestHintsGem:
@@ -315,9 +319,6 @@ class TestHintsGem:
             "pkgs.gems"
         ]["base"]
 
-        # Verify message logged that package cannot be overwritten
-        assert "package already present under" in caplog.text
-
         path = "/usr/lib/ruby/gems/2.7.0/specifications/default/uri-0.10.0.gemspec"
         packages = pkgs.get(path)
         # Package not already present in report so verify it matches hint
@@ -338,6 +339,14 @@ class TestHintsGem:
         assert packages["lics"] != ["license-override"]
         assert packages["versions"] != ["3.2.0"]
         assert packages["sourcepkg"] != "https://example.com/test-override"
+        assert (
+            is_overwrite_msg_in_log(
+                caplog,
+                "/usr/lib/ruby/gems/2.7.0/specifications/bundler-2.1.4.gemspec",
+                "pkgs.gems",
+            )
+            is True
+        )
 
 
 class TestHintsGo:

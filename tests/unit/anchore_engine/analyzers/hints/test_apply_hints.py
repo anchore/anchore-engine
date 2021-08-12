@@ -21,6 +21,10 @@ distro_hint_files = ["alpine_hints.json", "debian_hints.json", "rpm_hints.json"]
 
 class TestApplyHints:
     @pytest.fixture
+    def log_to_stdout(self, monkeypatch):
+        monkeypatch.setattr("anchore_engine.subsys.logger._log_to_stdout", True)
+
+    @pytest.fixture
     def module_path(self, request):
         """
         Gets the path for current file
@@ -120,7 +124,7 @@ class TestApplyHints:
 
         apply_hints(analyzer_report, "")
 
-        assert "package already present under" in caplog.text
+        assert "tzdata package already present under pkgs.allinfo" in caplog.text
         assert (
             analyzer_report["package_list"]["pkgs.allinfo"]["base"]["tzdata"]["version"]
             == "test-no-override"
