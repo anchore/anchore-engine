@@ -35,9 +35,7 @@ from anchore_engine.db import (
 )
 from anchore_engine.services.catalog import utils
 from anchore_engine.subsys import logger, notifications, object_store, taskstate
-from anchore_engine.subsys.events.factories import (
-    analysis_complete_notification_factory,
-)
+from anchore_engine.subsys.events.util import analysis_complete_notification_factory
 from anchore_engine.util.docker import parse_dockerimage_string
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
@@ -1968,9 +1966,6 @@ def add_or_update_image(
             dockerfile = None
             dockerfile_mode = None
 
-    # Get a catalog client, for any events that need to be emitted
-    catalog_client = internal_client_for(CatalogClient, userId)
-
     addlist = {}
     for registry in list(image_ids.keys()):
         for repo in list(image_ids[registry].keys()):
@@ -2175,16 +2170,15 @@ def add_or_update_image(
                             ] == anchore_engine.subsys.taskstate.complete_state(
                                 "analyze"
                             ):
-                                for new_id in new_image_detail:
-                                    event = analysis_complete_notification_factory(
-                                        userId,
-                                        image_record["imageDigest"],
-                                        image_record["analysis_status"],
-                                        image_record["analysis_status"],
-                                        new_id,
-                                        annotations,
-                                    )
-                                    catalog_client.add_event(event)
+                                event = analysis_complete_notification_factory(
+                                    userId,
+                                    image_record["imageDigest"],
+                                    image_record["analysis_status"],
+                                    image_record["analysis_status"],
+                                    annotations,
+                                    fulltag,
+                                )
+                                add_event(event, dbsession)
 
                         except Exception as err:
                             raise anchore_engine.common.helpers.make_anchore_exception(

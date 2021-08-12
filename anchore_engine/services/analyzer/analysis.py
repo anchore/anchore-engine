@@ -25,8 +25,9 @@ from anchore_engine.services.analyzer.utils import (
     update_analysis_started,
 )
 from anchore_engine.subsys import events, logger
-from anchore_engine.subsys.events.factories import (
+from anchore_engine.subsys.events.util import (
     analysis_complete_notification_factory,
+    fulltag_from_detail,
 )
 from anchore_engine.utils import AnchoreException
 
@@ -71,18 +72,19 @@ def notify_analysis_complete(
         image_record = get_image_record(catalog_client, image_digest)
     except Exception as err:
         logger.warn(
-            "Cannot re-get image from catalog for image digest %s, generating notifications for already-known tags"
-            % str(image_digest)
+            "Cannot re-get image from catalog for image digest %s, generating notifications for already-known tags",
+            image_digest,
         )
 
     for image_detail in image_record["image_detail"]:
+        fulltag = fulltag_from_detail(image_detail)
         event = analysis_complete_notification_factory(
             account,
             image_digest,
             last_analysis_status,
             image_record["analysis_status"],
-            image_detail,
             annotations,
+            fulltag,
         )
         events.append(event)
 

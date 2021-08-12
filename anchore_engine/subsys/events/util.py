@@ -22,8 +22,8 @@ def analysis_complete_notification_factory(
     image_digest: str,
     last_analysis_status: str,
     analysis_status: str,
-    image_detail: dict,
     annotations: dict,
+    fulltag: str,
 ) -> UserAnalyzeImageCompleted:
     """
     Return a constructed UserAnalysImageCompleted event from the input data
@@ -32,8 +32,8 @@ def analysis_complete_notification_factory(
     :param image_digest:
     :param last_analysis_status:
     :param analysis_status:
-    :param image_detail:
     :param annotations:
+    :param fulltag:
     :return:
     """
 
@@ -51,7 +51,5 @@ def analysis_complete_notification_factory(
         "subscription_type": "analysis_update",
         "annotations": annotations or {},
     }
-
-    fulltag = fulltag_from_detail(image_detail)
 
     return UserAnalyzeImageCompleted(user_id=account, full_tag=fulltag, data=payload)
