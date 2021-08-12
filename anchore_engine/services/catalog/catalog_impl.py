@@ -21,7 +21,6 @@ from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
 from anchore_engine.auth import aws_ecr
 from anchore_engine.clients import docker_registry
 from anchore_engine.clients.services import internal_client_for
-from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.db import (
     db_catalog_image,
