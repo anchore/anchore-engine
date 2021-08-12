@@ -83,8 +83,8 @@ def notify_analysis_complete(
             image_digest,
             last_analysis_status,
             image_record["analysis_status"],
-            annotations,
             fulltag,
+            annotations,
         )
         events.append(event)
 

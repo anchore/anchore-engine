@@ -22,8 +22,8 @@ def analysis_complete_notification_factory(
     image_digest: str,
     last_analysis_status: str,
     analysis_status: str,
-    annotations: dict,
     fulltag: str,
+    annotations: dict,
 ) -> UserAnalyzeImageCompleted:
     """
     Return a constructed UserAnalysImageCompleted event from the input data

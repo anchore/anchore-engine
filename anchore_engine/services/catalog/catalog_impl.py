@@ -2175,8 +2175,8 @@ def add_or_update_image(
                                     image_record["imageDigest"],
                                     image_record["analysis_status"],
                                     image_record["analysis_status"],
-                                    annotations,
                                     fulltag,
+                                    annotations,
                                 )
                                 add_event(event, dbsession)
 

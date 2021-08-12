@@ -1,6 +1,6 @@
 import pytest
 
-from anchore_engine.subsys.events.factories import (
+from anchore_engine.subsys.events.util import (
     fulltag_from_detail,
     analysis_complete_notification_factory,
 )
@@ -49,14 +49,16 @@ def test_fulltag_from_detail(test_image_detail):
     assert result == expected_output
 
 
-def test_analysis_complete_notification_factory(test_image_detail):
+def test_analysis_complete_notification_factory():
+    fulltag = mock_fulltag(REGISTRY, REPO, TAG)
+
     # Function under test
     result = analysis_complete_notification_factory(
         ACCOUNT,
         IMAGE_DIGEST,
         base_state("analyze"),
         complete_state("analyze"),
-        test_image_detail,
+        fulltag,
         {},
     )
 
