@@ -2206,28 +2206,23 @@ def is_new_tag(image_record: dict, registry: str, repo: str, tag: str):
     """
 
     # If we are missing an image_details block entirely or it is None, assume this is a new tag
-    if "image_detail" not in image_record or not image_record["image_detail"]:
+    if image_record and not image_record.get("image_detail"):
         return True
     else:
-        # Iterate through each existing image_detail
-        for image_detail in image_record["image_detail"]:
-            # We shouldn't be missing one of these fields, but if we are, assume this is not a match
-            if (
-                "registry" not in image_detail
-                or "repo" not in image_detail
-                or "tag" not in image_detail
-            ):
-                return True
+        # Iterate through each existing image_detail objects and look for an exact match
+        for image_detail in image_record.get("image_detail", []):
+            existing_registry = image_detail.get("registry")
+            existing_repo = image_detail.get("repo")
+            existing_tag = image_detail.get("tag")
 
-            # If these fields all exactly match, this is not a new tag
-            elif (
-                image_detail["registry"] == registry
-                and image_detail["repo"] == repo
-                and image_detail["tag"] == tag
+            if (
+                existing_registry == registry
+                and existing_repo == repo
+                and existing_tag == tag
             ):
                 return False
-        # If none of the known image_details matched, this is a new tag
-        return True
+        else:
+            return True
 
 
 def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False):
