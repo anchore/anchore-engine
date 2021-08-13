@@ -3,7 +3,9 @@ import time
 import uuid
 from distutils.version import LooseVersion
 
-from . import *
+import requests
+
+from tests.functional import get_engine_version
 
 # Functional tests for user management flows for the api
 anchore_user = os.environ["ANCHORE_CLI_USER"]
