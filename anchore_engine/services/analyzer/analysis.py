@@ -19,13 +19,16 @@ from anchore_engine.services.analyzer.errors import (
 from anchore_engine.services.analyzer.tasks import WorkerTask
 from anchore_engine.services.analyzer.utils import (
     emit_events,
-    fulltag_from_detail,
     get_tempdir,
     update_analysis_complete,
     update_analysis_failed,
     update_analysis_started,
 )
 from anchore_engine.subsys import events, logger
+from anchore_engine.subsys.events.util import (
+    analysis_complete_notification_factory,
+    fulltag_from_detail,
+)
 from anchore_engine.utils import AnchoreException
 
 ANALYSIS_TIME_SECONDS_BUCKETS = [
@@ -40,48 +43,6 @@ ANALYSIS_TIME_SECONDS_BUCKETS = [
     1800.0,
     3600.0,
 ]
-
-
-def analysis_complete_notification_factory(
-    account,
-    image_digest: str,
-    last_analysis_status: str,
-    analysis_status: str,
-    image_detail: dict,
-    annotations: dict,
-) -> events.UserAnalyzeImageCompleted:
-    """
-    Return a constructed UserAnalysImageCompleted event from the input data
-
-    :param account:
-    :param image_digest:
-    :param last_analysis_status:
-    :param analysis_status:
-    :param image_detail:
-    :param annotations:
-    :return:
-    """
-
-    payload = {
-        "last_eval": {
-            "imageDigest": image_digest,
-            "analysis_status": last_analysis_status,
-            "annotations": annotations,
-        },
-        "curr_eval": {
-            "imageDigest": image_digest,
-            "analysis_status": analysis_status,
-            "annotations": annotations,
-        },
-        "subscription_type": "analysis_update",
-        "annotations": annotations or {},
-    }
-
-    fulltag = fulltag_from_detail(image_detail)
-
-    return events.UserAnalyzeImageCompleted(
-        user_id=account, full_tag=fulltag, data=payload
-    )
 
 
 def notify_analysis_complete(
@@ -104,13 +65,25 @@ def notify_analysis_complete(
     except Exception as err:
         logger.warn("could not marshal annotations from json - exception: " + str(err))
 
+    # Re-pull the image record before sending notifications
+    # For the case where new tags for the image were added
+    catalog_client = internal_client_for(CatalogClient, account)
+    try:
+        image_record = get_image_record(catalog_client, image_digest)
+    except Exception as err:
+        logger.warn(
+            "Cannot re-get image from catalog for image digest %s, generating notifications for already-known tags",
+            image_digest,
+        )
+
     for image_detail in image_record["image_detail"]:
+        fulltag = fulltag_from_detail(image_detail)
         event = analysis_complete_notification_factory(
             account,
             image_digest,
             last_analysis_status,
             image_record["analysis_status"],
-            image_detail,
+            fulltag,
             annotations,
         )
         events.append(event)
@@ -305,9 +278,7 @@ def process_analyzer_job(
         # check to make sure image is still in DB
         catalog_client = internal_client_for(CatalogClient, account)
         try:
-            image_record = catalog_client.get_image(image_digest)
-            if not image_record:
-                raise Exception("empty image record from catalog")
+            image_record = get_image_record(catalog_client, image_digest)
         except Exception as err:
             logger.warn(
                 "dequeued image cannot be fetched from catalog - skipping analysis ("
@@ -434,6 +405,13 @@ def process_analyzer_job(
         raise err
 
     return True
+
+
+def get_image_record(catalog_client, image_digest):
+    image_record = catalog_client.get_image(image_digest)
+    if not image_record:
+        raise Exception("empty image record from catalog")
+    return image_record
 
 
 def analysis_sucess_metrics(analysis_time: float, allow_exception=False):

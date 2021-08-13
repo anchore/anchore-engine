@@ -19,22 +19,6 @@ def get_tempdir(config=None):
         return "/tmp"
 
 
-def fulltag_from_detail(image_detail: dict) -> str:
-    """
-    Return a fulltag string from the detail record
-
-    :param image_detail:
-    :return:
-    """
-    return (
-        image_detail["registry"]
-        + "/"
-        + image_detail["repo"]
-        + ":"
-        + image_detail["tag"]
-    )
-
-
 def emit_events(client: CatalogClient, analysis_events: list):
     for event in analysis_events:
         try:
