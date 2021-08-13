@@ -27,7 +27,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "258000",
         "origin": "Vaclav Ovsik <vaclav.ovsik@i.cz> (maintainer)",
-        "license": "LGPL-2+ GPL-2+ BSD-2-clause MIT",
+        "license": "LGPL-2.1 LGPL-2+ GPL-2+ GPL-2 BSD-2-clause MIT",
         "sourcepkg": "ustr-1.0.4-6",
         "type": "dpkg",
         "cpes": [
@@ -45,7 +45,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "209000",
         "origin": "Debian GCC Maintainers <debian-gcc@lists.debian.org> (maintainer)",
-        "license": "Unknown",
+        "license": "Artistic GFDL-1.2 GPL-3 GPL-2 GPL",
         "sourcepkg": "gcc-6-6.3.0-18+deb9u1",
         "type": "dpkg",
         "cpes": [
@@ -63,7 +63,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "3366000",
         "origin": "GNU Libc Maintainers <debian-glibc@lists.debian.org> (maintainer)",
-        "license": "Unknown",
+        "license": "LGPL-2.1 GPL-2",
         "sourcepkg": "glibc-2.24-11+deb9u4",
         "type": "dpkg",
         "cpes": [
@@ -81,7 +81,7 @@ pkgs_allinfo = {
         "arch": "all",
         "size": "30000",
         "origin": "Laurent Bigonville <bigon@debian.org> (maintainer)",
-        "license": "GPL-2 LGPL-2.1",
+        "license": "LGPL-2.1 GPL-2 GPL-1",
         "sourcepkg": "audit-1:2.6.7-2",
         "type": "dpkg",
         "cpes": [
@@ -99,7 +99,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "450000",
         "origin": "Theodore Y. Ts'o <tytso@mit.edu> (maintainer)",
-        "license": "Unknown",
+        "license": "LGPL-2 GPL-2",
         "sourcepkg": "e2fsprogs-1.43.4-2+deb9u2",
         "type": "dpkg",
         "cpes": [
@@ -113,7 +113,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "231000",
         "origin": "Bdale Garbee <bdale@gag.com> (maintainer)",
-        "license": "Unknown",
+        "license": "GPL",
         "sourcepkg": "gzip-1.6-5",
         "type": "dpkg",
         "cpes": [
@@ -127,7 +127,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "229000",
         "origin": "Steve Langasek <vorlon@debian.org> (maintainer)",
-        "license": "Unknown",
+        "license": "GPL",
         "sourcepkg": "pam-1.1.8-3.6",
         "type": "dpkg",
         "cpes": [
@@ -141,7 +141,7 @@ pkgs_allinfo = {
         "arch": "all",
         "size": "62000",
         "origin": "Anibal Monsalve Salazar <anibal@debian.org> (maintainer)",
-        "license": "Unknown",
+        "license": "GPL-2",
         "sourcepkg": "N/A",
         "type": "dpkg",
         "cpes": [
@@ -159,7 +159,7 @@ pkgs_allinfo = {
         "arch": "amd64",
         "size": "5798000",
         "origin": "Matthias Klose <doko@debian.org> (maintainer)",
-        "license": "Unknown",
+        "license": "GPL-3",
         "sourcepkg": "N/A",
         "type": "dpkg",
         "cpes": [

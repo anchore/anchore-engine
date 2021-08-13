@@ -46,7 +46,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.15.1
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.19.1
 
 RUN set -ex && \
     echo "installing Grype" && \
