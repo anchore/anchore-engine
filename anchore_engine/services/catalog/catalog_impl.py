@@ -2083,6 +2083,9 @@ def add_or_update_image(
                             )
 
                     else:
+                        # Only generate an event if this is a new tag
+                        generate_event = is_new_tag(image_record, registry, repo, t)
+
                         # Update existing image record
                         new_image_detail = anchore_engine.common.images.clean_docker_image_details_for_update(
                             new_image_record["image_detail"]
@@ -2163,11 +2166,13 @@ def add_or_update_image(
                             if not parent_manifest:
                                 parent_manifest = json.dumps({})
 
-                            # If image status is already analyzed, generate a UserAnalyzeImageCompleted event
-                            if image_record[
-                                "analysis_status"
-                            ] == anchore_engine.subsys.taskstate.complete_state(
-                                "analyze"
+                            # If image status is already analyzed, and this is a new tag, generate a UserAnalyzeImageCompleted event
+                            if (
+                                image_record["analysis_status"]
+                                == anchore_engine.subsys.taskstate.complete_state(
+                                    "analyze"
+                                )
+                                and generate_event
                             ):
                                 event = analysis_complete_notification_factory(
                                     userId,
@@ -2192,6 +2197,37 @@ def add_or_update_image(
         ret.append(addlist[imageDigest])
 
     return ret
+
+
+def is_new_tag(image_record: dict, registry: str, repo: str, tag: str):
+    """
+    Returns false if the provided registry, repo, tag tuple exactly match those fields in one of the image_detail objects in
+    image_record. If no such match is possible, return true.
+    """
+
+    # If we are missing an image_details block entirely or it is None, assume this is a new tag
+    if "image_detail" not in image_record or not image_record["image_detail"]:
+        return True
+    else:
+        # Iterate through each existing image_detail
+        for image_detail in image_record["image_detail"]:
+            # We shouldn't be missing one of these fields, but if we are, assume this is not a match
+            if (
+                "registry" not in image_detail
+                or "repo" not in image_detail
+                or "tag" not in image_detail
+            ):
+                return True
+
+            # If these fields all exactly match, this is not a new tag
+            elif (
+                image_detail["registry"] == registry
+                and image_detail["repo"] == repo
+                and image_detail["tag"] == tag
+            ):
+                return False
+        # If none of the known image_details matched, this is a new tag
+        return True
 
 
 def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False):
