@@ -26,7 +26,6 @@ To add a certificate to the operating system trust store the CA certificate shou
 - For anchore 0.3.X, the base container is Ubuntu 18.04, certifi's cacert.pem is installed in `/usr/local/lib/python3.6/dist-packages/certifi/cacert.pem`
 - For anchore 0.4.X and newer, the base container is Red Hat Universal Base Image 7, certifi's cacert.pem is installed in `/opt/rh/rh-python36/root/usr/lib/python3.6/site-packages/certifi/cacert.pem`
 - For anchore 0.7.X and newer, the base container is Red Hat Universal Base Image 8, certifi's cacert.pem is installed in `/usr/local/lib/python3.6/site-packages/certifi/cacert.pem`
-- For anchore 0.9.x and newer, the base container is Red Hat Universal Base Image 8, certifi's cacert.pem is installed in `/usr/local/lib/python3.8/site-packages/certifi/cacert.pem`
 
 The following Dockerfile illustrates an example of how this general process can be automated to produce your own anchore-engine container (based on version 0.2.4 of anchore-engine) with new custom CA cert installed.  A similiar process can be used for anchore-engine 0.4.X or newer, with the commands adjusted as appropriate with the differences described above.
 
