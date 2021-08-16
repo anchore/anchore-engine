@@ -1,11 +1,10 @@
 import pytest
 
 from anchore_engine.subsys.events.util import (
-    fulltag_from_detail,
     analysis_complete_notification_factory,
+    fulltag_from_detail,
 )
-from anchore_engine.subsys.taskstate import complete_state, base_state
-
+from anchore_engine.subsys.taskstate import base_state, complete_state
 
 ACCOUNT = "test"
 IMAGE_DIGEST = "sha256:e4ca2ed0202e76be184e75fb26d14bf974193579039d5573fb2348664deef76e"
