@@ -19,7 +19,7 @@ pkgs_all = {
     "libfdisk": "2.32.1-22.el8",
     "libnghttp2": "1.33.0-3.el8_2.1",
     "audit-libs": "3.0-0.17.20191104git1c2f876.el8",
-    "gmp": "6.1.2-10.el8",
+    "gmp": "1:6.1.2-10.el8",
     "libdb": "5.3.28-37.el8",
 }
 
