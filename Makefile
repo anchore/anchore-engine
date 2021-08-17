@@ -76,6 +76,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
 .PHONY: setup-test-infra venv printvars help
+.PHONY: latest-syft
 
 ci: lint build test ## Run full CI pipeline, locally
 
@@ -221,3 +222,28 @@ help:
 	@printf "\n%s\n\n" "usage: make <target>"
 	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[0;36m%-30s\033[0m %s\n", $$1, $$2}'
 
+
+# Code change targets
+#######################
+
+jq-installed:
+ifeq ($(OS),Darwin)
+	# Skipping installation of jq for local dev on Mac
+else
+	which jq ; if [ $$? -eq 1 ] ; then sudo apt-get install -y jq ; fi
+endif
+
+SYFT_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/syft/releases/latest" 2>/dev/null | jq -r '.tag_name')
+# Regex note: double-dollarsign for Makefile escaping; % instead of / for Sed to match anchore/syft
+latest-syft: jq-installed
+	# Setting Syft to ${SYFT_LATEST_VERSION}
+	sed -E -i '' 's%^(.+anchore/syft.+)v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$$%\1${SYFT_LATEST_VERSION}%' Dockerfile
+
+GRYPE_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/grype/releases/latest" 2>/dev/null | jq -r '.tag_name')
+# Regex note: double-dollarsign for Makefile escaping; % instead of / for Sed to match anchore/syft
+latest-grype: jq-installed
+	# Setting Grype to ${GRYPE_LATEST_VERSION}
+	sed -E -i '' 's%^(.+anchore/grype.+)v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$$%\1${GRYPE_LATEST_VERSION}%' Dockerfile
+
+# TODO: Intent is to create a weekly/daily/continuous GitHub Action that runs the following and auto-opens a PR
+latest-anchore-tools: latest-syft latest-grype
