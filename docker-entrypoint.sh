@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 if [[ "${SET_HOSTID_TO_HOSTNAME}" == "true" ]]; then
     echo "Setting ANCHORE_HOST_ID to ${HOSTNAME}"
     export ANCHORE_HOST_ID=${HOSTNAME}
