@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-SITE_PKG_DIR=${SITE_PKG_DIR:="$(python3 -c 'import site; print(site.getsitepackages())')"}
-
 if [[ "${SET_HOSTID_TO_HOSTNAME}" == "true" ]]; then
     echo "Setting ANCHORE_HOST_ID to ${HOSTNAME}"
     export ANCHORE_HOST_ID=${HOSTNAME}
@@ -12,7 +10,7 @@ if [[ -d "/home/anchore/certs" ]] && [[ ! -z "$(ls -A /home/anchore/certs)" ]]; 
     mkdir -p /home/anchore/certs_override/python
     mkdir -p /home/anchore/certs_override/os
     ### for python
-    cp $SITE_PKG_DIR/certifi/cacert.pem /home/anchore/certs_override/python/cacert.pem
+    cp "$(python3 -m certifi)" /home/anchore/certs_override/python/cacert.pem
     for file in /home/anchore/certs/*; do
         if grep -q 'BEGIN CERTIFICATE' "${file}"; then
             cat "${file}" >> /home/anchore/certs_override/python/cacert.pem
