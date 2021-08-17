@@ -228,7 +228,8 @@ help:
 
 jq-installed:
 ifeq ($(OS),Darwin)
-	# Skipping installation of jq for local dev on Mac
+	# Skipping installation of jq for local dev on Mac.
+	# You can install via 'brew install jq' the following command if needed.
 else
 	which jq ; if [ $$? -eq 1 ] ; then sudo apt-get install -y jq ; fi
 endif
