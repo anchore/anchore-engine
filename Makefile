@@ -223,7 +223,7 @@ help:
 	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[0;36m%-30s\033[0m %s\n", $$1, $$2}'
 
 
-# Code change targets
+# Utility targets
 #######################
 
 jq-installed:
@@ -233,17 +233,32 @@ else
 	which jq ; if [ $$? -eq 1 ] ; then sudo apt-get install -y jq ; fi
 endif
 
+# BSD and GNU cross-platfrom sed -i ''
+SEDVERSION = $(shell sed --version >/dev/null 2>&1 ; echo $$? )
+
+ifeq ($(SEDVERSION), 1)
+# BSD sed requires a space and does not support --version
+SEDI = sed -E -i ''
+else
+# GNU sed forbids a space and supports --version
+SEDI = sed -E -i''
+endif
+
+
+# Code change targets
+#######################
+
 SYFT_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/syft/releases/latest" 2>/dev/null | jq -r '.tag_name')
 # Regex note: double-dollarsign for Makefile escaping; % instead of / for Sed to match anchore/syft
 latest-syft: jq-installed
 	# Setting Syft to ${SYFT_LATEST_VERSION}
-	sed -E -i '' 's%^(.+anchore/syft.+)v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$$%\1${SYFT_LATEST_VERSION}%' Dockerfile
+	$(SEDI) 's%^(.+anchore/syft.+)v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$$%\1${SYFT_LATEST_VERSION}%' Dockerfile
 
 GRYPE_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/grype/releases/latest" 2>/dev/null | jq -r '.tag_name')
 # Regex note: double-dollarsign for Makefile escaping; % instead of / for Sed to match anchore/syft
 latest-grype: jq-installed
 	# Setting Grype to ${GRYPE_LATEST_VERSION}
-	sed -E -i '' 's%^(.+anchore/grype.+)v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$$%\1${GRYPE_LATEST_VERSION}%' Dockerfile
+	$(SEDI) 's%^(.+anchore/grype.+)v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$$%\1${GRYPE_LATEST_VERSION}%' Dockerfile
 
 # TODO: Intent is to create a weekly/daily/continuous GitHub Action that runs the following and auto-opens a PR
 latest-anchore-tools: latest-syft latest-grype
