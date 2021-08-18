@@ -11,7 +11,7 @@ DB Schema version - 0.0.15
 + Added - 'will_not_fix' field added to vulnerability report API response and vulnerability information query (#1160)
 + Fixed - /tmp directory not cleaned up after an image analysis
 + Fixed - Updates syft version to 0.19.1
-+ Fixed - Update certifi update in the docker entrypoint script to ensure cert updates are set properly (#1171) 
++ Fixed - Update certifi path in the docker entrypoint script to ensure cert updates are set properly (#1171) 
 + Fixed - incorrect handling of hints file input (#1165)
 + Fixed - Ensures all tags attempted for image pull if multiple tags on image being analyzed (#1139)
 + Fixed- Ensures events generated for images analyzed that have multiple tags (#1164)
