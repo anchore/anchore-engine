@@ -251,11 +251,13 @@ endif
 
 SYFT_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/syft/releases/latest" 2>/dev/null | jq -r '.tag_name')
 upgrade-syft: jq-installed ## Upgrade Syft to the latest release
+	if [ -n "$$GITHUB_ENV" ]; then echo "syft_v=${SYFT_LATEST_VERSION}" >> $$GITHUB_ENV; fi
 	# Setting Syft to ${SYFT_LATEST_VERSION}
 	$(SEDI) 's/^(ENV SYFT_VERSION=).+$$/\1${SYFT_LATEST_VERSION}/' Dockerfile
 
 GRYPE_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/grype/releases/latest" 2>/dev/null | jq -r '.tag_name')
 upgrade-grype: jq-installed ## Upgrade Grype to the latest release
+	if [ -n "$$GITHUB_ENV" ]; then echo "grype_v=${GRYPE_LATEST_VERSION}" >> $$GITHUB_ENV; fi
 	# Setting Grype to ${GRYPE_LATEST_VERSION}
 	$(SEDI) 's/^(ENV GRYPE_VERSION=).+$$/\1${GRYPE_LATEST_VERSION}/' Dockerfile
 
