@@ -76,7 +76,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
 .PHONY: setup-test-infra venv printvars help
-.PHONY: latest-syft
+.PHONY: upgrade-syft upgrade-grype upgrade-anchore-tools jq-installed
 
 ci: lint build test ## Run full CI pipeline, locally
 
