@@ -8,6 +8,8 @@ ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
 ENV GOPATH=/go
 ENV SKOPEO_VERSION=v1.2.1
+ENV SYFT_VERSION=v0.19.1
+ENV GRYPE_VERSION=v0.13.0
 
 COPY . /buildsource
 WORKDIR /buildsource
@@ -46,11 +48,11 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.19.1
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps $SYFT_VERSION
 
 RUN set -ex && \
     echo "installing Grype" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps v0.13.0
+    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps $GRYPE_VERSION
 
 # stage RPM dependency binaries
 RUN yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
