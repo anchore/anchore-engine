@@ -48,11 +48,11 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps $SYFT_VERSION
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps "$SYFT_VERSION"
 
 RUN set -ex && \
     echo "installing Grype" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps $GRYPE_VERSION
+    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "$GRYPE_VERSION"
 
 # stage RPM dependency binaries
 RUN yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
