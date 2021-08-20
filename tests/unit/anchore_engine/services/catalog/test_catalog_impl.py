@@ -6,7 +6,7 @@ import pytest
 
 from anchore_engine.services.catalog import catalog_impl
 from anchore_engine.services.catalog.catalog_impl import is_new_tag
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 @pytest.mark.parametrize(
