@@ -1,0 +1,27 @@
+name: PR for latest Anchore tools
+on:
+  schedule:
+    # 7:04 UTC Mon-Fri; (2:04 EST)
+    - cron: '4 7 * * 1-5'
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  update-dockerfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Trigger Makefile action
+        run: make upgrade-anchore-tools
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          signoff: true
+          delete-branch: true
+          branch: auto/latest-anchore-tools
+          labels: dependencies
+          title: 'Upgrade to Syft ${{ env.syft_v }} and/or Grype to ${{ env.grype_v }}'
+          body: |
+            - [Syft ${{ env.syft_v }}](https://github.com/anchore/syft/releases/tag/${{ env.syft_v }})
+            - [Grype ${{ env.grype_v }}](https://github.com/anchore/grype/releases/tag/${{ env.grype_v }})
