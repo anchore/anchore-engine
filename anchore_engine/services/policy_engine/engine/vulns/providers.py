@@ -60,18 +60,33 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     LegacySyncUtilProvider,
     SyncUtilProvider,
 )
+from anchore_engine.services.policy_engine.engine.policy.gate_util_provider import (
+    GateUtilProvider,
+    GrypeGateUtilProvider,
+    LegacyGateUtilProvider,
+)
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     get_imageId_to_record,
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
 )
+from anchore_engine.services.policy_engine.engine.vulns.dedup import (
+    get_image_vulnerabilities_deduper,
+    transfer_vulnerability_timestamps,
+)
+from anchore_engine.services.policy_engine.engine.vulns.mappers import (
+    EngineGrypeDBMapper,
+)
+from anchore_engine.services.policy_engine.engine.vulns.scanners import (
+    GrypeScanner,
+    LegacyScanner,
+)
+from anchore_engine.services.policy_engine.engine.vulns.stores import (
+    ImageVulnerabilitiesStore,
+    Status,
+)
 from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import timer
-
-from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
-from .mappers import EngineGrypeDBMapper
-from .scanners import GrypeScanner, LegacyScanner
-from .stores import ImageVulnerabilitiesStore, Status
 
 
 class InvalidFeed(Exception):
@@ -263,6 +278,13 @@ class VulnerabilitiesProvider(ABC):
     def delete_image_vulnerabilities(self, image: Image, db_session):
         """
         Delete image vulnerabilities maintained by the provider
+        """
+        ...
+
+    @abstractmethod
+    def get_gate_util_provider(self) -> GateUtilProvider:
+        """
+        Get a GateUtilProvider.
         """
         ...
 
@@ -1051,6 +1073,12 @@ class LegacyProvider(VulnerabilitiesProvider):
         for pkg_vuln in image.vulnerabilities():
             db_session.delete(pkg_vuln)
 
+    def get_gate_util_provider(self) -> LegacyGateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        return LegacyGateUtilProvider()
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -1549,6 +1577,12 @@ class GrypeProvider(VulnerabilitiesProvider):
     def delete_image_vulnerabilities(self, image: Image, db_session):
         ImageVulnerabilitiesStore(image_object=image).delete_all(session=db_session)
 
+    def get_gate_util_provider(self) -> GrypeGateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        return GrypeGateUtilProvider()
+
 
 # Override this map for associating different provider classes
 PROVIDER_CLASSES = [LegacyProvider, GrypeProvider]
@@ -1576,7 +1610,7 @@ def set_provider():
     logger.info("Initialized vulnerabilities provider: %s", PROVIDER.get_config_name())
 
 
-def get_vulnerabilities_provider():
+def get_vulnerabilities_provider() -> VulnerabilitiesProvider:
     if not PROVIDER:
         set_provider()
 
