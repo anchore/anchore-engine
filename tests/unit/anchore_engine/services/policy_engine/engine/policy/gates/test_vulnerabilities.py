@@ -2,15 +2,12 @@ import datetime
 import json
 import os
 import re
-from contextlib import contextmanager
-from unittest.mock import Mock
 
 import pytest
 
 from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
 from anchore_engine.db import Image
 from anchore_engine.db.entities.policy_engine import (
-    DistroMapping,
     FeedGroupMetadata,
     FeedMetadata,
     GrypeDBFeedMetadata,
@@ -28,20 +25,6 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
     GrypeProvider,
     LegacyProvider,
 )
-
-DISTRO_MAPPINGS = [
-    DistroMapping(from_distro="alpine", to_distro="alpine", flavor="ALPINE"),
-    DistroMapping(from_distro="busybox", to_distro="busybox", flavor="BUSYB"),
-    DistroMapping(from_distro="centos", to_distro="rhel", flavor="RHEL"),
-    DistroMapping(from_distro="debian", to_distro="debian", flavor="DEB"),
-    DistroMapping(from_distro="fedora", to_distro="rhel", flavor="RHEL"),
-    DistroMapping(from_distro="ol", to_distro="ol", flavor="RHEL"),
-    DistroMapping(from_distro="rhel", to_distro="rhel", flavor="RHEL"),
-    DistroMapping(from_distro="ubuntu", to_distro="ubuntu", flavor="DEB"),
-    DistroMapping(from_distro="amzn", to_distro="amzn", flavor="RHEL"),
-    DistroMapping(from_distro="redhat", to_distro="rhel", flavor="RHEL"),
-]
-MAPPINGS_MAP = {mapping.from_distro: mapping for mapping in DISTRO_MAPPINGS}
 
 
 @pytest.fixture
@@ -75,14 +58,6 @@ def load_vulnerabilities_report_file(request):
     return _load_vulnerabilities_report_file
 
 
-@contextmanager
-def mock_session_scope():
-    """
-    Mock context manager for anchore_engine.db.session_scope.
-    """
-    yield None
-
-
 @pytest.fixture
 def setup_mocks_vulnerabilities_gate(
     load_vulnerabilities_report_file, monkeypatch, set_provider
@@ -114,45 +89,6 @@ def setup_mocks_vulnerabilities_gate(
             )
 
     return _setup_mocks_vulnerabilities_gate
-
-
-@pytest.fixture
-def mock_distromapping_query(monkeypatch):
-    # mocks DB query in anchore_engine.db.entities.policy_engine.DistroMapping.distros_for
-    mock_db = Mock()
-    mock_db.query().get = lambda x: MAPPINGS_MAP.get(x, None)
-    monkeypatch.setattr(
-        "anchore_engine.db.entities.policy_engine.get_thread_scoped_session",
-        lambda: mock_db,
-    )
-
-
-@pytest.fixture
-def setup_mocks_feed_out_of_date_trigger(monkeypatch, mock_distromapping_query):
-    # required for FeedOutOfDateTrigger.evaluate
-    # setup for anchore_engine.services.policy_engine.engine.feeds.feeds.FeedRegistry.registered_vulnerability_feed_names
-    init_feed_registry()
-
-    def _setup_mocks(feed_group_metadata=None, grype_db_feed_metadata=None):
-        # required for FeedOutOfDateTrigger.evaluate
-        # mocks anchore_engine.services.policy_engine.engine.feeds.db.get_feed_group_detached
-        if grype_db_feed_metadata:
-            monkeypatch.setattr(
-                "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.get_most_recent_active_grypedb",
-                lambda x: grype_db_feed_metadata,
-            )
-            monkeypatch.setattr(
-                "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.session_scope",
-                mock_session_scope,
-            )
-        # mocks anchore_engine.db.db_grype_db_feed_metadata.get_most_recent_active_grypedb
-        if feed_group_metadata:
-            monkeypatch.setattr(
-                "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.get_feed_group_detached",
-                lambda x, y: feed_group_metadata,
-            )
-
-    return _setup_mocks
 
 
 @pytest.fixture
@@ -240,10 +176,10 @@ class TestVulnerabilitiesGate:
         grype_db_feed_metadata,
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
-        setup_mocks_feed_out_of_date_trigger,
+        mock_gate_util_provider_oldest_namespace_feed_sync,
     ):
         setup_mocks_vulnerabilities_gate(mock_vuln_report, vuln_provider)
-        setup_mocks_feed_out_of_date_trigger(
+        mock_gate_util_provider_oldest_namespace_feed_sync(
             feed_group_metadata=feed_group_metadata,
             grype_db_feed_metadata=grype_db_feed_metadata,
         )
