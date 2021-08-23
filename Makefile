@@ -76,6 +76,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 .PHONY: push-dev push-nightly push-rc push-prod push-rebuild push-redhat
 .PHONY: compose-up compose-down cluster-up cluster-down
 .PHONY: setup-test-infra venv printvars help
+.PHONY: upgrade-syft upgrade-grype upgrade-anchore-tools jq-installed
 
 ci: lint build test ## Run full CI pipeline, locally
 
@@ -221,3 +222,42 @@ help:
 	@printf "\n%s\n\n" "usage: make <target>"
 	@grep -E '^[0-9a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[0;36m%-30s\033[0m %s\n", $$1, $$2}'
 
+
+# Utility targets
+#######################
+
+jq-installed:
+ifeq ($(OS),Darwin)
+	# Skipping installation of jq for local dev on Mac.
+	# You can install via 'brew install jq' the following command if needed.
+else
+	if ! which jq ; then sudo apt-get install -y jq ; fi
+endif
+
+# BSD and GNU cross-platfrom sed -i ''
+SEDVERSION = $(shell sed --version >/dev/null 2>&1 ; echo $$? )
+
+ifeq ($(SEDVERSION), 1)
+# BSD sed requires a space and does not support --version
+SEDI = sed -E -i ''
+else
+# GNU sed forbids a space and supports --version
+SEDI = sed -E -i''
+endif
+
+
+# Code change targets
+#######################
+
+SYFT_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/syft/releases/latest" 2>/dev/null | jq -r '.tag_name')
+upgrade-syft: jq-installed ## Upgrade Syft to the latest release
+	# Setting Syft to ${SYFT_LATEST_VERSION}
+	$(SEDI) 's/^(ENV SYFT_VERSION=).+$$/\1${SYFT_LATEST_VERSION}/' Dockerfile
+
+GRYPE_LATEST_VERSION = $(shell curl "https://api.github.com/repos/anchore/grype/releases/latest" 2>/dev/null | jq -r '.tag_name')
+upgrade-grype: jq-installed ## Upgrade Grype to the latest release
+	# Setting Grype to ${GRYPE_LATEST_VERSION}
+	$(SEDI) 's/^(ENV GRYPE_VERSION=).+$$/\1${GRYPE_LATEST_VERSION}/' Dockerfile
+
+# TODO: Intent is to create a weekly/daily/continuous GitHub Action that runs the following and auto-opens a PR
+upgrade-anchore-tools: upgrade-syft upgrade-grype ## Upgrade Syft and Grype to the latest release
