@@ -25,11 +25,11 @@ rfc3339_date_input_fmts = [
 ]
 
 
-def rfc3339str_to_epoch(rfc3339_str):
+def rfc3339str_to_epoch(rfc3339_str: str) -> int:
     return int(rfc3339str_to_datetime(rfc3339_str).timestamp())
 
 
-def rfc3339str_to_datetime(rfc3339_str):
+def rfc3339str_to_datetime(rfc3339_str: str) -> datetime.datetime:
     """
     Convert the rfc3339 formatted string (UTC only) to a datatime object with tzinfo explicitly set to utc. Raises an exception if the parsing fails.
 
@@ -58,7 +58,7 @@ def rfc3339str_to_datetime(rfc3339_str):
     return ret
 
 
-def datetime_to_rfc3339(dt_obj):
+def datetime_to_rfc3339(dt_obj: datetime.datetime) -> str:
     """
     Simple utility function. Expects a UTC input, does no tz conversion
 
@@ -69,7 +69,7 @@ def datetime_to_rfc3339(dt_obj):
     return dt_obj.strftime(rfc3339_date_fmt)
 
 
-def epoch_to_rfc3339(epoch_int):
+def epoch_to_rfc3339(epoch_int: int) -> str:
     """
     Convert an epoch int value to a RFC3339 datetime string
 
