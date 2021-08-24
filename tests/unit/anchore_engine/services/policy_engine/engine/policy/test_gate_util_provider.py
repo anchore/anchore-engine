@@ -15,7 +15,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate_util_provider impo
     GrypeGateUtilProvider,
     LegacyGateUtilProvider,
 )
-from tests.unit.anchore_engine.clients.test_grype_wrapper import (
+from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
     TestGrypeWrapperSingleton,
     production_grype_db_dir,
     GRYPE_DB_VERSION,
