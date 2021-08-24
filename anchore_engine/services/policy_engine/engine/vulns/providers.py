@@ -153,7 +153,9 @@ class VulnerabilitiesProvider(ABC):
         ...
 
     @abstractmethod
-    def get_sync_utils(self, sync_configs: Dict[str, SyncConfig]) -> SyncUtilProvider:
+    def get_sync_util_provider(
+        self, sync_configs: Dict[str, SyncConfig]
+    ) -> SyncUtilProvider:
         """
         Get a SyncUtilProvider.
         """
@@ -930,7 +932,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 )
                 return "http://<valid endpoint not found>"
 
-    def get_sync_utils(
+    def get_sync_util_provider(
         self, sync_configs: Dict[str, SyncConfig]
     ) -> LegacySyncUtilProvider:
         """
@@ -1498,7 +1500,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
         return filtered_dicts
 
-    def get_sync_utils(
+    def get_sync_util_provider(
         self, sync_configs: Dict[str, SyncConfig]
     ) -> GrypeDBSyncUtilProvider:
         """
