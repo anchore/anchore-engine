@@ -1,6 +1,6 @@
 import datetime
 
-import anchore_engine.utils as utils
+import anchore_engine.util.time
 
 rfc3339_examples = [
     (
@@ -70,26 +70,26 @@ def test_rfc3339():
     # parsing/validation and conversion symmetry
     for rfc_str, assert_targets in rfc3339_examples:
         print("testing input string: {}".format(rfc_str))
-        rc = utils.rfc3339str_to_epoch(rfc_str)
+        rc = anchore_engine.util.time.rfc3339str_to_epoch(rfc_str)
         print("\trfc3339_to_epoch: {}".format(rc))
         assert rc == assert_targets["epoch"]
         print("\tepoch assertion passed")
 
-        rc = utils.rfc3339str_to_datetime(rfc_str)
+        rc = anchore_engine.util.time.rfc3339str_to_datetime(rfc_str)
         print("\trfc3339_to_datetime: {}".format(rc))
         assert rc == assert_targets["dt"]
         print("\tdatetime assertion passed")
 
     for epoch, assert_targets in epoch_examples:
         print("testing input epoch: {}".format(epoch))
-        rc = utils.epoch_to_rfc3339(epoch)
+        rc = anchore_engine.util.time.epoch_to_rfc3339(epoch)
         print("\tepoch_to_rfc3339: {}".format(rc))
         assert rc == assert_targets["rfc3339"]
         print("\tdatetime assertion passed")
 
     for dt, assert_targets in dt_examples:
         print("testing input datetime: {}".format(dt))
-        rc = utils.datetime_to_rfc3339(dt)
+        rc = anchore_engine.util.time.datetime_to_rfc3339(dt)
         print("\tdatetime_to_rfc3339: {}".format(rc))
         assert rc == assert_targets["rfc3339"]
         print("\tdatetime assertion passed")

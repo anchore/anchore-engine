@@ -40,7 +40,7 @@ from anchore_engine.db.db_accounts import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.identities import manager_factory
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.util.time import datetime_to_rfc3339
 
 authorizer = get_authorizer()
 
