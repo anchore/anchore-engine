@@ -1,8 +1,10 @@
 import datetime
 from typing import Optional, Type
+from unittest.mock import Mock
 
 import pytest
 
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db.entities.policy_engine import (
     DistroNamespace,
     FeedGroupMetadata,
@@ -13,6 +15,46 @@ from anchore_engine.services.policy_engine.engine.policy.gate_util_provider impo
     GrypeGateUtilProvider,
     LegacyGateUtilProvider,
 )
+from tests.unit.anchore_engine.clients.test_grype_wrapper import (
+    TestGrypeWrapperSingleton,
+    production_grype_db_dir,
+    GRYPE_DB_VERSION,
+)
+
+
+@pytest.fixture
+def test_grype_wrapper_singleton(
+    monkeypatch, production_grype_db_dir
+) -> GrypeWrapperSingleton:
+    """
+    Creates a TestGrypeWrapperSingleton, with attributes attributes for a mock production grype_db.
+    That db contains a small number of (mock, not production) vulnerability records.
+
+    Note that this test grype wrapper, unlike a real instance, has those references cleared and recreated
+    each time it is called in order to maintain atomicity between tests. This fixture therefore monkey
+    patches providers.py so that the wrapper created here is accessed during test execution.
+    """
+    grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+
+    grype_wrapper_singleton._grype_db_dir = production_grype_db_dir
+    grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
+
+    test_production_grype_db_engine = (
+        grype_wrapper_singleton._init_latest_grype_db_engine(
+            production_grype_db_dir, GRYPE_DB_VERSION
+        )
+    )
+
+    grype_wrapper_singleton._grype_db_session_maker = (
+        grype_wrapper_singleton._init_latest_grype_db_session_maker(
+            test_production_grype_db_engine
+        )
+    )
+
+    monkeypatch.setattr(
+        "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GrypeWrapperSingleton.get_instance",
+        lambda: grype_wrapper_singleton,
+    )
 
 
 class TestGateUtilProvider:
@@ -75,3 +117,30 @@ class TestGateUtilProvider:
         oldest_update = provider.oldest_namespace_feed_sync(ns)
 
         assert oldest_update == expected_oldest_update
+
+    @pytest.mark.parametrize(
+        "distro, version, expected",
+        [
+            ("amzn", "2", False),
+            ("alpine", "3.10", True),
+            ("debian", "10", True),
+            ("github", "python", True),
+        ],
+    )
+    def test_have_vulnerabilities_for_grype_provider(
+        self,
+        distro,
+        version,
+        expected,
+        test_grype_wrapper_singleton,
+    ):
+        # Setup
+        distro_namespace = Mock()
+        distro_namespace.like_namespace_names = [distro + ":" + version]
+        provider = GrypeGateUtilProvider()
+
+        # Method under test
+        result = provider.have_vulnerabilities_for(distro_namespace)
+
+        # Assert expected result
+        assert result is expected

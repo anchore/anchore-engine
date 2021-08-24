@@ -6,9 +6,6 @@ from collections import OrderedDict
 from anchore_engine.common import nonos_package_types
 from anchore_engine.db import DistroNamespace
 from anchore_engine.db.entities.common import get_thread_scoped_session
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    have_vulnerabilities_for,
-)
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
@@ -679,7 +676,13 @@ class UnsupportedDistroTrigger(BaseTrigger):
     __description__ = "Triggers if vulnerability data is unavailable for the image's distro packages such as rpms or dpkg. Non-OS packages like npms and java are not considered in this evaluation"
 
     def evaluate(self, image_obj, context):
-        if not have_vulnerabilities_for(DistroNamespace.for_obj(image_obj)):
+        if (
+            not get_vulnerabilities_provider()
+            .get_gate_util_provider()
+            .have_vulnerabilities_for(
+                distro_namespace=DistroNamespace.for_obj(image_obj)
+            )
+        ):
             self._fire(
                 msg="Distro-specific feed data not found for distro namespace: %s. Cannot perform CVE scan OS/distro packages"
                 % image_obj.distro_namespace
