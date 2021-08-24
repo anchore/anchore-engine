@@ -1517,12 +1517,6 @@ class GrypeProvider(VulnerabilitiesProvider):
         """
         pass
 
-    def update_feed_group_counts(self) -> None:
-        """
-        Counts on grypedb are static so no need to update
-        """
-        return
-
     def _get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
         """
         Overrides function on parent class to handle grype feed. If feed is not grype it calls the super function
