@@ -1948,7 +1948,7 @@ def feed_instance_by_name(name: str) -> DataFeed:
     :param name:
     :return:
     """
-    return feed_registry.get(name)()
+    return FeedRegistry().get(name)()
 
 
 class FeedRegistry(object):
@@ -1956,10 +1956,16 @@ class FeedRegistry(object):
     Registry for feed classes to facilitate lookups etc. Adapted from the metaclass approach but more explicit
     """
 
-    def __init__(self):
-        self.registry = {}
+    _instance = None
 
-    def register(self, feed_cls, is_vulnerability_feed=False):
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(FeedRegistry, cls).__new__(cls)
+            cls.registry = {}
+            # Put any initialization here.
+        return cls._instance
+
+    def register(cls, feed_cls, is_vulnerability_feed=False):
         """
         Register the class. The class must have a __feed_name__ class attribute for the lookup
 
@@ -1969,9 +1975,9 @@ class FeedRegistry(object):
         """
 
         feed = feed_cls.__feed_name__.lower()
-        self.registry[feed] = (feed_cls, is_vulnerability_feed)
+        cls.registry[feed] = (feed_cls, is_vulnerability_feed)
 
-    def get(self, name: str):
+    def get(cls, name: str):
         """
         Lookup a feed class by the feed's name, matched against the __feed_name__ attribute of the feed class.
 
@@ -1981,17 +1987,13 @@ class FeedRegistry(object):
         :return:
         """
         # Try direct name
-        return self.registry[name.lower()][0]
+        return cls.registry[name.lower()][0]
 
-    def registered_feed_names(self):
-        return list(self.registry.keys())
+    def registered_feed_names(cls):
+        return list(cls.registry.keys())
 
-    def registered_vulnerability_feed_names(self):
-        return [x[0] for x in self.registry.items() if x[1][1] is True]
-
-
-# The global registry
-feed_registry = FeedRegistry()
+    def registered_vulnerability_feed_names(cls):
+        return [x[0] for x in cls.registry.items() if x[1][1] is True]
 
 
 def have_vulnerabilities_for(distro_namespace_obj):
@@ -2005,6 +2007,7 @@ def have_vulnerabilities_for(distro_namespace_obj):
     # All options are the same, no need to loop
     # Check all options for distro/flavor mappings
     db = get_session()
+    feed_registry = FeedRegistry()
     for namespace_name in distro_namespace_obj.like_namespace_names:
         for vuln_feed in feed_registry.registered_vulnerability_feed_names():
             feed = get_feed_json(db_session=db, feed_name=vuln_feed)

@@ -32,7 +32,7 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     PackagesFeed,
     VulnDBFeed,
     VulnerabilityFeed,
-    feed_registry,
+    FeedRegistry,
 )
 from anchore_engine.subsys import logger
 
@@ -166,6 +166,7 @@ def init_db_content():
 
 def init_feed_registry():
     # Register feeds, the tuple is the class and bool if feed is a distro vulnerability feed or not
+    feed_registry = FeedRegistry()
     for cls_tuple in [
         (NvdV2Feed, False),
         (VulnDBFeed, False),

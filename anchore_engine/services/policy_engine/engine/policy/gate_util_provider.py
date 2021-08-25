@@ -10,7 +10,7 @@ from anchore_engine.db.db_grype_db_feed_metadata import (
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_feed_group_detached,
 )
-from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
+from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedRegistry
 from anchore_engine.subsys import logger
 
 
@@ -64,7 +64,7 @@ class LegacyGateUtilProvider(GateUtilProvider):
 
         for namespace_name in namespace.like_namespace_names:
             # Check feed names
-            for feed in feed_registry.registered_vulnerability_feed_names():
+            for feed in FeedRegistry.registered_vulnerability_feed_names():
                 # First match, assume only one matches for the namespace
                 group = get_feed_group_detached(feed, namespace_name)
                 if group:
