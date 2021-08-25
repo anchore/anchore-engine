@@ -25,6 +25,7 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    GrypeProvider,
     InvalidFeed,
     get_vulnerabilities_provider,
 )
@@ -154,9 +155,14 @@ def toggle_feed_enabled(feed, enabled):
 def toggle_group_enabled(feed, group, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-    if feed == GRYPE_DB_FEED_NAME:
+    if (
+        isinstance(get_vulnerabilities_provider(), GrypeProvider)
+        and feed == GRYPE_DB_FEED_NAME
+    ):
         raise HTTPNotImplementedError(
-            message="Enabling and disabling groups for grypedb feed is not currently supported.",
+            message="Enabling and disabling groups for {} feed is not currently supported for the Grype vulnerability provider.".format(
+                feed
+            ),
             detail={},
         )
     session = db.get_session()
@@ -182,9 +188,14 @@ def toggle_group_enabled(feed, group, enabled):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_feed(feed):
-    if feed == GRYPE_DB_FEED_NAME:
+    if (
+        isinstance(get_vulnerabilities_provider(), GrypeProvider)
+        and feed == GRYPE_DB_FEED_NAME
+    ):
         raise HTTPNotImplementedError(
-            message="Deleting the grypedb feed is not yet supported.",
+            message="Deleting the {} feed is not yet supported for the Grype vulnerability provider.".format(
+                feed
+            ),
             detail={},
         )
     session = db.get_session()
@@ -220,9 +231,14 @@ def delete_feed(feed):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_group(feed, group):
-    if feed == GRYPE_DB_FEED_NAME:
+    if (
+        isinstance(get_vulnerabilities_provider(), GrypeProvider)
+        and feed == GRYPE_DB_FEED_NAME
+    ):
         raise HTTPNotImplementedError(
-            message="Deleting individual groups for the grypedb feed is not yet supported.",
+            message="Deleting individual groups for the {} feed is not yet supported for the Grype vulnerability provider.".format(
+                feed
+            ),
             detail={},
         )
     session = db.get_session()
