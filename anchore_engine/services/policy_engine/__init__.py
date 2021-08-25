@@ -24,20 +24,11 @@ from anchore_engine.services.policy_engine.engine.feeds.config import (
     get_section_for_vulnerabilities,
     is_sync_enabled,
 )
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    GithubFeed,
-    GrypeDBFeed,
-    NvdFeed,
-    NvdV2Feed,
-    PackagesFeed,
-    VulnDBFeed,
-    VulnerabilityFeed,
-    FeedRegistry,
+from anchore_engine.services.policy_engine.engine.feeds.feeds import FeedRegistry
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import logger
-
-# from anchore_engine.subsys.logger import enable_bootstrap_logging
-# enable_bootstrap_logging()
 
 feed_sync_queuename = "feed_sync_tasks"
 system_user_auth = None
@@ -167,15 +158,8 @@ def init_db_content():
 def init_feed_registry():
     # Register feeds, the tuple is the class and bool if feed is a distro vulnerability feed or not
     feed_registry = FeedRegistry()
-    for cls_tuple in [
-        (NvdV2Feed, False),
-        (VulnDBFeed, False),
-        (VulnerabilityFeed, True),
-        (PackagesFeed, False),
-        (GithubFeed, False),
-        (NvdFeed, False),
-        (GrypeDBFeed, True),
-    ]:
+    provider = get_vulnerabilities_provider()
+    for cls_tuple in provider.list_feed_classes():
         logger.info("Registering feed handler {}".format(cls_tuple[0].__feed_name__))
         feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
 

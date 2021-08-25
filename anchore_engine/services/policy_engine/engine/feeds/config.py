@@ -11,6 +11,7 @@ from anchore_engine.subsys import logger
 
 @dataclass
 class SyncConfig:
+    feed_name: str
     enabled: bool
     url: str
     username: str = field(default=None, repr=False)
@@ -129,6 +130,7 @@ def compute_selected_configs_to_sync(
                     if not sync_url:
                         sync_url = default_sync_config.url
                     to_be_synced[feed_name] = SyncConfig(
+                        feed_name=default_sync_config.feed_name,
                         enabled=True,
                         url=sync_url,
                         connection_timeout_seconds=connection_timeout_seconds,

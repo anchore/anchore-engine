@@ -2,7 +2,7 @@ import datetime
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple, Type
 
 from sqlalchemy.orm.session import Session
 
@@ -718,7 +718,7 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
     :type metadata: Optional[FeedMetadata], defaults to None
     """
 
-    __feed_name__ = "grypedb"
+    __feed_name__ = "vulnerabilities"
     _cve_key = None
 
     def __init__(self, metadata: Optional[FeedMetadata] = None):
@@ -1953,7 +1953,7 @@ def feed_instance_by_name(name: str) -> DataFeed:
 
 class FeedRegistry(object):
     """
-    Registry for feed classes to facilitate lookups etc. Adapted from the metaclass approach but more explicit
+    Registry singleton for feed classes to facilitate lookups etc. Adapted from the metaclass approach but more explicit
     """
 
     _instance = None
@@ -1961,11 +1961,15 @@ class FeedRegistry(object):
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(FeedRegistry, cls).__new__(cls)
-            cls.registry = {}
             # Put any initialization here.
+            cls.registry = {}
         return cls._instance
 
-    def register(cls, feed_cls, is_vulnerability_feed=False):
+    def register(
+        cls,
+        feed_cls: Type[DataFeed],
+        is_vulnerability_feed: bool = False,
+    ):
         """
         Register the class. The class must have a __feed_name__ class attribute for the lookup
 
@@ -1973,7 +1977,6 @@ class FeedRegistry(object):
         :param is_vulnerability_feed: indicates this feed provides distro-level vulnerability info, necessary for determining which feeds to check for vuln info
         :return:
         """
-
         feed = feed_cls.__feed_name__.lower()
         cls.registry[feed] = (feed_cls, is_vulnerability_feed)
 

@@ -3,7 +3,7 @@ import hashlib
 import json
 import time
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Type
 
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
@@ -51,7 +51,14 @@ from anchore_engine.services.policy_engine.engine.feeds.db import (
     set_feed_enabled,
 )
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    DataFeed,
+    GithubFeed,
     GrypeDBFeed,
+    NvdFeed,
+    NvdV2Feed,
+    PackagesFeed,
+    VulnDBFeed,
+    VulnerabilityFeed,
     have_vulnerabilities_for,
 )
 from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
@@ -118,6 +125,10 @@ class VulnerabilitiesProvider(ABC):
         return self.__default_sync_config__
 
     @abstractmethod
+    def list_feed_classes(self) -> List[Tuple[Type[DataFeed], bool]]:
+        ...
+
+    @abstractmethod
     def load_image(self, **kwargs):
         """
         Ingress the image and compute the vulnerability matches. To be used in the load image path to prime the matches
@@ -169,13 +180,16 @@ class VulnerabilitiesProvider(ABC):
         Legacy holdout for updating vulnerability matches of images that were loaded during the feed sync
         """
 
+    def get_valid_feed_names(self):
+        return [config.feed_name for config in self.__default_sync_config__.values()]
+
     def _get_db_feeds(self) -> List[FeedMetadata]:
         """
         Returns all feeds excluding grypedb feed in detached state
         """
         feeds = get_all_feeds_detached()
         return list(
-            filter(lambda feed: feed.name in self.__default_sync_config__.keys(), feeds)
+            filter(lambda feed: feed.name in self.get_valid_feed_names(), feeds)
         )
 
     def get_feeds(self) -> List[APIFeedMetadata]:
@@ -268,12 +282,13 @@ class VulnerabilitiesProvider(ABC):
         """
         Raises a ValueError if the feed name is not available on the provider. Does nothing if it is valid
         """
-        if feed_name not in self.__default_sync_config__.keys():
+        valid_feed_names = self.get_valid_feed_names()
+        if feed_name not in valid_feed_names:
             raise InvalidFeed(
                 "%s feed is not supported by %s provider, supported feeds are %s",
                 feed_name,
                 self.__config__name__,
-                list(self.__default_sync_config__.keys()),
+                valid_feed_names,
             )
 
     @abstractmethod
@@ -302,15 +317,30 @@ class LegacyProvider(VulnerabilitiesProvider):
     __config__name__ = "legacy"
     __default_sync_config__ = {
         "vulnerabilities": SyncConfig(
+            feed_name="vulnerabilities",
             enabled=True,
             url="https://ancho.re/v1/service/feeds",
         ),  # for backwards selective sync compatibility
         "nvdv2": SyncConfig(
-            enabled=True, url="https://ancho.re/v1/service/feeds"
+            feed_name="nvdv2", enabled=True, url="https://ancho.re/v1/service/feeds"
         ),  # for backwards selective sync compatibility
-        "github": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
-        "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
+        "github": SyncConfig(
+            feed_name="github", enabled=False, url="https://ancho.re/v1/service/feeds"
+        ),
+        "packages": SyncConfig(
+            feed_name="packages", enabled=False, url="https://ancho.re/v1/service/feeds"
+        ),
     }
+
+    def list_feed_classes(self) -> List[Tuple[Type[DataFeed], bool]]:
+        return [
+            (NvdV2Feed, False),
+            (VulnDBFeed, False),
+            (PackagesFeed, False),
+            (GithubFeed, False),
+            (NvdFeed, False),
+            (VulnerabilityFeed, True),
+        ]
 
     def load_image(self, image: Image, db_session, use_store=True):
         # initialize the scanner
@@ -1088,11 +1118,24 @@ class GrypeProvider(VulnerabilitiesProvider):
     __config__name__ = "grype"
     __default_sync_config__ = {
         "grypedb": SyncConfig(
+            feed_name="vulnerabilities",
             enabled=True,
             url="https://toolbox-data.anchore.io/grype/databases/listing.json",
         ),
-        "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
+        "packages": SyncConfig(
+            feed_name="packages", enabled=False, url="https://ancho.re/v1/service/feeds"
+        ),
     }
+
+    def list_feed_classes(self) -> List[Tuple[Type[DataFeed], bool]]:
+        return [
+            (NvdV2Feed, False),
+            (VulnDBFeed, False),
+            (PackagesFeed, False),
+            (GithubFeed, False),
+            (NvdFeed, False),
+            (GrypeDBFeed, True),
+        ]
 
     def load_image(self, image: Image, db_session, use_store=True):
         with timer("grype provider load-image", log_level="info"):

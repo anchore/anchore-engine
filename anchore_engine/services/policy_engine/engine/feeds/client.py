@@ -489,8 +489,8 @@ class GrypeDBServiceClient(IFeedSource):
         return FeedList(
             feeds=[
                 FeedAPIRecord(
-                    name="grypedb",
-                    description="grypedb feed",
+                    name="vulnerabilities",
+                    description="grypedb vulnerabilities feed",
                     access_tier="0",
                 )
             ]
@@ -535,8 +535,8 @@ class GrypeDBServiceClient(IFeedSource):
         return FeedGroupList(
             groups=[
                 FeedAPIGroupRecord(
-                    name="grypedb:vulnerabilities",
-                    description="grypedb:vulnerabilities group",
+                    name="vulnerabilities:grypedb",
+                    description="vulnerabilities:grypedb group",
                     access_tier="0",
                     grype_listing=GrypeDBListing(**grype_db_listing),
                 )

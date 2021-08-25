@@ -524,9 +524,13 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
         :return: filtered mapping of feed names to SyncConfigs
         :rtype: Dict[str, SyncConfig]
         """
-        grype_sync_config = sync_configs.get(GRYPE_DB_FEED_NAME)
+        grype_sync_config = [
+            sync_config
+            for sync_config in sync_configs.values()
+            if sync_config.feed_name == GRYPE_DB_FEED_NAME
+        ]
         if grype_sync_config:
-            return {GRYPE_DB_FEED_NAME: grype_sync_config}
+            return {GRYPE_DB_FEED_NAME: grype_sync_config[0]}
         return {}
 
     def get_client(self) -> GrypeDBServiceClient:
