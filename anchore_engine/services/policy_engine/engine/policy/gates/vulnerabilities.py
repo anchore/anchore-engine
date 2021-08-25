@@ -679,9 +679,7 @@ class UnsupportedDistroTrigger(BaseTrigger):
         if (
             not get_vulnerabilities_provider()
             .get_gate_util_provider()
-            .have_vulnerabilities_for(
-                distro_namespace=DistroNamespace.for_obj(image_obj)
-            )
+            .have_vulnerabilities_for(DistroNamespace.for_obj(image_obj))
         ):
             self._fire(
                 msg="Distro-specific feed data not found for distro namespace: %s. Cannot perform CVE scan OS/distro packages"

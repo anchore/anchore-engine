@@ -44,7 +44,7 @@ class GateUtilProvider(ABC):
         ...
 
     @abstractmethod
-    def have_vulnerabilities_for(self, **kwargs):
+    def have_vulnerabilities_for(self, distro_namespace: DistroNamespace) -> bool:
         """
         Return whether the feed groups have vulnerability data for the provided DistroNamespace
         """
