@@ -118,10 +118,10 @@ class GrypeGateUtilProvider(GateUtilProvider):
             except NoActiveGrypeDB:
                 return None
 
-    def have_vulnerabilities_for(self, distro_namespace_obj: DistroNamespace):
+    def have_vulnerabilities_for(self, distro_namespace_obj: DistroNamespace) -> bool:
         wrapper = GrypeWrapperSingleton.get_instance()
         source_counts = wrapper.query_record_source_counts()
-        groups = [source.group for source in source_counts]
+        groups = [source.group for source in source_counts if source.count > 0]
         for namespace_name in distro_namespace_obj.like_namespace_names:
             if namespace_name in groups:
                 return True

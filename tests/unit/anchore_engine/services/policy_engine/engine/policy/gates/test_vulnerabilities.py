@@ -25,6 +25,13 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
     GrypeProvider,
     LegacyProvider,
 )
+from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
+    TestGrypeWrapperSingleton,
+    production_grype_db_dir,
+    GRYPE_DB_VERSION,
+    test_grype_wrapper_singleton,
+    patch_grype_wrapper_singleton,
+)
 
 
 @pytest.fixture
@@ -92,7 +99,9 @@ def setup_mocks_vulnerabilities_gate(
 
 
 @pytest.fixture
-def setup_mocks_unsupported_distro_trigger(monkeypatch, mock_distromapping_query):
+def setup_mocks_unsupported_distro_trigger(
+    monkeypatch, mock_distromapping_query, set_provider, patch_grype_wrapper_singleton
+):
     # required for UnsupportedDistroTrigger.evaluate
     # setup for anchore_engine.services.policy_engine.engine.feeds.feeds.FeedRegistry.registered_vulnerability_feed_names
     init_feed_registry()
@@ -103,12 +112,21 @@ def setup_mocks_unsupported_distro_trigger(monkeypatch, mock_distromapping_query
         lambda: None,
     )
 
-    def _setup_mocks(feed_metadata):
-        # required for UnsupportedDistroTrigger.evaluate
-        monkeypatch.setattr(
-            "anchore_engine.services.policy_engine.engine.feeds.feeds.get_feed_json",
-            lambda db_session, feed_name: feed_metadata.to_json(),
-        )
+    def _setup_mocks(feed_metadata, provider_name):
+        set_provider(provider_name)
+        if provider_name == "legacy":
+            # required for UnsupportedDistroTrigger.evaluate
+            monkeypatch.setattr(
+                "anchore_engine.services.policy_engine.engine.feeds.feeds.get_feed_json",
+                lambda db_session, feed_name: feed_metadata.to_json(),
+            )
+        if provider_name == "grype":
+            # required for UnsupportedDistroTrigger.evaluate
+            patch_grype_wrapper_singleton(
+                [
+                    "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GrypeWrapperSingleton.get_instance"
+                ]
+            )
 
     return _setup_mocks
 
@@ -198,9 +216,10 @@ class TestVulnerabilitiesGate:
             )
 
     @pytest.mark.parametrize(
-        "image_obj, mock_vuln_report, feed_metadata, expected_trigger_fired",
+        "vuln_provider, image_obj, mock_vuln_report, feed_metadata, expected_trigger_fired",
         [
             (
+                "legacy",
                 Image(
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
@@ -211,6 +230,7 @@ class TestVulnerabilitiesGate:
                 False,
             ),
             (
+                "legacy",
                 Image(
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
@@ -220,10 +240,33 @@ class TestVulnerabilitiesGate:
                 ),
                 True,
             ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="9"
+                ),
+                "debian_1_os_will-fix.json",
+                FeedMetadata(
+                    name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:9")]
+                ),
+                True,
+            ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="10"
+                ),
+                "debian_1_os_will-fix.json",
+                FeedMetadata(
+                    name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:10")]
+                ),
+                False,
+            ),
         ],
     )
     def test_unsupported_distro_trigger(
         self,
+        vuln_provider,
         image_obj,
         mock_vuln_report,
         feed_metadata,
@@ -231,8 +274,8 @@ class TestVulnerabilitiesGate:
         setup_mocks_vulnerabilities_gate,
         setup_mocks_unsupported_distro_trigger,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
-        setup_mocks_unsupported_distro_trigger(feed_metadata)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, vuln_provider)
+        setup_mocks_unsupported_distro_trigger(feed_metadata, vuln_provider)
         vulns_gate = VulnerabilitiesGate()
         trigger = UnsupportedDistroTrigger(parent_gate_cls=VulnerabilitiesGate)
         exec_context = ExecutionContext(db_session=None, configuration={})

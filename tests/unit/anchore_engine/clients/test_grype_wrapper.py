@@ -28,6 +28,57 @@ MOCK_BUILT_TIMESTAMP = "2021-04-07T08:12:05Z"
 LAST_SYNCED_TIMESTAMP = "2021-04-07T08:12:05Z"
 
 
+@pytest.fixture
+def test_grype_wrapper_singleton(
+    monkeypatch, production_grype_db_dir
+) -> GrypeWrapperSingleton:
+    """
+    Creates a TestGrypeWrapperSingleton, with attributes attributes for a mock production grype_db.
+    That db contains a small number of (mock, not production) vulnerability records. This fixture is intended
+    to provide an easy, reusable method for tests outside of this module to get a working grype wrapper
+    that has already been populated with a trivial amount of test data.
+
+    Note that this test grype wrapper, unlike a real instance, has those references cleared and recreated
+    each time it is called in order to maintain atomicity between tests. This fixture therefore monkey
+    patches providers.py so that the wrapper created here is accessed during test execution.
+    """
+    grype_wrapper_singleton = TestGrypeWrapperSingleton.get_instance()
+
+    grype_wrapper_singleton._grype_db_dir = production_grype_db_dir
+    grype_wrapper_singleton._grype_db_version = GRYPE_DB_VERSION
+
+    test_production_grype_db_engine = (
+        grype_wrapper_singleton._init_latest_grype_db_engine(
+            production_grype_db_dir, GRYPE_DB_VERSION
+        )
+    )
+
+    grype_wrapper_singleton._grype_db_session_maker = (
+        grype_wrapper_singleton._init_latest_grype_db_session_maker(
+            test_production_grype_db_engine
+        )
+    )
+
+    return grype_wrapper_singleton
+
+
+@pytest.fixture
+def patch_grype_wrapper_singleton(monkeypatch, test_grype_wrapper_singleton):
+    """
+    This fixture returns a parameterized callback that patches the calls to get a new grype wrapper singleton
+    at that path to instead return the clean, populated instance created by test_grype_wrapper_singleton.
+    """
+
+    def _test_grype_wrapper_singleton(patch_paths: list):
+        for patch_path in patch_paths:
+            monkeypatch.setattr(
+                patch_path,
+                lambda: test_grype_wrapper_singleton,
+            )
+
+    return _test_grype_wrapper_singleton
+
+
 class TestGrypeWrapperSingleton(GrypeWrapperSingleton):
     @classmethod
     def get_instance(cls):
