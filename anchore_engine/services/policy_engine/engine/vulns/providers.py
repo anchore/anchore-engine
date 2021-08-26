@@ -181,7 +181,7 @@ class VulnerabilitiesProvider(ABC):
         """
 
     def get_valid_feed_names(self):
-        return [config.feed_name for config in self.__default_sync_config__.values()]
+        return [config.feed.__feed_name__ for config in self.__default_sync_config__.values()]
 
     def _get_db_feeds(self) -> List[FeedMetadata]:
         """
@@ -317,18 +317,18 @@ class LegacyProvider(VulnerabilitiesProvider):
     __config__name__ = "legacy"
     __default_sync_config__ = {
         "vulnerabilities": SyncConfig(
-            feed_name="vulnerabilities",
+            feed=VulnerabilityFeed,
             enabled=True,
             url="https://ancho.re/v1/service/feeds",
         ),  # for backwards selective sync compatibility
         "nvdv2": SyncConfig(
-            feed_name="nvdv2", enabled=True, url="https://ancho.re/v1/service/feeds"
+            feed=NvdV2Feed, enabled=True, url="https://ancho.re/v1/service/feeds"
         ),  # for backwards selective sync compatibility
         "github": SyncConfig(
-            feed_name="github", enabled=False, url="https://ancho.re/v1/service/feeds"
+            feed=GithubFeed, enabled=False, url="https://ancho.re/v1/service/feeds"
         ),
         "packages": SyncConfig(
-            feed_name="packages", enabled=False, url="https://ancho.re/v1/service/feeds"
+            feed=PackagesFeed, enabled=False, url="https://ancho.re/v1/service/feeds"
         ),
     }
 
@@ -1118,12 +1118,12 @@ class GrypeProvider(VulnerabilitiesProvider):
     __config__name__ = "grype"
     __default_sync_config__ = {
         "grypedb": SyncConfig(
-            feed_name="vulnerabilities",
+            feed=GrypeDBFeed,
             enabled=True,
             url="https://toolbox-data.anchore.io/grype/databases/listing.json",
         ),
         "packages": SyncConfig(
-            feed_name="packages", enabled=False, url="https://ancho.re/v1/service/feeds"
+            feed=PackagesFeed, enabled=False, url="https://ancho.re/v1/service/feeds"
         ),
     }
 

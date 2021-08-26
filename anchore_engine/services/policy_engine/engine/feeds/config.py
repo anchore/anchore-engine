@@ -3,15 +3,16 @@ Separate module for accessing feeds configuration. Does not have any dependencie
 """
 
 from dataclasses import dataclass, field
-from typing import Dict
+from typing import Dict, Type
 
 from anchore_engine.configuration import localconfig
 from anchore_engine.subsys import logger
+from anchore_engine.services.policy_engine.engine.feeds.feeds import DataFeed
 
 
 @dataclass
 class SyncConfig:
-    feed_name: str
+    feed: Type[DataFeed]
     enabled: bool
     url: str
     username: str = field(default=None, repr=False)
@@ -130,7 +131,7 @@ def compute_selected_configs_to_sync(
                     if not sync_url:
                         sync_url = default_sync_config.url
                     to_be_synced[feed_name] = SyncConfig(
-                        feed_name=default_sync_config.feed_name,
+                        feed=default_sync_config.feed,
                         enabled=True,
                         url=sync_url,
                         connection_timeout_seconds=connection_timeout_seconds,

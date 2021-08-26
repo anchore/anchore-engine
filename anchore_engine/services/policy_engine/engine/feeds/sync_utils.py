@@ -383,7 +383,7 @@ class LegacySyncUtilProvider(SyncUtilProvider):
         return {
             feed_name: sync_config
             for feed_name, sync_config in sync_configs.items()
-            if feed_name != GRYPE_DB_FEED_NAME
+            if sync_config.feed != GrypeDBFeed
         }
 
     def get_client(self) -> FeedServiceClient:
@@ -527,7 +527,7 @@ class GrypeDBSyncUtilProvider(SyncUtilProvider):
         grype_sync_config = [
             sync_config
             for sync_config in sync_configs.values()
-            if sync_config.feed_name == GRYPE_DB_FEED_NAME
+            if sync_config.feed == GrypeDBFeed
         ]
         if grype_sync_config:
             return {GRYPE_DB_FEED_NAME: grype_sync_config[0]}
