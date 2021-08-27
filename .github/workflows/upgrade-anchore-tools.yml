@@ -22,6 +22,7 @@ jobs:
           delete-branch: true
           branch: auto/latest-anchore-tools
           labels: dependencies
+          commit-message: 'Upgrade to Syft ${{ env.syft_v }} and/or Grype to ${{ env.grype_v }}'
           title: 'Upgrade to Syft ${{ env.syft_v }} and/or Grype to ${{ env.grype_v }}'
           body: |
             - [Syft ${{ env.syft_v }}](https://github.com/anchore/syft/releases/tag/${{ env.syft_v }})
