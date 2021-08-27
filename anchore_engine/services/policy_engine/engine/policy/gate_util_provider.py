@@ -2,6 +2,7 @@ import datetime
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db import DistroNamespace, session_scope
 from anchore_engine.db.db_grype_db_feed_metadata import (
     NoActiveGrypeDB,
@@ -10,7 +11,10 @@ from anchore_engine.db.db_grype_db_feed_metadata import (
 from anchore_engine.services.policy_engine.engine.feeds.db import (
     get_feed_group_detached,
 )
-from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    feed_registry,
+    have_vulnerabilities_for,
+)
 from anchore_engine.subsys import logger
 
 
@@ -36,6 +40,13 @@ class GateUtilProvider(ABC):
         :type namespace: DistroNamespace
         :return: the time of the oldest feed sync
         :rtype: datetime.datetime
+        """
+        ...
+
+    @abstractmethod
+    def have_vulnerabilities_for(self, distro_namespace: DistroNamespace) -> bool:
+        """
+        Return whether the feed groups have vulnerability data for the provided DistroNamespace
         """
         ...
 
@@ -79,6 +90,9 @@ class LegacyGateUtilProvider(GateUtilProvider):
                     break
         return oldest_update
 
+    def have_vulnerabilities_for(self, distro_namespace: DistroNamespace) -> bool:
+        return have_vulnerabilities_for(distro_namespace)
+
 
 class GrypeGateUtilProvider(GateUtilProvider):
     """
@@ -103,3 +117,13 @@ class GrypeGateUtilProvider(GateUtilProvider):
                 return grypedb.built_at
             except NoActiveGrypeDB:
                 return None
+
+    def have_vulnerabilities_for(self, distro_namespace_obj: DistroNamespace) -> bool:
+        wrapper = GrypeWrapperSingleton.get_instance()
+        source_counts = wrapper.query_record_source_counts()
+        groups = [source.group for source in source_counts if source.count > 0]
+        for namespace_name in distro_namespace_obj.like_namespace_names:
+            if namespace_name in groups:
+                return True
+        else:
+            return False

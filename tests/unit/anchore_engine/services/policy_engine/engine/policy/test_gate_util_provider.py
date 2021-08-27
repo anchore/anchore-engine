@@ -1,5 +1,6 @@
 import datetime
 from typing import Optional, Type
+from unittest.mock import Mock
 
 import pytest
 
@@ -12,6 +13,11 @@ from anchore_engine.services.policy_engine.engine.policy.gate_util_provider impo
     GateUtilProvider,
     GrypeGateUtilProvider,
     LegacyGateUtilProvider,
+)
+from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
+    production_grype_db_dir,
+    test_grype_wrapper_singleton,
+    patch_grype_wrapper_singleton,
 )
 
 
@@ -75,3 +81,35 @@ class TestGateUtilProvider:
         oldest_update = provider.oldest_namespace_feed_sync(ns)
 
         assert oldest_update == expected_oldest_update
+
+    @pytest.mark.parametrize(
+        "distro, version, expected",
+        [
+            ("amzn", "2", False),
+            ("alpine", "3.10", True),
+            ("debian", "10", True),
+            ("github", "python", True),
+        ],
+    )
+    def test_have_vulnerabilities_for_grype_provider(
+        self,
+        distro: str,
+        version: str,
+        expected: bool,
+        patch_grype_wrapper_singleton,
+    ):
+        # Setup
+        patch_grype_wrapper_singleton(
+            [
+                "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GrypeWrapperSingleton.get_instance"
+            ]
+        )
+        distro_namespace = Mock()
+        distro_namespace.like_namespace_names = [distro + ":" + version]
+        provider = GrypeGateUtilProvider()
+
+        # Method under test
+        result = provider.have_vulnerabilities_for(distro_namespace)
+
+        # Assert expected result
+        assert result is expected
