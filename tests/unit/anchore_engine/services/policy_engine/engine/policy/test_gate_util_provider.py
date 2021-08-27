@@ -15,9 +15,7 @@ from anchore_engine.services.policy_engine.engine.policy.gate_util_provider impo
     LegacyGateUtilProvider,
 )
 from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
-    TestGrypeWrapperSingleton,
     production_grype_db_dir,
-    GRYPE_DB_VERSION,
     test_grype_wrapper_singleton,
     patch_grype_wrapper_singleton,
 )
@@ -95,9 +93,9 @@ class TestGateUtilProvider:
     )
     def test_have_vulnerabilities_for_grype_provider(
         self,
-        distro,
-        version,
-        expected,
+        distro: str,
+        version: str,
+        expected: bool,
         patch_grype_wrapper_singleton,
     ):
         # Setup
