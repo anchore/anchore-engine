@@ -768,7 +768,7 @@ class ImageImportOperation(Base, UtilMixin):
     contents = relationship("ImageImportContent", back_populates="operation")
 
     __table_args__ = (Index("ix_ae_image_imports_account", account), {})
-    
+
     def to_json(self):
         j = super().to_json()
         j["status"] = self.status.value

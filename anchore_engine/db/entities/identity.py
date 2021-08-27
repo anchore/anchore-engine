@@ -3,7 +3,7 @@ import time
 
 from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
 from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text, Index
 from sqlalchemy.orm import relationship
 
 from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
@@ -86,9 +86,7 @@ class AccountUser(Base, UtilMixin):
     source = Column(String)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
-    uuid = Column(
-        "uuid", String, unique=True, nullable=False, default=anchore_uuid
-    )
+    uuid = Column("uuid", String, unique=True, nullable=False, default=anchore_uuid)
 
     account = relationship(
         "Account", back_populates="users", lazy="joined", innerjoin=True
@@ -100,9 +98,11 @@ class AccountUser(Base, UtilMixin):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = (Index("ix_ae_account_users_account_name", account_name), Index("ix_ae_account_users_uuid", uuid))
+    __table_args__ = (
+        Index("ix_ae_account_users_account_name", account_name),
+        Index("ix_ae_account_users_uuid", uuid),
+    )
 
-    
     def to_dict(self):
         """
         Override the base imple to include credentials
@@ -167,8 +167,8 @@ class OAuth2Token(Base, UtilMixin, TokenMixin):
     issued_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     expires_in = Column(Integer, nullable=False, default=0)
 
-    __table_args__ = (Index("ix_ae_oauth2_tokens_refresh_token", refresh_token), {})    
-    
+    __table_args__ = (Index("ix_ae_oauth2_tokens_refresh_token", refresh_token), {})
+
     def get_scope(self):
         return self.scope
 
