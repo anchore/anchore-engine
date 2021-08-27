@@ -79,7 +79,7 @@ class AccountUser(Base, UtilMixin):
     __tablename__ = "account_users"
 
     username = Column(String, primary_key=True)  # Enforce globally unique user names
-    account_name = Column(String, ForeignKey(Account.name), index=True)
+    account_name = Column(String, ForeignKey(Account.name))
     type = Column(
         Enum(UserTypes, name="user_types"), nullable=False, default=UserTypes.native
     )
@@ -87,7 +87,7 @@ class AccountUser(Base, UtilMixin):
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
     uuid = Column(
-        "uuid", String, unique=True, nullable=False, default=anchore_uuid, index=True
+        "uuid", String, unique=True, nullable=False, default=anchore_uuid
     )
 
     account = relationship(
@@ -100,6 +100,9 @@ class AccountUser(Base, UtilMixin):
         cascade="all, delete-orphan",
     )
 
+    __table_args__ = (Index("ix_ae_account_users_account_name", account_name), Index("ix_ae_account_users_uuid", uuid))
+
+    
     def to_dict(self):
         """
         Override the base imple to include credentials
@@ -158,12 +161,14 @@ class OAuth2Token(Base, UtilMixin, TokenMixin):
     client_id = Column(String)
     token_type = Column(String)
     access_token = Column(String, unique=True, nullable=False)
-    refresh_token = Column(String, index=True)
+    refresh_token = Column(String)
     scope = Column(Text, default="")
     revoked = Column(Boolean, default=False)
     issued_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     expires_in = Column(Integer, nullable=False, default=0)
 
+    __table_args__ = (Index("ix_ae_oauth2_tokens_refresh_token", refresh_token), {})    
+    
     def get_scope(self):
         return self.scope
 
