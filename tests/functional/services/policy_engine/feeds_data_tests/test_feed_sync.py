@@ -4,6 +4,7 @@ import pytest
 
 import tests.functional.services.policy_engine.utils.api as policy_engine_api
 from anchore_engine.services.policy_engine.engine.feeds.feeds import GrypeDBFeed
+from anchore_engine.services.policy_engine.engine.vulns.providers import GrypeProvider
 from tests.functional.services.policy_engine.conftest import (
     is_legacy_provider,
     read_expected_content,
@@ -45,7 +46,9 @@ def build_feed_sync_test_matrix():
             for group in groups:
                 params.append((feed["name"], group["name"], 10))
     else:
-        feed = GrypeDBFeed.__feed_name__
+        provider = GrypeProvider()
+        provider.init_display_mapper()
+        feed = provider.display_mapper.get_display_name(GrypeDBFeed.__feed_name__)
         expected_groups = read_expected_content(
             __file__, "expected_grype_feed_and_group_counts"
         )
