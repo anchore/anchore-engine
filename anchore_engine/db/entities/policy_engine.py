@@ -166,7 +166,11 @@ class GrypeDBFeedMetadata(Base):
     synced_at = Column(DateTime, nullable=True)
     groups = Column(JSONB, default=[])
 
-    __table_args__ = (Index("ix_ae_grype_db_feed_metadata_db_checksum", db_checksum), {})
+    __table_args__ = (
+        Index("ix_ae_grype_db_feed_metadata_db_checksum", db_checksum),
+        {},
+    )
+
 
 class GenericFeedDataRecord(Base):
     """
@@ -860,8 +864,11 @@ class NvdV2Metadata(Base):
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
     )
 
-    __table_args__ = (Index("ix_ae_feed_data_nvdv2_vulnerabilities_severity", severity), {})
-    
+    __table_args__ = (
+        Index("ix_ae_feed_data_nvdv2_vulnerabilities_severity", severity),
+        {},
+    )
+
     def __repr__(self):
         return "<{} name={}, created_at={}>".format(
             self.__class__, self.name, self.created_at
@@ -1106,8 +1113,11 @@ class VulnDBMetadata(Base):
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
     )
 
-    __table_args__ = (Index("ix_ae_feed_data_vulndb_vulnerabilities_severity", severity), {})
-    
+    __table_args__ = (
+        Index("ix_ae_feed_data_vulndb_vulnerabilities_severity", severity),
+        {},
+    )
+
     def __repr__(self):
         return "<{} name={}, created_at={}>".format(
             self.__class__, self.name, self.created_at
@@ -3391,7 +3401,10 @@ class ImageVulnerabilitiesReport(Base, StorageInterface):
         onupdate=datetime.datetime.utcnow,
     )
 
-    __table_args__ = (Index("ix_ae_image_vulnerabilities_reports_report_key", report_key), Index("ix_ae_image_vulnerabilities_reports_generated_at", generated_at))
+    __table_args__ = (
+        Index("ix_ae_image_vulnerabilities_reports_report_key", report_key),
+        Index("ix_ae_image_vulnerabilities_reports_generated_at", generated_at),
+    )
 
 
 class CachedPolicyEvaluation(Base, StorageInterface):
