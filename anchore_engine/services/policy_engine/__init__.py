@@ -34,6 +34,9 @@ from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     VulnerabilityFeed,
     feed_registry,
 )
+from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    get_vulnerabilities_provider,
+)
 from anchore_engine.subsys import logger
 
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
@@ -98,7 +101,11 @@ def process_preflight():
     :return:
     """
 
-    preflight_check_functions = [init_db_content, init_feed_registry]
+    preflight_check_functions = [
+        init_db_content,
+        init_feed_registry,
+        init_display_mapper,
+    ]
 
     for fn in preflight_check_functions:
         try:
@@ -177,6 +184,11 @@ def init_feed_registry():
     ]:
         logger.info("Registering feed handler {}".format(cls_tuple[0].__feed_name__))
         feed_registry.register(cls_tuple[0], is_vulnerability_feed=cls_tuple[1])
+
+
+def init_display_mapper():
+    provider = get_vulnerabilities_provider()
+    provider.init_display_mapper()
 
 
 def do_feed_sync(msg):

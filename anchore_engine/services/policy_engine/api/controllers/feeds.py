@@ -25,6 +25,7 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    GrypeProvider,
     InvalidFeed,
     get_vulnerabilities_provider,
 )
@@ -47,7 +48,11 @@ def list_feeds(refresh_counts=False):
     if refresh_counts:
         provider.update_feed_group_counts()
 
-    return [feed.to_json() for feed in provider.get_feeds()]
+    feeds = provider.get_feeds()
+    for feed in feeds:
+        feed.name = provider.display_mapper.get_display_name(internal_name=feed.name)
+
+    return [feed.to_json() for feed in feeds]
 
 
 def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
@@ -122,6 +127,11 @@ def sync_feeds(sync=True, force_flush=False):
         except Exception as e:
             log.exception("Error executing feed update task")
             return jsonify(make_response_error(e, in_httpcode=500)), 500
+        provider = get_vulnerabilities_provider()
+        for feed_sync_result in result:
+            feed_sync_result.feed = provider.display_mapper.get_display_name(
+                internal_name=feed_sync_result.feed
+            )
 
     return jsonify([asdict(sync_result) for sync_result in result]), 200
 
@@ -131,14 +141,15 @@ def toggle_feed_enabled(feed, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
 
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
     try:
-        provider = get_vulnerabilities_provider()
-        feed = provider.update_feed_enabled_status(feed, enabled)
+        feed_metadata = provider.update_feed_enabled_status(internal_feed_name, enabled)
 
-        if not feed:
+        if not feed_metadata:
             raise ResourceNotFound(feed, detail={})
 
-        return feed.to_json(), 200
+        return feed_metadata.to_json(), 200
 
     except InvalidFeed:
         raise BadRequest(
@@ -154,14 +165,18 @@ def toggle_feed_enabled(feed, enabled):
 def toggle_group_enabled(feed, group, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-    if feed == GRYPE_DB_FEED_NAME:
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
+    if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Enabling and disabling groups for grypedb feed is not currently supported.",
+            message="Enabling and disabling groups for {} feed with the grype vulnerability provider enabled is not currently supported.".format(
+                feed
+            ),
             detail={},
         )
     session = db.get_session()
     try:
-        g = db.set_feed_group_enabled(session, feed, group, enabled)
+        g = db.set_feed_group_enabled(session, internal_feed_name, group, enabled)
         if not g:
             raise ResourceNotFound(group, detail={})
 
@@ -182,14 +197,18 @@ def toggle_group_enabled(feed, group, enabled):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_feed(feed):
-    if feed == GRYPE_DB_FEED_NAME:
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
+    if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Deleting the grypedb feed is not yet supported.",
+            message="Deleting the {} feed with the grype vulnerability provider enabled is not yet supported.".format(
+                feed
+            ),
             detail={},
         )
     session = db.get_session()
     try:
-        f = db.lookup_feed(db_session=session, feed_name=feed)
+        f = db.lookup_feed(db_session=session, feed_name=internal_feed_name)
         if not f:
             raise ResourceNotFound(resource=feed, detail={})
         elif f.enabled:
@@ -205,7 +224,7 @@ def delete_feed(feed):
         session.rollback()
 
     try:
-        f = sync.DataFeeds.delete_feed(feed)
+        f = sync.DataFeeds.delete_feed(internal_feed_name)
         if f:
             return jsonify(_marshall_feed_response(f).to_json()), 200
         else:
@@ -220,14 +239,20 @@ def delete_feed(feed):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_group(feed, group):
-    if feed == GRYPE_DB_FEED_NAME:
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
+    if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Deleting individual groups for the grypedb feed is not yet supported.",
+            message="Deleting individual groups for the {} feed with the grype vulnerability provider enabled is not yet supported.".format(
+                feed
+            ),
             detail={},
         )
     session = db.get_session()
     try:
-        f = db.lookup_feed_group(db_session=session, feed_name=feed, group_name=group)
+        f = db.lookup_feed_group(
+            db_session=session, feed_name=internal_feed_name, group_name=group
+        )
         if not f:
             raise ResourceNotFound(group, detail={})
         elif f.enabled:
@@ -243,7 +268,9 @@ def delete_group(feed, group):
         session.rollback()
 
     try:
-        g = sync.DataFeeds.delete_feed_group(feed_name=feed, group_name=group)
+        g = sync.DataFeeds.delete_feed_group(
+            feed_name=internal_feed_name, group_name=group
+        )
         log.info("Flushed group records {}".format(g))
         if g:
             return jsonify(_marshall_group_response(g).to_json()), 200

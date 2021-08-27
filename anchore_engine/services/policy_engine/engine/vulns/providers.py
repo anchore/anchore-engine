@@ -74,6 +74,9 @@ from anchore_engine.services.policy_engine.engine.vulns.dedup import (
     get_image_vulnerabilities_deduper,
     transfer_vulnerability_timestamps,
 )
+from anchore_engine.services.policy_engine.engine.vulns.feed_display_mapper import (
+    FeedDisplayMapper,
+)
 from anchore_engine.services.policy_engine.engine.vulns.mappers import (
     EngineGrypeDBMapper,
 )
@@ -104,6 +107,18 @@ class VulnerabilitiesProvider(ABC):
     __store__ = None
     __config__name__ = None
     __default_sync_config__ = None
+    _display_mapper = None
+
+    @property
+    def display_mapper(self) -> FeedDisplayMapper:
+        return self._display_mapper
+
+    @abstractmethod
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        ...
 
     def get_config_name(self) -> str:
         """
@@ -311,6 +326,16 @@ class LegacyProvider(VulnerabilitiesProvider):
         "github": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
+    _display_mapper = FeedDisplayMapper()
+
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        for feed_name in self.__default_sync_config__.keys():
+            self._display_mapper.register(
+                internal_name=feed_name, display_name=feed_name
+            )
 
     def load_image(self, image: Image, db_session, use_store=True):
         # initialize the scanner
@@ -1093,6 +1118,16 @@ class GrypeProvider(VulnerabilitiesProvider):
         ),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
+    _display_mapper = FeedDisplayMapper()
+
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        self._display_mapper.register(
+            internal_name="grypedb", display_name="vulnerabilities"
+        )
+        self._display_mapper.register(internal_name="packages", display_name="packages")
 
     def load_image(self, image: Image, db_session, use_store=True):
         with timer("grype provider load-image", log_level="info"):
