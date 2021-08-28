@@ -151,7 +151,7 @@ class GrypeDBFeedMetadata(Base):
     __tablename__ = "grype_db_feed_metadata"
 
     archive_checksum = Column(String, primary_key=True)
-    db_checksum = Column(String, nullable=True, index=True)
+    db_checksum = Column(String, nullable=True)
     schema_version = Column(String, nullable=False)
     object_url = Column(String, nullable=False)
     active = Column(Boolean, nullable=False)
@@ -165,6 +165,11 @@ class GrypeDBFeedMetadata(Base):
     )
     synced_at = Column(DateTime, nullable=True)
     groups = Column(JSONB, default=[])
+
+    __table_args__ = (
+        Index("ix_ae_grype_db_feed_metadata_db_checksum", db_checksum),
+        {},
+    )
 
 
 class GenericFeedDataRecord(Base):
@@ -843,7 +848,6 @@ class NvdV2Metadata(Base):
             name="vulnerability_severities",
         ),
         nullable=False,
-        index=True,
     )
     description = Column(String, nullable=True)
     cvss_v2 = Column(JSON, nullable=True)
@@ -858,6 +862,11 @@ class NvdV2Metadata(Base):
     )  # TODO: make these server-side
     updated_at = Column(
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_ae_feed_data_nvdv2_vulnerabilities_severity", severity),
+        {},
     )
 
     def __repr__(self):
@@ -1083,7 +1092,6 @@ class VulnDBMetadata(Base):
             name="vulnerability_severities",
         ),
         nullable=False,
-        index=True,
     )
     title = Column(String, nullable=True)
     description = Column(String, nullable=True)
@@ -1103,6 +1111,11 @@ class VulnDBMetadata(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
+    )
+
+    __table_args__ = (
+        Index("ix_ae_feed_data_vulndb_vulnerabilities_severity", severity),
+        {},
     )
 
     def __repr__(self):
@@ -3378,14 +3391,19 @@ class ImageVulnerabilitiesReport(Base, StorageInterface):
 
     account_id = Column(String, primary_key=True)
     image_digest = Column(String, primary_key=True)
-    report_key = Column(String, index=True)
-    generated_at = Column(DateTime, index=True)
+    report_key = Column(String)
+    generated_at = Column(DateTime)
     result = Column(JSONB)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     last_modified = Column(
         DateTime,
         default=datetime.datetime.utcnow,
         onupdate=datetime.datetime.utcnow,
+    )
+
+    __table_args__ = (
+        Index("ix_ae_image_vulnerabilities_reports_report_key", report_key),
+        Index("ix_ae_image_vulnerabilities_reports_generated_at", generated_at),
     )
 
 

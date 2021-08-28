@@ -758,7 +758,7 @@ class ImageImportOperation(Base, UtilMixin):
     __tablename__ = "image_imports"
 
     uuid = Column(String, primary_key=True, default=anchore_uuid)
-    account = Column(String, index=True)
+    account = Column(String)
     expires_at = Column(DateTime)
     status = Column(Enum(ImportState))
     created_at = Column(DateTime, default=anchore_now_datetime)
@@ -766,6 +766,8 @@ class ImageImportOperation(Base, UtilMixin):
         DateTime, default=anchore_now_datetime, onupdate=anchore_now_datetime
     )
     contents = relationship("ImageImportContent", back_populates="operation")
+
+    __table_args__ = (Index("ix_ae_image_imports_account", account), {})
 
     def to_json(self):
         j = super().to_json()

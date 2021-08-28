@@ -184,7 +184,9 @@ class ObjectStorageManager(object):
             final_payload, is_compressed = self._do_compress(data)
 
             size = len(final_payload)
-            digest = hashlib.md5(final_payload).hexdigest()
+            digest = hashlib.new(
+                "md5", final_payload, usedforsecurity=False
+            ).hexdigest()
 
             url = self.primary_client.put(userId, bucket, archiveid, final_payload)
             with session_scope() as dbsession:
@@ -234,7 +236,9 @@ class ObjectStorageManager(object):
                 found_size = len(content)
 
                 if expected:
-                    found = hashlib.md5(content).hexdigest()
+                    found = hashlib.new(
+                        "md5", content, usedforsecurity=False
+                    ).hexdigest()
                 else:
                     found = None
 
