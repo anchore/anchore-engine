@@ -86,7 +86,7 @@ class AccountUser(Base, UtilMixin):
     source = Column(String)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
-    uuid = Column("uuid", String, unique=True, nullable=False, default=anchore_uuid)
+    uuid = Column("uuid", String, nullable=False, default=anchore_uuid)
 
     account = relationship(
         "Account", back_populates="users", lazy="joined", innerjoin=True
@@ -99,8 +99,8 @@ class AccountUser(Base, UtilMixin):
     )
 
     __table_args__ = (
-        Index("ix_ae_account_users_account_name", account_name),
-        Index("ix_ae_account_users_uuid", uuid),
+        Index("ix_account_users_account_name", account_name),
+        Index("ix_account_users_uuid", uuid, unique=True),
     )
 
     def to_dict(self):
@@ -167,7 +167,7 @@ class OAuth2Token(Base, UtilMixin, TokenMixin):
     issued_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     expires_in = Column(Integer, nullable=False, default=0)
 
-    __table_args__ = (Index("ix_ae_oauth2_tokens_refresh_token", refresh_token), {})
+    __table_args__ = (Index("ix_oauth2_tokens_refresh_token", refresh_token), {})
 
     def get_scope(self):
         return self.scope
