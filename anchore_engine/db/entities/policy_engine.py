@@ -167,7 +167,7 @@ class GrypeDBFeedMetadata(Base):
     groups = Column(JSONB, default=[])
 
     __table_args__ = (
-        Index("ix_ae_grype_db_feed_metadata_db_checksum", db_checksum),
+        Index("ix_grype_db_feed_metadata_db_checksum", db_checksum),
         {},
     )
 
@@ -865,7 +865,7 @@ class NvdV2Metadata(Base):
     )
 
     __table_args__ = (
-        Index("ix_ae_feed_data_nvdv2_vulnerabilities_severity", severity),
+        Index("ix_feed_data_nvdv2_vulnerabilities_severity", severity),
         {},
     )
 
@@ -1114,7 +1114,7 @@ class VulnDBMetadata(Base):
     )
 
     __table_args__ = (
-        Index("ix_ae_feed_data_vulndb_vulnerabilities_severity", severity),
+        Index("ix_feed_data_vulndb_vulnerabilities_severity", severity),
         {},
     )
 
@@ -3402,8 +3402,8 @@ class ImageVulnerabilitiesReport(Base, StorageInterface):
     )
 
     __table_args__ = (
-        Index("ix_ae_image_vulnerabilities_reports_report_key", report_key),
-        Index("ix_ae_image_vulnerabilities_reports_generated_at", generated_at),
+        Index("ix_image_vulnerabilities_reports_report_key", report_key),
+        Index("ix_image_vulnerabilities_reports_generated_at", generated_at),
     )
 
 

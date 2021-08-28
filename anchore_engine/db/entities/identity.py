@@ -99,8 +99,8 @@ class AccountUser(Base, UtilMixin):
     )
 
     __table_args__ = (
-        Index("ix_ae_account_users_account_name", account_name),
-        Index("ix_ae_account_users_uuid", uuid),
+        Index("ix_account_users_account_name", account_name),
+        Index("ix_account_users_uuid", uuid),
     )
 
     def to_dict(self):
@@ -167,7 +167,7 @@ class OAuth2Token(Base, UtilMixin, TokenMixin):
     issued_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     expires_in = Column(Integer, nullable=False, default=0)
 
-    __table_args__ = (Index("ix_ae_oauth2_tokens_refresh_token", refresh_token), {})
+    __table_args__ = (Index("ix_oauth2_tokens_refresh_token", refresh_token), {})
 
     def get_scope(self):
         return self.scope
