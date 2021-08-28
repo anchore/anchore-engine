@@ -3,7 +3,7 @@ import time
 
 from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
 from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text, Index
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
@@ -86,7 +86,7 @@ class AccountUser(Base, UtilMixin):
     source = Column(String)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
-    uuid = Column("uuid", String, unique=True, nullable=False, default=anchore_uuid)
+    uuid = Column("uuid", String, nullable=False, default=anchore_uuid)
 
     account = relationship(
         "Account", back_populates="users", lazy="joined", innerjoin=True
@@ -100,7 +100,7 @@ class AccountUser(Base, UtilMixin):
 
     __table_args__ = (
         Index("ix_account_users_account_name", account_name),
-        Index("ix_account_users_uuid", uuid),
+        Index("ix_account_users_uuid", uuid, unique=True),
     )
 
     def to_dict(self):
