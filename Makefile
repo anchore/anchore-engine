@@ -104,7 +104,7 @@ clean-all: ## Clean everything (without prompts)
 # Testing targets
 ######################
 
-test: test-unit test-integration setup-and-test-functional setup-and-test-e2e ## Run unit, integration, functional, and end-to-end tests
+test: test-unit test-integration setup-and-test-functional-grype setup-and-test-e2e ## Run unit, integration, functional, and end-to-end tests
 
 test-unit: export TOX_ENV = py38 ## Run unit tests (tox)
 test-unit: venv setup-test-infra
@@ -127,15 +127,15 @@ test-functional: venv setup-test-infra ## Run functional tests, assuming compose
 		$(ACTIVATE_VENV) && $(CI_CMD) $(CI_CMD) test-functional "${CI_COMPOSE_FILE}"  ; \
 	fi
 
-setup-and-test-functional: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
+setup-and-test-functional-grype: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) prep-local-docker-registry-credentials
 	@$(MAKE) compose-up
 	@$(MAKE) test-functional
 	@$(MAKE) compose-down
 
-setup-and-test-functional-grype: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
+setup-and-test-functional-legacy: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) prep-local-docker-registry-credentials
-	@$(MAKE) compose-up ANCHORE_VULNERABILITIES_PROVIDER="grype"
+	@$(MAKE) compose-up ANCHORE_VULNERABILITIES_PROVIDER="legacy"
 	@$(MAKE) test-functional
 	@$(MAKE) compose-down
 
