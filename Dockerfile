@@ -8,6 +8,8 @@ ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 
 ENV GOPATH=/go
 ENV SKOPEO_VERSION=v1.2.1
+ENV SYFT_VERSION=v0.19.1
+ENV GRYPE_VERSION=v0.13.0
 
 COPY . /buildsource
 WORKDIR /buildsource
@@ -25,7 +27,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "installing anchore" && \
     pip3 wheel --wheel-dir=/build_output/wheels . && \
-    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@$CLI_COMMIT\#egg=anchorecli && \
+    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@"$CLI_COMMIT"\#egg=anchorecli && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
     cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh && \
@@ -38,19 +40,19 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing Skopeo" && \
-    git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo ${GOPATH}/src/github.com/containers/skopeo && \
-    cd ${GOPATH}/src/github.com/containers/skopeo && \
+    git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo "${GOPATH}"/src/github.com/containers/skopeo && \
+    cd "${GOPATH}"/src/github.com/containers/skopeo && \
     make install-binary DISABLE_CGO=1 && \
     cp /usr/bin/skopeo /build_output/deps/ && \
     cp default-policy.json /build_output/configs/skopeo-policy.json
 
 RUN set -ex && \
     echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps v0.15.1
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps "$SYFT_VERSION"
 
 RUN set -ex && \
     echo "installing Grype" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps v0.13.0
+    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "$GRYPE_VERSION"
 
 # stage RPM dependency binaries
 RUN yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
@@ -76,13 +78,13 @@ COPY --from=anchore-engine-builder /build_output /build_output
 
 MAINTAINER dev@anchore.com
 
-LABEL anchore_cli_commit=$CLI_COMMIT \
-      anchore_commit=$ANCHORE_COMMIT \
+LABEL anchore_cli_commit="$CLI_COMMIT" \
+      anchore_commit="$ANCHORE_COMMIT" \
       name="anchore-engine" \
       maintainer="dev@anchore.com" \
       vendor="Anchore Inc." \
-      version=$ANCHORE_ENGINE_VERSION \
-      release=$ANCHORE_ENGINE_RELEASE \
+      version="$ANCHORE_ENGINE_VERSION" \
+      release="$ANCHORE_ENGINE_RELEASE" \
       summary="Anchore Engine - container image scanning service for policy-based security, best-practice and compliance enforcement." \
       description="Anchore is an open platform for container security and compliance that allows developers, operations, and security teams to discover, analyze, and certify container images on-premises or in the cloud. Anchore Engine is the on-prem, OSS, API accessible service that allows ops and developers to perform detailed analysis, run queries, produce reports and define policies on container images that can be used in CI/CD pipelines to ensure that only containers that meet your organization’s requirements are deployed into production."
 
@@ -143,7 +145,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
 # Container run environment settings
 
 #VOLUME /analysis_scratch
-EXPOSE ${ANCHORE_SERVICE_PORT}
+EXPOSE "${ANCHORE_SERVICE_PORT}"
 
 # Build dependencies
 
@@ -163,13 +165,13 @@ RUN set -ex && \
     useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
     mkdir /config && \
     mkdir /licenses && \
-    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service/bundles ${ANCHORE_SERVICE_DIR}/bundles /home/anchore/clamav/db && \
+    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service/bundles "${ANCHORE_SERVICE_DIR}"/bundles /home/anchore/clamav/db && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
     cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && \
-    chown -R 1000:0 /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore && \
-    chmod -R g+rwX /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service ${ANCHORE_SERVICE_DIR} /home/anchore && \
+    chown -R 1000:0 /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service "${ANCHORE_SERVICE_DIR}" /home/anchore && \
+    chmod -R g+rwX /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service "${ANCHORE_SERVICE_DIR}" /home/anchore && \
     chmod -R ug+rw /home/anchore/clamav && \
     md5sum /config/config.yaml > /config/build_installed && \
     chmod +x /docker-entrypoint.sh

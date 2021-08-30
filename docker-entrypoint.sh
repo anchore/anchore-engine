@@ -6,11 +6,11 @@ if [[ "${SET_HOSTID_TO_HOSTNAME}" == "true" ]]; then
 fi
 
 # check if /home/anchore/certs/ exists & has files in it
-if [[ -d "/home/anchore/certs" ]] && [[ ! -z "$(ls -A /home/anchore/certs)" ]]; then
+if [[ -d "/home/anchore/certs" ]] && [[ -n "$(ls -A /home/anchore/certs)" ]]; then
     mkdir -p /home/anchore/certs_override/python
     mkdir -p /home/anchore/certs_override/os
     ### for python
-    cp /usr/local/lib/python3.6/site-packages/certifi/cacert.pem /home/anchore/certs_override/python/cacert.pem
+    cp "$(python3 -m certifi)" /home/anchore/certs_override/python/cacert.pem
     for file in /home/anchore/certs/*; do
         if grep -q 'BEGIN CERTIFICATE' "${file}"; then
             cat "${file}" >> /home/anchore/certs_override/python/cacert.pem

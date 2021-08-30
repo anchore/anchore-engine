@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.18"
+  version: "0.1.19"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -745,6 +745,7 @@ paths:
           in: query
           type: boolean
           required: false
+          description: Filter results to include only vulnerabilities that are not marked as invalid by upstream OS vendor data. When set to true, it will filter out all vulnerabilities where `will_not_fix` is False. If false all vulnerabilities are returned regardless of `will_not_fix`
         - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -2950,6 +2951,9 @@ definitions:
       type:
         type: string
         description: Package type (e.g. package, rpm, deb, apk, jar, npm, gem, ...)
+      will_not_fix:
+        type: boolean
+        description: Whether a vendor will or will not fix a vulnerabitlity
     description: A record of a software item which is vulnerable or carries a fix for a vulnerability
   VulnerablePackageReference:
     type: object
@@ -3936,6 +3940,9 @@ definitions:
       package_path:
         type: string
         description: The location (if applicable) of the vulnerable package in the container filesystem
+      will_not_fix:
+        type: string
+        description: Whether a vendor will fix or not fix the vulnerability
       nvd_data:
         $ref: "#/definitions/NvdDataList"
       vendor_data:

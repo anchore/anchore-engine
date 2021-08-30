@@ -76,7 +76,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     process_updated_vulnerability,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.utils import rfc3339str_to_datetime
+from anchore_engine.util.time import rfc3339str_to_datetime
 
 IMAGE_VULNERABILITIES_QUEUE = "image_vulnerabilities"
 MESSAGE_BATCH_SIZE = 10

@@ -325,11 +325,11 @@ class VulnerabilityMapper:
         # parse fix details
         fix_dict = vuln_dict.get("fix")
         fix_obj = FixedArtifact(
-            versions=[], wont_fix=False, observed_at=None, advisories=[]
+            versions=[], will_not_fix=False, observed_at=None, advisories=[]
         )
         if fix_dict:
             fix_obj.versions = fix_dict.get("versions", [])
-            fix_obj.wont_fix = (
+            fix_obj.will_not_fix = (
                 fix_dict.get("state").lower() == "wont-fix"
             )  # TODO format check with toolbox
             fix_obj.observed_at = now if fix_obj.versions else None
@@ -689,6 +689,7 @@ class EngineGrypeDBMapper:
                         "name": grype_vulnerability.package_name,
                         "type": grype_vulnerability.version_format,
                         "version": version,
+                        "will_not_fix": grype_vulnerability.fix_state == "wont-fix",
                     }
                 )
 

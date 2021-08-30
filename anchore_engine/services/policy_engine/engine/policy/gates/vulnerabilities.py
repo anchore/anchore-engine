@@ -6,13 +6,6 @@ from collections import OrderedDict
 from anchore_engine.common import nonos_package_types
 from anchore_engine.db import DistroNamespace
 from anchore_engine.db.entities.common import get_thread_scoped_session
-from anchore_engine.services.policy_engine.engine.feeds.db import (
-    get_feed_group_detached,
-)
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    feed_registry,
-    have_vulnerabilities_for,
-)
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
@@ -26,6 +19,7 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
 from anchore_engine.subsys import logger
+from anchore_engine.util.time import datetime_to_epoch, days_to_seconds
 
 SEVERITY_ORDERING = ["unknown", "negligible", "low", "medium", "high", "critical"]
 
@@ -335,7 +329,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Check vendor_only flag specified by the user in policy
                     if is_vendor_only:
-                        if fix_obj.wont_fix:
+                        if fix_obj.will_not_fix:
                             logger.debug(
                                 "{} vulnerability {} for package {} is marked by vendor as won't fix, skipping".format(
                                     new_vuln_pkg_class,
@@ -643,32 +637,21 @@ class FeedOutOfDateTrigger(BaseTrigger):
     )
 
     def evaluate(self, image_obj, context):
-        # Map to a namespace
-        ns = DistroNamespace.for_obj(image_obj)
-
-        oldest_update = None
-        if ns:
-            for namespace_name in ns.like_namespace_names:
-                # Check feed names
-                for feed in feed_registry.registered_vulnerability_feed_names():
-                    # First match, assume only one matches for the namespace
-                    group = get_feed_group_detached(feed, namespace_name)
-                    if group:
-                        # No records yet, but we have the feed, so may just not have any data yet
-                        oldest_update = group.last_sync
-                        logger.debug(
-                            "Found date for oldest update in feed %s group %s date = %s",
-                            feed,
-                            group.name,
-                            oldest_update,
-                        )
-                        break
-
         if self.max_age.value() is not None:
+            # Map to a namespace
+            ns = DistroNamespace.for_obj(image_obj)
+
+            oldest_update = (
+                get_vulnerabilities_provider()
+                .get_gate_util_provider()
+                .oldest_namespace_feed_sync(ns)
+            )
+
             try:
                 if oldest_update is not None:
-                    oldest_update = calendar.timegm(oldest_update.timetuple())
-                    mintime = time.time() - int(int(self.max_age.value()) * 86400)
+                    oldest_update = datetime_to_epoch(oldest_update)
+                    mintime = time.time() - days_to_seconds(int(self.max_age.value()))
+
                     if oldest_update < mintime:
                         self._fire(
                             msg="The vulnerability feed for this image distro is older than MAXAGE ("
@@ -693,7 +676,11 @@ class UnsupportedDistroTrigger(BaseTrigger):
     __description__ = "Triggers if vulnerability data is unavailable for the image's distro packages such as rpms or dpkg. Non-OS packages like npms and java are not considered in this evaluation"
 
     def evaluate(self, image_obj, context):
-        if not have_vulnerabilities_for(DistroNamespace.for_obj(image_obj)):
+        if (
+            not get_vulnerabilities_provider()
+            .get_gate_util_provider()
+            .have_vulnerabilities_for(DistroNamespace.for_obj(image_obj))
+        ):
             self._fire(
                 msg="Distro-specific feed data not found for distro namespace: %s. Cannot perform CVE scan OS/distro packages"
                 % image_obj.distro_namespace
@@ -731,7 +718,7 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
             matches = context.data.get("loaded_vulnerabilities")
             for match in matches:
                 if is_vendor_only:
-                    if match.fix.wont_fix:
+                    if match.fix.will_not_fix:
                         continue
                 # search for vid in all vulns
                 if vid == match.vulnerability.vulnerability_id:

@@ -207,6 +207,6 @@ def test_FixedArtifact_fix_observed_at_behavior(anchore_db):
 
     except Exception as err:
         logger.error("FAIL: exception - {}".format(err))
-        raise (err)
+        raise err
     finally:
         tearDown()

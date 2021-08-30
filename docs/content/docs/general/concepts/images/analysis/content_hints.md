@@ -5,11 +5,16 @@ weight: 5
 ---
 
 
-Anchore Engine includes the ability to read a user-supplied 'hints' file to allow users to override and/or augment the software artifacts that are 
-discovered by Anchore during its image analysis process.  The hints file, if present, contains records that describe a software package characteristics explicitly, 
-and are then added to the software bill of materials (SBOM).  For example, if the owner of a CI/CD container build process knows that there are some 
-software packages installed explicitly in a container image, but Anchore's regular analyzers are either not discovering the software or the analysis of the software 
-package is incomplete, this mechanism can be used to include that information in the image's SBOM, exactly as if the package were discovered normally.
+Anchore Engine includes the ability to read a user-supplied 'hints' file to allow users to add software artifacts to Anchore's
+analysis report.  The hints file, if present, contains records that describe a software package characteristics explicitly,
+and are then added to the software bill of materials (SBOM).  For example, if the owner of a CI/CD container build process 
+knows that there are some 
+software packages installed explicitly in a container image, but Anchore's regular analyzers fail to identify them, this mechanism 
+can be used to include that information in the image's SBOM, exactly as if the packages were discovered normally. 
+
+Hints cannot be used to modify the findings of Anchore's analyzer beyond adding new packages to the report. If a user specifies
+a package in the hints file that is found by Anchore's image analyzers, the hint is ignored and a warning message is logged 
+to notify the user of the conflict. 
 
 ### Configuration
 

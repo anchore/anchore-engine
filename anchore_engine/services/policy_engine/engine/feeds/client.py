@@ -24,12 +24,12 @@ from anchore_engine.services.policy_engine.engine.feeds import (
 )
 from anchore_engine.services.policy_engine.engine.feeds.config import SyncConfig
 from anchore_engine.subsys import logger
+from anchore_engine.util.time import rfc3339str_to_datetime
 from anchore_engine.utils import (
     AnchoreException,
     CommandException,
     ensure_bytes,
     ensure_str,
-    rfc3339str_to_datetime,
 )
 
 FEED_DATA_ITEMS_PATH = "data.item"

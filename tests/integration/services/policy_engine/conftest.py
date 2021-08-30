@@ -110,7 +110,7 @@ def run_legacy_sync(
         vulnerabilities_config=config,
         default_provider_sync_config=default_sync_config,
     )
-    sync_utils = vulnerabilities_provider.get_sync_utils(sync_configs)
+    sync_utils = vulnerabilities_provider.get_sync_util_provider(sync_configs)
     sync_utils.get_client = MagicMock(return_value=test_env.feed_client)
     return DataFeeds.sync(sync_util_provider=sync_utils)
 
