@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.10.2
+
+API version - 0.1.19
+
+DB Schema version - 0.0.15
+
+### Changes
++ Improved - Updates Dockerfile to enable run compatibility on FIPs enabled hosts.
++ Improved - Updates calls to hashing library functions (hashlib.md5) to enable run compatibility on FIPs enabled hosts.
 
 ## 0.10.1
 
