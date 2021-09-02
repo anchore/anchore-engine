@@ -169,9 +169,7 @@ def toggle_group_enabled(feed, group, enabled):
     internal_feed_name = provider.display_mapper.get_internal_name(feed)
     if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Enabling and disabling groups for {} feed with the grype vulnerability provider enabled is not currently supported.".format(
-                feed
-            ),
+            message=f"Enabling and disabling groups for {feed} feed with the grype vulnerability provider enabled is not currently supported.",
             detail={},
         )
     session = db.get_session()
@@ -203,9 +201,7 @@ def delete_feed(feed):
     internal_feed_name = provider.display_mapper.get_internal_name(feed)
     if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Deleting the {} feed with the grype vulnerability provider enabled is not yet supported.".format(
-                feed
-            ),
+            message=f"Deleting the {feed} feed with the grype vulnerability provider enabled is not yet supported.",
             detail={},
         )
     session = db.get_session()
@@ -245,9 +241,7 @@ def delete_group(feed, group):
     internal_feed_name = provider.display_mapper.get_internal_name(feed)
     if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Deleting individual groups for the {} feed with the grype vulnerability provider enabled is not yet supported.".format(
-                feed
-            ),
+            message=f"Deleting individual groups for the {feed} feed with the grype vulnerability provider enabled is not yet supported.",
             detail={},
         )
     session = db.get_session()
@@ -273,7 +267,7 @@ def delete_group(feed, group):
         feed_group_metadata = sync.DataFeeds.delete_feed_group(
             feed_name=internal_feed_name, group_name=group
         )
-        log.info("Flushed group records {}".format(feed_group_metadata))
+        log.info("Flushed group records %r", feed_group_metadata)
         if feed_group_metadata:
             return jsonify(_marshall_group_response(feed_group_metadata).to_json()), 200
         else:
@@ -283,5 +277,5 @@ def delete_group(feed, group):
     except AnchoreApiError:
         raise
     except Exception as exc:
-        log.error("Could not flush feed group {}/{}".format(feed, group))
+        log.error("Could not flush feed group %s/%s", feed, group)
         return jsonify(make_response_error(exc, in_httpcode=500)), 500
