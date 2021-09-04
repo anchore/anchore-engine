@@ -25,6 +25,7 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
 )
 from anchore_engine.services.policy_engine.engine.tasks import FeedsUpdateTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    GrypeProvider,
     InvalidFeed,
     get_vulnerabilities_provider,
 )
@@ -47,7 +48,11 @@ def list_feeds(refresh_counts=False):
     if refresh_counts:
         provider.update_feed_group_counts()
 
-    return [feed.to_json() for feed in provider.get_feeds()]
+    feeds = provider.get_feeds()
+    for feed in feeds:
+        feed.name = provider.display_mapper.get_display_name(internal_name=feed.name)
+
+    return [feed.to_json() for feed in feeds]
 
 
 def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
@@ -57,18 +62,18 @@ def _marshall_feed_response(feed: DbFeedMetadata) -> FeedMetadata:
     if not feed:
         return ValueError(feed)
 
-    i = FeedMetadata()
-    i.name = feed.name
-    i.last_full_sync = feed.last_full_sync
-    i.created_at = feed.created_at
-    i.updated_at = feed.last_update
-    i.enabled = feed.enabled
-    i.groups = []
+    feed_metadata = FeedMetadata()
+    feed_metadata.name = feed.name
+    feed_metadata.last_full_sync = feed.last_full_sync
+    feed_metadata.created_at = feed.created_at
+    feed_metadata.updated_at = feed.last_update
+    feed_metadata.enabled = feed.enabled
+    feed_metadata.groups = []
 
     for group in feed.groups:
-        i.groups.append(_marshall_group_response(group))
+        feed_metadata.groups.append(_marshall_group_response(group))
 
-    return i
+    return feed_metadata
 
 
 def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
@@ -78,14 +83,14 @@ def _marshall_group_response(group: DbFeedGroupMetadata) -> FeedGroupMetadata:
     if not group:
         raise ValueError(group)
 
-    g = FeedGroupMetadata()
-    g.name = group.name
-    g.last_sync = group.last_sync
-    g.created_at = group.created_at
-    g.updated_at = group.last_update
-    g.enabled = group.enabled
-    g.record_count = group.count
-    return g
+    feed_group_metadata = FeedGroupMetadata()
+    feed_group_metadata.name = group.name
+    feed_group_metadata.last_sync = group.last_sync
+    feed_group_metadata.created_at = group.created_at
+    feed_group_metadata.updated_at = group.last_update
+    feed_group_metadata.enabled = group.enabled
+    feed_group_metadata.record_count = group.count
+    return feed_group_metadata
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
@@ -102,7 +107,7 @@ def sync_feeds(sync=True, force_flush=False):
     if sync:
         try:
             result = FeedsUpdateTask.run_feeds_update(force_flush=force_flush)
-        except (LeaseAcquisitionFailedError, LeaseUnavailableError) as e:
+        except (LeaseAcquisitionFailedError, LeaseUnavailableError):
             log.exception(
                 "Could not acquire lock on feed sync, likely another sync already in progress"
             )
@@ -119,9 +124,14 @@ def sync_feeds(sync=True, force_flush=False):
                 ),
                 409,
             )
-        except Exception as e:
+        except Exception as exc:
             log.exception("Error executing feed update task")
-            return jsonify(make_response_error(e, in_httpcode=500)), 500
+            return jsonify(make_response_error(exc, in_httpcode=500)), 500
+        provider = get_vulnerabilities_provider()
+        for feed_sync_result in result:
+            feed_sync_result.feed = provider.display_mapper.get_display_name(
+                internal_name=feed_sync_result.feed
+            )
 
     return jsonify([asdict(sync_result) for sync_result in result]), 200
 
@@ -131,43 +141,48 @@ def toggle_feed_enabled(feed, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
 
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
     try:
-        provider = get_vulnerabilities_provider()
-        feed = provider.update_feed_enabled_status(feed, enabled)
+        feed_metadata = provider.update_feed_enabled_status(internal_feed_name, enabled)
 
-        if not feed:
+        if not feed_metadata:
             raise ResourceNotFound(feed, detail={})
 
-        return feed.to_json(), 200
+        return feed_metadata.to_json(), 200
 
     except InvalidFeed:
         raise BadRequest(
             message="Feed not supported on configured vulnerability provider",
             detail={"feed": feed, "configured_provider": provider.get_config_name()},
         )
-    except Exception as e:
+    except Exception as exc:
         log.error("Could not update feed enabled status")
-        return jsonify(make_response_error(e, in_httpcode=500)), 500
+        return jsonify(make_response_error(exc, in_httpcode=500)), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def toggle_group_enabled(feed, group, enabled):
     if type(enabled) != bool:
         raise BadRequest(message="state must be a boolean", detail={"value": enabled})
-    if feed == GRYPE_DB_FEED_NAME:
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
+    if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Enabling and disabling groups for grypedb feed is not currently supported.",
+            message=f"Enabling and disabling groups for {feed} feed with the grype vulnerability provider enabled is not currently supported.",
             detail={},
         )
     session = db.get_session()
     try:
-        g = db.set_feed_group_enabled(session, feed, group, enabled)
-        if not g:
+        feed_group_metadata = db.set_feed_group_enabled(
+            session, internal_feed_name, group, enabled
+        )
+        if not feed_group_metadata:
             raise ResourceNotFound(group, detail={})
 
         session.flush()
 
-        grp = _marshall_group_response(g).to_json()
+        grp = _marshall_group_response(feed_group_metadata).to_json()
         session.commit()
 
         return jsonify(grp), 200
@@ -182,77 +197,85 @@ def toggle_group_enabled(feed, group, enabled):
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_feed(feed):
-    if feed == GRYPE_DB_FEED_NAME:
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
+    if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Deleting the grypedb feed is not yet supported.",
+            message=f"Deleting the {feed} feed with the grype vulnerability provider enabled is not yet supported.",
             detail={},
         )
     session = db.get_session()
     try:
-        f = db.lookup_feed(db_session=session, feed_name=feed)
-        if not f:
+        feed_metadata = db.lookup_feed(db_session=session, feed_name=internal_feed_name)
+        if not feed_metadata:
             raise ResourceNotFound(resource=feed, detail={})
-        elif f.enabled:
+        elif feed_metadata.enabled:
             raise ConflictingRequest(
                 message="Cannot delete an enabled feed. Disable the feed first",
                 detail={},
             )
     except AnchoreApiError:
         raise
-    except Exception as e:
-        return jsonify(make_response_error(e, in_httpcode=500)), 500
+    except Exception as exc:
+        return jsonify(make_response_error(exc, in_httpcode=500)), 500
     finally:
         session.rollback()
 
     try:
-        f = sync.DataFeeds.delete_feed(feed)
-        if f:
-            return jsonify(_marshall_feed_response(f).to_json()), 200
+        feed_metadata = sync.DataFeeds.delete_feed(internal_feed_name)
+        if feed_metadata:
+            return jsonify(_marshall_feed_response(feed_metadata).to_json()), 200
         else:
             raise ResourceNotFound(feed, detail={})
-    except KeyError as e:
-        raise ResourceNotFound(resource=str(e), detail={"feed": feed})
+    except KeyError as exc:
+        raise ResourceNotFound(resource=str(exc), detail={"feed": feed})
     except AnchoreApiError:
         raise
-    except Exception as e:
-        return jsonify(make_response_error(e, in_httpcode=500)), 500
+    except Exception as exc:
+        return jsonify(make_response_error(exc, in_httpcode=500)), 500
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
 def delete_group(feed, group):
-    if feed == GRYPE_DB_FEED_NAME:
+    provider = get_vulnerabilities_provider()
+    internal_feed_name = provider.display_mapper.get_internal_name(feed)
+    if isinstance(provider, GrypeProvider) and internal_feed_name == GRYPE_DB_FEED_NAME:
         raise HTTPNotImplementedError(
-            message="Deleting individual groups for the grypedb feed is not yet supported.",
+            message=f"Deleting individual groups for the {feed} feed with the grype vulnerability provider enabled is not yet supported.",
             detail={},
         )
     session = db.get_session()
     try:
-        f = db.lookup_feed_group(db_session=session, feed_name=feed, group_name=group)
-        if not f:
+        feed_group_metadata = db.lookup_feed_group(
+            db_session=session, feed_name=internal_feed_name, group_name=group
+        )
+        if not feed_group_metadata:
             raise ResourceNotFound(group, detail={})
-        elif f.enabled:
+        elif feed_group_metadata.enabled:
             raise ConflictingRequest(
                 message="Cannot delete an enabled feed group. Disable the feed group first",
                 detail={},
             )
     except AnchoreApiError:
         raise
-    except Exception as e:
-        return jsonify(make_response_error(e, in_httpcode=500)), 500
+    except Exception as exc:
+        return jsonify(make_response_error(exc, in_httpcode=500)), 500
     finally:
         session.rollback()
 
     try:
-        g = sync.DataFeeds.delete_feed_group(feed_name=feed, group_name=group)
-        log.info("Flushed group records {}".format(g))
-        if g:
-            return jsonify(_marshall_group_response(g).to_json()), 200
+        feed_group_metadata = sync.DataFeeds.delete_feed_group(
+            feed_name=internal_feed_name, group_name=group
+        )
+        log.info("Flushed group records %r", feed_group_metadata)
+        if feed_group_metadata:
+            return jsonify(_marshall_group_response(feed_group_metadata).to_json()), 200
         else:
             raise ResourceNotFound(group, detail={})
-    except KeyError as e:
-        raise ResourceNotFound(resource=str(e), detail={"feed": feed, "group": group})
+    except KeyError as exc:
+        raise ResourceNotFound(resource=str(exc), detail={"feed": feed, "group": group})
     except AnchoreApiError:
         raise
-    except Exception as e:
-        log.error("Could not flush feed group {}/{}".format(feed, group))
-        return jsonify(make_response_error(e, in_httpcode=500)), 500
+    except Exception as exc:
+        log.error("Could not flush feed group %s/%s", feed, group)
+        return jsonify(make_response_error(exc, in_httpcode=500)), 500
