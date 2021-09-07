@@ -3941,7 +3941,7 @@ definitions:
         type: string
         description: The location (if applicable) of the vulnerable package in the container filesystem
       will_not_fix:
-        type: string
+        type: boolean
         description: Whether a vendor will fix or not fix the vulnerability
       nvd_data:
         $ref: "#/definitions/NvdDataList"

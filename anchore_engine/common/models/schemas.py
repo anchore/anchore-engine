@@ -8,7 +8,7 @@ from typing import Dict, Optional
 import marshmallow
 from marshmallow import Schema, fields, post_load
 
-from anchore_engine.utils import datetime_to_rfc3339, rfc3339str_to_datetime
+from anchore_engine.util.time import datetime_to_rfc3339, rfc3339str_to_datetime
 
 # For other modules to import from this one instead of having to know/use marshmallow directly
 ValidationError = marshmallow.ValidationError

@@ -2,16 +2,15 @@ import datetime
 import json
 import os
 import re
-from unittest.mock import Mock
 
 import pytest
 
 from anchore_engine.common.models.policy_engine import ImageVulnerabilitiesReport
 from anchore_engine.db import Image
 from anchore_engine.db.entities.policy_engine import (
-    DistroMapping,
     FeedGroupMetadata,
     FeedMetadata,
+    GrypeDBFeedMetadata,
 )
 from anchore_engine.services.policy_engine import init_feed_registry
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
@@ -26,20 +25,13 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
     GrypeProvider,
     LegacyProvider,
 )
-
-DISTRO_MAPPINGS = [
-    DistroMapping(from_distro="alpine", to_distro="alpine", flavor="ALPINE"),
-    DistroMapping(from_distro="busybox", to_distro="busybox", flavor="BUSYB"),
-    DistroMapping(from_distro="centos", to_distro="rhel", flavor="RHEL"),
-    DistroMapping(from_distro="debian", to_distro="debian", flavor="DEB"),
-    DistroMapping(from_distro="fedora", to_distro="rhel", flavor="RHEL"),
-    DistroMapping(from_distro="ol", to_distro="ol", flavor="RHEL"),
-    DistroMapping(from_distro="rhel", to_distro="rhel", flavor="RHEL"),
-    DistroMapping(from_distro="ubuntu", to_distro="ubuntu", flavor="DEB"),
-    DistroMapping(from_distro="amzn", to_distro="amzn", flavor="RHEL"),
-    DistroMapping(from_distro="redhat", to_distro="rhel", flavor="RHEL"),
-]
-MAPPINGS_MAP = {mapping.from_distro: mapping for mapping in DISTRO_MAPPINGS}
+from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
+    TestGrypeWrapperSingleton,
+    production_grype_db_dir,
+    GRYPE_DB_VERSION,
+    test_grype_wrapper_singleton,
+    patch_grype_wrapper_singleton,
+)
 
 
 @pytest.fixture
@@ -50,7 +42,7 @@ def set_provider(monkeypatch):
             provider = GrypeProvider
         monkeypatch.setattr(
             "anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities.get_vulnerabilities_provider",
-            lambda: provider,
+            lambda: provider(),
         )
 
     return _set_provider
@@ -77,7 +69,6 @@ def load_vulnerabilities_report_file(request):
 def setup_mocks_vulnerabilities_gate(
     load_vulnerabilities_report_file, monkeypatch, set_provider
 ):
-    set_provider()
     # required for VulnerabilitiesGate.prepare_context
     monkeypatch.setattr(
         "anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities.get_thread_scoped_session",
@@ -85,45 +76,32 @@ def setup_mocks_vulnerabilities_gate(
     )
     # required for VulnerabilitiesGate.prepare_context
     # mocks anchore_engine.services.policy_engine.engine.vulns.providers.LegacyProvider.get_image_vulnerabilities
-    def _setup_mocks_vulnerabilities_gate(file_name):
-        monkeypatch.setattr(
-            "anchore_engine.services.policy_engine.engine.vulns.providers.LegacyProvider.get_image_vulnerabilities",
-            lambda image, db_session: load_vulnerabilities_report_file(file_name),
-        )
+    # mocks anchore_engine.services.policy_engine.engine.vulns.providers.GrypeProvider.get_image_vulnerabilities
+    # mocks anchore_engine.db.session_scope
+    def _setup_mocks_vulnerabilities_gate(file_name, provider_name):
+        set_provider(provider_name)
+        if provider_name == "legacy":
+            monkeypatch.setattr(
+                "anchore_engine.services.policy_engine.engine.vulns.providers.LegacyProvider.get_image_vulnerabilities",
+                lambda instance, image, db_session: load_vulnerabilities_report_file(
+                    file_name
+                ),
+            )
+        if provider_name == "grype":
+            monkeypatch.setattr(
+                "anchore_engine.services.policy_engine.engine.vulns.providers.GrypeProvider.get_image_vulnerabilities",
+                lambda instance, image, db_session: load_vulnerabilities_report_file(
+                    file_name
+                ),
+            )
 
     return _setup_mocks_vulnerabilities_gate
 
 
 @pytest.fixture
-def mock_distromapping_query(monkeypatch):
-    # mocks DB query in anchore_engine.db.entities.policy_engine.DistroMapping.distros_for
-    mock_db = Mock()
-    mock_db.query().get = lambda x: MAPPINGS_MAP.get(x, None)
-    monkeypatch.setattr(
-        "anchore_engine.db.entities.policy_engine.get_thread_scoped_session",
-        lambda: mock_db,
-    )
-
-
-@pytest.fixture
-def setup_mocks_feed_out_of_date_trigger(monkeypatch, mock_distromapping_query):
-    # required for FeedOutOfDateTrigger.evaluate
-    # setup for anchore_engine.services.policy_engine.engine.feeds.feeds.FeedRegistry.registered_vulnerability_feed_names
-    init_feed_registry()
-
-    def _setup_mocks(feed_group_metadata):
-        # required for FeedOutOfDateTrigger.evaluate
-        # mocks anchore_engine.services.policy_engine.engine.feeds.db.get_feed_group_detached
-        monkeypatch.setattr(
-            "anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities.get_feed_group_detached",
-            lambda x, y: feed_group_metadata,
-        )
-
-    return _setup_mocks
-
-
-@pytest.fixture
-def setup_mocks_unsupported_distro_trigger(monkeypatch, mock_distromapping_query):
+def setup_mocks_unsupported_distro_trigger(
+    monkeypatch, mock_distromapping_query, set_provider, patch_grype_wrapper_singleton
+):
     # required for UnsupportedDistroTrigger.evaluate
     # setup for anchore_engine.services.policy_engine.engine.feeds.feeds.FeedRegistry.registered_vulnerability_feed_names
     init_feed_registry()
@@ -134,21 +112,31 @@ def setup_mocks_unsupported_distro_trigger(monkeypatch, mock_distromapping_query
         lambda: None,
     )
 
-    def _setup_mocks(feed_metadata):
-        # required for UnsupportedDistroTrigger.evaluate
-        monkeypatch.setattr(
-            "anchore_engine.services.policy_engine.engine.feeds.feeds.get_feed_json",
-            lambda db_session, feed_name: feed_metadata.to_json(),
-        )
+    def _setup_mocks(feed_metadata, provider_name):
+        set_provider(provider_name)
+        if provider_name == "legacy":
+            # required for UnsupportedDistroTrigger.evaluate
+            monkeypatch.setattr(
+                "anchore_engine.services.policy_engine.engine.feeds.feeds.get_feed_json",
+                lambda db_session, feed_name: feed_metadata.to_json(),
+            )
+        if provider_name == "grype":
+            # required for UnsupportedDistroTrigger.evaluate
+            patch_grype_wrapper_singleton(
+                [
+                    "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GrypeWrapperSingleton.get_instance"
+                ]
+            )
 
     return _setup_mocks
 
 
 class TestVulnerabilitiesGate:
     @pytest.mark.parametrize(
-        "image_obj, mock_vuln_report, feed_group_metadata, expected_trigger_fired",
+        "vuln_provider, image_obj, mock_vuln_report, feed_group_metadata, grype_db_feed_metadata, expected_trigger_fired",
         [
             (
+                "legacy",
                 Image(
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
@@ -157,9 +145,11 @@ class TestVulnerabilitiesGate:
                     last_sync=datetime.datetime.utcnow() - datetime.timedelta(days=2),
                     name="test-feed-out-of-date",
                 ),
+                None,
                 True,
             ),
             (
+                "legacy",
                 Image(
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
@@ -168,21 +158,49 @@ class TestVulnerabilitiesGate:
                     last_sync=datetime.datetime.utcnow(),
                     name="test-feed-not-out-of-date",
                 ),
+                None,
+                False,
+            ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="10"
+                ),
+                "debian_1_os_will-fix.json",
+                None,
+                GrypeDBFeedMetadata(
+                    built_at=datetime.datetime.now() - datetime.timedelta(days=2)
+                ),
+                True,
+            ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="10"
+                ),
+                "debian_1_os_will-fix.json",
+                None,
+                GrypeDBFeedMetadata(built_at=datetime.datetime.now()),
                 False,
             ),
         ],
     )
     def test_feed_out_of_date_trigger(
         self,
+        vuln_provider,
         image_obj,
         mock_vuln_report,
         feed_group_metadata,
+        grype_db_feed_metadata,
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
-        setup_mocks_feed_out_of_date_trigger,
+        mock_gate_util_provider_oldest_namespace_feed_sync,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
-        setup_mocks_feed_out_of_date_trigger(feed_group_metadata)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, vuln_provider)
+        mock_gate_util_provider_oldest_namespace_feed_sync(
+            feed_group_metadata=feed_group_metadata,
+            grype_db_feed_metadata=grype_db_feed_metadata,
+        )
         vulns_gate = VulnerabilitiesGate()
         trigger = FeedOutOfDateTrigger(
             parent_gate_cls=VulnerabilitiesGate, max_days_since_sync="1"
@@ -198,9 +216,10 @@ class TestVulnerabilitiesGate:
             )
 
     @pytest.mark.parametrize(
-        "image_obj, mock_vuln_report, feed_metadata, expected_trigger_fired",
+        "vuln_provider, image_obj, mock_vuln_report, feed_metadata, expected_trigger_fired",
         [
             (
+                "legacy",
                 Image(
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
@@ -211,6 +230,7 @@ class TestVulnerabilitiesGate:
                 False,
             ),
             (
+                "legacy",
                 Image(
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
@@ -220,10 +240,33 @@ class TestVulnerabilitiesGate:
                 ),
                 True,
             ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="9"
+                ),
+                "debian_1_os_will-fix.json",
+                FeedMetadata(
+                    name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:9")]
+                ),
+                True,
+            ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="10"
+                ),
+                "debian_1_os_will-fix.json",
+                FeedMetadata(
+                    name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:10")]
+                ),
+                False,
+            ),
         ],
     )
     def test_unsupported_distro_trigger(
         self,
+        vuln_provider,
         image_obj,
         mock_vuln_report,
         feed_metadata,
@@ -231,8 +274,8 @@ class TestVulnerabilitiesGate:
         setup_mocks_vulnerabilities_gate,
         setup_mocks_unsupported_distro_trigger,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
-        setup_mocks_unsupported_distro_trigger(feed_metadata)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, vuln_provider)
+        setup_mocks_unsupported_distro_trigger(feed_metadata, vuln_provider)
         vulns_gate = VulnerabilitiesGate()
         trigger = UnsupportedDistroTrigger(parent_gate_cls=VulnerabilitiesGate)
         exec_context = ExecutionContext(db_session=None, configuration={})
@@ -313,7 +356,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityBlacklistTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -326,7 +369,7 @@ class TestVulnerabilitiesGate:
         assert trigger.did_fire == expected_trigger_fired
         if expected_trigger_fired:
             assert re.fullmatch(
-                r"Blacklisted vulnerabilities detected: \[((\'CVE-\d{4}-\d{4,}\')(, )?)+\]",
+                r"Blacklisted vulnerabilities detected: \[((\'CVE-\d{4}-\d{4,}\')(, )?)+]",
                 trigger.fired[0].msg,
             )
 
@@ -380,7 +423,7 @@ class TestVulnerabilitiesGate:
         expected_number_triggers,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -443,7 +486,7 @@ class TestVulnerabilitiesGate:
         expected_number_triggers,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -488,7 +531,7 @@ class TestVulnerabilitiesGate:
         expected_number_triggers,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -551,7 +594,7 @@ class TestVulnerabilitiesGate:
         expected_number_triggers,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -597,7 +640,7 @@ class TestVulnerabilitiesGate:
         expected_number_triggers,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -664,7 +707,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate, package_type=package_type
@@ -805,7 +848,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -881,7 +924,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -957,7 +1000,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -1033,7 +1076,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -1109,7 +1152,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -1185,7 +1228,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,
@@ -1261,7 +1304,7 @@ class TestVulnerabilitiesGate:
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
     ):
-        setup_mocks_vulnerabilities_gate(mock_vuln_report)
+        setup_mocks_vulnerabilities_gate(mock_vuln_report, "legacy")
         vulns_gate = VulnerabilitiesGate()
         trigger = VulnerabilityMatchTrigger(
             parent_gate_cls=VulnerabilitiesGate,

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, lazyload
 
 from anchore_engine.db import ArchivedImage, ArchivedImageDocker
 from anchore_engine.subsys import logger
-from anchore_engine.utils import epoch_to_rfc3339
+from anchore_engine.util.time import epoch_to_rfc3339
 
 
 def summarize(session: Session):

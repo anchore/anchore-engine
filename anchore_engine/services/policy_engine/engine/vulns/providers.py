@@ -60,18 +60,36 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     LegacySyncUtilProvider,
     SyncUtilProvider,
 )
+from anchore_engine.services.policy_engine.engine.policy.gate_util_provider import (
+    GateUtilProvider,
+    GrypeGateUtilProvider,
+    LegacyGateUtilProvider,
+)
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     get_imageId_to_record,
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
 )
+from anchore_engine.services.policy_engine.engine.vulns.dedup import (
+    get_image_vulnerabilities_deduper,
+    transfer_vulnerability_timestamps,
+)
+from anchore_engine.services.policy_engine.engine.vulns.feed_display_mapper import (
+    FeedDisplayMapper,
+)
+from anchore_engine.services.policy_engine.engine.vulns.mappers import (
+    EngineGrypeDBMapper,
+)
+from anchore_engine.services.policy_engine.engine.vulns.scanners import (
+    GrypeScanner,
+    LegacyScanner,
+)
+from anchore_engine.services.policy_engine.engine.vulns.stores import (
+    ImageVulnerabilitiesStore,
+    Status,
+)
 from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import timer
-
-from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
-from .mappers import EngineGrypeDBMapper
-from .scanners import GrypeScanner, LegacyScanner
-from .stores import ImageVulnerabilitiesStore, Status
 
 
 class InvalidFeed(Exception):
@@ -89,6 +107,18 @@ class VulnerabilitiesProvider(ABC):
     __store__ = None
     __config__name__ = None
     __default_sync_config__ = None
+    _display_mapper = None
+
+    @property
+    def display_mapper(self) -> FeedDisplayMapper:
+        return self._display_mapper
+
+    @abstractmethod
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        ...
 
     def get_config_name(self) -> str:
         """
@@ -138,7 +168,9 @@ class VulnerabilitiesProvider(ABC):
         ...
 
     @abstractmethod
-    def get_sync_utils(self, sync_configs: Dict[str, SyncConfig]) -> SyncUtilProvider:
+    def get_sync_util_provider(
+        self, sync_configs: Dict[str, SyncConfig]
+    ) -> SyncUtilProvider:
         """
         Get a SyncUtilProvider.
         """
@@ -266,6 +298,13 @@ class VulnerabilitiesProvider(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_gate_util_provider(self) -> GateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        ...
+
 
 class LegacyProvider(VulnerabilitiesProvider):
     """
@@ -287,6 +326,16 @@ class LegacyProvider(VulnerabilitiesProvider):
         "github": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
+    _display_mapper = FeedDisplayMapper()
+
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        for feed_name in self.__default_sync_config__.keys():
+            self._display_mapper.register(
+                internal_name=feed_name, display_name=feed_name
+            )
 
     def load_image(self, image: Image, db_session, use_store=True):
         # initialize the scanner
@@ -908,7 +957,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 )
                 return "http://<valid endpoint not found>"
 
-    def get_sync_utils(
+    def get_sync_util_provider(
         self, sync_configs: Dict[str, SyncConfig]
     ) -> LegacySyncUtilProvider:
         """
@@ -1051,6 +1100,12 @@ class LegacyProvider(VulnerabilitiesProvider):
         for pkg_vuln in image.vulnerabilities():
             db_session.delete(pkg_vuln)
 
+    def get_gate_util_provider(self) -> LegacyGateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        return LegacyGateUtilProvider()
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -1063,6 +1118,16 @@ class GrypeProvider(VulnerabilitiesProvider):
         ),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
+    _display_mapper = FeedDisplayMapper()
+
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        self._display_mapper.register(
+            internal_name="grypedb", display_name="vulnerabilities"
+        )
+        self._display_mapper.register(internal_name="packages", display_name="packages")
 
     def load_image(self, image: Image, db_session, use_store=True):
         with timer("grype provider load-image", log_level="info"):
@@ -1470,7 +1535,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
         return filtered_dicts
 
-    def get_sync_utils(
+    def get_sync_util_provider(
         self, sync_configs: Dict[str, SyncConfig]
     ) -> GrypeDBSyncUtilProvider:
         """
@@ -1486,12 +1551,6 @@ class GrypeProvider(VulnerabilitiesProvider):
         grype-db feed sync will refresh the matches for all images in the system
         """
         pass
-
-    def update_feed_group_counts(self) -> None:
-        """
-        Counts on grypedb are static so no need to update
-        """
-        return
 
     def _get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
         """
@@ -1549,6 +1608,12 @@ class GrypeProvider(VulnerabilitiesProvider):
     def delete_image_vulnerabilities(self, image: Image, db_session):
         ImageVulnerabilitiesStore(image_object=image).delete_all(session=db_session)
 
+    def get_gate_util_provider(self) -> GrypeGateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        return GrypeGateUtilProvider()
+
 
 # Override this map for associating different provider classes
 PROVIDER_CLASSES = [LegacyProvider, GrypeProvider]
@@ -1576,7 +1641,7 @@ def set_provider():
     logger.info("Initialized vulnerabilities provider: %s", PROVIDER.get_config_name())
 
 
-def get_vulnerabilities_provider():
+def get_vulnerabilities_provider() -> VulnerabilitiesProvider:
     if not PROVIDER:
         set_provider()
 
