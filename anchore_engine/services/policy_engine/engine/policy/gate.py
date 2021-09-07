@@ -100,7 +100,8 @@ class TriggerMatch(object):
         # Compute a hash-based trigger_id for matching purposes (this is legacy from Anchore CLI)
         if not self.id:
             gate_id = self.trigger.gate_cls.__gate_name__
-            self.id = hashlib.md5(
+            self.id = hashlib.new(
+                "md5",
                 ensure_bytes(
                     "".join(
                         [
@@ -109,7 +110,8 @@ class TriggerMatch(object):
                             self.msg if self.msg else "",
                         ]
                     )
-                )
+                ),
+                usedforsecurity=False,
             ).hexdigest()
 
     def json(self):

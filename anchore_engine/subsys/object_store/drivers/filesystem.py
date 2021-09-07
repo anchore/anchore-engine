@@ -179,11 +179,15 @@ class FilesystemObjectStorageDriver(ObjectStorageDriver):
             raise err
 
     def _get_archive_filepath(self, userId, bucket, key):
-        filehash = hashlib.md5(key.encode("utf8")).hexdigest()
+        filehash = hashlib.new(
+            "md5", key.encode("utf8"), usedforsecurity=False
+        ).hexdigest()
         fkey = filehash[0:2]
         archive_path = os.path.join(
             self.data_volume,
-            hashlib.md5(userId.encode("utf8")).hexdigest(),
+            hashlib.new(
+                "md5", userId.encode("utf8"), usedforsecurity=False
+            ).hexdigest(),
             bucket,
             fkey,
         )

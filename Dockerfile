@@ -5,9 +5,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-builder
 ARG CLI_COMMIT
 
 ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
-
 ENV GOPATH=/go
-ENV SKOPEO_VERSION=v1.2.1
 ENV SYFT_VERSION=v0.19.1
 ENV GRYPE_VERSION=v0.13.0
 
@@ -21,7 +19,10 @@ RUN set -ex && \
     echo "installing OS dependencies" && \
     yum update -y && \
     yum module disable -y python36 && yum module enable -y python38 && \
-    yum install -y gcc make python38 git python38-wheel python38-devel go
+    yum install -y gcc make python38 git python38-wheel python38-devel python38-psycopg2 go  && \
+    pip3 install pip==21.0.1 && \
+    yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    yum install -y --downloadonly --downloaddir=/build_output/build_deps/ dpkg clamav clamav-update
 
 # create anchore binaries
 RUN set -ex && \
@@ -39,24 +40,12 @@ RUN set -ex && \
     mkdir -p /go
 
 RUN set -ex && \
-    echo "installing Skopeo" && \
-    git clone --branch "$SKOPEO_VERSION" https://github.com/containers/skopeo "${GOPATH}"/src/github.com/containers/skopeo && \
-    cd "${GOPATH}"/src/github.com/containers/skopeo && \
-    make install-binary DISABLE_CGO=1 && \
-    cp /usr/bin/skopeo /build_output/deps/ && \
-    cp default-policy.json /build_output/configs/skopeo-policy.json
-
-RUN set -ex && \
     echo "installing Syft" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps "$SYFT_VERSION"
 
 RUN set -ex && \
     echo "installing Grype" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "$GRYPE_VERSION"
-
-# stage RPM dependency binaries
-RUN yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    yum install -y --downloadonly --downloaddir=/build_output/deps/ dpkg clamav clamav-update
 
 RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
 
@@ -68,7 +57,7 @@ FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="0.10.0"
+ARG ANCHORE_ENGINE_VERSION="0.10.2"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Copy skopeo artifacts from build step
@@ -152,7 +141,8 @@ EXPOSE "${ANCHORE_SERVICE_PORT}"
 RUN set -ex && \
     yum update -y && \
     yum module disable -y python36 && yum module enable -y python38 && \
-    yum install -y python38 python38-wheel procps psmisc
+    yum install -y python38 python38-wheel procps psmisc python38-psycopg2 skopeo && \
+    pip3 install pip==21.0.1
 
 # Setup container default configs and directories
 
@@ -183,19 +173,16 @@ RUN set -ex && \
 RUN set -ex && \
     python3 -m venv /anchore-cli && \
     source /anchore-cli/bin/activate && \
-    pip3 install --no-index --find-links=./ /build_output/cli_wheels/*.whl && \
+    pip3 install --no-index --find-links=/build_output/cli_wheels/ anchorecli && \
     deactivate
 
 # Perform the anchore-engine build and install
 
 RUN set -ex && \
-    pip3 install --no-index --find-links=./ /build_output/wheels/*.whl && \
-    cp /build_output/deps/skopeo /usr/bin/skopeo && \
+    pip3 install --no-index --find-links=/build_output/wheels/ anchore-engine && \
     cp /build_output/deps/syft /usr/bin/syft && \
     cp /build_output/deps/grype /usr/bin/grype && \
-    mkdir -p /etc/containers && \
-    cp /build_output/configs/skopeo-policy.json /etc/containers/policy.json && \
-    yum install -y /build_output/deps/*.rpm && \
+    #yum install -y /build_output/deps/*.rpm && \
     rm -rf /build_output /root/.cache
 
 # Container runtime instructions
