@@ -27,17 +27,27 @@ class ImageContentGetter:
             "image_digest": self.image_digest,
         }
 
-    def verify_analysis_status(self, image_report):
-        if image_report and image_report["analysis_status"] != taskstate.complete_state(
-            "analyze"
-        ):
+    def verify_analysis_status(self, image_report, allow_analyzing_state=False):
+        """
+        Raises an exception if the image analysis is not complete. Images in "analyzing" state can optionally be permitted by passing in the allow_analyzing_state argument.
+
+        :param image_report: image report
+        :type image_report: dict
+        :param allow_analyzing_state: whether or not to permit images in "analyzing" state
+        :type allow_analyzing_state: bool
+        :rtype: None
+        """
+        allowed_states = [taskstate.complete_state("analyze")]
+        if allow_analyzing_state:
+            allowed_states.append(taskstate.working_state("analyze"))
+        if image_report and image_report["analysis_status"] not in allowed_states:
             raise ResourceNotFound(
                 "image is not analyzed - analysis_status: %s"
                 % image_report["analysis_status"],
                 detail=self.get_error_detail(),
             )
 
-    def get(self):
+    def get(self, allow_analyzing_state=False):
         with db.session_scope() as session:
             image_report = db_catalog_image.get(
                 self.image_digest, self.account_id, session=session
@@ -45,7 +55,9 @@ class ImageContentGetter:
         if not image_report:
             raise ResourceNotFound("Image not found", detail=self.get_error_detail())
 
-        self.verify_analysis_status(image_report)
+        self.verify_analysis_status(
+            image_report, allow_analyzing_state=allow_analyzing_state
+        )
 
         image_content_data = self.get_image_content_data(self.image_digest)
 
