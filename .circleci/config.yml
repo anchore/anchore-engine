@@ -207,7 +207,7 @@ jobs:
         type: string
       vulnerabilities_provider:
         type: string
-        default: ""
+        default: "-grype"
 
     machine:
       image: ubuntu-1604:202007-01
@@ -223,7 +223,7 @@ jobs:
           echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: Run functional tests
-          command: make setup-and-test-functional<< parameters.vulnerabilities_provider >>
+          command: make setup-and-test-functional-<< parameters.vulnerabilities_provider >>
 
   e2e_tests:
     parameters:
@@ -285,12 +285,12 @@ workflows:
       - functional_tests:
           name: functional_tests_38_legacy
           tox_env: "py38"
-          vulnerabilities_provider: ""
+          vulnerabilities_provider: "legacy"
           requires:
             - build
       - functional_tests:
           name: functional_tests_38_grype
-          vulnerabilities_provider: "-grype"
+          vulnerabilities_provider: "grype"
           tox_env: "py38"
           requires:
             - build
@@ -342,7 +342,15 @@ workflows:
             - lint_38
             - unit_tests_38
       - functional_tests:
-          name: functional_tests_38
+          name: functional_tests_38_legacy
+          vulnerabilities_provider: "legacy"
+          tox_env: "py38"
+          filters: *filter_nightly
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38_grype
+          vulnerabilities_provider: "grype"
           tox_env: "py38"
           filters: *filter_nightly
           requires:
@@ -360,7 +368,8 @@ workflows:
           context: dockerhub
           filters: *filter_nightly
           requires:
-            - functional_tests_38
+            - functional_tests_38_legacy
+            - functional_tests_38_grype
             - integration_tests_38
             - e2e_tests_38
       - anchore/image_scan:
@@ -452,7 +461,15 @@ workflows:
             - lint_38
             - unit_tests_38
       - functional_tests:
-          name: functional_tests_38
+          name: functional_tests_38_legacy
+          vulnerabilities_provider: "legacy"
+          tox_env: "py38"
+          filters: *filter_rebuild_tags
+          requires:
+            - build
+      - functional_tests:
+          name: functional_tests_38_grype
+          vulnerabilities_provider: "grype"
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
@@ -471,7 +488,8 @@ workflows:
           filters: *filter_rebuild_tags
           requires:
             - e2e_tests_38
-            - functional_tests_38
+            - functional_tests_38_legacy
+            - functional_tests_38_grype
             - integration_tests_38
       - anchore/image_scan:
           name: anchore_image_scan

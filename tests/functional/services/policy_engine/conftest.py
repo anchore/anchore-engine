@@ -188,7 +188,7 @@ def is_legacy_provider():
     """
     Returns bool based on if the running context has an env var set to indicate that its testing against legacy vuln provider
     """
-    return os.getenv("TEST_VULNERABILITIES_PROVIDER", "legacy") == "legacy"
+    return os.getenv("TEST_VULNERABILITIES_PROVIDER", "grype") == "legacy"
 
 
 @pytest.fixture()
