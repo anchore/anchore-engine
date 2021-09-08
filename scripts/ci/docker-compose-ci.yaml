@@ -28,7 +28,7 @@ services:
       ANCHORE_CLI_USER: admin
       ANCHORE_CLI_PASS: foobar
       ANCHORE_TEST_DB_URL: postgresql://postgres:mysecretpassword@anchore-db:5432/postgres
-      TEST_VULNERABILITIES_PROVIDER: ${ANCHORE_VULNERABILITIES_PROVIDER:-legacy}
+      TEST_VULNERABILITIES_PROVIDER: ${ANCHORE_VULNERABILITIES_PROVIDER:-grype}
     working_dir: /job-workspace
     volumes:
       - ../../:/job-workspace
@@ -122,7 +122,7 @@ services:
       - ANCHORE_FEEDS_ENABLED=true
       - ANCHORE_FEEDS_CLIENT_URL=null
       - ANCHORE_FEEDS_TOKEN_URL=null
-      - ANCHORE_VULNERABILITIES_PROVIDER=${ANCHORE_VULNERABILITIES_PROVIDER:-legacy}
+      - ANCHORE_VULNERABILITIES_PROVIDER=${ANCHORE_VULNERABILITIES_PROVIDER:-grype}
     command: ["anchore-manager", "service", "start", "policy_engine"]
   engine-analyzer:
     image: ${TEST_IMAGE_NAME}
