@@ -1,5 +1,8 @@
 # Developing
 
+## Developer Setup
+[Documented here ...](dev-tools/README.md)
+
 ## Running Functional Tests
 
 There are a couple ways to run functional tests:
