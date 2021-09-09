@@ -50,7 +50,7 @@ def process_cve_status(old_cves_result=None, new_cves_result=None):
             # element 0 is the image id
             old_cve_header = old_cves_result[0]["result"]["header"]
             old_cve_rows = old_cves_result[0]["result"]["rows"]
-    except:
+    except (KeyError, IndexError):
         old_cve_header = None
         old_cve_rows = None
 
@@ -62,7 +62,7 @@ def process_cve_status(old_cves_result=None, new_cves_result=None):
             # element 0 is the image id
             new_cve_header = new_cves_result[0]["result"]["header"]
             new_cve_rows = new_cves_result[0]["result"]["rows"]
-    except:
+    except (KeyError, IndexError):
         new_cve_header = None
         new_cve_rows = None
 
