@@ -6,8 +6,10 @@ from anchore_engine.db import Subscription
 
 
 def _compute_subscription_id(userId, subscription_key, subscription_type):
-    return hashlib.md5(
-        "+".join([userId, subscription_key, subscription_type]).encode("utf-8")
+    return hashlib.new(
+        "md5",
+        "+".join([userId, subscription_key, subscription_type]).encode("utf-8"),
+        usedforsecurity=False,
     ).hexdigest()
 
 

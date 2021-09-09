@@ -54,7 +54,9 @@ def create(
 
 def generate_dataId(inobj):
     datajson = json.dumps(inobj)
-    dataId = hashlib.md5(datajson.encode("utf-8")).hexdigest()
+    dataId = hashlib.new(
+        "md5", datajson.encode("utf-8"), usedforsecurity=False
+    ).hexdigest()
     return dataId, datajson
 
 
