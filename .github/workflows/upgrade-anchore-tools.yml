@@ -8,31 +8,53 @@ on:
   workflow_dispatch:
 
 jobs:
-  upgrade-anchore-tools:
+  upgrade-syft:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Trigger Makefile action
-        run: make upgrade-anchore-tools
+        run: make upgrade-syft
       # https://github.com/marketplace/actions/create-pull-request
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v3
         with:
           signoff: true
           delete-branch: true
-          branch: auto/latest-anchore-tools
+          branch: auto/latest-syft
           labels: dependencies
-          commit-message: 'Upgrade to Syft ${{ env.syft_v }} and/or Grype to ${{ env.grype_v }}'
-          title: 'Upgrade to Syft ${{ env.syft_v }} and/or Grype to ${{ env.grype_v }}'
+          commit-message: 'Upgrade to Syft ${{ env.syft_v }}'
+          title: 'Upgrade to Syft ${{ env.syft_v }}'
           body: |
-            - [Syft ${{ env.syft_v }}](https://github.com/anchore/syft/releases/tag/${{ env.syft_v }})
-            - [Grype ${{ env.grype_v }}](https://github.com/anchore/grype/releases/tag/${{ env.grype_v }})
-
-            This is an auto-generated pull request to the latest versions of Syft and Grype.
+            This is an auto-generated pull request to upgrade to [Syft ${{ env.syft_v }}](https://github.com/anchore/syft/releases/tag/${{ env.syft_v }}).
 
             **Do not commit to this branch.**
 
             - The GitHub Action will force-push over your commits the next time it runs.
-            - If the Syft/Grype upgrade is safe as-is (manual and automated tests pass), go ahead and approve + merge.
+            - If the Syft upgrade is safe as-is (manual and automated tests pass), go ahead and approve + merge.
             - If production or test code must be updated, do so in a separate branch.
-            - Run `make upgrade-anchore-tools` to apply the same change the GitHub Action is performing.
+            - Run `make upgrade-syft` to apply the same change the GitHub Action is performing.
+  upgrade-grype:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Trigger Makefile action
+        run: make upgrade-grype
+      # https://github.com/marketplace/actions/create-pull-request
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          signoff: true
+          delete-branch: true
+          branch: auto/latest-grype
+          labels: dependencies
+          commit-message: 'Upgrade to Grype ${{ env.grype_v }}'
+          title: 'Upgrade to Grype ${{ env.grype_v }}'
+          body: |
+            This is an auto-generated pull request to upgrade to [Grype ${{ env.grype_v }}](https://github.com/anchore/grype/releases/tag/${{ env.grype_v }}).
+
+            **Do not commit to this branch.**
+
+            - The GitHub Action will force-push over your commits the next time it runs.
+            - If the Grype upgrade is safe as-is (manual and automated tests pass), go ahead and approve + merge.
+            - If production or test code must be updated, do so in a separate branch.
+            - Run `make upgrade-grype` to apply the same change the GitHub Action is performing.
