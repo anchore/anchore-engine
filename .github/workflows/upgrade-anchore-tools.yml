@@ -29,3 +29,10 @@ jobs:
             - [Grype ${{ env.grype_v }}](https://github.com/anchore/grype/releases/tag/${{ env.grype_v }})
 
             This is an auto-generated pull request to the latest versions of Syft and Grype.
+
+            **Do not commit to this branch.**
+
+            - The GitHub Action will force-push over your commits the next time it runs.
+            - If the Syft/Grype upgrade is safe as-is (manual and automated tests pass), go ahead and approve + merge.
+            - If production or test code must be updated, do so in a separate branch.
+            - Run `make upgrade-anchore-tools` to apply the same change the GitHub Action is performing.
