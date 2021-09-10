@@ -3,7 +3,6 @@ import pytest
 from anchore_engine.services.policy_engine.engine.vulns.mappers import (
     ENGINE_DISTRO_MAPPERS,
     ENGINE_PACKAGE_MAPPERS,
-    GRYPE_DISTRO_MAPPERS,
     GRYPE_PACKAGE_MAPPERS,
 )
 
@@ -30,23 +29,6 @@ def test_engine_distro_mappers(test_distro, expected_os, expected_like_os):
         "version": "0",
         "idLike": expected_like_os,
     }
-
-
-@pytest.mark.parametrize(
-    "test_os, expected_distro",
-    [
-        pytest.param("redhat", "rhel", id="rhel"),
-        pytest.param("amazonlinux", "amzn", id="amazonlinux"),
-        pytest.param("oraclelinux", "ol", id="oraclelinux"),
-        pytest.param("centos", "centos", id="centos"),
-        pytest.param("debian", "debian", id="debian"),
-        pytest.param("ubuntu", "ubuntu", id="ubuntu"),
-        pytest.param("alpine", "alpine", id="ubuntu"),
-    ],
-)
-def test_grype_distro_mappers(test_os, expected_distro):
-    mapper = GRYPE_DISTRO_MAPPERS.get(test_os)
-    assert mapper.engine_distro == expected_distro
 
 
 @pytest.mark.parametrize(

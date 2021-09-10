@@ -438,34 +438,6 @@ ENGINE_DISTRO_MAPPERS = {
     ),
 }
 
-# TODO: this does not appear to be used and should probably be removed.
-# key is the grype distro
-GRYPE_DISTRO_MAPPERS = {
-    "redhat": DistroMapper(
-        engine_distro="rhel", grype_os="redhat", grype_like_os="fedora"
-    ),
-    "debian": DistroMapper(
-        engine_distro="debian", grype_os="debian", grype_like_os="debian"
-    ),
-    "ubuntu": DistroMapper(
-        engine_distro="ubuntu", grype_os="ubuntu", grype_like_os="debian"
-    ),
-    "alpine": DistroMapper(
-        engine_distro="alpine", grype_os="alpine", grype_like_os="alpine"
-    ),
-    "oraclelinux": DistroMapper(
-        engine_distro="ol", grype_os="oraclelinux", grype_like_os="fedora"
-    ),
-    "amazonlinux": DistroMapper(
-        engine_distro="amzn", grype_os="amazonlinux", grype_like_os="fedora"
-    ),
-    "centos": DistroMapper(
-        engine_distro="centos", grype_os="centos", grype_like_os="fedora"
-    ),
-    "busybox": DistroMapper(
-        engine_distro="busybox", grype_os="busybox", grype_like_os=""
-    ),
-}
 
 # key is the engine package type
 ENGINE_PACKAGE_MAPPERS = {
