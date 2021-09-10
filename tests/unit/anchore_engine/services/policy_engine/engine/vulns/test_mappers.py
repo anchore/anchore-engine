@@ -18,6 +18,7 @@ from anchore_engine.services.policy_engine.engine.vulns.mappers import (
         pytest.param("debian", "debian", "debian", id="debian"),
         pytest.param("ubuntu", "ubuntu", "debian", id="ubuntu"),
         pytest.param("alpine", "alpine", "alpine", id="ubuntu"),
+        pytest.param("windows", "windows", "", id="windows"),
     ],
 )
 def test_engine_distro_mappers(test_distro, expected_os, expected_like_os):
@@ -54,6 +55,7 @@ def test_grype_distro_mappers(test_os, expected_distro):
         pytest.param("java", "java-archive", id="java"),
         pytest.param("APKG", "apk", id="apkg"),
         pytest.param("dpkg", "deb", id="dpkg"),
+        pytest.param("kb", "msrc-kb", id="msrc-kb"),
     ],
 )
 def test_engine_package_mappers(test_type, expected_type):
@@ -68,6 +70,7 @@ def test_engine_package_mappers(test_type, expected_type):
         pytest.param("java-archive", "java", id="java"),
         pytest.param("deb", "dpkg", id="dpkg"),
         pytest.param("apk", "APKG", id="apkg"),
+        pytest.param("msrc-kb", "kb", id="msrc-kb"),
     ],
 )
 def test_grype_package_mappers(test_type, expected_type):
