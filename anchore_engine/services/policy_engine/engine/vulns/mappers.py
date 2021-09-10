@@ -64,6 +64,38 @@ class PackageMapper:
         return artifact
 
 
+class KBMapper(PackageMapper):
+    """
+    Package Mapper for microsoft KBs.
+    """
+
+    def __init__(self):
+        super(KBMapper, self).__init__(engine_type="kb", grype_type="msrc-kb")
+
+    def to_grype(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        """
+        Convert this image package to a sbom artifact suitable for Grype input.
+        The name is the Microsoft Product ID, which is the Windows OS version.
+        The version is the KB (Knowledge Base) ID, which is the identifier for the patch.
+        """
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": image_package.src_pkg,
+            "version": image_package.version,
+            "type": self.grype_type,
+            "locations": [
+                {
+                    "path": image_package.pkg_path,
+                }
+            ],
+        }
+        return artifact
+
+
 class RpmMapper(PackageMapper):
     def __init__(self):
         super(RpmMapper, self).__init__(engine_type="rpm", grype_type="rpm")
@@ -401,8 +433,12 @@ ENGINE_DISTRO_MAPPERS = {
     "busybox": DistroMapper(
         engine_distro="busybox", grype_os="busybox", grype_like_os=""
     ),
+    "windows": DistroMapper(
+        engine_distro="windows", grype_os="windows", grype_like_os=""
+    ),
 }
 
+# TODO: this does not appear to be used and should probably be removed.
 # key is the grype distro
 GRYPE_DISTRO_MAPPERS = {
     "redhat": DistroMapper(
@@ -453,6 +489,7 @@ ENGINE_PACKAGE_MAPPERS = {
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
     "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
+    "kb": KBMapper(),
 }
 
 # key is the grype package type
@@ -476,6 +513,7 @@ GRYPE_PACKAGE_MAPPERS = {
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
     "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
+    "msrc-kb": KBMapper(),
 }
 
 GRYPE_MATCH_MAPPER = VulnerabilityMapper()
