@@ -436,6 +436,7 @@ ENGINE_DISTRO_MAPPERS = {
     "windows": DistroMapper(
         engine_distro="windows", grype_os="windows", grype_like_os=""
     ),
+    "sles": DistroMapper(engine_distro="sles", grype_os="sles", grype_like_os="sles"),
 }
 
 
