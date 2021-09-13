@@ -21,7 +21,7 @@ RUN set -ex && \
     yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y gcc make python38 git python38-wheel python38-devel python38-psycopg2 go  && \
     pip3 install pip==21.0.1 && \
-    yum install -y https://download-ib01.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
+    yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum install -y --downloadonly --downloaddir=/build_output/build_deps/ dpkg clamav clamav-update
 
 # create anchore binaries
