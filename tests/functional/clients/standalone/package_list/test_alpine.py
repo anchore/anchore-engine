@@ -41,6 +41,10 @@ class TestAlpinePaths:
         metadata = dict(metadata)
         metadata.pop("files")
 
+        # cpe ordering keeps changing, so sort both lists.
+        loaded["cpes"] = sorted(loaded["cpes"])
+        metadata["cpes"] = sorted(metadata["cpes"])
+
         assert loaded == metadata
 
     @pytest.mark.parametrize("pkg,metadata", alpine.pkgs_allinfo.items())
