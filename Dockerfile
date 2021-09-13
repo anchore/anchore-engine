@@ -17,6 +17,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "installing OS dependencies" && \
+    echo "keepcache = 1" >> /etc/yum.conf && \
     yum update -y && \
     yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y gcc make python38 git python38-wheel python38-devel python38-psycopg2 go  && \
@@ -182,7 +183,7 @@ RUN set -ex && \
     pip3 install --no-index --find-links=/build_output/wheels/ anchore-engine && \
     cp /build_output/deps/syft /usr/bin/syft && \
     cp /build_output/deps/grype /usr/bin/grype && \
-    #yum install -y /build_output/deps/*.rpm && \
+    yum install -y /build_output/build_deps/*.rpm && \
     rm -rf /build_output /root/.cache
 
 # Container runtime instructions
