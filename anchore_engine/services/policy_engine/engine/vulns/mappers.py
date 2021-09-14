@@ -64,6 +64,38 @@ class PackageMapper:
         return artifact
 
 
+class KBMapper(PackageMapper):
+    """
+    Package Mapper for microsoft KBs.
+    """
+
+    def __init__(self):
+        super(KBMapper, self).__init__(engine_type="kb", grype_type="msrc-kb")
+
+    def to_grype(
+        self,
+        image_package: ImagePackage,
+        location_cpes_dict: Dict[str, List[str]] = None,
+    ):
+        """
+        Convert this image package to a sbom artifact suitable for Grype input.
+        The name is the Microsoft Product ID, which is the Windows OS version.
+        The version is the KB (Knowledge Base) ID, which is the identifier for the patch.
+        """
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": image_package.src_pkg,
+            "version": image_package.version,
+            "type": self.grype_type,
+            "locations": [
+                {
+                    "path": image_package.pkg_path,
+                }
+            ],
+        }
+        return artifact
+
+
 class RpmMapper(PackageMapper):
     def __init__(self):
         super(RpmMapper, self).__init__(engine_type="rpm", grype_type="rpm")
@@ -401,35 +433,11 @@ ENGINE_DISTRO_MAPPERS = {
     "busybox": DistroMapper(
         engine_distro="busybox", grype_os="busybox", grype_like_os=""
     ),
+    "windows": DistroMapper(
+        engine_distro="windows", grype_os="windows", grype_like_os=""
+    ),
 }
 
-# key is the grype distro
-GRYPE_DISTRO_MAPPERS = {
-    "redhat": DistroMapper(
-        engine_distro="rhel", grype_os="redhat", grype_like_os="fedora"
-    ),
-    "debian": DistroMapper(
-        engine_distro="debian", grype_os="debian", grype_like_os="debian"
-    ),
-    "ubuntu": DistroMapper(
-        engine_distro="ubuntu", grype_os="ubuntu", grype_like_os="debian"
-    ),
-    "alpine": DistroMapper(
-        engine_distro="alpine", grype_os="alpine", grype_like_os="alpine"
-    ),
-    "oraclelinux": DistroMapper(
-        engine_distro="ol", grype_os="oraclelinux", grype_like_os="fedora"
-    ),
-    "amazonlinux": DistroMapper(
-        engine_distro="amzn", grype_os="amazonlinux", grype_like_os="fedora"
-    ),
-    "centos": DistroMapper(
-        engine_distro="centos", grype_os="centos", grype_like_os="fedora"
-    ),
-    "busybox": DistroMapper(
-        engine_distro="busybox", grype_os="busybox", grype_like_os=""
-    ),
-}
 
 # key is the engine package type
 ENGINE_PACKAGE_MAPPERS = {
@@ -453,6 +461,7 @@ ENGINE_PACKAGE_MAPPERS = {
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
     "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
+    "kb": KBMapper(),
 }
 
 # key is the grype package type
@@ -476,6 +485,7 @@ GRYPE_PACKAGE_MAPPERS = {
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
     "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
+    "msrc-kb": KBMapper(),
 }
 
 GRYPE_MATCH_MAPPER = VulnerabilityMapper()
