@@ -16,7 +16,8 @@ from anchore_engine.services.policy_engine.engine.vulns.mappers import (
         pytest.param("centos", "centos", "fedora", id="centos"),
         pytest.param("debian", "debian", "debian", id="debian"),
         pytest.param("ubuntu", "ubuntu", "debian", id="ubuntu"),
-        pytest.param("alpine", "alpine", "alpine", id="ubuntu"),
+        pytest.param("alpine", "alpine", "alpine", id="alpine"),
+        pytest.param("sles", "sles", "sles", id="sles"),
         pytest.param("windows", "windows", "", id="windows"),
     ],
 )

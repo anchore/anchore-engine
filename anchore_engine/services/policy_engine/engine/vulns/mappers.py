@@ -433,6 +433,7 @@ ENGINE_DISTRO_MAPPERS = {
     "busybox": DistroMapper(
         engine_distro="busybox", grype_os="busybox", grype_like_os=""
     ),
+    "sles": DistroMapper(engine_distro="sles", grype_os="sles", grype_like_os="sles"),
     "windows": DistroMapper(
         engine_distro="windows", grype_os="windows", grype_like_os=""
     ),
