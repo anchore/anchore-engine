@@ -1,0 +1,10 @@
+name: Create SBOM
+on: [push, pull_request]
+
+jobs:
+  generate-sbom:
+    name: "Generate SBOM"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: anchore/sbom-action@main
