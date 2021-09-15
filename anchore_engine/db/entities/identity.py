@@ -3,10 +3,16 @@ import time
 
 from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
 from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
-from sqlalchemy import Boolean, Column, Enum, ForeignKey, Integer, String, Text, Index
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
+from anchore_engine.db.entities.common import (
+    Base,
+    UtilMixin,
+    anchore_now,
+    anchore_uuid,
+    truncate_index_name,
+)
 
 
 class AccountTypes(enum.Enum):
@@ -99,8 +105,8 @@ class AccountUser(Base, UtilMixin):
     )
 
     __table_args__ = (
-        Index("ix_account_users_account_name", account_name),
-        Index("ix_account_users_uuid", uuid, unique=True),
+        Index(truncate_index_name("ix_account_users_account_name"), account_name),
+        Index(truncate_index_name("ix_account_users_uuid"), uuid, unique=True),
     )
 
     def to_dict(self):
@@ -167,7 +173,10 @@ class OAuth2Token(Base, UtilMixin, TokenMixin):
     issued_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     expires_in = Column(Integer, nullable=False, default=0)
 
-    __table_args__ = (Index("ix_oauth2_tokens_refresh_token", refresh_token), {})
+    __table_args__ = (
+        Index(truncate_index_name("ix_oauth2_tokens_refresh_token"), refresh_token),
+        {},
+    )
 
     def get_scope(self):
         return self.scope

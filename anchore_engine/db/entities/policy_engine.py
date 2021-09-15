@@ -31,7 +31,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import joinedload, relationship, synonym
 
 from anchore_engine.common.models.policy_engine import CVSS, NVDReference
-from anchore_engine.db.entities.common import anchore_now_datetime
+from anchore_engine.db.entities.common import anchore_now_datetime, truncate_index_name
 from anchore_engine.util.apk import compare_versions as apkg_compare_versions
 from anchore_engine.util.deb import compare_versions as dpkg_compare_versions
 from anchore_engine.util.langpack import compare_versions as langpack_compare_versions
@@ -167,7 +167,9 @@ class GrypeDBFeedMetadata(Base):
     groups = Column(JSONB, default=[])
 
     __table_args__ = (
-        Index("ix_grype_db_feed_metadata_db_checksum", db_checksum),
+        Index(
+            truncate_index_name("ix_grype_db_feed_metadata_db_checksum"), db_checksum
+        ),
         {},
     )
 
@@ -865,7 +867,9 @@ class NvdV2Metadata(Base):
     )
 
     __table_args__ = (
-        Index("ix_feed_data_nvdv2_vulnerabilities_severity", severity),
+        Index(
+            truncate_index_name("ix_feed_data_nvdv2_vulnerabilities_severity"), severity
+        ),
         {},
     )
 
@@ -1114,7 +1118,10 @@ class VulnDBMetadata(Base):
     )
 
     __table_args__ = (
-        Index("ix_feed_data_vulndb_vulnerabilities_severity", severity),
+        Index(
+            truncate_index_name("ix_feed_data_vulndb_vulnerabilities_severity"),
+            severity,
+        ),
         {},
     )
 
@@ -1733,9 +1740,13 @@ class CpeVulnerability(Base):
                 NvdMetadata.severity,
             ),
         ),
-        Index("ix_feed_data_cpe_vulnerabilities_name_version", name, version),
         Index(
-            "ix_feed_data_cpe_vulnerabilities_fk",
+            truncate_index_name("ix_feed_data_cpe_vulnerabilities_name_version"),
+            name,
+            version,
+        ),
+        Index(
+            truncate_index_name("ix_feed_data_cpe_vulnerabilities_fk"),
             vulnerability_id,
             namespace_name,
             severity,
@@ -1805,9 +1816,15 @@ class CpeV2Vulnerability(Base):
             columns=(vulnerability_id, namespace_name),
             refcolumns=(NvdV2Metadata.name, NvdV2Metadata.namespace_name),
         ),
-        Index("ix_feed_data_cpev2_vulnerabilities_name_version", product, version),
         Index(
-            "ix_feed_data_cpev2_vulnerabilities_fk", vulnerability_id, namespace_name
+            truncate_index_name("ix_feed_data_cpev2_vulnerabilities_name_version"),
+            product,
+            version,
+        ),
+        Index(
+            truncate_index_name("ix_feed_data_cpev2_vulnerabilities_fk"),
+            vulnerability_id,
+            namespace_name,
         ),
         {},
     )
@@ -1910,8 +1927,16 @@ class VulnDBCpe(Base):
             columns=(vulnerability_id, namespace_name),
             refcolumns=(VulnDBMetadata.name, VulnDBMetadata.namespace_name),
         ),
-        Index("ix_feed_data_vulndb_affected_cpes_product_version", product, version),
-        Index("ix_feed_data_vulndb_affected_cpes_fk", vulnerability_id, namespace_name),
+        Index(
+            truncate_index_name("ix_feed_data_vulndb_affected_cpes_product_version"),
+            product,
+            version,
+        ),
+        Index(
+            truncate_index_name("ix_feed_data_vulndb_affected_cpes_fk"),
+            vulnerability_id,
+            namespace_name,
+        ),
         {},
     )
 
@@ -2447,7 +2472,7 @@ class ImageCpe(Base):
             columns=(image_id, image_user_id),
             refcolumns=("images.id", "images.user_id"),
         ),
-        Index("ix_image_cpe_user_img", image_id, image_user_id),
+        Index(truncate_index_name("ix_image_cpe_user_img"), image_id, image_user_id),
         {},
     )
 
@@ -3402,8 +3427,14 @@ class ImageVulnerabilitiesReport(Base, StorageInterface):
     )
 
     __table_args__ = (
-        Index("ix_image_vulnerabilities_reports_report_key", report_key),
-        Index("ix_image_vulnerabilities_reports_generated_at", generated_at),
+        Index(
+            truncate_index_name("ix_image_vulnerabilities_reports_report_key"),
+            report_key,
+        ),
+        Index(
+            truncate_index_name("ix_image_vulnerabilities_reports_generated_at"),
+            generated_at,
+        ),
     )
 
 

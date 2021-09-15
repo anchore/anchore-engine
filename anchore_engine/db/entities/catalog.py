@@ -21,16 +21,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from anchore_engine.util.time import datetime_to_rfc3339
-
-from .common import (
+from anchore_engine.db.entities.common import (
     Base,
     StringJSON,
     UtilMixin,
     anchore_now,
     anchore_now_datetime,
     anchore_uuid,
+    truncate_index_name,
 )
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 class Anchore(Base, UtilMixin):
@@ -148,14 +148,14 @@ class Event(Base, UtilMixin):
     timestamp = Column(DateTime)
 
     __table_args__ = (
-        Index("ix_timestamp", timestamp.desc()),
-        Index("ix_resource_user_id", resource_user_id),
-        Index("ix_resource_type", resource_type),
-        Index("ix_resource_id", resource_id),
-        Index("ix_source_servicename", source_servicename),
-        Index("ix_source_hostid", source_hostid),
-        Index("ix_level", level),
-        Index("ix_type", type),
+        Index(truncate_index_name("ix_timestamp"), timestamp.desc()),
+        Index(truncate_index_name("ix_resource_user_id"), resource_user_id),
+        Index(truncate_index_name("ix_resource_type"), resource_type),
+        Index(truncate_index_name("ix_resource_id"), resource_id),
+        Index(truncate_index_name("ix_source_servicename"), source_servicename),
+        Index(truncate_index_name("ix_source_hostid"), source_hostid),
+        Index(truncate_index_name("ix_level"), level),
+        Index(truncate_index_name("ix_type"), type),
     )
 
     def __repr__(self):
@@ -767,7 +767,10 @@ class ImageImportOperation(Base, UtilMixin):
     )
     contents = relationship("ImageImportContent", back_populates="operation")
 
-    __table_args__ = (Index("ix_image_imports_account", account), {})
+    __table_args__ = (
+        Index(truncate_index_name("ix_image_imports_account"), account),
+        {},
+    )
 
     def to_json(self):
         j = super().to_json()
