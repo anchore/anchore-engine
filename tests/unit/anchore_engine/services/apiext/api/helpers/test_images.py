@@ -51,6 +51,7 @@ class TestBuildOsResponse:
                     "cpe:2.3:*:*:apt:1.8.2:*:*:*:*:*:*:*",
                     "cpe:2.3:*:apt:apt:1.8.2:*:*:*:*:*:*:*",
                 ],
+                "sourcepkg": "apt-1.8.2",
             }
         ]
 
@@ -279,6 +280,7 @@ class TestBuildJavaResponse:
                     "cpe:2.3:*:*:charsets:N/A:*:*:*:*:*:*:*",
                     "cpe:2.3:*:charsets:charsets:N/A:*:*:*:*:*:*:*",
                 ],
+                "version": "N/A",
             }
         ]
 
