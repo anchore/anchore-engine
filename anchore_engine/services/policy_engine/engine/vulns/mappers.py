@@ -387,7 +387,7 @@ class VulnerabilityMapper:
                 description=vuln_dict.get("description"),
                 severity=vuln_dict.get("severity"),
                 link=vuln_dict.get("dataSource"),
-                feed="grypedb",
+                feed="vulnerabilities",
                 feed_group=vuln_dict.get("namespace"),
                 cvss=cvss_objs,
             ),
