@@ -2,6 +2,7 @@
 Common functions and variables for all entity types including some bootstrap and init functions
 """
 import datetime
+import hashlib
 import json
 import time
 import traceback
@@ -412,3 +413,25 @@ class StringJSON(types.TypeDecorator):
         if value is not None:
             value = json.loads(value)
         return value
+
+
+def truncate_index_name(index_name: str) -> str:
+    """
+    This method should be used any time a sqlalchemy Index is created.
+    It uses md5 in a FIPs-compliant manner (usedforsecurity=false) to replicate sqlalchemy's auto-generated name truncation.
+    See: https://docs.sqlalchemy.org/en/14/core/constraints.html#the-default-naming-convention
+    See: https://docs.sqlalchemy.org/en/14/core/metadata.html#sqlalchemy.schema.MetaData.params.naming_convention
+
+    :param index_name: full index name (before truncation)
+    :type index_name: str
+    :return: truncated name
+    :rtype: str
+    """
+    if len(index_name) > 63:
+        trailer = hashlib.new(
+            "md5",
+            index_name.encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()[-4:]
+        return f"{index_name[:55]}_{trailer}"
+    return index_name
