@@ -1,0 +1,48 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:*:figaro:1.2.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:figaro:figaro:1.2.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby-lang:figaro:1.2.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby:figaro:1.2.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby_lang:figaro:1.2.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:steve-richert:figaro:1.2.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:steve_richert:figaro:1.2.0:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "location": "/var/lib/gems/2.7.0/specifications/figaro-1.2.0.gemspec",
+      "origin": "Steve Richert",
+      "package": "figaro",
+      "type": "GEM",
+      "version": "1.2.0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:*:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:jos\u00e9-valim:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:jos\u00e9_valim:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby-lang:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby_lang:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:thor:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yehuda-katz:thor:1.1.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yehuda_katz:thor:1.1.0:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "location": "/var/lib/gems/2.7.0/specifications/thor-1.1.0.gemspec",
+      "origin": "Yehuda Katz,Jos\u00e9 Valim",
+      "package": "thor",
+      "type": "GEM",
+      "version": "1.1.0"
+    }
+  ],
+  "content_type": "gem",
+  "imageDigest": "sha256:ee7e86bed95c7d2eb2f106f7706d57cdeb1909a20f9f3f17cba361f778df79e4"
+}

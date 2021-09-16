@@ -247,3 +247,35 @@ def make_image_analysis_request(request):
         return http_post(["images"], {"tag": tag}, config=request.param)
 
     return _add_image_for_analysis
+
+
+@pytest.fixture(scope="class")
+def add_image_with_teardown(request):
+    """
+    Class scoped fixture for adding image and removing it at end
+    """
+
+    def _add_image_wit_teardown(tag):
+        add_response = http_post(["images"], {"tag": tag}, config=get_api_conf)
+        if add_response.code != 200:
+            raise RequestFailedError(
+                add_response.url, add_response.code, add_response.body
+            )
+
+        image_id = get_image_id(add_response)
+
+        def _delete_image():
+            remove_resp = http_del(
+                ["images", "by_id", image_id],
+                query={"force": True},
+                config=get_api_conf,
+            )
+            if remove_resp.code != 200:
+                raise RequestFailedError(
+                    remove_resp.url, remove_resp.code, remove_resp.body
+                )
+
+        request.addfinalizer(_delete_image)
+        return add_response
+
+    return _add_image_wit_teardown

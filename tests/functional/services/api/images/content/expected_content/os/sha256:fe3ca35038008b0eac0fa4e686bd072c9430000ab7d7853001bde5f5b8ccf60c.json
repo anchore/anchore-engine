@@ -1,0 +1,2794 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:acl:acl:2.2.51-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:acl:2.2.51-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "acl",
+      "size": "201209",
+      "sourcepkg": "acl-2.2.51-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.2.51-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:audit-libs:audit-libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:audit-libs:audit_libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:audit:audit-libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:audit:audit_libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:audit_libs:audit-libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:audit_libs:audit_libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:audit-libs:2.8.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:audit_libs:2.8.5-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "audit-libs",
+      "size": "256386",
+      "sourcepkg": "audit-2.8.5-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.8.5-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:basesystem:basesystem:10.0-7.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:basesystem:10.0-7.el7.centos:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "basesystem",
+      "size": "0",
+      "sourcepkg": "basesystem-10.0-7.el7.centos.src.rpm",
+      "type": "rpm",
+      "version": "10.0-7.el7.centos"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:bash:bash:4.2.46-34.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:bash:4.2.46-34.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "bash",
+      "size": "3667724",
+      "sourcepkg": "bash-4.2.46-34.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.2.46-34.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:binutils:binutils:2.27-44.base.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:binutils:2.27-44.base.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "binutils",
+      "size": "25166634",
+      "sourcepkg": "binutils-2.27-44.base.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.27-44.base.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:bzip2-libs:bzip2-libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:bzip2-libs:bzip2_libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:bzip2:bzip2-libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:bzip2:bzip2_libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:bzip2_libs:bzip2-libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:bzip2_libs:bzip2_libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:bzip2-libs:1.0.6-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:bzip2_libs:1.0.6-13.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "bzip2-libs",
+      "size": "70093",
+      "sourcepkg": "bzip2-1.0.6-13.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.0.6-13.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ca-certificates:ca-certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates:ca_certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca-certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca_certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca-certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca_certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:ca-certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:ca_certificates:2020.2.41-70.0.el7_8:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "ca-certificates",
+      "size": "946094",
+      "sourcepkg": "ca-certificates-2020.2.41-70.0.el7_8.src.rpm",
+      "type": "rpm",
+      "version": "2020.2.41-70.0.el7_8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos-release:centos-release:7-9.2009.0.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos-release:centos_release:7-9.2009.0.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:centos-release:7-9.2009.0.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:centos_release:7-9.2009.0.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos_release:centos-release:7-9.2009.0.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos_release:centos_release:7-9.2009.0.el7.centos:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2",
+      "licenses": [
+        "GPLv2"
+      ],
+      "origin": "CentOS",
+      "package": "centos-release",
+      "size": "44787",
+      "sourcepkg": "centos-release-7-9.2009.0.el7.centos.src.rpm",
+      "type": "rpm",
+      "version": "7-9.2009.0.el7.centos"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:chkconfig:1.7.6-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:chkconfig:chkconfig:1.7.6-1.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2",
+      "licenses": [
+        "GPLv2"
+      ],
+      "origin": "CentOS",
+      "package": "chkconfig",
+      "size": "779655",
+      "sourcepkg": "chkconfig-1.7.6-1.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.7.6-1.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:coreutils:8.22-24.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:coreutils:coreutils:8.22-24.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "coreutils",
+      "size": "14593469",
+      "sourcepkg": "coreutils-8.22-24.el7.src.rpm",
+      "type": "rpm",
+      "version": "8.22-24.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:cpio:2.11-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cpio:cpio:2.11-28.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "cpio",
+      "size": "689345",
+      "sourcepkg": "cpio-2.11-28.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.11-28.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:cracklib:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib:cracklib:2.9.0-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "cracklib",
+      "size": "209610",
+      "sourcepkg": "cracklib-2.9.0-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.9.0-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:cracklib-dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:cracklib_dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib-dicts:cracklib-dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib-dicts:cracklib_dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib:cracklib-dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib:cracklib_dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib_dicts:cracklib-dicts:2.9.0-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cracklib_dicts:cracklib_dicts:2.9.0-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "cracklib-dicts",
+      "size": "9389116",
+      "sourcepkg": "cracklib-2.9.0-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.9.0-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:cryptsetup-libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:cryptsetup_libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cryptsetup-libs:cryptsetup-libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cryptsetup-libs:cryptsetup_libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cryptsetup:cryptsetup-libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cryptsetup:cryptsetup_libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cryptsetup_libs:cryptsetup-libs:2.0.3-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cryptsetup_libs:cryptsetup_libs:2.0.3-6.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ and LGPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "cryptsetup-libs",
+      "size": "1219519",
+      "sourcepkg": "cryptsetup-2.0.3-6.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.0.3-6.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:curl:7.29.0-59.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:curl:curl:7.29.0-59.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "curl",
+      "size": "540404",
+      "sourcepkg": "curl-7.29.0-59.el7.src.rpm",
+      "type": "rpm",
+      "version": "7.29.0-59.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:cyrus-sasl-lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:cyrus_sasl_lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus-sasl-lib:cyrus-sasl-lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus-sasl-lib:cyrus_sasl_lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus-sasl:cyrus-sasl-lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus-sasl:cyrus_sasl_lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus:cyrus-sasl-lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus:cyrus_sasl_lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus_sasl:cyrus-sasl-lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus_sasl:cyrus_sasl_lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus_sasl_lib:cyrus-sasl-lib:2.1.26-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:cyrus_sasl_lib:cyrus_sasl_lib:2.1.26-23.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD with advertising",
+      "licenses": [
+        "BSD",
+        "advertising",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "cyrus-sasl-lib",
+      "size": "396911",
+      "sourcepkg": "cyrus-sasl-2.1.26-23.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.1.26-23.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:dbus:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus:dbus:1:1.10.24-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "(GPLv2+ or AFL) and GPLv2+",
+      "licenses": [
+        "(GPLv2+",
+        "AFL)",
+        "GPLv2+",
+        "and",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "dbus",
+      "size": "594463",
+      "sourcepkg": "dbus-1.10.24-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:1.10.24-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:dbus-libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:dbus_libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus-libs:dbus-libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus-libs:dbus_libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus:dbus-libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus:dbus_libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus_libs:dbus-libs:1:1.10.24-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dbus_libs:dbus_libs:1:1.10.24-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "(GPLv2+ or AFL) and GPLv2+",
+      "licenses": [
+        "(GPLv2+",
+        "AFL)",
+        "GPLv2+",
+        "and",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "dbus-libs",
+      "size": "362600",
+      "sourcepkg": "dbus-1.10.24-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:1.10.24-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:device-mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:device_mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device-mapper:device-mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device-mapper:device_mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device:device-mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device:device_mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device_mapper:device-mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device_mapper:device_mapper:7:1.02.170-6.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2",
+      "licenses": [
+        "GPLv2"
+      ],
+      "origin": "CentOS",
+      "package": "device-mapper",
+      "size": "342335",
+      "sourcepkg": "lvm2-2.02.187-6.el7.src.rpm",
+      "type": "rpm",
+      "version": "7:1.02.170-6.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:device-mapper-libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:device_mapper_libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device-mapper-libs:device-mapper-libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device-mapper-libs:device_mapper_libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device-mapper:device-mapper-libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device-mapper:device_mapper_libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device:device-mapper-libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device:device_mapper_libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device_mapper:device-mapper-libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device_mapper:device_mapper_libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device_mapper_libs:device-mapper-libs:7:1.02.170-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:device_mapper_libs:device_mapper_libs:7:1.02.170-6.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2",
+      "licenses": [
+        "LGPLv2"
+      ],
+      "origin": "CentOS",
+      "package": "device-mapper-libs",
+      "size": "404687",
+      "sourcepkg": "lvm2-2.02.187-6.el7.src.rpm",
+      "type": "rpm",
+      "version": "7:1.02.170-6.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:diffutils:3.3-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:diffutils:diffutils:3.3-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "diffutils",
+      "size": "1065607",
+      "sourcepkg": "diffutils-3.3-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "3.3-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:dracut:033-572.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dracut:dracut:033-572.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ and LGPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "dracut",
+      "size": "905396",
+      "sourcepkg": "dracut-033-572.el7.src.rpm",
+      "type": "rpm",
+      "version": "033-572.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-default-yama-scope:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-default-yama-scope:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-default-yama:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-default-yama:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-default:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-default:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_default:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_default:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_default_yama:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_default_yama:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_default_yama_scope:elfutils-default-yama-scope:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_default_yama_scope:elfutils_default_yama_scope:0.176-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ or LGPLv3+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv3+",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "elfutils-default-yama-scope",
+      "size": "1810",
+      "sourcepkg": "elfutils-0.176-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.176-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:elfutils-libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:elfutils_libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-libelf:elfutils-libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-libelf:elfutils_libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils:elfutils-libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils:elfutils_libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_libelf:elfutils-libelf:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_libelf:elfutils_libelf:0.176-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ or LGPLv3+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv3+",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "elfutils-libelf",
+      "size": "916150",
+      "sourcepkg": "elfutils-0.176-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.176-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:elfutils-libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:elfutils_libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-libs:elfutils-libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils-libs:elfutils_libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils:elfutils-libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils:elfutils_libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_libs:elfutils-libs:0.176-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:elfutils_libs:elfutils_libs:0.176-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ or LGPLv3+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv3+",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "elfutils-libs",
+      "size": "808799",
+      "sourcepkg": "elfutils-0.176-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.176-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:expat:2.1.0-12.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:expat:expat:2.1.0-12.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "expat",
+      "size": "208323",
+      "sourcepkg": "expat-2.1.0-12.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.1.0-12.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:file-libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:file_libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:file-libs:file-libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:file-libs:file_libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:file:file-libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:file:file_libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:file_libs:file-libs:5.11-37.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:file_libs:file_libs:5.11-37.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "file-libs",
+      "size": "3076741",
+      "sourcepkg": "file-5.11-37.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.11-37.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:filesystem:3.2-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:filesystem:filesystem:3.2-25.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "filesystem",
+      "size": "0",
+      "sourcepkg": "filesystem-3.2-25.el7.src.rpm",
+      "type": "rpm",
+      "version": "3.2-25.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:findutils:1:4.5.11-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:findutils:findutils:1:4.5.11-6.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "findutils",
+      "size": "1855882",
+      "sourcepkg": "findutils-4.5.11-6.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:4.5.11-6.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:gawk:4.0.2-4.el7_3.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gawk:gawk:4.0.2-4.el7_3.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+ and GPL and LGPLv3+ and LGPL and BSD",
+      "licenses": [
+        "BSD",
+        "GPL",
+        "GPLv3+",
+        "LGPL",
+        "LGPLv3+",
+        "and",
+        "and",
+        "and",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "gawk",
+      "size": "2435978",
+      "sourcepkg": "gawk-4.0.2-4.el7_3.1.src.rpm",
+      "type": "rpm",
+      "version": "4.0.2-4.el7_3.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:gdbm:1.10-8.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gdbm:gdbm:1.10-8.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "gdbm",
+      "size": "184322",
+      "sourcepkg": "gdbm-1.10-8.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.10-8.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:glib2:2.56.1-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glib2:glib2:2.56.1-7.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "glib2",
+      "size": "12174241",
+      "sourcepkg": "glib2-2.56.1-7.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.56.1-7.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:glibc:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc:glibc:2.17-323.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ and LGPLv2+ with exceptions and GPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "LGPLv2+",
+        "and",
+        "and",
+        "exceptions",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "glibc",
+      "size": "14100674",
+      "sourcepkg": "glibc-2.17-323.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "2.17-323.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:glibc-common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:glibc_common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc-common:glibc-common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc-common:glibc_common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc:glibc-common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc:glibc_common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc_common:glibc-common:2.17-323.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:glibc_common:glibc_common:2.17-323.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ and LGPLv2+ with exceptions and GPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "LGPLv2+",
+        "and",
+        "and",
+        "exceptions",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "glibc-common",
+      "size": "226621529",
+      "sourcepkg": "glibc-2.17-323.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "2.17-323.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:gmp:1:6.0.0-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gmp:gmp:1:6.0.0-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv3+ or GPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv3+",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "gmp",
+      "size": "657046",
+      "sourcepkg": "gmp-6.0.0-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:6.0.0-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:gnupg2:2.0.22-5.el7_5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gnupg2:gnupg2:2.0.22-5.el7_5:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "gnupg2",
+      "size": "6637796",
+      "sourcepkg": "gnupg2-2.0.22-5.el7_5.src.rpm",
+      "type": "rpm",
+      "version": "2.0.22-5.el7_5"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:gpg-pubkey:gpg-pubkey:352c64e5-52ae6884:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg-pubkey:gpg_pubkey:352c64e5-52ae6884:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg:gpg-pubkey:352c64e5-52ae6884:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg:gpg_pubkey:352c64e5-52ae6884:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg_pubkey:gpg-pubkey:352c64e5-52ae6884:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg_pubkey:gpg_pubkey:352c64e5-52ae6884:*:*:*:*:*:*:*"
+      ],
+      "license": "pubkey",
+      "licenses": [
+        "pubkey"
+      ],
+      "origin": "(none)",
+      "package": "gpg-pubkey",
+      "size": "0",
+      "sourcepkg": "N/A",
+      "type": "rpm",
+      "version": "352c64e5-52ae6884"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:gpgme:1.3.2-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpgme:gpgme:1.3.2-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "gpgme",
+      "size": "547534",
+      "sourcepkg": "gpgme-1.3.2-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.3.2-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:grep:2.20-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:grep:grep:2.20-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "grep",
+      "size": "1195131",
+      "sourcepkg": "grep-2.20-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.20-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:gzip:1.5-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gzip:gzip:1.5-10.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+ and GFDL",
+      "licenses": [
+        "GFDL",
+        "GPLv3+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "gzip",
+      "size": "250440",
+      "sourcepkg": "gzip-1.5-10.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.5-10.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:hardlink:1:1.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:hardlink:hardlink:1:1.0-19.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL+",
+      "licenses": [
+        "GPL+"
+      ],
+      "origin": "CentOS",
+      "package": "hardlink",
+      "size": "16545",
+      "sourcepkg": "hardlink-1.0-19.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:1.0-19.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:info:5.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:info:info:5.1-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "info",
+      "size": "494630",
+      "sourcepkg": "texinfo-5.1-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.1-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:iputils:20160308-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:iputils:iputils:20160308-10.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD and GPLv2+",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "iputils",
+      "size": "343497",
+      "sourcepkg": "iputils-20160308-10.el7.src.rpm",
+      "type": "rpm",
+      "version": "20160308-10.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:json-c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:json_c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:json-c:json-c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:json-c:json_c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:json:json-c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:json:json_c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:json_c:json-c:0.11-4.el7_0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:json_c:json_c:0.11-4.el7_0:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "json-c",
+      "size": "65593",
+      "sourcepkg": "json-c-0.11-4.el7_0.src.rpm",
+      "type": "rpm",
+      "version": "0.11-4.el7_0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:keyutils-libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:keyutils_libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:keyutils-libs:keyutils-libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:keyutils-libs:keyutils_libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:keyutils:keyutils-libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:keyutils:keyutils_libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:keyutils_libs:keyutils-libs:1.5.8-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:keyutils_libs:keyutils_libs:1.5.8-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ and LGPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "keyutils-libs",
+      "size": "42138",
+      "sourcepkg": "keyutils-1.5.8-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.5.8-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:kmod:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod:kmod:20-28.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "kmod",
+      "size": "247868",
+      "sourcepkg": "kmod-20-28.el7.src.rpm",
+      "type": "rpm",
+      "version": "20-28.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:kmod-libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:kmod_libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod-libs:kmod-libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod-libs:kmod_libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod:kmod-libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod:kmod_libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod_libs:kmod-libs:20-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kmod_libs:kmod_libs:20-28.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "kmod-libs",
+      "size": "91800",
+      "sourcepkg": "kmod-20-28.el7.src.rpm",
+      "type": "rpm",
+      "version": "20-28.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:kpartx:0.4.9-133.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:kpartx:kpartx:0.4.9-133.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL+",
+      "licenses": [
+        "GPL+"
+      ],
+      "origin": "CentOS",
+      "package": "kpartx",
+      "size": "41267",
+      "sourcepkg": "device-mapper-multipath-0.4.9-133.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.4.9-133.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:krb5-libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:krb5_libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:krb5-libs:krb5-libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:krb5-libs:krb5_libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:krb5:krb5-libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:krb5:krb5_libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:krb5_libs:krb5-libs:1.15.1-50.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:krb5_libs:krb5_libs:1.15.1-50.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "krb5-libs",
+      "size": "2204240",
+      "sourcepkg": "krb5-1.15.1-50.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.15.1-50.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libacl:2.2.51-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libacl:libacl:2.2.51-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libacl",
+      "size": "37064",
+      "sourcepkg": "acl-2.2.51-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.2.51-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libassuan:2.1.0-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libassuan:libassuan:2.1.0-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ and GPLv3+",
+      "licenses": [
+        "GPLv3+",
+        "LGPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "libassuan",
+      "size": "155391",
+      "sourcepkg": "libassuan-2.1.0-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.1.0-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libattr:2.4.46-13.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libattr:libattr:2.4.46-13.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libattr",
+      "size": "19896",
+      "sourcepkg": "attr-2.4.46-13.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.4.46-13.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libblkid:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libblkid:libblkid:2.23.2-65.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libblkid",
+      "size": "265925",
+      "sourcepkg": "util-linux-2.23.2-65.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.23.2-65.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libcap:2.22-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap:libcap:2.22-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libcap",
+      "size": "107365",
+      "sourcepkg": "libcap-2.22-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.22-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libcap-ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:libcap_ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap-ng:libcap-ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap-ng:libcap_ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap:libcap-ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap:libcap_ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap_ng:libcap-ng:0.7.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap_ng:libcap_ng:0.7.5-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libcap-ng",
+      "size": "50510",
+      "sourcepkg": "libcap-ng-0.7.5-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.7.5-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libcom-err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:libcom_err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom-err:libcom-err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom-err:libcom_err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom:libcom-err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom:libcom_err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom_err:libcom-err:1.42.9-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom_err:libcom_err:1.42.9-19.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "libcom_err",
+      "size": "60425",
+      "sourcepkg": "e2fsprogs-1.42.9-19.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.42.9-19.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libcurl:7.29.0-59.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcurl:libcurl:7.29.0-59.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "libcurl",
+      "size": "439280",
+      "sourcepkg": "curl-7.29.0-59.el7.src.rpm",
+      "type": "rpm",
+      "version": "7.29.0-59.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libdb:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb:libdb:5.3.21-25.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD and LGPLv2 and Sleepycat",
+      "licenses": [
+        "BSD",
+        "LGPLv2",
+        "Sleepycat",
+        "and",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "libdb",
+      "size": "1858144",
+      "sourcepkg": "libdb-5.3.21-25.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.3.21-25.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libdb-utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:libdb_utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb-utils:libdb-utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb-utils:libdb_utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb:libdb-utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb:libdb_utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb_utils:libdb-utils:5.3.21-25.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libdb_utils:libdb_utils:5.3.21-25.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD and LGPLv2 and Sleepycat",
+      "licenses": [
+        "BSD",
+        "LGPLv2",
+        "Sleepycat",
+        "and",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "libdb-utils",
+      "size": "322471",
+      "sourcepkg": "libdb-5.3.21-25.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.3.21-25.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libffi:3.0.13-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libffi:libffi:3.0.13-19.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT and Public Domain",
+      "licenses": [
+        "Domain",
+        "MIT",
+        "Public",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "libffi",
+      "size": "47790",
+      "sourcepkg": "libffi-3.0.13-19.el7.src.rpm",
+      "type": "rpm",
+      "version": "3.0.13-19.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libgcc:4.8.5-44.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcc:libgcc:4.8.5-44.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "GPLv3+",
+        "GPLv3+",
+        "LGPLv2+",
+        "and",
+        "and",
+        "and",
+        "and",
+        "exceptions",
+        "exceptions",
+        "with",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "libgcc",
+      "size": "179272",
+      "sourcepkg": "gcc-4.8.5-44.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.8.5-44.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libgcrypt:1.5.3-14.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcrypt:libgcrypt:1.5.3-14.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libgcrypt",
+      "size": "597727",
+      "sourcepkg": "libgcrypt-1.5.3-14.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.5.3-14.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libgpg-error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:libgpg_error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg-error:libgpg-error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg-error:libgpg_error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg:libgpg-error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg:libgpg_error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg_error:libgpg-error:1.12-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg_error:libgpg_error:1.12-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libgpg-error",
+      "size": "350865",
+      "sourcepkg": "libgpg-error-1.12-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.12-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libidn:1.28-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libidn:libidn:1.28-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ and GPLv3+ and GFDL",
+      "licenses": [
+        "GFDL",
+        "GPLv3+",
+        "LGPLv2+",
+        "and",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "libidn",
+      "size": "630407",
+      "sourcepkg": "libidn-1.28-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.28-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libmount:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libmount:libmount:2.23.2-65.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libmount",
+      "size": "278157",
+      "sourcepkg": "util-linux-2.23.2-65.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.23.2-65.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libpwquality:1.2.3-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpwquality:libpwquality:1.2.3-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD or GPLv2+",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "libpwquality",
+      "size": "332421",
+      "sourcepkg": "libpwquality-1.2.3-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.2.3-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libselinux:2.5-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libselinux:libselinux:2.5-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "libselinux",
+      "size": "217762",
+      "sourcepkg": "libselinux-2.5-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.5-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libsemanage:2.5-14.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsemanage:libsemanage:2.5-14.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libsemanage",
+      "size": "302329",
+      "sourcepkg": "libsemanage-2.5-14.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.5-14.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libsepol:2.5-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsepol:libsepol:2.5-10.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libsepol",
+      "size": "686640",
+      "sourcepkg": "libsepol-2.5-10.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.5-10.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libsmartcols:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsmartcols:libsmartcols:2.23.2-65.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libsmartcols",
+      "size": "168720",
+      "sourcepkg": "util-linux-2.23.2-65.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.23.2-65.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libssh2:1.8.0-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libssh2:libssh2:1.8.0-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "libssh2",
+      "size": "191488",
+      "sourcepkg": "libssh2-1.8.0-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.8.0-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libstdc++:4.8.5-44.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libstdc++:libstdc++:4.8.5-44.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+ and GPLv3+ with exceptions and GPLv2+ with exceptions and LGPLv2+ and BSD",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "GPLv3+",
+        "GPLv3+",
+        "LGPLv2+",
+        "and",
+        "and",
+        "and",
+        "and",
+        "exceptions",
+        "exceptions",
+        "with",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "libstdc++",
+      "size": "1081666",
+      "sourcepkg": "gcc-4.8.5-44.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.8.5-44.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libtasn1:4.10-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtasn1:libtasn1:4.10-1.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+ and LGPLv2+",
+      "licenses": [
+        "GPLv3+",
+        "LGPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "libtasn1",
+      "size": "424486",
+      "sourcepkg": "libtasn1-4.10-1.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.10-1.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libuser:0.60-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libuser:libuser:0.60-9.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libuser",
+      "size": "1952592",
+      "sourcepkg": "libuser-0.60-9.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.60-9.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libutempter:1.1.6-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libutempter:libutempter:1.1.6-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "libutempter",
+      "size": "49749",
+      "sourcepkg": "libutempter-1.1.6-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.1.6-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libuuid:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libuuid:libuuid:2.23.2-65.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "libuuid",
+      "size": "20278",
+      "sourcepkg": "util-linux-2.23.2-65.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.23.2-65.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libverto:0.2.5-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libverto:libverto:0.2.5-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "libverto",
+      "size": "23060",
+      "sourcepkg": "libverto-0.2.5-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.2.5-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libxml2:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2:libxml2:2.9.1-6.el7.5:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "libxml2",
+      "size": "1706150",
+      "sourcepkg": "libxml2-2.9.1-6.el7.5.src.rpm",
+      "type": "rpm",
+      "version": "2.9.1-6.el7.5"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:libxml2-python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:libxml2_python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2-python:libxml2-python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2-python:libxml2_python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2:libxml2-python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2:libxml2_python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2_python:libxml2-python:2.9.1-6.el7.5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libxml2_python:libxml2_python:2.9.1-6.el7.5:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "libxml2-python",
+      "size": "1503122",
+      "sourcepkg": "libxml2-2.9.1-6.el7.5.src.rpm",
+      "type": "rpm",
+      "version": "2.9.1-6.el7.5"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:lua:5.1.4-15.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lua:lua:5.1.4-15.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "lua",
+      "size": "640319",
+      "sourcepkg": "lua-5.1.4-15.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.1.4-15.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:lz4:1.8.3-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lz4:lz4:1.8.3-1.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ and BSD",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "lz4",
+      "size": "205463",
+      "sourcepkg": "lz4-1.8.3-1.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.8.3-1.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:ncurses:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses:5.9-14.20130511.el7_4:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "ncurses",
+      "size": "439378",
+      "sourcepkg": "ncurses-5.9-14.20130511.el7_4.src.rpm",
+      "type": "rpm",
+      "version": "5.9-14.20130511.el7_4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:ncurses-base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:ncurses_base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses-base:ncurses-base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses-base:ncurses_base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses-base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses_base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_base:ncurses-base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_base:ncurses_base:5.9-14.20130511.el7_4:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "ncurses-base",
+      "size": "223432",
+      "sourcepkg": "ncurses-5.9-14.20130511.el7_4.src.rpm",
+      "type": "rpm",
+      "version": "5.9-14.20130511.el7_4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:ncurses-libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:ncurses_libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses-libs:ncurses-libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses-libs:ncurses_libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses-libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses_libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_libs:ncurses-libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_libs:ncurses_libs:5.9-14.20130511.el7_4:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "ncurses-libs",
+      "size": "1028216",
+      "sourcepkg": "ncurses-5.9-14.20130511.el7_4.src.rpm",
+      "type": "rpm",
+      "version": "5.9-14.20130511.el7_4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nspr:4.25.0-2.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nspr:nspr:4.25.0-2.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nspr",
+      "size": "287584",
+      "sourcepkg": "nspr-4.25.0-2.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "4.25.0-2.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss:3.53.1-3.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nss",
+      "size": "2517410",
+      "sourcepkg": "nss-3.53.1-3.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "3.53.1-3.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss-pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:nss_pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-pem:nss-pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-pem:nss_pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss-pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss_pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_pem:nss-pem:1.0.3-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_pem:nss_pem:1.0.3-7.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv1.1",
+      "licenses": [
+        "MPLv1.1"
+      ],
+      "origin": "CentOS",
+      "package": "nss-pem",
+      "size": "205531",
+      "sourcepkg": "nss-pem-1.0.3-7.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.0.3-7.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss-softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:nss_softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-softokn:nss-softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-softokn:nss_softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss-softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss_softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_softokn:nss-softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_softokn:nss_softokn:3.53.1-6.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nss-softokn",
+      "size": "1342870",
+      "sourcepkg": "nss-softokn-3.53.1-6.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "3.53.1-6.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss-softokn-freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:nss_softokn_freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-softokn-freebl:nss-softokn-freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-softokn-freebl:nss_softokn_freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-softokn:nss-softokn-freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-softokn:nss_softokn_freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss-softokn-freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss_softokn_freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_softokn:nss-softokn-freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_softokn:nss_softokn_freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_softokn_freebl:nss-softokn-freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_softokn_freebl:nss_softokn_freebl:3.53.1-6.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nss-softokn-freebl",
+      "size": "754620",
+      "sourcepkg": "nss-softokn-3.53.1-6.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "3.53.1-6.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss-sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:nss_sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-sysinit:nss-sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-sysinit:nss_sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss-sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss_sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_sysinit:nss-sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_sysinit:nss_sysinit:3.53.1-3.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nss-sysinit",
+      "size": "14111",
+      "sourcepkg": "nss-3.53.1-3.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "3.53.1-3.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss-tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:nss_tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-tools:nss-tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-tools:nss_tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss-tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss_tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_tools:nss-tools:3.53.1-3.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_tools:nss_tools:3.53.1-3.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nss-tools",
+      "size": "2152752",
+      "sourcepkg": "nss-3.53.1-3.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "3.53.1-3.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:nss-util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:nss_util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-util:nss-util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss-util:nss_util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss-util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss:nss_util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_util:nss-util:3.53.1-1.el7_9:*:*:*:*:*:*:*",
+        "cpe:2.3:a:nss_util:nss_util:3.53.1-1.el7_9:*:*:*:*:*:*:*"
+      ],
+      "license": "MPLv2.0",
+      "licenses": [
+        "MPLv2.0"
+      ],
+      "origin": "CentOS",
+      "package": "nss-util",
+      "size": "198968",
+      "sourcepkg": "nss-util-3.53.1-1.el7_9.src.rpm",
+      "type": "rpm",
+      "version": "3.53.1-1.el7_9"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:openldap:2.4.44-22.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openldap:openldap:2.4.44-22.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "OpenLDAP",
+      "licenses": [
+        "OpenLDAP"
+      ],
+      "origin": "CentOS",
+      "package": "openldap",
+      "size": "1037088",
+      "sourcepkg": "openldap-2.4.44-22.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.4.44-22.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:openssl-libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:openssl_libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openssl-libs:openssl-libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openssl-libs:openssl_libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openssl:openssl-libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openssl:openssl_libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openssl_libs:openssl-libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openssl_libs:openssl_libs:1:1.0.2k-19.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "OpenSSL",
+      "licenses": [
+        "OpenSSL"
+      ],
+      "origin": "CentOS",
+      "package": "openssl-libs",
+      "size": "3208684",
+      "sourcepkg": "openssl-1.0.2k-19.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:1.0.2k-19.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:p11-kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:p11_kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11-kit:p11-kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11-kit:p11_kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11:p11-kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11:p11_kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11_kit:p11-kit:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11_kit:p11_kit:0.23.5-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "p11-kit",
+      "size": "1337825",
+      "sourcepkg": "p11-kit-0.23.5-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.23.5-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:p11-kit-trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:p11_kit_trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11-kit-trust:p11-kit-trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11-kit-trust:p11_kit_trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11-kit:p11-kit-trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11-kit:p11_kit_trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11:p11-kit-trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11:p11_kit_trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11_kit:p11-kit-trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11_kit:p11_kit_trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11_kit_trust:p11-kit-trust:0.23.5-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:p11_kit_trust:p11_kit_trust:0.23.5-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "p11-kit-trust",
+      "size": "437261",
+      "sourcepkg": "p11-kit-0.23.5-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.23.5-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pam:1.1.8-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pam:pam:1.1.8-23.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD and GPLv2+",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "pam",
+      "size": "2632373",
+      "sourcepkg": "pam-1.1.8-23.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.1.8-23.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:passwd:0.79-6.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:passwd:passwd:0.79-6.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD or GPL+",
+      "licenses": [
+        "BSD",
+        "GPL+",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "passwd",
+      "size": "430226",
+      "sourcepkg": "passwd-0.79-6.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.79-6.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pcre:8.32-17.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pcre:pcre:8.32-17.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "origin": "CentOS",
+      "package": "pcre",
+      "size": "1475532",
+      "sourcepkg": "pcre-8.32-17.el7.src.rpm",
+      "type": "rpm",
+      "version": "8.32-17.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pinentry:0.8.1-17.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pinentry:pinentry:0.8.1-17.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "pinentry",
+      "size": "159929",
+      "sourcepkg": "pinentry-0.8.1-17.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.8.1-17.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pkgconfig:1:0.27.1-4.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pkgconfig:pkgconfig:1:0.27.1-4.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "pkgconfig",
+      "size": "105522",
+      "sourcepkg": "pkgconfig-0.27.1-4.el7.src.rpm",
+      "type": "rpm",
+      "version": "1:0.27.1-4.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:popt:1.13-16.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:popt:popt:1.13-16.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "popt",
+      "size": "88516",
+      "sourcepkg": "popt-1.13-16.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.13-16.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:procps-ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:procps_ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:procps-ng:procps-ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:procps-ng:procps_ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:procps:procps-ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:procps:procps_ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:procps_ng:procps-ng:3.3.10-28.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:procps_ng:procps_ng:3.3.10-28.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL+ and GPLv2 and GPLv2+ and GPLv3+ and LGPLv2+",
+      "licenses": [
+        "GPL+",
+        "GPLv2",
+        "GPLv2+",
+        "GPLv3+",
+        "LGPLv2+",
+        "and",
+        "and",
+        "and",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "procps-ng",
+      "size": "759395",
+      "sourcepkg": "procps-ng-3.3.10-28.el7.src.rpm",
+      "type": "rpm",
+      "version": "3.3.10-28.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pth:2.0.7-23.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pth:pth:2.0.7-23.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "pth",
+      "size": "267851",
+      "sourcepkg": "pth-2.0.7-23.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.0.7-23.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pygpgme:0.3-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pygpgme:pygpgme:0.3-9.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "pygpgme",
+      "size": "197501",
+      "sourcepkg": "pygpgme-0.3-9.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.3-9.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pyliblzma:0.5.3-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pyliblzma:pyliblzma:0.5.3-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv3+",
+      "licenses": [
+        "LGPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "pyliblzma",
+      "size": "190112",
+      "sourcepkg": "pyliblzma-0.5.3-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.5.3-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python:2.7.5-89.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Python",
+      "licenses": [
+        "Python"
+      ],
+      "origin": "CentOS",
+      "package": "python",
+      "size": "80835",
+      "sourcepkg": "python-2.7.5-89.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.7.5-89.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python-chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:python_chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-chardet:python-chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-chardet:python_chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_chardet:python-chardet:2.2.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_chardet:python_chardet:2.2.1-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2",
+      "licenses": [
+        "LGPLv2"
+      ],
+      "origin": "CentOS",
+      "package": "python-chardet",
+      "size": "1156541",
+      "sourcepkg": "python-chardet-2.2.1-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.2.1-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python-iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:python_iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-iniparse:python-iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-iniparse:python_iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_iniparse:python-iniparse:0.4-9.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_iniparse:python_iniparse:0.4-9.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "CentOS",
+      "package": "python-iniparse",
+      "size": "115166",
+      "sourcepkg": "python-iniparse-0.4-9.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.4-9.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python-kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:python_kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-kitchen:python-kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-kitchen:python_kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_kitchen:python-kitchen:1.1.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_kitchen:python_kitchen:1.1.1-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "python-kitchen",
+      "size": "1465161",
+      "sourcepkg": "python-kitchen-1.1.1-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.1.1-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python-libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:python_libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-libs:python-libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-libs:python_libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_libs:python-libs:2.7.5-89.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_libs:python_libs:2.7.5-89.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Python",
+      "licenses": [
+        "Python"
+      ],
+      "origin": "CentOS",
+      "package": "python-libs",
+      "size": "24713996",
+      "sourcepkg": "python-2.7.5-89.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.7.5-89.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python-pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:python_pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-pycurl:python-pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-pycurl:python_pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_pycurl:python-pycurl:7.19.0-19.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_pycurl:python_pycurl:7.19.0-19.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ or MIT",
+      "licenses": [
+        "LGPLv2+",
+        "MIT",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "python-pycurl",
+      "size": "241513",
+      "sourcepkg": "python-pycurl-7.19.0-19.el7.src.rpm",
+      "type": "rpm",
+      "version": "7.19.0-19.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:python-urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:python_urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-urlgrabber:python-urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-urlgrabber:python_urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_urlgrabber:python-urlgrabber:3.10-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_urlgrabber:python_urlgrabber:3.10-10.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "python-urlgrabber",
+      "size": "503358",
+      "sourcepkg": "python-urlgrabber-3.10-10.el7.src.rpm",
+      "type": "rpm",
+      "version": "3.10-10.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:pyxattr:0.5.1-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:pyxattr:pyxattr:0.5.1-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "pyxattr",
+      "size": "63304",
+      "sourcepkg": "pyxattr-0.5.1-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "0.5.1-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:qrencode-libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:qrencode_libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:qrencode-libs:qrencode-libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:qrencode-libs:qrencode_libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:qrencode:qrencode-libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:qrencode:qrencode_libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:qrencode_libs:qrencode-libs:3.4.1-3.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:qrencode_libs:qrencode_libs:3.4.1-3.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "qrencode-libs",
+      "size": "126732",
+      "sourcepkg": "qrencode-3.4.1-3.el7.src.rpm",
+      "type": "rpm",
+      "version": "3.4.1-3.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:readline:6.2-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:readline:readline:6.2-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "readline",
+      "size": "460424",
+      "sourcepkg": "readline-6.2-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "6.2-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:rootfiles:8.1-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rootfiles:rootfiles:8.1-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "rootfiles",
+      "size": "599",
+      "sourcepkg": "rootfiles-8.1-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "8.1-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:rpm:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm:4.11.3-45.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "rpm",
+      "size": "2622621",
+      "sourcepkg": "rpm-4.11.3-45.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.11.3-45.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:rpm-build-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:rpm_build_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-build-libs:rpm-build-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-build-libs:rpm_build_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-build:rpm-build-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-build:rpm_build_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm-build-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm_build_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_build:rpm-build-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_build:rpm_build_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_build_libs:rpm-build-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_build_libs:rpm_build_libs:4.11.3-45.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ and LGPLv2+ with exceptions",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "and",
+        "exceptions",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "rpm-build-libs",
+      "size": "166664",
+      "sourcepkg": "rpm-4.11.3-45.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.11.3-45.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:rpm-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:rpm_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-libs:rpm-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-libs:rpm_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm_libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_libs:rpm-libs:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_libs:rpm_libs:4.11.3-45.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+ and LGPLv2+ with exceptions",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "and",
+        "exceptions",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "rpm-libs",
+      "size": "611384",
+      "sourcepkg": "rpm-4.11.3-45.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.11.3-45.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:rpm-python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:rpm_python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-python:rpm-python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm-python:rpm_python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm-python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm:rpm_python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_python:rpm-python:4.11.3-45.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:rpm_python:rpm_python:4.11.3-45.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "rpm-python",
+      "size": "149762",
+      "sourcepkg": "rpm-4.11.3-45.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.11.3-45.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:sed:4.2.2-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sed:sed:4.2.2-7.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "sed",
+      "size": "601267",
+      "sourcepkg": "sed-4.2.2-7.el7.src.rpm",
+      "type": "rpm",
+      "version": "4.2.2-7.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:setup:2.8.71-11.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:setup:setup:2.8.71-11.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "setup",
+      "size": "697141",
+      "sourcepkg": "setup-2.8.71-11.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.8.71-11.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:shadow-utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:shadow_utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shadow-utils:shadow-utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shadow-utils:shadow_utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shadow:shadow-utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shadow:shadow_utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shadow_utils:shadow-utils:2:4.6-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shadow_utils:shadow_utils:2:4.6-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD and GPLv2+",
+      "licenses": [
+        "BSD",
+        "GPLv2+",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "shadow-utils",
+      "size": "3887289",
+      "sourcepkg": "shadow-utils-4.6-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "2:4.6-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:shared-mime-info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:shared_mime_info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime-info:shared-mime-info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime-info:shared_mime_info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime:shared-mime-info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime:shared_mime_info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared:shared-mime-info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared:shared_mime_info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime:shared-mime-info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime:shared_mime_info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime_info:shared-mime-info:1.8-5.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime_info:shared_mime_info:1.8-5.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "shared-mime-info",
+      "size": "2379876",
+      "sourcepkg": "shared-mime-info-1.8-5.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.8-5.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:sqlite:3.7.17-8.el7_7.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sqlite:sqlite:3.7.17-8.el7_7.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "sqlite",
+      "size": "814303",
+      "sourcepkg": "sqlite-3.7.17-8.el7_7.1.src.rpm",
+      "type": "rpm",
+      "version": "3.7.17-8.el7_7.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:systemd:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd:systemd:219-78.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ and MIT and GPLv2+",
+      "licenses": [
+        "GPLv2+",
+        "LGPLv2+",
+        "MIT",
+        "and",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "systemd",
+      "size": "24444122",
+      "sourcepkg": "systemd-219-78.el7.src.rpm",
+      "type": "rpm",
+      "version": "219-78.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:systemd-libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:systemd_libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd-libs:systemd-libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd-libs:systemd_libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd:systemd-libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd:systemd_libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd_libs:systemd-libs:219-78.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:systemd_libs:systemd_libs:219-78.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+ and MIT",
+      "licenses": [
+        "LGPLv2+",
+        "MIT",
+        "and"
+      ],
+      "origin": "CentOS",
+      "package": "systemd-libs",
+      "size": "1262592",
+      "sourcepkg": "systemd-219-78.el7.src.rpm",
+      "type": "rpm",
+      "version": "219-78.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:tar:2:1.26-35.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:tar:tar:2:1.26-35.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv3+",
+      "licenses": [
+        "GPLv3+"
+      ],
+      "origin": "CentOS",
+      "package": "tar",
+      "size": "2838510",
+      "sourcepkg": "tar-1.26-35.el7.src.rpm",
+      "type": "rpm",
+      "version": "2:1.26-35.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:tzdata:2020d-2.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:tzdata:tzdata:2020d-2.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Public Domain",
+      "licenses": [
+        "Domain",
+        "Public"
+      ],
+      "origin": "CentOS",
+      "package": "tzdata",
+      "size": "2066449",
+      "sourcepkg": "tzdata-2020d-2.el7.src.rpm",
+      "type": "rpm",
+      "version": "2020d-2.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:ustr:1.0.4-16.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ustr:ustr:1.0.4-16.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT or LGPLv2+ or BSD",
+      "licenses": [
+        "BSD",
+        "LGPLv2+",
+        "MIT",
+        "or",
+        "or"
+      ],
+      "origin": "CentOS",
+      "package": "ustr",
+      "size": "285943",
+      "sourcepkg": "ustr-1.0.4-16.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.0.4-16.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:util-linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:util_linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util-linux:util-linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util-linux:util_linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util:util-linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util:util_linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util_linux:util-linux:2.23.2-65.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util_linux:util_linux:2.23.2-65.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2 and GPLv2+ and LGPLv2+ and BSD with advertising and Public Domain",
+      "licenses": [
+        "BSD",
+        "Domain",
+        "GPLv2",
+        "GPLv2+",
+        "LGPLv2+",
+        "Public",
+        "advertising",
+        "and",
+        "and",
+        "and",
+        "and",
+        "with"
+      ],
+      "origin": "CentOS",
+      "package": "util-linux",
+      "size": "8482888",
+      "sourcepkg": "util-linux-2.23.2-65.el7.src.rpm",
+      "type": "rpm",
+      "version": "2.23.2-65.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:vim-minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:vim_minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:vim-minimal:vim-minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:vim-minimal:vim_minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:vim:vim-minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:vim:vim_minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:vim_minimal:vim-minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:vim_minimal:vim_minimal:2:7.4.629-7.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "Vim",
+      "licenses": [
+        "Vim"
+      ],
+      "origin": "CentOS",
+      "package": "vim-minimal",
+      "size": "935624",
+      "sourcepkg": "vim-7.4.629-7.el7.src.rpm",
+      "type": "rpm",
+      "version": "2:7.4.629-7.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:xz:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz:xz:5.2.2-1.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "xz",
+      "size": "798130",
+      "sourcepkg": "xz-5.2.2-1.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.2.2-1.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:xz-libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:xz_libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz-libs:xz-libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz-libs:xz_libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz:xz-libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz:xz_libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz_libs:xz-libs:5.2.2-1.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xz_libs:xz_libs:5.2.2-1.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPLv2+",
+      "licenses": [
+        "LGPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "xz-libs",
+      "size": "239967",
+      "sourcepkg": "xz-5.2.2-1.el7.src.rpm",
+      "type": "rpm",
+      "version": "5.2.2-1.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:yum:3.4.3-168.el7.centos:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum:3.4.3-168.el7.centos:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "yum",
+      "size": "5829237",
+      "sourcepkg": "yum-3.4.3-168.el7.centos.src.rpm",
+      "type": "rpm",
+      "version": "3.4.3-168.el7.centos"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:yum-metadata-parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:yum_metadata_parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-metadata-parser:yum-metadata-parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-metadata-parser:yum_metadata_parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-metadata:yum-metadata-parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-metadata:yum_metadata_parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum-metadata-parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum_metadata_parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_metadata:yum-metadata-parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_metadata:yum_metadata_parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_metadata_parser:yum-metadata-parser:1.1.4-10.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_metadata_parser:yum_metadata_parser:1.1.4-10.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2",
+      "licenses": [
+        "GPLv2"
+      ],
+      "origin": "CentOS",
+      "package": "yum-metadata-parser",
+      "size": "58789",
+      "sourcepkg": "yum-metadata-parser-1.1.4-10.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.1.4-10.el7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:yum-plugin-fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:yum_plugin_fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin-fastestmirror:yum-plugin-fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin-fastestmirror:yum_plugin_fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin:yum-plugin-fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin:yum_plugin_fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum-plugin-fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum_plugin_fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin:yum-plugin-fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin:yum_plugin_fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin_fastestmirror:yum-plugin-fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin_fastestmirror:yum_plugin_fastestmirror:1.1.31-54.el7_8:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "yum-plugin-fastestmirror",
+      "size": "53897",
+      "sourcepkg": "yum-utils-1.1.31-54.el7_8.src.rpm",
+      "type": "rpm",
+      "version": "1.1.31-54.el7_8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:yum-plugin-ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:yum_plugin_ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin-ovl:yum-plugin-ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin-ovl:yum_plugin_ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin:yum-plugin-ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-plugin:yum_plugin_ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum-plugin-ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum_plugin_ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin:yum-plugin-ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin:yum_plugin_ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin_ovl:yum-plugin-ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_plugin_ovl:yum_plugin_ovl:1.1.31-54.el7_8:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "yum-plugin-ovl",
+      "size": "22399",
+      "sourcepkg": "yum-utils-1.1.31-54.el7_8.src.rpm",
+      "type": "rpm",
+      "version": "1.1.31-54.el7_8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:yum-utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:centos:yum_utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-utils:yum-utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum-utils:yum_utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum-utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum:yum_utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_utils:yum-utils:1.1.31-54.el7_8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:yum_utils:yum_utils:1.1.31-54.el7_8:*:*:*:*:*:*:*"
+      ],
+      "license": "GPLv2+",
+      "licenses": [
+        "GPLv2+"
+      ],
+      "origin": "CentOS",
+      "package": "yum-utils",
+      "size": "345576",
+      "sourcepkg": "yum-utils-1.1.31-54.el7_8.src.rpm",
+      "type": "rpm",
+      "version": "1.1.31-54.el7_8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:centos:zlib:1.2.7-18.el7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:zlib:zlib:1.2.7-18.el7:*:*:*:*:*:*:*"
+      ],
+      "license": "zlib and Boost",
+      "licenses": [
+        "Boost",
+        "and",
+        "zlib"
+      ],
+      "origin": "CentOS",
+      "package": "zlib",
+      "size": "185294",
+      "sourcepkg": "zlib-1.2.7-18.el7.src.rpm",
+      "type": "rpm",
+      "version": "1.2.7-18.el7"
+    }
+  ],
+  "content_type": "os",
+  "imageDigest": "sha256:fe3ca35038008b0eac0fa4e686bd072c9430000ab7d7853001bde5f5b8ccf60c"
+}

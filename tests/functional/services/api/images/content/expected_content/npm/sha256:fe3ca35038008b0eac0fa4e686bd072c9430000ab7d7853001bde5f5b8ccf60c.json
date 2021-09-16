@@ -1,0 +1,36 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:*:xmldom:0.4.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xmldom:xmldom:0.4.0:*:*:*:*:*:*:*"
+      ],
+      "license": "(LGPL-2.0 OR MIT)",
+      "licenses": [
+        "(LGPL-2.0 OR MIT)"
+      ],
+      "location": "/root/.npm/xmldom/0.4.0/package/package.json",
+      "origin": "jindw <jindw@xidea.org> (http://www.xidea.org)",
+      "package": "xmldom",
+      "type": "NPM",
+      "version": "0.4.0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:*:xmldom:0.4.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xmldom:xmldom:0.4.0:*:*:*:*:*:*:*"
+      ],
+      "license": "(LGPL-2.0 OR MIT)",
+      "licenses": [
+        "(LGPL-2.0 OR MIT)"
+      ],
+      "location": "/sandbox/node_modules/xmldom/package.json",
+      "origin": "jindw <jindw@xidea.org> (http://www.xidea.org)",
+      "package": "xmldom",
+      "type": "NPM",
+      "version": "0.4.0"
+    }
+  ],
+  "content_type": "npm",
+  "imageDigest": "sha256:fe3ca35038008b0eac0fa4e686bd072c9430000ab7d7853001bde5f5b8ccf60c"
+}

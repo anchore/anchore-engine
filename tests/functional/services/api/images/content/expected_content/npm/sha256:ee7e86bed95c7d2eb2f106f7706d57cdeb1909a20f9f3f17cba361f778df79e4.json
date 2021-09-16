@@ -1,0 +1,21 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:*:lodash:4.17.21:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lodash:lodash:4.17.21:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "location": "/sandbox/node_modules/lodash/package.json",
+      "origin": "John-David Dalton <john.david.dalton@gmail.com>",
+      "package": "lodash",
+      "type": "NPM",
+      "version": "4.17.21"
+    }
+  ],
+  "content_type": "npm",
+  "imageDigest": "sha256:ee7e86bed95c7d2eb2f106f7706d57cdeb1909a20f9f3f17cba361f778df79e4"
+}

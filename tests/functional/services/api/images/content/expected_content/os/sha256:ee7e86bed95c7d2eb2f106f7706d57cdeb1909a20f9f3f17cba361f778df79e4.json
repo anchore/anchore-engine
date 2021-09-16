@@ -1,0 +1,2703 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:adduser:adduser:3.118ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2",
+      "licenses": [
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "adduser",
+      "size": "624000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.118ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:apt:apt:2.0.6:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPLv2+",
+      "licenses": [
+        "GPL-2",
+        "GPLv2+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "apt",
+      "size": "4209000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "2.0.6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:at-spi2-core:at-spi2-core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at-spi2-core:at_spi2_core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at-spi2:at-spi2-core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at-spi2:at_spi2_core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at:at-spi2-core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at:at_spi2_core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at_spi2:at-spi2-core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at_spi2:at_spi2_core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at_spi2_core:at-spi2-core:2.36.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:at_spi2_core:at_spi2_core:2.36.0-2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "at-spi2-core",
+      "size": "284000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "2.36.0-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:base-files:base-files:11ubuntu5.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base-files:base_files:11ubuntu5.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base:base-files:11ubuntu5.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base:base_files:11ubuntu5.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base_files:base-files:11ubuntu5.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base_files:base_files:11ubuntu5.4:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "base-files",
+      "size": "392000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "11ubuntu5.4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:base-passwd:base-passwd:3.5.47:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base-passwd:base_passwd:3.5.47:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base:base-passwd:3.5.47:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base:base_passwd:3.5.47:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base_passwd:base-passwd:3.5.47:*:*:*:*:*:*:*",
+        "cpe:2.3:a:base_passwd:base_passwd:3.5.47:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 PD",
+      "licenses": [
+        "GPL-2",
+        "PD"
+      ],
+      "origin": "Colin Watson <cjwatson@debian.org> (maintainer)",
+      "package": "base-passwd",
+      "size": "233000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.5.47"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:bash:bash:5.0-6ubuntu1.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-3",
+      "licenses": [
+        "GPL-3"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "bash",
+      "size": "1656000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "5.0-6ubuntu1.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:bsdutils:bsdutils:1:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "bsdutils",
+      "size": "303000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "1:2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:bzip2:bzip2:1.0.8-2:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-variant GPL-2",
+      "licenses": [
+        "BSD-variant",
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "bzip2",
+      "size": "195000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.0.8-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ca-certificates:ca-certificates:20210119~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates:ca_certificates:20210119~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca-certificates:20210119~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca_certificates:20210119~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca-certificates:20210119~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca_certificates:20210119~20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2+ MPL-2.0",
+      "licenses": [
+        "GPL-2",
+        "GPL-2+",
+        "MPL-2.0"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "ca-certificates",
+      "size": "381000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "20210119~20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ca-certificates-java:ca-certificates-java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates-java:ca_certificates_java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates:ca-certificates-java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates:ca_certificates_java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca-certificates-java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca_certificates_java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca-certificates-java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca_certificates_java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates_java:ca-certificates-java:20190405ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates_java:ca_certificates_java:20190405ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "ca-certificates-java",
+      "size": "43000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "20190405ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:coreutils:coreutils:8.30-3ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-3",
+      "licenses": [
+        "GPL-3"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "coreutils",
+      "size": "7196000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "8.30-3ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:dash:dash:0.5.10.2-6:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "dash",
+      "size": "212000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "0.5.10.2-6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:dbus:dbus:1.12.16-2ubuntu2.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "dbus",
+      "size": "618000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.12.16-2ubuntu2.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:debconf:debconf:1.5.73:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause",
+      "licenses": [
+        "BSD-2-clause"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "debconf",
+      "size": "520000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.5.73"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:debianutils:debianutils:4.9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "debianutils",
+      "size": "230000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "4.9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:diffutils:diffutils:1:3.7-3:*:*:*:*:*:*:*"
+      ],
+      "license": "GFDL GPL",
+      "licenses": [
+        "GFDL",
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "diffutils",
+      "size": "532000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1:3.7-3"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:dirmngr:dirmngr:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "dirmngr",
+      "size": "918000",
+      "sourcepkg": "gnupg2",
+      "type": "dpkg",
+      "version": "2.2.19-3ubuntu2.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:dpkg:dpkg:1.19.7ubuntu3:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause GPL-2 GPL-2+ public-domain-md5 public-domain-s-s-d",
+      "licenses": [
+        "BSD-2-clause",
+        "GPL-2",
+        "GPL-2+",
+        "public-domain-md5",
+        "public-domain-s-s-d"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "dpkg",
+      "size": "6740000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.19.7ubuntu3"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:dpkg-dev:dpkg-dev:1.19.7ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dpkg-dev:dpkg_dev:1.19.7ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dpkg:dpkg-dev:1.19.7ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dpkg:dpkg_dev:1.19.7ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dpkg_dev:dpkg-dev:1.19.7ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:dpkg_dev:dpkg_dev:1.19.7ubuntu3:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "dpkg-dev",
+      "size": "2074000",
+      "sourcepkg": "dpkg",
+      "type": "dpkg",
+      "version": "1.19.7ubuntu3"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:e2fsprogs:e2fsprogs:1.45.5-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL-2",
+      "licenses": [
+        "GPL-2",
+        "LGPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "e2fsprogs",
+      "size": "1491000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.45.5-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:fdisk:fdisk:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "fdisk",
+      "size": "505000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:findutils:findutils:4.7.0-1ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "GFDL-1.3 GPL-3",
+      "licenses": [
+        "GFDL-1.3",
+        "GPL-3"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "findutils",
+      "size": "668000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "4.7.0-1ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:fontconfig-config:fontconfig-config:2.13.1-2ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fontconfig-config:fontconfig_config:2.13.1-2ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fontconfig:fontconfig-config:2.13.1-2ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fontconfig:fontconfig_config:2.13.1-2ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fontconfig_config:fontconfig-config:2.13.1-2ubuntu3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fontconfig_config:fontconfig_config:2.13.1-2ubuntu3:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "fontconfig-config",
+      "size": "170000",
+      "sourcepkg": "fontconfig",
+      "type": "dpkg",
+      "version": "2.13.1-2ubuntu3"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:fonts-dejavu-core:fonts-dejavu-core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts-dejavu-core:fonts_dejavu_core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts-dejavu:fonts-dejavu-core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts-dejavu:fonts_dejavu_core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts:fonts-dejavu-core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts:fonts_dejavu_core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts_dejavu:fonts-dejavu-core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts_dejavu:fonts_dejavu_core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts_dejavu_core:fonts-dejavu-core:2.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:fonts_dejavu_core:fonts_dejavu_core:2.37-1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "fonts-dejavu-core",
+      "size": "2954000",
+      "sourcepkg": "fonts-dejavu",
+      "type": "dpkg",
+      "version": "2.37-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:gcc-10-base:gcc-10-base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc-10-base:gcc_10_base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc-10:gcc-10-base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc-10:gcc_10_base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc:gcc-10-base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc:gcc_10_base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc_10:gcc-10-base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc_10:gcc_10_base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc_10_base:gcc-10-base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gcc_10_base:gcc_10_base:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Artistic GFDL-1.2 GPL GPL-2 GPL-3 LGPL",
+      "licenses": [
+        "Artistic",
+        "GFDL-1.2",
+        "GPL",
+        "GPL-2",
+        "GPL-3",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "gcc-10-base",
+      "size": "265000",
+      "sourcepkg": "gcc-10",
+      "type": "dpkg",
+      "version": "10.3.0-1ubuntu1~20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:gpg-agent:gpg-agent:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg-agent:gpg_agent:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg:gpg-agent:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg:gpg_agent:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg_agent:gpg-agent:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:gpg_agent:gpg_agent:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "gpg-agent",
+      "size": "911000",
+      "sourcepkg": "gnupg2",
+      "type": "dpkg",
+      "version": "2.2.19-3ubuntu2.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:gpgv:gpgv:2.2.19-3ubuntu2.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-3-clause CC0-1.0 Expat GPL-3 GPL-3+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ RFC-Reference TinySCHEME permissive",
+      "licenses": [
+        "BSD-3-clause",
+        "CC0-1.0",
+        "Expat",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "RFC-Reference",
+        "TinySCHEME",
+        "permissive"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "gpgv",
+      "size": "499000",
+      "sourcepkg": "gnupg2",
+      "type": "dpkg",
+      "version": "2.2.19-3ubuntu2.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:grep:grep:3.4-1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-3 GPL-3+",
+      "licenses": [
+        "GPL-3",
+        "GPL-3+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "grep",
+      "size": "496000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.4-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:gzip:gzip:1.10-0ubuntu4:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "gzip",
+      "size": "245000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.10-0ubuntu4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:hostname:hostname:3.23:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2",
+      "licenses": [
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "hostname",
+      "size": "54000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.23"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:init-system-helpers:init-system-helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init-system-helpers:init_system_helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init-system:init-system-helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init-system:init_system_helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init:init-system-helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init:init_system_helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init_system:init-system-helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init_system:init_system_helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init_system_helpers:init-system-helpers:1.57:*:*:*:*:*:*:*",
+        "cpe:2.3:a:init_system_helpers:init_system_helpers:1.57:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-3-clause GPL-2 GPL-2+",
+      "licenses": [
+        "BSD-3-clause",
+        "GPL-2",
+        "GPL-2+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "init-system-helpers",
+      "size": "133000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.57"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:java-common:java-common:0.72:*:*:*:*:*:*:*",
+        "cpe:2.3:a:java-common:java_common:0.72:*:*:*:*:*:*:*",
+        "cpe:2.3:a:java:java-common:0.72:*:*:*:*:*:*:*",
+        "cpe:2.3:a:java:java_common:0.72:*:*:*:*:*:*:*",
+        "cpe:2.3:a:java_common:java-common:0.72:*:*:*:*:*:*:*",
+        "cpe:2.3:a:java_common:java_common:0.72:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "java-common",
+      "size": "37000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "0.72"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:javascript-common:javascript-common:11:*:*:*:*:*:*:*",
+        "cpe:2.3:a:javascript-common:javascript_common:11:*:*:*:*:*:*:*",
+        "cpe:2.3:a:javascript:javascript-common:11:*:*:*:*:*:*:*",
+        "cpe:2.3:a:javascript:javascript_common:11:*:*:*:*:*:*:*",
+        "cpe:2.3:a:javascript_common:javascript-common:11:*:*:*:*:*:*:*",
+        "cpe:2.3:a:javascript_common:javascript_common:11:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "javascript-common",
+      "size": "68000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "11"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libacl1:libacl1:2.2.53-6:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2+ LGPL-2+ LGPL-2.1",
+      "licenses": [
+        "GPL-2",
+        "GPL-2+",
+        "LGPL-2+",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libacl1",
+      "size": "70000",
+      "sourcepkg": "acl",
+      "type": "dpkg",
+      "version": "2.2.53-6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libapt-pkg6.0:libapt-pkg6.0:2.0.6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libapt-pkg6.0:libapt_pkg6.0:2.0.6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libapt:libapt-pkg6.0:2.0.6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libapt:libapt_pkg6.0:2.0.6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libapt_pkg6.0:libapt-pkg6.0:2.0.6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libapt_pkg6.0:libapt_pkg6.0:2.0.6:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPLv2+",
+      "licenses": [
+        "GPL-2",
+        "GPLv2+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libapt-pkg6.0",
+      "size": "3303000",
+      "sourcepkg": "apt",
+      "type": "dpkg",
+      "version": "2.0.6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libattr1:libattr1:1:2.4.48-5:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2+ LGPL-2+ LGPL-2.1",
+      "licenses": [
+        "GPL-2",
+        "GPL-2+",
+        "LGPL-2+",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libattr1",
+      "size": "57000",
+      "sourcepkg": "attr",
+      "type": "dpkg",
+      "version": "1:2.4.48-5"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libaudit-common:libaudit-common:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libaudit-common:libaudit_common:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libaudit:libaudit-common:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libaudit:libaudit_common:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libaudit_common:libaudit-common:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libaudit_common:libaudit_common:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-1 GPL-2 LGPL-2.1",
+      "licenses": [
+        "GPL-1",
+        "GPL-2",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libaudit-common",
+      "size": "24000",
+      "sourcepkg": "audit",
+      "type": "dpkg",
+      "version": "1:2.8.5-2ubuntu6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libaudit1:libaudit1:1:2.8.5-2ubuntu6:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-1 GPL-2 LGPL-2.1",
+      "licenses": [
+        "GPL-1",
+        "GPL-2",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libaudit1",
+      "size": "157000",
+      "sourcepkg": "audit",
+      "type": "dpkg",
+      "version": "1:2.8.5-2ubuntu6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libblkid1:libblkid1:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libblkid1",
+      "size": "439000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libbz2-1.0:libbz2-1.0:1.0.8-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libbz2-1.0:libbz2_1.0:1.0.8-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libbz2:libbz2-1.0:1.0.8-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libbz2:libbz2_1.0:1.0.8-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libbz2_1.0:libbz2-1.0:1.0.8-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libbz2_1.0:libbz2_1.0:1.0.8-2:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-variant GPL-2",
+      "licenses": [
+        "BSD-variant",
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libbz2-1.0",
+      "size": "99000",
+      "sourcepkg": "bzip2",
+      "type": "dpkg",
+      "version": "1.0.8-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libc-bin:libc-bin:2.31-0ubuntu9.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc-bin:libc_bin:2.31-0ubuntu9.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc:libc-bin:2.31-0ubuntu9.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc:libc_bin:2.31-0ubuntu9.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc_bin:libc-bin:2.31-0ubuntu9.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc_bin:libc_bin:2.31-0ubuntu9.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL-2.1",
+      "licenses": [
+        "GPL-2",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libc-bin",
+      "size": "3712000",
+      "sourcepkg": "glibc",
+      "type": "dpkg",
+      "version": "2.31-0ubuntu9.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libc6:libc6:2.31-0ubuntu9.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL-2.1",
+      "licenses": [
+        "GPL-2",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libc6",
+      "size": "13246000",
+      "sourcepkg": "glibc",
+      "type": "dpkg",
+      "version": "2.31-0ubuntu9.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libcap-ng0:libcap-ng0:0.7.9-2.1build1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap-ng0:libcap_ng0:0.7.9-2.1build1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap:libcap-ng0:0.7.9-2.1build1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap:libcap_ng0:0.7.9-2.1build1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap_ng0:libcap-ng0:0.7.9-2.1build1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcap_ng0:libcap_ng0:0.7.9-2.1build1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-3 LGPL-2.1",
+      "licenses": [
+        "GPL-2",
+        "GPL-3",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libcap-ng0",
+      "size": "45000",
+      "sourcepkg": "libcap-ng",
+      "type": "dpkg",
+      "version": "0.7.9-2.1build1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libcom-err2:libcom-err2:1.45.5-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom-err2:libcom_err2:1.45.5-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom:libcom-err2:1.45.5-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom:libcom_err2:1.45.5-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom_err2:libcom-err2:1.45.5-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libcom_err2:libcom_err2:1.45.5-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libcom-err2",
+      "size": "100000",
+      "sourcepkg": "e2fsprogs",
+      "type": "dpkg",
+      "version": "1.45.5-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libcrypt1:libcrypt1:1:4.4.10-10ubuntu4:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libcrypt1",
+      "size": "226000",
+      "sourcepkg": "libxcrypt",
+      "type": "dpkg",
+      "version": "1:4.4.10-10ubuntu4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libdb5.3:libdb5.3:5.3.28+dfsg1-0.6ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libdb5.3",
+      "size": "1749000",
+      "sourcepkg": "db5.3",
+      "type": "dpkg",
+      "version": "5.3.28+dfsg1-0.6ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libdebconfclient0:libdebconfclient0:0.251ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libdebconfclient0",
+      "size": "74000",
+      "sourcepkg": "cdebconf",
+      "type": "dpkg",
+      "version": "0.251ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libext2fs2:libext2fs2:1.45.5-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL-2",
+      "licenses": [
+        "GPL-2",
+        "LGPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libext2fs2",
+      "size": "540000",
+      "sourcepkg": "e2fsprogs",
+      "type": "dpkg",
+      "version": "1.45.5-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libfakeroot:libfakeroot:1.24-1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libfakeroot",
+      "size": "157000",
+      "sourcepkg": "fakeroot",
+      "type": "dpkg",
+      "version": "1.24-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libfdisk1:libfdisk1:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libfdisk1",
+      "size": "548000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libffi7:libffi7:3.3-4:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libffi7",
+      "size": "65000",
+      "sourcepkg": "libffi",
+      "type": "dpkg",
+      "version": "3.3-4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgcc-s1:libgcc-s1:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcc-s1:libgcc_s1:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcc:libgcc-s1:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcc:libgcc_s1:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcc_s1:libgcc-s1:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgcc_s1:libgcc_s1:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Artistic GFDL-1.2 GPL GPL-2 GPL-3 LGPL",
+      "licenses": [
+        "Artistic",
+        "GFDL-1.2",
+        "GPL",
+        "GPL-2",
+        "GPL-3",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgcc-s1",
+      "size": "120000",
+      "sourcepkg": "gcc-10",
+      "type": "dpkg",
+      "version": "10.3.0-1ubuntu1~20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgcrypt20:libgcrypt20:1.8.5-5ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL",
+      "licenses": [
+        "GPL-2",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgcrypt20",
+      "size": "1224000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.8.5-5ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgl1-mesa-dri:libgl1-mesa-dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1-mesa-dri:libgl1_mesa_dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1-mesa:libgl1-mesa-dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1-mesa:libgl1_mesa_dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1:libgl1-mesa-dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1:libgl1_mesa_dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1_mesa:libgl1-mesa-dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1_mesa:libgl1_mesa_dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1_mesa_dri:libgl1-mesa-dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgl1_mesa_dri:libgl1_mesa_dri:21.0.3-0ubuntu0.3~20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgl1-mesa-dri",
+      "size": "330668000",
+      "sourcepkg": "mesa",
+      "type": "dpkg",
+      "version": "21.0.3-0ubuntu0.3~20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libglib2.0-0:libglib2.0-0:2.64.6-1~ubuntu20.04.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libglib2.0-0:libglib2.0_0:2.64.6-1~ubuntu20.04.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libglib2.0:libglib2.0-0:2.64.6-1~ubuntu20.04.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libglib2.0:libglib2.0_0:2.64.6-1~ubuntu20.04.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libglib2.0_0:libglib2.0-0:2.64.6-1~ubuntu20.04.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libglib2.0_0:libglib2.0_0:2.64.6-1~ubuntu20.04.4:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libglib2.0-0",
+      "size": "3991000",
+      "sourcepkg": "glib2.0",
+      "type": "dpkg",
+      "version": "2.64.6-1~ubuntu20.04.4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgmp10:libgmp10:2:6.2.0+dfsg-4:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL GPL-2 GPL-3 LGPL-3",
+      "licenses": [
+        "GPL",
+        "GPL-2",
+        "GPL-3",
+        "LGPL-3"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgmp10",
+      "size": "567000",
+      "sourcepkg": "gmp",
+      "type": "dpkg",
+      "version": "2:6.2.0+dfsg-4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgnutls30:libgnutls30:3.6.13-2ubuntu1.6:*:*:*:*:*:*:*"
+      ],
+      "license": "Apache-2.0 BSD-3-Clause CC0 Expat GFDL-1.3 GPL GPL-3 GPLv3+ LGPL LGPL-3 LGPLv2.1+ LGPLv3+_or_GPLv2+ The",
+      "licenses": [
+        "Apache-2.0",
+        "BSD-3-Clause",
+        "CC0",
+        "Expat",
+        "GFDL-1.3",
+        "GPL",
+        "GPL-3",
+        "GPLv3+",
+        "LGPL",
+        "LGPL-3",
+        "LGPLv2.1+",
+        "LGPLv3+_or_GPLv2+",
+        "The"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgnutls30",
+      "size": "2192000",
+      "sourcepkg": "gnutls28",
+      "type": "dpkg",
+      "version": "3.6.13-2ubuntu1.6"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgpg-error0:libgpg-error0:1.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg-error0:libgpg_error0:1.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg:libgpg-error0:1.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg:libgpg_error0:1.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg_error0:libgpg-error0:1.37-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgpg_error0:libgpg_error0:1.37-1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-3-clause GPL-3 GPL-3+ LGPL-2.1 LGPL-2.1+ g10-permissive",
+      "licenses": [
+        "BSD-3-clause",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "g10-permissive"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgpg-error0",
+      "size": "176000",
+      "sourcepkg": "libgpg-error",
+      "type": "dpkg",
+      "version": "1.37-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libgssapi-krb5-2:libgssapi-krb5-2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi-krb5-2:libgssapi_krb5_2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi-krb5:libgssapi-krb5-2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi-krb5:libgssapi_krb5_2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi:libgssapi-krb5-2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi:libgssapi_krb5_2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi_krb5:libgssapi-krb5-2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi_krb5:libgssapi_krb5_2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi_krb5_2:libgssapi-krb5-2:1.17-6ubuntu4.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libgssapi_krb5_2:libgssapi_krb5_2:1.17-6ubuntu4.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libgssapi-krb5-2",
+      "size": "426000",
+      "sourcepkg": "krb5",
+      "type": "dpkg",
+      "version": "1.17-6ubuntu4.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libhogweed5:libhogweed5:3.5.1+really3.5.1-2ubuntu0.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GAP GPL GPL-2 GPL-2+ LGPL LGPL-2 LGPL-2+ LGPL-2.1+ other public-domain",
+      "licenses": [
+        "GAP",
+        "GPL",
+        "GPL-2",
+        "GPL-2+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1+",
+        "other",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libhogweed5",
+      "size": "237000",
+      "sourcepkg": "nettle",
+      "type": "dpkg",
+      "version": "3.5.1+really3.5.1-2ubuntu0.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libidn2-0:libidn2-0:2.2.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libidn2-0:libidn2_0:2.2.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libidn2:libidn2-0:2.2.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libidn2:libidn2_0:2.2.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libidn2_0:libidn2-0:2.2.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libidn2_0:libidn2_0:2.2.0-2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL-3 LGPL-3+ Unicode",
+      "licenses": [
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL-3",
+        "LGPL-3+",
+        "Unicode"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libidn2-0",
+      "size": "216000",
+      "sourcepkg": "libidn2",
+      "type": "dpkg",
+      "version": "2.2.0-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libldap-common:libldap-common:2.4.49+dfsg-2ubuntu1.8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libldap-common:libldap_common:2.4.49+dfsg-2ubuntu1.8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libldap:libldap-common:2.4.49+dfsg-2ubuntu1.8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libldap:libldap_common:2.4.49+dfsg-2ubuntu1.8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libldap_common:libldap-common:2.4.49+dfsg-2ubuntu1.8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libldap_common:libldap_common:2.4.49+dfsg-2ubuntu1.8:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libldap-common",
+      "size": "102000",
+      "sourcepkg": "openldap",
+      "type": "dpkg",
+      "version": "2.4.49+dfsg-2ubuntu1.8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:liblz4-1:liblz4-1:1.9.2-2ubuntu0.20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:liblz4-1:liblz4_1:1.9.2-2ubuntu0.20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:liblz4:liblz4-1:1.9.2-2ubuntu0.20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:liblz4:liblz4_1:1.9.2-2ubuntu0.20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:liblz4_1:liblz4-1:1.9.2-2ubuntu0.20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:liblz4_1:liblz4_1:1.9.2-2ubuntu0.20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause GPL-2 GPL-2+",
+      "licenses": [
+        "BSD-2-clause",
+        "GPL-2",
+        "GPL-2+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "liblz4-1",
+      "size": "149000",
+      "sourcepkg": "lz4",
+      "type": "dpkg",
+      "version": "1.9.2-2ubuntu0.20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:liblzma5:liblzma5:5.2.4-1ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Autoconf GPL-2 GPL-2+ GPL-3 LGPL-2 LGPL-2.1 LGPL-2.1+ PD PD-debian config-h noderivs permissive-fsf permissive-nowarranty probably-PD",
+      "licenses": [
+        "Autoconf",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "LGPL-2",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "PD",
+        "PD-debian",
+        "config-h",
+        "noderivs",
+        "permissive-fsf",
+        "permissive-nowarranty",
+        "probably-PD"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "liblzma5",
+      "size": "267000",
+      "sourcepkg": "xz-utils",
+      "type": "dpkg",
+      "version": "5.2.4-1ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libmagic1:libmagic1:1:5.38-4:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libmagic1",
+      "size": "220000",
+      "sourcepkg": "file",
+      "type": "dpkg",
+      "version": "1:5.38-4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libmount1:libmount1:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libmount1",
+      "size": "481000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libncurses6:libncurses6:6.2-0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libncurses6",
+      "size": "337000",
+      "sourcepkg": "ncurses",
+      "type": "dpkg",
+      "version": "6.2-0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libncursesw6:libncursesw6:6.2-0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libncursesw6",
+      "size": "418000",
+      "sourcepkg": "ncurses",
+      "type": "dpkg",
+      "version": "6.2-0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libnettle7:libnettle7:3.5.1+really3.5.1-2ubuntu0.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GAP GPL GPL-2 GPL-2+ LGPL LGPL-2 LGPL-2+ LGPL-2.1+ other public-domain",
+      "licenses": [
+        "GAP",
+        "GPL",
+        "GPL-2",
+        "GPL-2+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1+",
+        "other",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libnettle7",
+      "size": "396000",
+      "sourcepkg": "nettle",
+      "type": "dpkg",
+      "version": "3.5.1+really3.5.1-2ubuntu0.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libp11-kit0:libp11-kit0:0.23.20-1ubuntu0.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libp11-kit0:libp11_kit0:0.23.20-1ubuntu0.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libp11:libp11-kit0:0.23.20-1ubuntu0.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libp11:libp11_kit0:0.23.20-1ubuntu0.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libp11_kit0:libp11-kit0:0.23.20-1ubuntu0.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libp11_kit0:libp11_kit0:0.23.20-1ubuntu0.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-3-Clause ISC ISC+IBM permissive-like-automake-output same-as-rest-of-p11kit",
+      "licenses": [
+        "BSD-3-Clause",
+        "ISC",
+        "ISC+IBM",
+        "permissive-like-automake-output",
+        "same-as-rest-of-p11kit"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libp11-kit0",
+      "size": "1271000",
+      "sourcepkg": "p11-kit",
+      "type": "dpkg",
+      "version": "0.23.20-1ubuntu0.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpam-modules:libpam-modules:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam-modules:libpam_modules:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam:libpam-modules:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam:libpam_modules:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_modules:libpam-modules:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_modules:libpam_modules:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpam-modules",
+      "size": "1166000",
+      "sourcepkg": "pam",
+      "type": "dpkg",
+      "version": "1.3.1-5ubuntu4.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpam-modules-bin:libpam-modules-bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam-modules-bin:libpam_modules_bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam-modules:libpam-modules-bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam-modules:libpam_modules_bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam:libpam-modules-bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam:libpam_modules_bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_modules:libpam-modules-bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_modules:libpam_modules_bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_modules_bin:libpam-modules-bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_modules_bin:libpam_modules_bin:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpam-modules-bin",
+      "size": "339000",
+      "sourcepkg": "pam",
+      "type": "dpkg",
+      "version": "1.3.1-5ubuntu4.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpam-runtime:libpam-runtime:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam-runtime:libpam_runtime:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam:libpam-runtime:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam:libpam_runtime:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_runtime:libpam-runtime:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpam_runtime:libpam_runtime:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpam-runtime",
+      "size": "304000",
+      "sourcepkg": "pam",
+      "type": "dpkg",
+      "version": "1.3.1-5ubuntu4.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpam0g:libpam0g:1.3.1-5ubuntu4.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpam0g",
+      "size": "231000",
+      "sourcepkg": "pam",
+      "type": "dpkg",
+      "version": "1.3.1-5ubuntu4.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpcre2-8-0:libpcre2-8-0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2-8-0:libpcre2_8_0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2-8:libpcre2-8-0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2-8:libpcre2_8_0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2:libpcre2-8-0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2:libpcre2_8_0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2_8:libpcre2-8-0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2_8:libpcre2_8_0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2_8_0:libpcre2-8-0:10.34-7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpcre2_8_0:libpcre2_8_0:10.34-7:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpcre2-8-0",
+      "size": "592000",
+      "sourcepkg": "pcre2",
+      "type": "dpkg",
+      "version": "10.34-7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpcre3:libpcre3:2:8.39-12build1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpcre3",
+      "size": "671000",
+      "sourcepkg": "pcre3",
+      "type": "dpkg",
+      "version": "2:8.39-12build1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libprocps8:libprocps8:2:3.3.16-1ubuntu2.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2.0+ LGPL-2 LGPL-2.0+ LGPL-2.1 LGPL-2.1+",
+      "licenses": [
+        "GPL-2",
+        "GPL-2.0+",
+        "LGPL-2",
+        "LGPL-2.0+",
+        "LGPL-2.1",
+        "LGPL-2.1+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libprocps8",
+      "size": "128000",
+      "sourcepkg": "procps",
+      "type": "dpkg",
+      "version": "2:3.3.16-1ubuntu2.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpython2.7-minimal:libpython2.7-minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython2.7-minimal:libpython2.7_minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython2.7:libpython2.7-minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython2.7:libpython2.7_minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython2.7_minimal:libpython2.7-minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython2.7_minimal:libpython2.7_minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpython2.7-minimal",
+      "size": "2782000",
+      "sourcepkg": "python2.7",
+      "type": "dpkg",
+      "version": "2.7.18-1~20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libpython3.8-minimal:libpython3.8-minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython3.8-minimal:libpython3.8_minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython3.8:libpython3.8-minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython3.8:libpython3.8_minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython3.8_minimal:libpython3.8-minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libpython3.8_minimal:libpython3.8_minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libpython3.8-minimal",
+      "size": "4793000",
+      "sourcepkg": "python3.8",
+      "type": "dpkg",
+      "version": "3.8.10-0ubuntu1~20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsasl2-modules:libsasl2-modules:2.1.27+dfsg-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsasl2-modules:libsasl2_modules:2.1.27+dfsg-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsasl2:libsasl2-modules:2.1.27+dfsg-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsasl2:libsasl2_modules:2.1.27+dfsg-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsasl2_modules:libsasl2-modules:2.1.27+dfsg-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsasl2_modules:libsasl2_modules:2.1.27+dfsg-2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsasl2-modules",
+      "size": "236000",
+      "sourcepkg": "cyrus-sasl2",
+      "type": "dpkg",
+      "version": "2.1.27+dfsg-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libseccomp2:libseccomp2:2.5.1-1ubuntu1~20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "LGPL-2.1",
+      "licenses": [
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libseccomp2",
+      "size": "152000",
+      "sourcepkg": "libseccomp",
+      "type": "dpkg",
+      "version": "2.5.1-1ubuntu1~20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libselinux1:libselinux1:3.0-1build2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL-2.1",
+      "licenses": [
+        "GPL-2",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libselinux1",
+      "size": "202000",
+      "sourcepkg": "libselinux",
+      "type": "dpkg",
+      "version": "3.0-1build2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsemanage-common:libsemanage-common:3.0-1build2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsemanage-common:libsemanage_common:3.0-1build2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsemanage:libsemanage-common:3.0-1build2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsemanage:libsemanage_common:3.0-1build2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsemanage_common:libsemanage-common:3.0-1build2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsemanage_common:libsemanage_common:3.0-1build2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL LGPL",
+      "licenses": [
+        "GPL",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsemanage-common",
+      "size": "36000",
+      "sourcepkg": "libsemanage",
+      "type": "dpkg",
+      "version": "3.0-1build2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsemanage1:libsemanage1:3.0-1build2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL LGPL",
+      "licenses": [
+        "GPL",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsemanage1",
+      "size": "305000",
+      "sourcepkg": "libsemanage",
+      "type": "dpkg",
+      "version": "3.0-1build2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsensors-config:libsensors-config:1:3.6.0-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsensors-config:libsensors_config:1:3.6.0-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsensors:libsensors-config:1:3.6.0-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsensors:libsensors_config:1:3.6.0-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsensors_config:libsensors-config:1:3.6.0-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libsensors_config:libsensors_config:1:3.6.0-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsensors-config",
+      "size": "42000",
+      "sourcepkg": "lm-sensors",
+      "type": "dpkg",
+      "version": "1:3.6.0-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsepol1:libsepol1:3.0-1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL LGPL",
+      "licenses": [
+        "GPL",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsepol1",
+      "size": "738000",
+      "sourcepkg": "libsepol",
+      "type": "dpkg",
+      "version": "3.0-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsmartcols1:libsmartcols1:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsmartcols1",
+      "size": "337000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libss2:libss2:1.45.5-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libss2",
+      "size": "108000",
+      "sourcepkg": "e2fsprogs",
+      "type": "dpkg",
+      "version": "1.45.5-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libssl1.1:libssl1.1:1.1.1f-1ubuntu2.8:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libssl1.1",
+      "size": "4027000",
+      "sourcepkg": "openssl",
+      "type": "dpkg",
+      "version": "1.1.1f-1ubuntu2.8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libstdc++6:libstdc++6:10.3.0-1ubuntu1~20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Artistic GFDL-1.2 GPL GPL-2 GPL-3 LGPL",
+      "licenses": [
+        "Artistic",
+        "GFDL-1.2",
+        "GPL",
+        "GPL-2",
+        "GPL-3",
+        "LGPL"
+      ],
+      "origin": "Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libstdc++6",
+      "size": "2437000",
+      "sourcepkg": "gcc-10",
+      "type": "dpkg",
+      "version": "10.3.0-1ubuntu1~20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libsystemd0:libsystemd0:245.4-4ubuntu3.11:*:*:*:*:*:*:*"
+      ],
+      "license": "CC0-1.0 Expat GPL-2 GPL-2+ LGPL-2.1 LGPL-2.1+ public-domain",
+      "licenses": [
+        "CC0-1.0",
+        "Expat",
+        "GPL-2",
+        "GPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libsystemd0",
+      "size": "874000",
+      "sourcepkg": "systemd",
+      "type": "dpkg",
+      "version": "245.4-4ubuntu3.11"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libtasn1-6:libtasn1-6:4.16.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtasn1-6:libtasn1_6:4.16.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtasn1:libtasn1-6:4.16.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtasn1:libtasn1_6:4.16.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtasn1_6:libtasn1-6:4.16.0-2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtasn1_6:libtasn1_6:4.16.0-2:*:*:*:*:*:*:*"
+      ],
+      "license": "GFDL-1.3 GPL-3 LGPL LGPL-2.1",
+      "licenses": [
+        "GFDL-1.3",
+        "GPL-3",
+        "LGPL",
+        "LGPL-2.1"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libtasn1-6",
+      "size": "125000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "4.16.0-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libtinfo6:libtinfo6:6.2-0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libtinfo6",
+      "size": "537000",
+      "sourcepkg": "ncurses",
+      "type": "dpkg",
+      "version": "6.2-0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libudev1:libudev1:245.4-4ubuntu3.11:*:*:*:*:*:*:*"
+      ],
+      "license": "CC0-1.0 Expat GPL-2 GPL-2+ LGPL-2.1 LGPL-2.1+ public-domain",
+      "licenses": [
+        "CC0-1.0",
+        "Expat",
+        "GPL-2",
+        "GPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libudev1",
+      "size": "336000",
+      "sourcepkg": "systemd",
+      "type": "dpkg",
+      "version": "245.4-4ubuntu3.11"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libunistring2:libunistring2:0.9.10-2:*:*:*:*:*:*:*"
+      ],
+      "license": "FreeSoftware GFDL-1.2 GFDL-1.2+ GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL-3 LGPL-3+ MIT",
+      "licenses": [
+        "FreeSoftware",
+        "GFDL-1.2",
+        "GFDL-1.2+",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libunistring2",
+      "size": "1582000",
+      "sourcepkg": "libunistring",
+      "type": "dpkg",
+      "version": "0.9.10-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libuuid1:libuuid1:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libuuid1",
+      "size": "122000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libxaw7:libxaw7:2:1.0.13-1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libxaw7",
+      "size": "487000",
+      "sourcepkg": "libxaw",
+      "type": "dpkg",
+      "version": "2:1.0.13-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libzstd1:libzstd1:1.4.4+dfsg-3ubuntu0.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-3-clause Expat GPL-2 GPL-2+ zlib",
+      "licenses": [
+        "BSD-3-clause",
+        "Expat",
+        "GPL-2",
+        "GPL-2+",
+        "zlib"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "libzstd1",
+      "size": "700000",
+      "sourcepkg": "libzstd",
+      "type": "dpkg",
+      "version": "1.4.4+dfsg-3ubuntu0.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:login:login:1:4.8.1-1ubuntu5.20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2",
+      "licenses": [
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "login",
+      "size": "932000",
+      "sourcepkg": "shadow",
+      "type": "dpkg",
+      "version": "1:4.8.1-1ubuntu5.20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:logsave:logsave:1.45.5-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 LGPL-2",
+      "licenses": [
+        "GPL-2",
+        "LGPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "logsave",
+      "size": "92000",
+      "sourcepkg": "e2fsprogs",
+      "type": "dpkg",
+      "version": "1.45.5-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:lsb-base:lsb-base:11.1.0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lsb-base:lsb_base:11.1.0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lsb:lsb-base:11.1.0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lsb:lsb_base:11.1.0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lsb_base:lsb-base:11.1.0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:lsb_base:lsb_base:11.1.0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-3-clause GPL-2",
+      "licenses": [
+        "BSD-3-clause",
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "lsb-base",
+      "size": "58000",
+      "sourcepkg": "lsb",
+      "type": "dpkg",
+      "version": "11.1.0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:maven:maven:3.6.3-1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "maven",
+      "size": "124000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.6.3-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:mawk:mawk:1.3.4.20200120-2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2",
+      "licenses": [
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "mawk",
+      "size": "233000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.3.4.20200120-2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:mime-support:mime-support:3.64ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mime-support:mime_support:3.64ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mime:mime-support:3.64ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mime:mime_support:3.64ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mime_support:mime-support:3.64ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mime_support:mime_support:3.64ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "mime-support",
+      "size": "114000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.64ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:mount:mount:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "mount",
+      "size": "433000",
+      "sourcepkg": "util-linux",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ncurses-base:ncurses-base:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses-base:ncurses_base:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses-base:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses_base:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_base:ncurses-base:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_base:ncurses_base:6.2-0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "ncurses-base",
+      "size": "381000",
+      "sourcepkg": "ncurses",
+      "type": "dpkg",
+      "version": "6.2-0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ncurses-bin:ncurses-bin:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses-bin:ncurses_bin:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses-bin:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses:ncurses_bin:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_bin:ncurses-bin:6.2-0ubuntu2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ncurses_bin:ncurses_bin:6.2-0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "ncurses-bin",
+      "size": "642000",
+      "sourcepkg": "ncurses",
+      "type": "dpkg",
+      "version": "6.2-0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:netbase:netbase:6.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "netbase",
+      "size": "43000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "6.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:node-duplexer3:node-duplexer3:0.1.4-5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:node-duplexer3:node_duplexer3:0.1.4-5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:node:node-duplexer3:0.1.4-5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:node:node_duplexer3:0.1.4-5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:node_duplexer3:node-duplexer3:0.1.4-5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:node_duplexer3:node_duplexer3:0.1.4-5:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "node-duplexer3",
+      "size": "24000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "0.1.4-5"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:npm:npm:6.14.4+ds-1ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "npm",
+      "size": "3387000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "6.14.4+ds-1ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:openjdk-11-jre-headless:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk-11-jre-headless:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk-11-jre:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk-11-jre:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk-11:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk-11:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk_11:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk_11:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk_11_jre:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk_11_jre:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk_11_jre_headless:openjdk-11-jre-headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:openjdk_11_jre_headless:openjdk_11_jre_headless:11.0.11+9-0ubuntu2~20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "openjdk-11-jre-headless",
+      "size": "166740000",
+      "sourcepkg": "openjdk-lts",
+      "type": "dpkg",
+      "version": "11.0.11+9-0ubuntu2~20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:openssl:openssl:1.1.1f-1ubuntu2.8:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "openssl",
+      "size": "1257000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.1.1f-1ubuntu2.8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:passwd:passwd:1:4.8.1-1ubuntu5.20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2",
+      "licenses": [
+        "GPL-2"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "passwd",
+      "size": "2668000",
+      "sourcepkg": "shadow",
+      "type": "dpkg",
+      "version": "1:4.8.1-1ubuntu5.20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:perl:perl:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "perl",
+      "size": "745000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "5.30.0-9ubuntu0.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:perl-base:perl-base:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:perl-base:perl_base:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:perl:perl-base:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:perl:perl_base:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:perl_base:perl-base:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:perl_base:perl_base:5.30.0-9ubuntu0.2:*:*:*:*:*:*:*"
+      ],
+      "license": "Artistic Artistic-2 Artistic-dist BSD-3-clause BSD-3-clause-GENERIC BSD-3-clause-with-weird-numbering BSD-4-clause-POWERDOG BZIP DONT-CHANGE-THE-GPL Expat GPL-1 GPL-1+ GPL-2 GPL-2+ GPL-3+-WITH-BISON-EXCEPTION HSIEH-BSD HSIEH-DERIVATIVE LGPL-2.1 REGCOMP REGCOMP, RRA-KEEP-THIS-NOTICE SDBM-PUBLIC-DOMAIN TEXT-TABS Unicode ZLIB",
+      "licenses": [
+        "Artistic",
+        "Artistic-2",
+        "Artistic-dist",
+        "BSD-3-clause",
+        "BSD-3-clause-GENERIC",
+        "BSD-3-clause-with-weird-numbering",
+        "BSD-4-clause-POWERDOG",
+        "BZIP",
+        "DONT-CHANGE-THE-GPL",
+        "Expat",
+        "GPL-1",
+        "GPL-1+",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3+-WITH-BISON-EXCEPTION",
+        "HSIEH-BSD",
+        "HSIEH-DERIVATIVE",
+        "LGPL-2.1",
+        "REGCOMP",
+        "REGCOMP,",
+        "RRA-KEEP-THIS-NOTICE",
+        "SDBM-PUBLIC-DOMAIN",
+        "TEXT-TABS",
+        "Unicode",
+        "ZLIB"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "perl-base",
+      "size": "10786000",
+      "sourcepkg": "perl",
+      "type": "dpkg",
+      "version": "5.30.0-9ubuntu0.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:procps:procps:2:3.3.16-1ubuntu2.2:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2.0+ LGPL-2 LGPL-2.0+ LGPL-2.1 LGPL-2.1+",
+      "licenses": [
+        "GPL-2",
+        "GPL-2.0+",
+        "LGPL-2",
+        "LGPL-2.0+",
+        "LGPL-2.1",
+        "LGPL-2.1+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "procps",
+      "size": "816000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "2:3.3.16-1ubuntu2.2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:python2.7-minimal:python2.7-minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python2.7-minimal:python2.7_minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python2.7:python2.7-minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python2.7:python2.7_minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python2.7_minimal:python2.7-minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python2.7_minimal:python2.7_minimal:2.7.18-1~20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "python2.7-minimal",
+      "size": "3722000",
+      "sourcepkg": "python2.7",
+      "type": "dpkg",
+      "version": "2.7.18-1~20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:python3:python3:3.8.2-0ubuntu2:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "python3",
+      "size": "189000",
+      "sourcepkg": "python3-defaults",
+      "type": "dpkg",
+      "version": "3.8.2-0ubuntu2"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:python3.8-minimal:python3.8-minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python3.8-minimal:python3.8_minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python3.8:python3.8-minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python3.8:python3.8_minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python3.8_minimal:python3.8-minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python3.8_minimal:python3.8_minimal:3.8.10-0ubuntu1~20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Core Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "python3.8-minimal",
+      "size": "5486000",
+      "sourcepkg": "python3.8",
+      "type": "dpkg",
+      "version": "3.8.10-0ubuntu1~20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:readline-common:readline-common:8.0-4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:readline-common:readline_common:8.0-4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:readline:readline-common:8.0-4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:readline:readline_common:8.0-4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:readline_common:readline-common:8.0-4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:readline_common:readline_common:8.0-4:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "readline-common",
+      "size": "79000",
+      "sourcepkg": "readline",
+      "type": "dpkg",
+      "version": "8.0-4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:sed:sed:4.7-1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-3",
+      "licenses": [
+        "GPL-3"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "sed",
+      "size": "336000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "4.7-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:sensible-utils:sensible-utils:0.0.12+nmu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sensible-utils:sensible_utils:0.0.12+nmu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sensible:sensible-utils:0.0.12+nmu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sensible:sensible_utils:0.0.12+nmu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sensible_utils:sensible-utils:0.0.12+nmu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sensible_utils:sensible_utils:0.0.12+nmu1:*:*:*:*:*:*:*"
+      ],
+      "license": "All-permissive GPL-2 GPL-2+ configure installsh",
+      "licenses": [
+        "All-permissive",
+        "GPL-2",
+        "GPL-2+",
+        "configure",
+        "installsh"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "sensible-utils",
+      "size": "62000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "0.0.12+nmu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:shared-mime-info:shared-mime-info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime-info:shared_mime_info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime:shared-mime-info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared-mime:shared_mime_info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared:shared-mime-info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared:shared_mime_info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime:shared-mime-info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime:shared_mime_info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime_info:shared-mime-info:1.15-1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:shared_mime_info:shared_mime_info:1.15-1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "shared-mime-info",
+      "size": "2652000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.15-1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:sysvinit-utils:sysvinit-utils:2.96-2.1ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sysvinit-utils:sysvinit_utils:2.96-2.1ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sysvinit:sysvinit-utils:2.96-2.1ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sysvinit:sysvinit_utils:2.96-2.1ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sysvinit_utils:sysvinit-utils:2.96-2.1ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sysvinit_utils:sysvinit_utils:2.96-2.1ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-2+",
+      "licenses": [
+        "GPL-2",
+        "GPL-2+"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "sysvinit-utils",
+      "size": "74000",
+      "sourcepkg": "sysvinit",
+      "type": "dpkg",
+      "version": "2.96-2.1ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:tar:tar:1.30+dfsg-7ubuntu0.20.04.1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2 GPL-3",
+      "licenses": [
+        "GPL-2",
+        "GPL-3"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "tar",
+      "size": "880000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "1.30+dfsg-7ubuntu0.20.04.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:tzdata:tzdata:2021a-0ubuntu0.20.04:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "tzdata",
+      "size": "3938000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "2021a-0ubuntu0.20.04"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ubuntu-keyring:ubuntu-keyring:2020.02.11.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ubuntu-keyring:ubuntu_keyring:2020.02.11.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ubuntu:ubuntu-keyring:2020.02.11.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ubuntu:ubuntu_keyring:2020.02.11.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ubuntu_keyring:ubuntu-keyring:2020.02.11.4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ubuntu_keyring:ubuntu_keyring:2020.02.11.4:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL",
+      "licenses": [
+        "GPL"
+      ],
+      "origin": "Dimitri John Ledkov <dimitri.ledkov@canonical.com> (maintainer)",
+      "package": "ubuntu-keyring",
+      "size": "46000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "2020.02.11.4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ucf:ucf:3.0038+nmu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "ucf",
+      "size": "188000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "3.0038+nmu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:unzip:unzip:6.0-25ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "unzip",
+      "size": "579000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "6.0-25ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:util-linux:util-linux:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util-linux:util_linux:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util:util-linux:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util:util_linux:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util_linux:util-linux:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:util_linux:util_linux:2.34-0.1ubuntu9.1:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
+      "licenses": [
+        "BSD-2-clause",
+        "BSD-3-clause",
+        "BSD-4-clause",
+        "GPL-2",
+        "GPL-2+",
+        "GPL-3",
+        "GPL-3+",
+        "LGPL",
+        "LGPL-2",
+        "LGPL-2+",
+        "LGPL-2.1",
+        "LGPL-2.1+",
+        "LGPL-3",
+        "LGPL-3+",
+        "MIT",
+        "public-domain"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "util-linux",
+      "size": "4538000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "2.34-0.1ubuntu9.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:x11-common:x11-common:1:7.7+19ubuntu14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11-common:x11_common:1:7.7+19ubuntu14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11:x11-common:1:7.7+19ubuntu14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11:x11_common:1:7.7+19ubuntu14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_common:x11-common:1:7.7+19ubuntu14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_common:x11_common:1:7.7+19ubuntu14:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu X-SWAT <ubuntu-x@lists.ubuntu.com> (maintainer)",
+      "package": "x11-common",
+      "size": "313000",
+      "sourcepkg": "xorg",
+      "type": "dpkg",
+      "version": "1:7.7+19ubuntu14"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:x11-utils:x11-utils:7.7+5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11-utils:x11_utils:7.7+5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11:x11-utils:7.7+5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11:x11_utils:7.7+5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_utils:x11-utils:7.7+5:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_utils:x11_utils:7.7+5:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "x11-utils",
+      "size": "725000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "7.7+5"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:x11-xserver-utils:x11-xserver-utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11-xserver-utils:x11_xserver_utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11-xserver:x11-xserver-utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11-xserver:x11_xserver_utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11:x11-xserver-utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11:x11_xserver_utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_xserver:x11-xserver-utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_xserver:x11_xserver_utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_xserver_utils:x11-xserver-utils:7.7+8:*:*:*:*:*:*:*",
+        "cpe:2.3:a:x11_xserver_utils:x11_xserver_utils:7.7+8:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "x11-xserver-utils",
+      "size": "505000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "7.7+8"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:xdg-user-dirs:xdg-user-dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg-user-dirs:xdg_user_dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg-user:xdg-user-dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg-user:xdg_user_dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg:xdg-user-dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg:xdg_user_dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg_user:xdg-user-dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg_user:xdg_user_dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg_user_dirs:xdg-user-dirs:0.17-2ubuntu1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:xdg_user_dirs:xdg_user_dirs:0.17-2ubuntu1:*:*:*:*:*:*:*"
+      ],
+      "license": "Unknown",
+      "licenses": [
+        "Unknown"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "xdg-user-dirs",
+      "size": "541000",
+      "sourcepkg": "N/A",
+      "type": "dpkg",
+      "version": "0.17-2ubuntu1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:zlib1g:zlib1g:1:1.2.11.dfsg-2ubuntu1.2:*:*:*:*:*:*:*"
+      ],
+      "license": "Zlib",
+      "licenses": [
+        "Zlib"
+      ],
+      "origin": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com> (maintainer)",
+      "package": "zlib1g",
+      "size": "163000",
+      "sourcepkg": "zlib",
+      "type": "dpkg",
+      "version": "1:1.2.11.dfsg-2ubuntu1.2"
+    }
+  ],
+  "content_type": "os",
+  "imageDigest": "sha256:ee7e86bed95c7d2eb2f106f7706d57cdeb1909a20f9f3f17cba361f778df79e4"
+}
