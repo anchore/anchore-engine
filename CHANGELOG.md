@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.0
+
+API version - 0.1.19
+
+DB Schema version - 0.0.15
+
+### Changes
+
+
+
 ## 0.10.2
 
 API version - 0.1.19
