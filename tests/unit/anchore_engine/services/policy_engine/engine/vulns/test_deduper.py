@@ -573,6 +573,50 @@ class TestImageVulnerabilitiesDeduplicator:
                 1,
                 id="nvdv2-vs-nvd",
             ),
+            pytest.param(
+                [
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvd:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                ],
+                0,
+                id="ghsa-vs-nvd",
+            ),
+            pytest.param(
+                [
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="custom-feed:custom",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                ],
+                1,
+                id="ghsa-vs-custom-feed",
+            ),
         ],
     )
     def test_execute(self, test_input, expected_index):
