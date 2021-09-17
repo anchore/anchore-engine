@@ -118,6 +118,21 @@ class CatalogClient(InternalServiceClient):
             path_params={"image_digest": image_digest, "content_type": content_type},
         )
 
+    def get_image_content_multiple_types(
+        self, image_digest, content_types=None, allow_analyzing_state=False
+    ):
+        return self.call_api(
+            http.anchy_get,
+            "images/{image_digest}/content",
+            path_params={"image_digest": image_digest},
+            query_params={
+                "content_types": ",".join(content_types)
+                if content_types and isinstance(content_types, list)
+                else None,
+                "allow_analyzing_state": allow_analyzing_state,
+            },
+        )
+
     def get_image_by_id(self, imageId):
         return self.call_api(
             http.anchy_get, "images", query_params={"imageId": imageId}

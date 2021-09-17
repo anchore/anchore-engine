@@ -352,6 +352,41 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+  /images/{image_digest}/content:
+    get:
+      tags:
+        - "catalog"
+      summary: "Get image content for one or more content types"
+      description: ""
+      operationId: "get_image_content_multiple_types"
+      parameters:
+        - name: 'image_digest'
+          in: path
+          type: string
+          description: "Digest of image to retrieve content"
+          required: true
+        - name: 'content_types'
+          in: query
+          type: array
+          items:
+            type: string
+          collectionFormat: csv
+          required: false
+          description: "Image content types to retrieve. If left blank, all content types will be returned"
+        - name: 'allow_analyzing_state'
+          in: query
+          type: boolean
+          description: "Flag to retrieve content for images in analyzing state. Default is set to false, the API error out for images in analyzing state"
+          required: false
+          default: false
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /registry_lookup:
     get:
       tags:
