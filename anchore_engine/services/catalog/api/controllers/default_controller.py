@@ -14,6 +14,9 @@ from anchore_engine.common.helpers import make_response_error
 from anchore_engine.common.models.schemas import ImportManifest
 from anchore_engine.services.catalog import archiver
 from anchore_engine.services.catalog.archiver import ImageConflict
+from anchore_engine.services.catalog.image_content.get_image_content import (
+    MultipleContentTypesGetter,
+)
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
 
@@ -253,6 +256,31 @@ def get_image_content(image_digest, content_type):
         httpcode = 200
     except Exception as err:
         logger.exception("Failed to lookup image content")
+        return_object = make_response_error(err, in_httpcode=httpcode)
+        httpcode = return_object["httpcode"]
+    return return_object, httpcode
+
+
+@flask_metrics.do_not_track()
+@authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
+def get_image_content_multiple_types(
+    image_digest, content_types=None, allow_analyzing_state=False
+):
+    httpcode = 500
+
+    try:
+        return_object = MultipleContentTypesGetter(
+            account_id=ApiRequestContextProxy.namespace(),
+            content_types=content_types if content_types else ["all"],
+            image_digest=image_digest,
+        ).get(allow_analyzing_state=allow_analyzing_state)
+        httpcode = 200
+    except Exception as err:
+        logger.exception(
+            "Failed to lookup image content types: %s for %s",
+            content_types,
+            image_digest,
+        )
         return_object = make_response_error(err, in_httpcode=httpcode)
         httpcode = return_object["httpcode"]
     return return_object, httpcode
