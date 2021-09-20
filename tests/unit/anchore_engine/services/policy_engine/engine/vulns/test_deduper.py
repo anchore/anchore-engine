@@ -25,6 +25,7 @@ class TestFeedGroupRank:
         "test_group, expected_rank",
         [
             pytest.param("nvdv2:cves", 1, id="nvdv2"),
+            pytest.param("nvd:cves", 2, id="nvd"),
             pytest.param("github:java", 10, id="github"),
             pytest.param("alpine:3.9", 100, id="os-distro"),
             pytest.param("foobar", 100, id="random"),
@@ -549,6 +550,72 @@ class TestImageVulnerabilitiesDeduplicator:
                 ],
                 2,
                 id="multiple-nvd-refs",
+            ),
+            pytest.param(
+                [
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvdv2:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvd:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                ],
+                1,
+                id="nvdv2-vs-nvd",
+            ),
+            pytest.param(
+                [
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="nvd:cves",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                ],
+                0,
+                id="ghsa-vs-nvd",
+            ),
+            pytest.param(
+                [
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="github:java",
+                            vulnerability_id="GHSA-foobar",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                    VulnerabilityMatch(
+                        vulnerability=Vulnerability(
+                            feed="vulnerabilities",
+                            feed_group="custom-feed:custom",
+                            vulnerability_id="CVE-2019-12904",
+                        ),
+                        nvd=[NVDReference(vulnerability_id="CVE-2019-12904")],
+                    ),
+                ],
+                1,
+                id="ghsa-vs-custom-feed",
             ),
         ],
     )
