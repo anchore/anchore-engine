@@ -4,6 +4,7 @@ import uuid
 from collections import defaultdict
 from typing import Dict, List
 
+from anchore_engine.common import nonos_package_types
 from anchore_engine.common.models.policy_engine import (
     CVSS,
     Advisory,
@@ -63,6 +64,24 @@ class PackageMapper:
 
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Creates a grype sbom formatted record from a single image content API response record
+
+        Refer to specific mappers for example input
+        """
+
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": record.get("package"),
+            "version": record.get("version"),
+            "type": self.grype_type,
+            "cpes": record.get("cpes", [])
+            # Package type specific mappers add metadata attribute
+        }
+
+        return artifact
+
 
 class KBMapper(PackageMapper):
     """
@@ -87,16 +106,32 @@ class KBMapper(PackageMapper):
             "name": image_package.src_pkg,
             "version": image_package.version,
             "type": self.grype_type,
-            "locations": [
-                {
-                    "path": image_package.pkg_path,
-                }
-            ],
+            "locations": [{"path": image_package.pkg_path}],
         }
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": record.get("sourcepkg"),
+            "version": record.get("version"),
+            "type": self.grype_type,
+            "cpes": record.get("cpes", []),
+            "locations": [{"path": "registry"}],
+        }
 
-class RpmMapper(PackageMapper):
+
+class LinuxDistroPackageMapper(PackageMapper):
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Initializes grype sbom artifact and sets the default location to pkgdb - base for rpm, dpkg and apkg types
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        artifact["locations"] = [{"path": "pkgdb"}]
+        return artifact
+
+
+class RpmMapper(LinuxDistroPackageMapper):
     def __init__(self):
         super(RpmMapper, self).__init__(engine_type="rpm", grype_type="rpm")
 
@@ -121,8 +156,23 @@ class RpmMapper(PackageMapper):
             artifact["metadata"] = {"sourceRpm": image_package.src_pkg}
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Adds the source package information to grype sbom
 
-class DpkgMapper(PackageMapper):
+        Source package has been through a transformation before this point - from syft sbom to analyzer manifest
+        in anchore_engine/analyzers/syft/handlers/rpm.py. Fortunately the value remains unchanged and does not require
+        additional processing
+
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
+            artifact["metadataType"] = "RpmdbMetadata"
+            artifact["metadata"] = {"sourceRpm": record.get("sourcepkg")}
+        return artifact
+
+
+class DpkgMapper(LinuxDistroPackageMapper):
     def __init__(self):
         super(DpkgMapper, self).__init__(engine_type="dpkg", grype_type="deb")
 
@@ -168,8 +218,24 @@ class DpkgMapper(PackageMapper):
             artifact["metadata"] = {"source": image_package.normalized_src_pkg}
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Adds the source package information to grype sbom
 
-class ApkgMapper(PackageMapper):
+        Source package has already been through a transformations before this point - from syft sbom to analyzer manifest
+        in anchore_engine/analyzers/syft/handlers/debian.py. Fortunately the value remains unchanged and does not require
+        additional processing
+
+        """
+
+        artifact = super().image_content_to_grype_sbom(record)
+        if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
+            artifact["metadataType"] = "DpkgMetadata"
+            artifact["metadata"] = {"source": record.get("sourcepkg")}
+        return artifact
+
+
+class ApkgMapper(LinuxDistroPackageMapper):
     def __init__(self):
         super(ApkgMapper, self).__init__(engine_type="APKG", grype_type="apk")
 
@@ -186,6 +252,21 @@ class ApkgMapper(PackageMapper):
             # populate cpes for os packages
             artifact["cpes"] = [cpe.get_cpe23_fs_for_sbom() for cpe in cpes]
 
+        return artifact
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Adds the origin package information to grype sbom
+
+        Origin package has already been through a transformations before this point - from syft sbom to analyzer manifest
+        in anchore_engine/analyzers/syft/handlers/alpine.py. Fortunately the value remains unchanged and does not require
+        additional processing
+        """
+
+        artifact = super().image_content_to_grype_sbom(record)
+        if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
+            artifact["metadataType"] = "ApkgMetadata"
+            artifact["metadata"] = {"originPackage": record.get("sourcepkg")}
         return artifact
 
 
@@ -214,6 +295,31 @@ class CPEMapper(PackageMapper):
             return artifact
         else:
             raise ValueError("No CPEs found for package={}".format(image_package.name))
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Initializes grype sbom artifact and sets the location
+
+        {
+          "cpes": [
+            "cpe:2.3:a:jvnet:xstream:1.3.1-hudson-8:*:*:*:*:maven:*:*",
+            "cpe:2.3:a:hudson:hudson:1.3.1-hudson-8:*:*:*:*:maven:*:*",
+          ],
+          "implementation-version": "N/A",
+          "location": "/hudson.war:WEB-INF/lib/xstream-1.3.1-hudson-8.jar",
+          "maven-version": "1.3.1-hudson-8",
+          "origin": "org.jvnet.hudson",
+          "package": "xstream",
+          "specification-version": "N/A",
+          "type": "JAVA-JAR",
+          "version": "1.3.1-hudson-8"
+        }
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        artifact["language"] = self.grype_language
+        if record.get("location") not in [None, "N/A", "n/a"]:
+            artifact["locations"] = [{"path": record.get("location")}]
+        return artifact
 
 
 class VulnerabilityMapper:
@@ -492,6 +598,64 @@ GRYPE_PACKAGE_MAPPERS = {
 GRYPE_MATCH_MAPPER = VulnerabilityMapper()
 
 
+def image_content_to_grype_sbom(image: Image, image_content_map: Dict) -> Dict:
+
+    # select the distro
+    distro_mapper = ENGINE_DISTRO_MAPPERS.get(image.distro_name)
+    if not distro_mapper:
+        log.error(
+            "No distro mapper found for %s. Cannot generate sbom", image.distro_name
+        )
+        raise ValueError(
+            f"No distro mapper found for {image.distro_name}. Cannot generate sbom"
+        )
+
+    # initialize the sbom
+    sbom = dict()
+
+    # set the distro information
+    sbom["distro"] = distro_mapper.to_grype_distro(image.distro_version)
+    sbom["source"] = {
+        "type": "image",
+        "target": {
+            "scope": "Squashed",
+            "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+        },
+    }
+
+    artifacts = []
+    sbom["artifacts"] = artifacts
+
+    for content_type, packages in image_content_map.items():
+        for package in packages:
+            if content_type in nonos_package_types:
+                pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(content_type)
+            elif content_type in ["os"] and package.get("type"):
+                pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(package.get("type").lower())
+            else:
+                pkg_mapper = None
+
+            if not pkg_mapper:
+                log.warn(
+                    "No mapper found for engine image content %s, using a default mapper",
+                    package,
+                )
+                pkg_mapper = CPEMapper(
+                    engine_type=package.get("type"), grype_type=package.get("type")
+                )
+
+            try:
+                artifacts.append(pkg_mapper.image_content_to_grype_sbom(package))
+            except Exception:
+                log.exception(
+                    "Skipping sbom entry due to error in engine->grype transformation for engine image content %s",
+                    package,
+                )
+
+    return sbom
+
+
+# deprecated
 def to_grype_sbom(
     image: Image,
     image_packages: List[ImagePackage],
