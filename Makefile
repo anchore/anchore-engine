@@ -29,6 +29,7 @@ PYTHON := $(VENV)/bin/python3
 # Testing environment
 CI_COMPOSE_FILE = scripts/ci/docker-compose-ci.yaml
 CLUSTER_CONFIG = tests/e2e/kind-config.yaml
+CONTAINER_TEST_CONFIG = scripts/ci/container-tests.yaml
 CLUSTER_NAME = e2e-testing
 K8S_VERSION = 1.19.0
 TEST_IMAGE_NAME = $(GIT_REPO):dev
@@ -150,6 +151,14 @@ setup-and-test-e2e: setup-test-infra venv ## Set up and run end to end tests
 	@$(MAKE) setup-e2e-tests
 	@$(MAKE) test-e2e
 	@$(MAKE) cluster-down
+
+PHONY: test-container-dev
+test-container-dev: setup-test-infra venv ## CI ONLY Run container-structure-tests on locally built image
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-container $(CIRCLE_PROJECT_REPONAME) dev $(CONTAINER_TEST_CONFIG)
+
+.PHONY: test-container-prod
+test-container-prod: setup-test-infra venv ## CI ONLY Run container-structure-tests on :latest prod image
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-container $(CIRCLE_PROJECT_REPONAME) prod $(CONTAINER_TEST_CONFIG)
 
 
 # Release targets
