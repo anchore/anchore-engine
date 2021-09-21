@@ -133,6 +133,9 @@ def _init_distro_mappings():
         DistroMapping(from_distro="ubuntu", to_distro="ubuntu", flavor="DEB"),
         DistroMapping(from_distro="amzn", to_distro="amzn", flavor="RHEL"),
         DistroMapping(from_distro="redhat", to_distro="rhel", flavor="RHEL"),
+        DistroMapping(
+            from_distro="sles", to_distro="sles", flavor="RHEL"
+        ),  # RHEL since it uses RPMs for version checks
     ]
 
     # set up any data necessary at system init
