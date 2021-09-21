@@ -4,6 +4,7 @@ from anchore_engine.services.policy_engine.engine.vulns.mappers import (
     ENGINE_DISTRO_MAPPERS,
     ENGINE_PACKAGE_MAPPERS,
     GRYPE_PACKAGE_MAPPERS,
+    JavaMapper,
 )
 
 
@@ -59,6 +60,82 @@ def test_engine_package_mappers(test_type, expected_type):
 def test_grype_package_mappers(test_type, expected_type):
     mapper = GRYPE_PACKAGE_MAPPERS.get(test_type)
     assert mapper.engine_type == expected_type
+
+
+class TestJavaMapper:
+    @pytest.mark.parametrize(
+        "input_metadata, expected_output",
+        [
+            (
+                    {
+                        "pom.properties": "\ngroupId=org.yaml\nartifactId=snakeyaml\nversion=1.18\n"
+                    },
+                    {
+                        "pomProperties": {
+                            "artifactId": "snakeyaml",
+                            "groupId": "org.yaml",
+                            "version": "1.18",
+                        }
+                    },
+            ),
+            (
+                    {
+                        "pom.properties": "groupId=org.yaml\nartifactId=snakeyaml\nversion=1.18"
+                    },
+                    {
+                        "pomProperties": {
+                            "artifactId": "snakeyaml",
+                            "groupId": "org.yaml",
+                            "version": "1.18",
+                        }
+                    },
+            ),
+            (
+                    {
+                        "pom.properties": {
+                            "artifactId": "snakeyaml",
+                            "groupId": "org.yaml",
+                            "version": "1.18",
+                        }
+                    },
+                    {
+                        "pomProperties": {
+                            "artifactId": "snakeyaml",
+                            "groupId": "org.yaml",
+                            "version": "1.18",
+                        }
+                    },
+            ),
+            (
+                    {
+                        "pom.properties": "\ngroupId=org.yaml\nartifactId=snakeyaml\nversion=1.18\n",
+                        "someProperty": "someValue",
+                    },
+                    {
+                        "pomProperties": {
+                            "artifactId": "snakeyaml",
+                            "groupId": "org.yaml",
+                            "version": "1.18",
+                        },
+                        "someProperty": "someValue",
+                    },
+            ),
+            (
+                    {"pom.properties": "\ngroupId\nartifactId=snakeyaml\nversion=1.18\n"},
+                    {"pomProperties": {"artifactId": "snakeyaml", "version": "1.18"}},
+            ),
+            (
+                    {"pom.properties": "\norg.yaml\nartifactId=snakeyaml\nversion=1.18\n"},
+                    {"pomProperties": {"artifactId": "snakeyaml", "version": "1.18"}},
+            ),
+        ],
+    )
+    def test_image_content_to_grype_metadata(self, input_metadata, expected_output):
+        # Function under test
+        result = JavaMapper._image_content_to_grype_metadata(input_metadata)
+
+        # Validate result
+        assert result == expected_output
 
 
 class TestImageContentAPIToGrypeSbom:
