@@ -317,6 +317,9 @@ class CPEMapper(PackageMapper):
         """
         artifact = super().image_content_to_grype_sbom(record)
         artifact["language"] = self.grype_language
+        if self.grype_language == "java" and "metadata" in record:
+            artifact["metadataType"] = "JavaMetadata"
+            artifact["metadata"] = record.get("metadata")
         if record.get("location") not in [None, "N/A", "n/a"]:
             artifact["locations"] = [{"path": record.get("location")}]
         return artifact
