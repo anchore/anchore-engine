@@ -10,6 +10,7 @@ from anchore_engine.services.apiext.api.helpers.image_content_response import (
     _build_npm_response,
     _build_os_response,
     _build_python_response,
+    _transform_java_pom_metadata,
 )
 
 
@@ -272,6 +273,7 @@ class TestBuildJavaResponse:
                 "implementation-version": "N/A",
                 "location": "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/charsets.jar",
                 "maven-version": "N/A",
+                "metadata": {"MANIFEST.MF": "(truncated manifest data)"},
                 "origin": "N/A",
                 "package": "charsets",
                 "specification-version": "N/A",
@@ -291,6 +293,80 @@ class TestBuildJavaResponse:
         )
 
         assert expected_response == actual_response
+
+    @pytest.mark.parametrize(
+        "input_metadata, expected_output",
+        [
+            (
+                {
+                    "pom.properties": "\ngroupId=org.yaml\nartifactId=snakeyaml\nversion=1.18\n"
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+            ),
+            (
+                {
+                    "pom.properties": "groupId=org.yaml\nartifactId=snakeyaml\nversion=1.18"
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+            ),
+            (
+                {
+                    "pom.properties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+            ),
+            (
+                {
+                    "pom.properties": "\ngroupId=org.yaml\nartifactId=snakeyaml\nversion=1.18\n",
+                    "someProperty": "someValue",
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    },
+                    "someProperty": "someValue",
+                },
+            ),
+            (
+                {"pom.properties": "\ngroupId\nartifactId=snakeyaml\nversion=1.18\n"},
+                {"pomProperties": {"artifactId": "snakeyaml", "version": "1.18"}},
+            ),
+            (
+                {"pom.properties": "\norg.yaml\nartifactId=snakeyaml\nversion=1.18\n"},
+                {"pomProperties": {"artifactId": "snakeyaml", "version": "1.18"}},
+            ),
+        ],
+    )
+    def test_transform_java_pom_metadata(self, input_metadata, expected_output):
+        # Function under test
+        result = _transform_java_pom_metadata(input_metadata)
+
+        # Validate result
+        assert result == expected_output
 
 
 class TestBuildDefaultResponse:

@@ -129,6 +129,39 @@ def _build_python_response(content_data):
     return response
 
 
+def _transform_java_pom_metadata(metadata: str):
+    # If we are missing the pom.properties block, skip this transform
+    if "pom.properties" not in metadata:
+        return metadata
+
+    pom_properties = metadata["pom.properties"]
+
+    if isinstance(pom_properties, dict):
+        metadata["pomProperties"] = pom_properties
+    else:
+        # If the pom.properties block is a newline-delimited-list instead of a dict, transform it,
+        # accounting for leading and trailing `\n` delimiters
+        transformed_pom_properties = {}
+
+        split_pom_properties = [
+            item for item in pom_properties.split("\n") if item != ""
+        ]
+        for item in split_pom_properties:
+            # Expected input here is like "groupId=org.yaml" or "version=1.23"
+            split_item = item.split("=", 2)
+            if len(split_item) < 2:
+                logger.warn(
+                    "Skipping malformed java package metadata pom property: %s ", item
+                )
+                continue
+            transformed_pom_properties[split_item[0]] = split_item[1]
+        metadata["pomProperties"] = transformed_pom_properties
+
+    # grype expects this field to be called "pomProperties", not "pom.properties"
+    del metadata["pom.properties"]
+    return metadata
+
+
 def _build_java_response(content_data):
     response = []
     for package in list(content_data.keys()):
@@ -144,6 +177,9 @@ def _build_java_response(content_data):
             el["maven-version"] = content_data[package]["maven-version"]
             el["origin"] = content_data[package]["origin"] or "Unknown"
             el["cpes"] = content_data[package].get("cpes", [])
+            el["metadata"] = _transform_java_pom_metadata(
+                content_data[package]["metadata"]
+            )
             version = content_data[package]["maven-version"]
             if version and version.lower() not in ["none", "n/a"]:
                 el["version"] = version
