@@ -2,7 +2,7 @@ import copy
 import datetime
 import uuid
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from anchore_engine.common import nonos_package_types
 from anchore_engine.common.models.policy_engine import (
@@ -317,12 +317,58 @@ class CPEMapper(PackageMapper):
         """
         artifact = super().image_content_to_grype_sbom(record)
         artifact["language"] = self.grype_language
-        if self.grype_language == "java" and "metadata" in record:
-            artifact["metadataType"] = "JavaMetadata"
-            artifact["metadata"] = record.get("metadata")
         if record.get("location") not in [None, "N/A", "n/a"]:
             artifact["locations"] = [{"path": record.get("location")}]
         return artifact
+
+
+class JavaMapper(CPEMapper):
+
+    @staticmethod
+    def _image_content_to_grype_metadata(metadata: Optional[dict]) -> dict:
+        result = None
+
+        if not metadata:
+            return result
+
+        result = copy.deepcopy(metadata)
+        pom_properties = result.get("pom.properties")
+
+        if not pom_properties:
+            return result
+        elif isinstance(pom_properties, dict):
+            result["pomProperties"] = pom_properties
+        else:
+            # If the pom.properties block is a newline-delimited-list instead of a dict, transform it,
+            # accounting for leading and trailing `\n` delimiters
+            transformed_pom_properties = {}
+
+            split_pom_properties = [
+                item for item in pom_properties.split("\n") if item != ""
+            ]
+            for item in split_pom_properties:
+                # Expected input here is like "groupId=org.yaml" or "version=1.23"
+                split_item = item.split("=", 2)
+                if len(split_item) < 2:
+                    log.warn(
+                        "Skipping malformed java package metadata pom property: %s ", item
+                    )
+                    continue
+                transformed_pom_properties[split_item[0]] = split_item[1]
+            result["pomProperties"] = transformed_pom_properties
+
+        # grype expects this field to be called "pomProperties", not "pom.properties"
+        del result["pom.properties"]
+
+        return result
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        artifact = super().image_content_to_grype_sbom(record)
+
+        grype_metadata = self._image_content_to_grype_metadata(record.get("metadata"))
+        if grype_metadata:
+            artifact["metadataType"] = "JavaMetadata"
+            artifact["metadata"] = grype_metadata
 
 
 class VulnerabilityMapper:
@@ -560,7 +606,7 @@ ENGINE_PACKAGE_MAPPERS = {
     ),
     "npm": CPEMapper(engine_type="npm", grype_type="npm", grype_language="javascript"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem", grype_language="ruby"),
-    "java": CPEMapper(
+    "java": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
@@ -584,10 +630,10 @@ GRYPE_PACKAGE_MAPPERS = {
     ),
     "npm": CPEMapper(engine_type="npm", grype_type="npm", grype_language="javascript"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem", grype_language="ruby"),
-    "java-archive": CPEMapper(
+    "java-archive": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
-    "jenkins-plugin": CPEMapper(
+    "jenkins-plugin": JavaMapper(
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
