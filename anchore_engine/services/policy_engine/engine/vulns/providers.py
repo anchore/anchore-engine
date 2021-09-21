@@ -439,7 +439,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                     nvd_refs = []
 
                 advisories = []
-                if fixed_artifact.fix_metadata:
+                if fixed_artifact and fixed_artifact.fix_metadata:
                     vendor_advisories = fixed_artifact.fix_metadata.get(
                         "VendorAdvisorySummary", []
                     )
