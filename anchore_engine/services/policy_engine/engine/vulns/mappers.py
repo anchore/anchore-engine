@@ -116,9 +116,9 @@ class KBMapper(PackageMapper):
             "name": record.get("sourcepkg"),
             "version": record.get("version"),
             "type": self.grype_type,
-            "cpes": record.get("cpes", []),
             "locations": [{"path": "registry"}],
         }
+        return artifact
 
 
 class LinuxDistroPackageMapper(PackageMapper):

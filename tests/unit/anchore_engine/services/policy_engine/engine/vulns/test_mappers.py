@@ -221,6 +221,27 @@ class TestImageContentAPIToGrypeSbom:
                 },
                 id="apkg-with-source",
             ),
+            pytest.param(
+                ENGINE_PACKAGE_MAPPERS.get("kb"),
+                {
+                    "cpes": None,
+                    "license": "Unknown",
+                    "licenses": ["Unknown"],
+                    "origin": "Microsoft",
+                    "package": "935509",
+                    "size": "0",
+                    "sourcepkg": "10855",
+                    "type": "kb",
+                    "version": "935509",
+                },
+                {
+                    "name": "10855",
+                    "version": "935509",
+                    "type": "msrc-kb",
+                    "locations": [{"path": "registry"}],
+                },
+                id="microsoft-kb",
+            ),
         ],
     )
     def test_mappers(self, mapper, test_input, expected):
