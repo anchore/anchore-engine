@@ -1,5 +1,6 @@
 import copy
 import datetime
+import re
 import uuid
 from collections import defaultdict
 from typing import Dict, List, Optional
@@ -323,52 +324,45 @@ class CPEMapper(PackageMapper):
 
 
 class JavaMapper(CPEMapper):
-
     @staticmethod
-    def _image_content_to_grype_metadata(metadata: Optional[dict]) -> dict:
-        result = None
+    def _image_content_to_grype_metadata(metadata: Optional[Dict]) -> Dict:
+        result = {}
 
-        if not metadata:
+        if not metadata or not isinstance(metadata, dict):
             return result
 
-        result = copy.deepcopy(metadata)
-        pom_properties = result.get("pom.properties")
-
+        pom_properties = metadata.get("pom.properties")
         if not pom_properties:
             return result
-        elif isinstance(pom_properties, dict):
-            result["pomProperties"] = pom_properties
-        else:
-            # If the pom.properties block is a newline-delimited-list instead of a dict, transform it,
-            # accounting for leading and trailing `\n` delimiters
-            transformed_pom_properties = {}
 
-            split_pom_properties = [
-                item for item in pom_properties.split("\n") if item != ""
-            ]
-            for item in split_pom_properties:
-                # Expected input here is like "groupId=org.yaml" or "version=1.23"
-                split_item = item.split("=", 2)
-                if len(split_item) < 2:
-                    log.warn(
-                        "Skipping malformed java package metadata pom property: %s ", item
-                    )
-                    continue
-                transformed_pom_properties[split_item[0]] = split_item[1]
-            result["pomProperties"] = transformed_pom_properties
-
-        # grype expects this field to be called "pomProperties", not "pom.properties"
-        del result["pom.properties"]
+        if pom_properties:
+            if isinstance(pom_properties, str):
+                # copied from anchore_engine/db/entities/policy_engine.py#get_pom_properties()
+                props = {}
+                for line in pom_properties.splitlines():
+                    # line = anchore_engine.utils.ensure_str(line)
+                    if not re.match(r"\s*(#.*)?$", line):
+                        kv = line.split("=")
+                        key = kv[0].strip()
+                        value = "=".join(kv[1:]).strip()
+                        props[key] = value
+                result["pomProperties"] = props
+            elif isinstance(pom_properties, dict):
+                result["pomProperties"] = pom_properties
+            else:
+                log.warn(
+                    "Unknown format for pom.properties %s, skip parsing", pom_properties
+                )
 
         return result
 
     def image_content_to_grype_sbom(self, record: Dict):
         artifact = super().image_content_to_grype_sbom(record)
-
         grype_metadata = self._image_content_to_grype_metadata(record.get("metadata"))
         if grype_metadata:
             artifact["metadataType"] = "JavaMetadata"
             artifact["metadata"] = grype_metadata
+        return artifact
 
 
 class VulnerabilityMapper:
