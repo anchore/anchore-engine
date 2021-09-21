@@ -3042,7 +3042,12 @@ class ImagePackageVulnerability(Base):
         """
         if not fixed_in:
             fixed_in = self.fixed_artifact()
-        return fixed_in and fixed_in.vendor_no_advisory
+
+        return (
+            fixed_in.vendor_no_advisory
+            if fixed_in and isinstance(fixed_in, FixedArtifact)
+            else False
+        )
 
     @classmethod
     def from_pair(cls, package_obj, vuln_obj):
