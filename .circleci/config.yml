@@ -302,7 +302,6 @@ workflows:
             - unit_tests_38
       - build:
           requires:
-            - lint_38
             - unit_tests_38
       - container_tests:
           name: test_container_dev
@@ -367,7 +366,6 @@ workflows:
       - build:
           filters: *filter_nightly
           requires:
-            - lint_38
             - unit_tests_38
       - container_tests:
           name: test_container_nightly
@@ -502,12 +500,10 @@ workflows:
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
-            - lint_38
             - unit_tests_38
       - build:
           filters: *filter_rebuild_tags
           requires:
-            - lint_38
             - unit_tests_38
       - container_tests:
           name: test_container_rebuild
