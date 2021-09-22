@@ -144,6 +144,7 @@ def _build_java_response(content_data):
             el["maven-version"] = content_data[package]["maven-version"]
             el["origin"] = content_data[package]["origin"] or "Unknown"
             el["cpes"] = content_data[package].get("cpes", [])
+            el["metadata"] = content_data[package]["metadata"]
             version = content_data[package]["maven-version"]
             if version and version.lower() not in ["none", "n/a"]:
                 el["version"] = version

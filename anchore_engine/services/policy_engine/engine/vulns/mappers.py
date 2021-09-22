@@ -1,8 +1,9 @@
 import copy
 import datetime
+import re
 import uuid
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from anchore_engine.common import nonos_package_types
 from anchore_engine.common.models.policy_engine import (
@@ -322,6 +323,48 @@ class CPEMapper(PackageMapper):
         return artifact
 
 
+class JavaMapper(CPEMapper):
+    @staticmethod
+    def _image_content_to_grype_metadata(metadata: Optional[Dict]) -> Dict:
+        result = {}
+
+        if not metadata or not isinstance(metadata, dict):
+            return result
+
+        pom_properties = metadata.get("pom.properties")
+        if not pom_properties:
+            return result
+
+        if pom_properties:
+            if isinstance(pom_properties, str):
+                # copied from anchore_engine/db/entities/policy_engine.py#get_pom_properties()
+                props = {}
+                for line in pom_properties.splitlines():
+                    # line = anchore_engine.utils.ensure_str(line)
+                    if not re.match(r"\s*(#.*)?$", line):
+                        kv = line.split("=")
+                        key = kv[0].strip()
+                        value = "=".join(kv[1:]).strip()
+                        props[key] = value
+                result["pomProperties"] = props
+            elif isinstance(pom_properties, dict):
+                result["pomProperties"] = pom_properties
+            else:
+                log.warn(
+                    "Unknown format for pom.properties %s, skip parsing", pom_properties
+                )
+
+        return result
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        artifact = super().image_content_to_grype_sbom(record)
+        grype_metadata = self._image_content_to_grype_metadata(record.get("metadata"))
+        if grype_metadata:
+            artifact["metadataType"] = "JavaMetadata"
+            artifact["metadata"] = grype_metadata
+        return artifact
+
+
 class VulnerabilityMapper:
     @staticmethod
     def _try_parse_cvss(cvss_list: List[Dict]) -> List[CVSS]:
@@ -557,7 +600,7 @@ ENGINE_PACKAGE_MAPPERS = {
     ),
     "npm": CPEMapper(engine_type="npm", grype_type="npm", grype_language="javascript"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem", grype_language="ruby"),
-    "java": CPEMapper(
+    "java": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
@@ -581,10 +624,10 @@ GRYPE_PACKAGE_MAPPERS = {
     ),
     "npm": CPEMapper(engine_type="npm", grype_type="npm", grype_language="javascript"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem", grype_language="ruby"),
-    "java-archive": CPEMapper(
+    "java-archive": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
-    "jenkins-plugin": CPEMapper(
+    "jenkins-plugin": JavaMapper(
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),

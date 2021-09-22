@@ -4,6 +4,7 @@ from anchore_engine.services.policy_engine.engine.vulns.mappers import (
     ENGINE_DISTRO_MAPPERS,
     ENGINE_PACKAGE_MAPPERS,
     GRYPE_PACKAGE_MAPPERS,
+    JavaMapper,
 )
 
 
@@ -59,6 +60,93 @@ def test_engine_package_mappers(test_type, expected_type):
 def test_grype_package_mappers(test_type, expected_type):
     mapper = GRYPE_PACKAGE_MAPPERS.get(test_type)
     assert mapper.engine_type == expected_type
+
+
+class TestJavaMapper:
+    @pytest.mark.parametrize(
+        "input_metadata, expected_output",
+        [
+            (
+                {
+                    "pom.properties": "\ngroupId=org.yaml\nartifactId=snakeyaml\nversion=\n"
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "",
+                    }
+                },
+            ),
+            (
+                {
+                    "pom.properties": "groupId=org.yaml\nartifactId=snakeyaml\nversion=1.18"
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+            ),
+            (
+                {
+                    "pom.properties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    }
+                },
+            ),
+            (
+                {
+                    "pom.properties": "\ngroupId=org.yaml\nartifactId=snakeyaml\nversion=1.18\n",
+                    "someProperty": "someValue",
+                },
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "org.yaml",
+                        "version": "1.18",
+                    },
+                },
+            ),
+            (
+                {"pom.properties": "\ngroupId\nartifactId=snakeyaml\nversion=1.18\n"},
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "groupId": "",
+                        "version": "1.18",
+                    }
+                },
+            ),
+            (
+                {"pom.properties": "\norg.yaml\nartifactId=snakeyaml\nversion=1.18\n"},
+                {
+                    "pomProperties": {
+                        "artifactId": "snakeyaml",
+                        "org.yaml": "",
+                        "version": "1.18",
+                    }
+                },
+            ),
+        ],
+    )
+    def test_image_content_to_grype_metadata(self, input_metadata, expected_output):
+        # Function under test
+        result = JavaMapper._image_content_to_grype_metadata(input_metadata)
+
+        # Validate result
+        assert result == expected_output
 
 
 class TestImageContentAPIToGrypeSbom:
@@ -156,6 +244,50 @@ class TestImageContentAPIToGrypeSbom:
                     ],
                 },
                 id="python",
+            ),
+            pytest.param(
+                ENGINE_PACKAGE_MAPPERS.get("java"),
+                {
+                    "cpes": [
+                        "cpe:2.3:a:amqp-client:amqp_client:5.9.0:*:*:*:*:*:*:*",
+                        "cpe:2.3:a:amqp_client:amqp_client:5.9.0:*:*:*:*:*:*:*",
+                    ],
+                    "implementation-version": "N/A",
+                    "location": "/usr/share/logstash/vendor/bundle/jruby/2.5.0/gems/march_hare-4.3.0-java/lib/ext/rabbitmq-client.jar:amqp-client",
+                    "maven-version": "5.9.0",
+                    "metadata": {
+                        "pom.properties": "\ngroupId=com.rabbitmq\nartifactId=amqp-client\nversion=5.9.0\n"
+                    },
+                    "origin": "com.rabbitmq",
+                    "package": "amqp-client",
+                    "specification-version": "N/A",
+                    "type": "JAVA-JAR",
+                    "version": "5.9.0",
+                },
+                {
+                    "cpes": [
+                        "cpe:2.3:a:amqp-client:amqp_client:5.9.0:*:*:*:*:*:*:*",
+                        "cpe:2.3:a:amqp_client:amqp_client:5.9.0:*:*:*:*:*:*:*",
+                    ],
+                    "language": "java",
+                    "locations": [
+                        {
+                            "path": "/usr/share/logstash/vendor/bundle/jruby/2.5.0/gems/march_hare-4.3.0-java/lib/ext/rabbitmq-client.jar:amqp-client"
+                        }
+                    ],
+                    "metadata": {
+                        "pomProperties": {
+                            "artifactId": "amqp-client",
+                            "groupId": "com.rabbitmq",
+                            "version": "5.9.0",
+                        }
+                    },
+                    "metadataType": "JavaMetadata",
+                    "name": "amqp-client",
+                    "type": "java-archive",
+                    "version": "5.9.0",
+                },
+                id="java",
             ),
             pytest.param(
                 ENGINE_PACKAGE_MAPPERS.get("dpkg"),
