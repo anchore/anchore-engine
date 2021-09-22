@@ -21,7 +21,6 @@ from anchore_engine import apis, utils
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services import catalog, internal_client_for
-from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 
 # API models
@@ -92,24 +91,6 @@ vulnerabilities_cache_enabled = (
     os.getenv("ANCHORE_POLICY_ENGINE_VULNERABILITIES_CACHE_ENABLED", "true").lower()
     == "true"
 )
-
-
-def get_api_endpoint():
-    try:
-        return get_service_endpoint("apiext").strip("/")
-    except:
-        log.warn(
-            "Could not find valid apiext endpoint for links so will use policy engine endpoint instead"
-        )
-        try:
-            return get_service_endpoint("policy_engine").strip("/")
-        except:
-            log.warn(
-                "No policy engine endpoint found either, using default but invalid url"
-            )
-            return "http://<valid endpoint not found>"
-
-    return ""
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
