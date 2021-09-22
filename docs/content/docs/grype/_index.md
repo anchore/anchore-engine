@@ -1,27 +1,25 @@
 ---
-title: "Beta - Grype Integration"
+title: "Grype Integration"
 linkTitle: "Grype Vulnerability Scanner"
 weight: 1
 ---
 
-Anchore Engine 0.10 includes a limited-functionality beta release of an integration with [Grype](https://github.com/anchore/grype)
-for vulnerability scanning. This integration will replace the legacy vulnerability scanner in a future version of Anchore Engine,
-but is provided in this release in a preview capacity so users can try it out.
+As of Anchore Engine 1.0.0, Anchore Engine is fully integrated with Grype by default for vulnerability scanning. The V2 vulnerability scanner, based on Grype, replaces the legacy vulnerability scanner in previous versions of Anchore Engine.
+You can keep the legacy vulnerability scanner when installing Anchore Engine 1.0.0, but you will have to explicitly configure 1.0.0 to use the legacy vulnerability scanner.
 
-***Note:*** This tech preview is not intended for use in production environments. It should be installed in sandbox environments,
-and is strictly provided here to give users an early, hands-on preview of the feature. It may not include all 
-functionality of the legacy scanner. Please report any issues found with it on the
-[anchore-engine Github repo](https://github.com/anchore/anchore-engine/issues).
+If you are upgrading to Anchore Engine 1.0.0 from an earlier version, you will retain your previous vulnerability scanner setting. You will need to follow the linked instructions for upgrading to the new vulnerability scanner. 
+
+***Note:*** The legacy vulnerability scanner will be removed in a future release.
 
 ### Installing
-As of 0.10.0, Anchore Engine can be configured to use either the legacy or grype vulnerability scanner. It is not possible to run
-both vulnerability scanners at the same time. This configuration is picked up at bootstrap, and cannot be changed on a running system.
+As of Anchore Engine 1.0.0, the V2 vulnerability scanner, based on Grype, is included with Anchore Engine by default. 
 
-The grype scanner is intended for use in sandbox or staging environments in the current release. Downgrading from the
-grype scanner back to the legacy scanner is not supported and will cause data issues.
+### Installing and keeping the legacy feed
+Anchore Engine can be configured to use the legacy vulnerability scanner. It is not possible to run both legacy and V2 vulnerability scanners at the same time. This configuration is picked up at bootstrap, and cannot be changed on a running system.
+Downgrading from the V2 vulnerability scanner back to the legacy scanner is not supported and will cause data issues.
 
 #### Running with docker-compose
-1. Install or update to Anchore Engine 0.10.0.
+1. Install or update to Anchore Engine 1.0.0.
 2. Add the following environment variable to the policy engine container section of the docker compose file:
 
 ```
@@ -29,13 +27,13 @@ grype scanner back to the legacy scanner is not supported and will cause data is
       ...
       environment:
       ...
-      - ANCHORE_VULNERABILITIES_PROVIDER=grype
+      - ANCHORE_VULNERABILITIES_PROVIDER=legacy
 ```        
 
 3. Redeploy the services.
 
 #### Running with helm
-1. Install or update to Anchore Engine 0.10.0.
+1. Install or update to Anchore Engine 1.0.0.
 2. Update the following value in your `values.yaml` configuration file. See 
    [the chart README](https://github.com/anchore/anchore-charts/tree/master/stable/anchore-engine#installing-the-anchore-engine-helm-chart)
    for more details on configuring this file:
@@ -43,7 +41,7 @@ grype scanner back to the legacy scanner is not supported and will cause data is
 ```
     anchorePolicyEngine
       ...
-      vulnerabilityProvider: grype
+      vulnerabilityProvider: legacy
 ```
 
 3. Redeploy the services
@@ -52,17 +50,13 @@ grype scanner back to the legacy scanner is not supported and will cause data is
     helm upgrade
 ```
 
-After making the relevant change above and redeploying, the system will start up with the grype vulnerability scanner enabled and will
-sync the latest version of grype db. Note that legacy feeds will no longer be synced while grype is configured. All vulnerability data
-and scanning will now come from the grype feed.
+After making the relevant change above and redeploying, the system will start up with the legacy vulnerability scanner enabled and will sync the latest version of legacy database. Note that Grype feeds will no longer be synced while legacy is configured. All vulnerability data and scanning will now come from the legacy feed.
 
 ### Vulnerability Feed Data and Syncs
 
-The Grype scanner has its own feed sync mechanism using the Grype vulnerability DB rather than the legacy https://ancho.re service used by
-the legacy scanner. This results in a much faster sync process since the DB is packaged as a single database file. It also reduces
-load on the Engine DB since the scanner matching and syncs do not require large amounts of writes into the Engine DB.
+The V2 vulnerability scanner based on Grype has its own feed sync mechanism using the Grype vulnerability database rather than the legacy https://ancho.re service used by
+the legacy scanner. This results in a much faster sync process since the database is packaged as a single database file. It also reduces
+load on the Engine database, since the scanner matching and syncs do not require large amounts of writes into the Engine database.
 
-The feed synced by the Grype provider is identified as feed name 'grypedb' when using the feed listing API or `anchore-cli system feeds list` CLI command.
-
-The Grype vulnerability DB is built from the same sources as the legacy service, so there is no reduction in scan coverage or vulnerabilities
+The Grype vulnerability database is built from the same sources as the legacy service, so there is no reduction in scan coverage or vulnerabilities
 sources supported.
