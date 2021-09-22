@@ -2,7 +2,6 @@ import copy
 import datetime
 import re
 import uuid
-from collections import defaultdict
 from typing import Dict, List, Optional
 
 from anchore_engine.common import nonos_package_types
@@ -694,69 +693,6 @@ def image_content_to_grype_sbom(image: Image, image_content_map: Dict) -> Dict:
                     "Skipping sbom entry due to error in engine->grype transformation for engine image content %s",
                     package,
                 )
-
-    return sbom
-
-
-# deprecated
-def to_grype_sbom(
-    image: Image,
-    image_packages: List[ImagePackage],
-    image_cpes: List[ImageCpe],
-):
-    """
-    Generate grype sbom using Image artifacts
-    """
-    distro_mapper = ENGINE_DISTRO_MAPPERS.get(image.distro_name)
-    if not distro_mapper:
-        log.error(
-            "No distro mapper found for %s. Cannot generate sbom", image.distro_name
-        )
-        raise ValueError(
-            "No distro mapper found for {}. Cannot generate sbom".format(
-                image.distro_name
-            )
-        )
-
-    # map the package (location) to its list of cpes
-    location_cpes_dict = defaultdict(list)
-    for image_cpe in image_cpes:
-        location_cpes_dict[image_cpe.pkg_path].append(image_cpe)
-
-    # create the sbom
-    sbom = dict()
-
-    sbom["distro"] = distro_mapper.to_grype_distro(image.distro_version)
-    sbom["source"] = {
-        "type": "image",
-        "target": {
-            "scope": "Squashed",
-            "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-        },
-    }
-
-    artifacts = []
-    sbom["artifacts"] = artifacts
-
-    for image_package in image_packages:
-        pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(image_package.pkg_type)
-        if not pkg_mapper:
-            log.warn(
-                "No mapper found for engine package type %s, defaulting to CPE mapper",
-                image_package.pkg_type,
-            )
-            pkg_mapper = CPEMapper(
-                engine_type=image_package.pkg_path, grype_type=image_package.pkg_path
-            )
-
-        try:
-            artifacts.append(pkg_mapper.to_grype(image_package, location_cpes_dict))
-        except Exception:
-            log.exception(
-                "Ignoring error in engine->grype transformation for %s package %s, skipping it from sbom",
-                image_package.pkg_type,
-                image_package.name,
-            )
 
     return sbom
 
