@@ -1,10 +1,12 @@
 import pytest
 
+from anchore_engine.common.models.policy_engine import NVDReference
 from anchore_engine.services.policy_engine.engine.vulns.mappers import (
     ENGINE_DISTRO_MAPPERS,
     ENGINE_PACKAGE_MAPPERS,
     GRYPE_PACKAGE_MAPPERS,
     JavaMapper,
+    VulnerabilityMapper,
 )
 
 
@@ -391,3 +393,75 @@ class TestImageContentAPIToGrypeSbom:
 
         assert actual.pop("id")
         assert actual == expected
+
+
+class TestVulnerabilityMapper:
+    @pytest.mark.parametrize(
+        "vuln_id,feed_group,nvd_refs,expected",
+        [
+            pytest.param("foobar", "vulndb:xyz", None, "foobar", id="none-nvd-refs"),
+            pytest.param(None, None, None, None, id="all-none"),
+            pytest.param("foobar", "vulndb:xyz", [], "foobar", id="no-nvd-refs"),
+            pytest.param(
+                "foobar", "vulndb:xyz", ["1"], "foobar", id="invalid-nvd-refs"
+            ),
+            pytest.param("foobar", None, [], "foobar", id="none-feed-group"),
+            pytest.param("foobar", 1, [], "foobar", id="invalid-feed-group-int"),
+            pytest.param(
+                "foobar", ["x", "y"], None, "foobar", id="invalid-feed-group-list"
+            ),
+            pytest.param(
+                "foobar",
+                "abc:xyz",
+                [NVDReference(vulnerability_id="CVE-xyz")],
+                "foobar",
+                id="valid-dont-transform",
+            ),
+            pytest.param(
+                "foobar",
+                "vulndb",
+                [NVDReference(vulnerability_id="CVE-xyz")],
+                "CVE-xyz",
+                id="valid-transform",
+            ),
+            pytest.param(
+                "foobar",
+                "vulndb",
+                [
+                    NVDReference(vulnerability_id="CVE-xyz"),
+                    NVDReference(vulnerability_id="CVE-pqr"),
+                ],
+                "foobar",
+                id="valid-multiple-nvd-refs",
+            ),
+        ],
+    )
+    def test_get_normalized_vulnerability_id(
+        self, vuln_id, feed_group, nvd_refs, expected
+    ):
+        assert (
+            VulnerabilityMapper._try_get_normalized_vulnerability_id(
+                vuln_id, feed_group, nvd_refs
+            )
+            == expected
+        )
+
+    @pytest.mark.parametrize(
+        "vuln_id,url,expected",
+        [
+            pytest.param(
+                "foobar",
+                None,
+                "http://<valid endpoint not found>/query/vulnerabilities?id=foobar",
+                id="none-url",
+            ),
+            pytest.param(
+                "foobar",
+                "",
+                "http://<valid endpoint not found>/query/vulnerabilities?id=foobar",
+                id="blank-url",
+            ),
+        ],
+    )
+    def test_try_make_link(self, vuln_id, url, expected):
+        assert VulnerabilityMapper._try_make_link(vuln_id, url) == expected
