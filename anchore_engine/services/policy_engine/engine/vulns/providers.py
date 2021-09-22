@@ -1635,7 +1635,7 @@ def set_provider():
             "No implementation found for configured provider %s. Falling back to default",
             provider_name,
         )
-        provider_class = LegacyProvider
+        provider_class = GrypeProvider
 
     PROVIDER = provider_class()
     logger.info("Initialized vulnerabilities provider: %s", PROVIDER.get_config_name())
