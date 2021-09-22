@@ -36,7 +36,7 @@ from anchore_engine.utils import timer
 
 from .cpe_matchers import DistroEnabledCpeMatcher, NonOSCpeMatcher
 from .dedup import get_image_vulnerabilities_deduper
-from .mappers import image_content_to_grype_sbom, to_engine_vulnerabilities
+from .mappers import grype_to_engine_image_vulnerabilities, image_content_to_grype_sbom
 
 # debug option for saving image sbom, defaults to not saving
 SAVE_SBOM_TO_FILE = (
@@ -284,7 +284,7 @@ class GrypeScanner:
 
         # transform grype response to engine vulnerabilities and dedup
         try:
-            results = to_engine_vulnerabilities(grype_response)
+            results = grype_to_engine_image_vulnerabilities(grype_response)
             report.results = get_image_vulnerabilities_deduper().execute(results)
             report.metadata.generated_by = self._get_report_generated_by(grype_response)
         except Exception:
