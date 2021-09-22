@@ -128,6 +128,7 @@ def _build_python_response(content_data):
         response.append(el)
     return response
 
+
 def _build_java_response(content_data):
     response = []
     for package in list(content_data.keys()):

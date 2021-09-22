@@ -10,7 +10,6 @@ from anchore_engine.services.apiext.api.helpers.image_content_response import (
     _build_npm_response,
     _build_os_response,
     _build_python_response,
-    _transform_java_pom_metadata,
 )
 
 
