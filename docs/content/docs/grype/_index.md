@@ -4,7 +4,7 @@ linkTitle: "Grype Vulnerability Scanner"
 weight: 1
 ---
 
-As of Anchore Engine 1.0.0, Anchore Engine is fully integrated with Grype by default for vulnerability scanning. The V2 vulnerability scanner, based on Grype, replaces the legacy vulnerability scanner in previous versions of Anchore Engine.
+As of Anchore Engine 1.0.0, Anchore Engine is fully integrated with Grype by default for vulnerability scanning. The V2 vulnerability scanner, based on Grype, replaces the legacy vulnerability scanner in previous versions of Anchore Engine. The legacy vulnerability scanner will still be used for anyone running older versions of Anchore engine.
 You can keep the legacy vulnerability scanner when installing Anchore Engine 1.0.0, but you will have to explicitly configure 1.0.0 to use the legacy vulnerability scanner.
 
 If you are upgrading to Anchore Engine 1.0.0 from an earlier version, you will retain your previous vulnerability scanner setting. You will need to follow the linked instructions for upgrading to the new vulnerability scanner. 
@@ -14,7 +14,7 @@ If you are upgrading to Anchore Engine 1.0.0 from an earlier version, you will r
 ### Installing
 As of Anchore Engine 1.0.0, the V2 vulnerability scanner, based on Grype, is included with Anchore Engine by default. 
 
-### Installing and keeping the legacy feed
+### Installing and keeping the legacy feed and vulnerability scanner
 Anchore Engine can be configured to use the legacy vulnerability scanner. It is not possible to run both legacy and V2 vulnerability scanners at the same time. This configuration is picked up at bootstrap, and cannot be changed on a running system.
 Downgrading from the V2 vulnerability scanner back to the legacy scanner is not supported and will cause data issues.
 
@@ -50,7 +50,7 @@ Downgrading from the V2 vulnerability scanner back to the legacy scanner is not 
     helm upgrade
 ```
 
-After making the relevant change above and redeploying, the system will start up with the legacy vulnerability scanner enabled and will sync the latest version of legacy database. Note that Grype feeds will no longer be synced while legacy is configured. All vulnerability data and scanning will now come from the legacy feed.
+After making the relevant change above and redeploying, the system will start up with the legacy vulnerability scanner enabled and will sync the latest version of legacy database. Note that Grype feeds will not sync while legacy is configured. All vulnerability data and scanning will now come from the legacy scanner and feed.
 
 ### Vulnerability Feed Data and Syncs
 

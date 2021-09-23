@@ -141,7 +141,7 @@ feeds:
       packages: true
 ```
 
-Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and settnig
+Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and setting
 a feed to 'false' will not remove any data or show in the API/CLI, it will simply skip updates during sync operations.
 
 
