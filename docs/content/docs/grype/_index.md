@@ -3,20 +3,21 @@ title: "Grype Integration"
 linkTitle: "Grype Vulnerability Scanner"
 weight: 1
 ---
+### New Installation
 
-As of Anchore Engine 1.0.0, Anchore Engine is fully integrated with Grype by default for vulnerability scanning. The V2 vulnerability scanner, based on Grype, replaces the legacy vulnerability scanner in previous versions of Anchore Engine. The legacy vulnerability scanner will still be used for anyone running older versions of Anchore engine.
-You can keep the legacy vulnerability scanner when installing Anchore Engine 1.0.0, but you will have to explicitly configure 1.0.0 to use the legacy vulnerability scanner.
+As of Anchore Engine 1.0.0, Anchore Engine is fully integrated with Grype by default for vulnerability scanning. The V2 vulnerability scanner, based on Grype, replaces the legacy vulnerability scanner in previous versions of Anchore Engine. 
+You can choose to use the legacy vulnerability scanner when installing Anchore Engine 1.0.0, but you will have to explicitly configure 1.0.0 to use the legacy vulnerability scanner.
 
-If you are upgrading to Anchore Engine 1.0.0 from an earlier version, you will retain your previous vulnerability scanner setting. You will need to follow the linked instructions for upgrading to the new vulnerability scanner. 
+### Upgrading
+
+See the following scenarios when upgrading to Anchore Engine to 1.0.0.
+
+-- If you are upgrading to Engine 1.0.0 with the legacy scanner configured, then Engine 1.0.0 will continue to respect that configured (legacy) scanner.
+-- If you are upgrading to Engine 1.0.0 without the scanner configured, then Engine 1.0.0 will notice that it is an upgrade and default to the V1 vulnerability scanner (legacy), just as the previous installation instance defaulted to.
+-- If you have Engine 1.0.0 that is using the V1 vulnerability scanner (legacy), either configured or because of an upgrade, you can follow the directions to configure it to the new V2 vulnerability scanner (based on Grype) and switch to it. But if you switch to the V2 scanner, you cannot revert back to the V1 legacy scanner unless you do a fresh install with the V1 scanner configured.
+-- If you choose not to upgrade, instead performing a new installation of Engine 1.0.0, you will have the V2 vulnerability scanner (based on Grype) configured by default. 
 
 ***Note:*** The legacy vulnerability scanner will be removed in a future release.
-
-### Installing
-As of Anchore Engine 1.0.0, the V2 vulnerability scanner, based on Grype, is included with Anchore Engine by default. 
-
-### Installing and keeping the legacy feed and vulnerability scanner
-Anchore Engine can be configured to use the legacy vulnerability scanner. It is not possible to run both legacy and V2 vulnerability scanners at the same time. This configuration is picked up at bootstrap, and cannot be changed on a running system.
-Downgrading from the V2 vulnerability scanner back to the legacy scanner is not supported and will cause data issues.
 
 #### Running with docker-compose
 1. Install or update to Anchore Engine 1.0.0.
