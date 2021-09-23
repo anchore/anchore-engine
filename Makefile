@@ -112,6 +112,7 @@ test-unit: venv setup-test-infra
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-unit
 
 .PHONY: test-integration
+test-integration: export TOX_ENV = py38 ## Engine now requires 3.8
 test-integration: venv setup-test-infra ## Run integration tests (tox)
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-integration
 
