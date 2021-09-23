@@ -50,6 +50,12 @@ class GrypeVulnerability(Base, UtilMixin):
     def deserialized_fixed_in_versions(self):
         return json.loads(self.fixed_in_versions)
 
+    @property
+    def deserialized_version_constraint(self):
+        return [
+            version.strip(" '\"") for version in self.version_constraint.split("||")
+        ]
+
 
 class GrypeVulnerabilityMetadata(Base, UtilMixin):
     __tablename__ = VULNERABILITY_METADATA_TABLE_NAME
