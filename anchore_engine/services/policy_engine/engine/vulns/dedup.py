@@ -13,7 +13,7 @@ class FeedGroupRank:
     The strategy translates to any-group is ranked > github >  nvdv2
     """
 
-    __ranks__ = {"nvdv2": 1, "github": 10}
+    __ranks__ = {"nvdv2": 1, "nvd": 2, "github": 10}
     __default__ = 100
 
     def get(self, feed_group: str):

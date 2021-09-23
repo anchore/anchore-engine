@@ -1,2 +1,2 @@
-version = "0.10.2"
+version = "1.0.0"
 db_version = "0.0.15"

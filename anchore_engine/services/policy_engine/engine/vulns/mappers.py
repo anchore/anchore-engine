@@ -1,9 +1,10 @@
 import copy
 import datetime
+import re
 import uuid
-from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Optional
 
+from anchore_engine.common import nonos_package_types
 from anchore_engine.common.models.policy_engine import (
     CVSS,
     Advisory,
@@ -15,6 +16,7 @@ from anchore_engine.common.models.policy_engine import (
     VulnerabilityMatch,
 )
 from anchore_engine.db import Image, ImageCpe, ImagePackage
+from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
 
 
@@ -63,6 +65,24 @@ class PackageMapper:
 
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Creates a grype sbom formatted record from a single image content API response record
+
+        Refer to specific mappers for example input
+        """
+
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": record.get("package"),
+            "version": record.get("version"),
+            "type": self.grype_type,
+            "cpes": record.get("cpes", [])
+            # Package type specific mappers add metadata attribute
+        }
+
+        return artifact
+
 
 class KBMapper(PackageMapper):
     """
@@ -87,16 +107,32 @@ class KBMapper(PackageMapper):
             "name": image_package.src_pkg,
             "version": image_package.version,
             "type": self.grype_type,
-            "locations": [
-                {
-                    "path": image_package.pkg_path,
-                }
-            ],
+            "locations": [{"path": image_package.pkg_path}],
+        }
+        return artifact
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        artifact = {
+            "id": str(uuid.uuid4()),
+            "name": record.get("sourcepkg"),
+            "version": record.get("version"),
+            "type": self.grype_type,
+            "locations": [{"path": "registry"}],
         }
         return artifact
 
 
-class RpmMapper(PackageMapper):
+class LinuxDistroPackageMapper(PackageMapper):
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Initializes grype sbom artifact and sets the default location to pkgdb - base for rpm, dpkg and apkg types
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        artifact["locations"] = [{"path": "pkgdb"}]
+        return artifact
+
+
+class RpmMapper(LinuxDistroPackageMapper):
     def __init__(self):
         super(RpmMapper, self).__init__(engine_type="rpm", grype_type="rpm")
 
@@ -121,8 +157,23 @@ class RpmMapper(PackageMapper):
             artifact["metadata"] = {"sourceRpm": image_package.src_pkg}
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Adds the source package information to grype sbom
 
-class DpkgMapper(PackageMapper):
+        Source package has been through a transformation before this point - from syft sbom to analyzer manifest
+        in anchore_engine/analyzers/syft/handlers/rpm.py. Fortunately the value remains unchanged and does not require
+        additional processing
+
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
+            artifact["metadataType"] = "RpmdbMetadata"
+            artifact["metadata"] = {"sourceRpm": record.get("sourcepkg")}
+        return artifact
+
+
+class DpkgMapper(LinuxDistroPackageMapper):
     def __init__(self):
         super(DpkgMapper, self).__init__(engine_type="dpkg", grype_type="deb")
 
@@ -168,8 +219,24 @@ class DpkgMapper(PackageMapper):
             artifact["metadata"] = {"source": image_package.normalized_src_pkg}
         return artifact
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Adds the source package information to grype sbom
 
-class ApkgMapper(PackageMapper):
+        Source package has already been through a transformations before this point - from syft sbom to analyzer manifest
+        in anchore_engine/analyzers/syft/handlers/debian.py. Fortunately the value remains unchanged and does not require
+        additional processing
+
+        """
+
+        artifact = super().image_content_to_grype_sbom(record)
+        if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
+            artifact["metadataType"] = "DpkgMetadata"
+            artifact["metadata"] = {"source": record.get("sourcepkg")}
+        return artifact
+
+
+class ApkgMapper(LinuxDistroPackageMapper):
     def __init__(self):
         super(ApkgMapper, self).__init__(engine_type="APKG", grype_type="apk")
 
@@ -186,6 +253,21 @@ class ApkgMapper(PackageMapper):
             # populate cpes for os packages
             artifact["cpes"] = [cpe.get_cpe23_fs_for_sbom() for cpe in cpes]
 
+        return artifact
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Adds the origin package information to grype sbom
+
+        Origin package has already been through a transformations before this point - from syft sbom to analyzer manifest
+        in anchore_engine/analyzers/syft/handlers/alpine.py. Fortunately the value remains unchanged and does not require
+        additional processing
+        """
+
+        artifact = super().image_content_to_grype_sbom(record)
+        if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
+            artifact["metadataType"] = "ApkgMetadata"
+            artifact["metadata"] = {"originPackage": record.get("sourcepkg")}
         return artifact
 
 
@@ -215,8 +297,77 @@ class CPEMapper(PackageMapper):
         else:
             raise ValueError("No CPEs found for package={}".format(image_package.name))
 
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Initializes grype sbom artifact and sets the location
+
+        {
+          "cpes": [
+            "cpe:2.3:a:jvnet:xstream:1.3.1-hudson-8:*:*:*:*:maven:*:*",
+            "cpe:2.3:a:hudson:hudson:1.3.1-hudson-8:*:*:*:*:maven:*:*",
+          ],
+          "implementation-version": "N/A",
+          "location": "/hudson.war:WEB-INF/lib/xstream-1.3.1-hudson-8.jar",
+          "maven-version": "1.3.1-hudson-8",
+          "origin": "org.jvnet.hudson",
+          "package": "xstream",
+          "specification-version": "N/A",
+          "type": "JAVA-JAR",
+          "version": "1.3.1-hudson-8"
+        }
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        artifact["language"] = self.grype_language
+        if record.get("location") not in [None, "N/A", "n/a"]:
+            artifact["locations"] = [{"path": record.get("location")}]
+        return artifact
+
+
+class JavaMapper(CPEMapper):
+    @staticmethod
+    def _image_content_to_grype_metadata(metadata: Optional[Dict]) -> Dict:
+        result = {}
+
+        if not metadata or not isinstance(metadata, dict):
+            return result
+
+        pom_properties = metadata.get("pom.properties")
+        if not pom_properties:
+            return result
+
+        if pom_properties:
+            if isinstance(pom_properties, str):
+                # copied from anchore_engine/db/entities/policy_engine.py#get_pom_properties()
+                props = {}
+                for line in pom_properties.splitlines():
+                    # line = anchore_engine.utils.ensure_str(line)
+                    if not re.match(r"\s*(#.*)?$", line):
+                        kv = line.split("=")
+                        key = kv[0].strip()
+                        value = "=".join(kv[1:]).strip()
+                        props[key] = value
+                result["pomProperties"] = props
+            elif isinstance(pom_properties, dict):
+                result["pomProperties"] = pom_properties
+            else:
+                log.warn(
+                    "Unknown format for pom.properties %s, skip parsing", pom_properties
+                )
+
+        return result
+
+    def image_content_to_grype_sbom(self, record: Dict):
+        artifact = super().image_content_to_grype_sbom(record)
+        grype_metadata = self._image_content_to_grype_metadata(record.get("metadata"))
+        if grype_metadata:
+            artifact["metadataType"] = "JavaMetadata"
+            artifact["metadata"] = grype_metadata
+        return artifact
+
 
 class VulnerabilityMapper:
+    _transform_id_for_feed_groups = ["vulndb"]
+
     @staticmethod
     def _try_parse_cvss(cvss_list: List[Dict]) -> List[CVSS]:
         """
@@ -342,7 +493,49 @@ class VulnerabilityMapper:
 
         return list(set(cpes))
 
-    def to_engine(
+    @staticmethod
+    def _try_get_normalized_vulnerability_id(
+        vulnerability_id: str,
+        feed_group: str,
+        nvd_references: Optional[List[NVDReference]],
+    ) -> str:
+        """
+        This is a helper function for transforming third party vulnerability identifier to more widely used CVE identifier when possible
+
+        For a given feed group, the function first checks if the vulnerability ID needs to be transformed.
+        If so, it tries to look for a single NVD reference and returns the CVE ID of the record.
+        If the vulnerability has multiple or no NVD references, then the vulnerability ID is returned as is
+        """
+
+        try:
+            if (
+                feed_group
+                and feed_group.split(":")[0].lower()
+                in VulnerabilityMapper._transform_id_for_feed_groups
+            ):
+                if isinstance(nvd_references, list) and len(nvd_references) == 1:
+                    return nvd_references[0].vulnerability_id
+                else:  # no or >1 NVD references found, can't use to a single CVE
+                    return vulnerability_id
+            else:
+                return vulnerability_id
+        except (AttributeError, IndexError, ValueError):
+            return vulnerability_id
+
+    @staticmethod
+    def _try_make_link(
+        vulnerability_id: Optional[str], source_url: Optional[str]
+    ) -> str:
+        if source_url:
+            return source_url
+        elif vulnerability_id:
+            return "{}/query/vulnerabilities?id={}".format(
+                get_api_endpoint(), vulnerability_id
+            )
+        else:
+            return "N/A"
+
+    def grype_to_engine_image_vulnerability(
         self,
         result: Dict,
         package_mapper: PackageMapper,
@@ -383,10 +576,14 @@ class VulnerabilityMapper:
 
         vuln_match = VulnerabilityMatch(
             vulnerability=Vulnerability(
-                vulnerability_id=vuln_dict.get("id"),
+                vulnerability_id=self._try_get_normalized_vulnerability_id(
+                    vuln_dict.get("id"), vuln_dict.get("namespace"), nvd_objs
+                ),
                 description=vuln_dict.get("description"),
                 severity=vuln_dict.get("severity"),
-                link=vuln_dict.get("dataSource"),
+                link=self._try_make_link(
+                    vuln_dict.get("id"), vuln_dict.get("dataSource")
+                ),
                 feed="vulnerabilities",
                 feed_group=vuln_dict.get("namespace"),
                 cvss=cvss_objs,
@@ -451,7 +648,7 @@ ENGINE_PACKAGE_MAPPERS = {
     ),
     "npm": CPEMapper(engine_type="npm", grype_type="npm", grype_language="javascript"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem", grype_language="ruby"),
-    "java": CPEMapper(
+    "java": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
@@ -475,10 +672,10 @@ GRYPE_PACKAGE_MAPPERS = {
     ),
     "npm": CPEMapper(engine_type="npm", grype_type="npm", grype_language="javascript"),
     "gem": CPEMapper(engine_type="gem", grype_type="gem", grype_language="ruby"),
-    "java-archive": CPEMapper(
+    "java-archive": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
-    "jenkins-plugin": CPEMapper(
+    "jenkins-plugin": JavaMapper(
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
     "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
@@ -492,33 +689,22 @@ GRYPE_PACKAGE_MAPPERS = {
 GRYPE_MATCH_MAPPER = VulnerabilityMapper()
 
 
-def to_grype_sbom(
-    image: Image,
-    image_packages: List[ImagePackage],
-    image_cpes: List[ImageCpe],
-):
-    """
-    Generate grype sbom using Image artifacts
-    """
+def image_content_to_grype_sbom(image: Image, image_content_map: Dict) -> Dict:
+
+    # select the distro
     distro_mapper = ENGINE_DISTRO_MAPPERS.get(image.distro_name)
     if not distro_mapper:
         log.error(
             "No distro mapper found for %s. Cannot generate sbom", image.distro_name
         )
         raise ValueError(
-            "No distro mapper found for {}. Cannot generate sbom".format(
-                image.distro_name
-            )
+            f"No distro mapper found for {image.distro_name}. Cannot generate sbom"
         )
 
-    # map the package (location) to its list of cpes
-    location_cpes_dict = defaultdict(list)
-    for image_cpe in image_cpes:
-        location_cpes_dict[image_cpe.pkg_path].append(image_cpe)
-
-    # create the sbom
+    # initialize the sbom
     sbom = dict()
 
+    # set the distro information
     sbom["distro"] = distro_mapper.to_grype_distro(image.distro_version)
     sbom["source"] = {
         "type": "image",
@@ -531,30 +717,36 @@ def to_grype_sbom(
     artifacts = []
     sbom["artifacts"] = artifacts
 
-    for image_package in image_packages:
-        pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(image_package.pkg_type)
-        if not pkg_mapper:
-            log.warn(
-                "No mapper found for engine package type %s, defaulting to CPE mapper",
-                image_package.pkg_type,
-            )
-            pkg_mapper = CPEMapper(
-                engine_type=image_package.pkg_path, grype_type=image_package.pkg_path
-            )
+    for content_type, packages in image_content_map.items():
+        for package in packages:
+            if content_type in nonos_package_types:
+                pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(content_type)
+            elif content_type in ["os"] and package.get("type"):
+                pkg_mapper = ENGINE_PACKAGE_MAPPERS.get(package.get("type").lower())
+            else:
+                pkg_mapper = None
 
-        try:
-            artifacts.append(pkg_mapper.to_grype(image_package, location_cpes_dict))
-        except Exception:
-            log.exception(
-                "Ignoring error in engine->grype transformation for %s package %s, skipping it from sbom",
-                image_package.pkg_type,
-                image_package.name,
-            )
+            if not pkg_mapper:
+                log.warn(
+                    "No mapper found for engine image content %s, using a default mapper",
+                    package,
+                )
+                pkg_mapper = CPEMapper(
+                    engine_type=package.get("type"), grype_type=package.get("type")
+                )
+
+            try:
+                artifacts.append(pkg_mapper.image_content_to_grype_sbom(package))
+            except Exception:
+                log.exception(
+                    "Skipping sbom entry due to error in engine->grype transformation for engine image content %s",
+                    package,
+                )
 
     return sbom
 
 
-def to_engine_vulnerabilities(grype_response):
+def grype_to_engine_image_vulnerabilities(grype_response):
     """
     Transform grype results into engine vulnerabilities
     """
@@ -575,7 +767,11 @@ def to_engine_vulnerabilities(grype_response):
             continue
 
         try:
-            results.append(GRYPE_MATCH_MAPPER.to_engine(item, pkg_mapper, now))
+            results.append(
+                GRYPE_MATCH_MAPPER.grype_to_engine_image_vulnerability(
+                    item, pkg_mapper, now
+                )
+            )
         except Exception:
             log.exception(
                 "Ignoring error in grype->engine transformation for vulnerability match, skipping it from report",

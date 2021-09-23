@@ -8,7 +8,7 @@
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
-  LATEST_RELEASE_MAJOR_VERSION: 0.10.0
+  LATEST_RELEASE_MAJOR_VERSION: 1.0.0
   TERM: xterm
 
 .attach_workspace: &attach_workspace
@@ -261,6 +261,28 @@ jobs:
           name: Push to Dockerhub
           command: make << parameters.make_job >>
 
+  container_tests:
+    description: Check container properties
+    parameters:
+      # dev:  a docker build job *must* take place before the job so that
+      #       there is a local image for it to run
+      # prod: the script that this invokes pulls the image from dockerhub
+      test_env:
+        type: enum
+        default: "dev"
+        enum: ["dev", "prod"]
+    docker:
+      - image: circleci/python:3.8
+    environment: *global_environment_vars
+    steps:
+      - setup_remote_docker
+      - checkout
+      - <<: *attach_workspace
+      - <<: *load_docker_image
+      - run:
+          name: Run container-structure-tests
+          command: make test-container-<< parameters.test_env >>
+
 workflows:
   default_workflow:
     jobs:
@@ -280,8 +302,12 @@ workflows:
             - unit_tests_38
       - build:
           requires:
-            - lint_38
             - unit_tests_38
+      - container_tests:
+          name: test_container_dev
+          test_env: "dev"
+          requires:
+            - build
       - functional_tests:
           name: functional_tests_38_legacy
           tox_env: "py38"
@@ -303,6 +329,7 @@ workflows:
             - functional_tests_38_grype
             - functional_tests_38_legacy
             - integration_tests_38
+            - test_container_dev
       - anchore/image_scan:
           context: dockerhub
           requires:
@@ -339,8 +366,13 @@ workflows:
       - build:
           filters: *filter_nightly
           requires:
-            - lint_38
             - unit_tests_38
+      - container_tests:
+          name: test_container_nightly
+          test_env: "dev"
+          filters: *filter_nightly
+          requires:
+            - build
       - functional_tests:
           name: functional_tests_38_legacy
           vulnerabilities_provider: "legacy"
@@ -372,6 +404,7 @@ workflows:
             - functional_tests_38_grype
             - integration_tests_38
             - e2e_tests_38
+            - test_container_nightly
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_nightly
@@ -385,6 +418,12 @@ workflows:
     jobs:
       - build:
           filters: *filter_rc_tags
+      - container_tests:
+          name: test_container_rc
+          test_env: dev
+          filters: *filter_rc_tags
+          requires:
+            - build
       - e2e_tests:
           name: rc_e2e_tests_38
           py_version: "3.8"
@@ -399,6 +438,7 @@ workflows:
           filters: *filter_rc_tags
           requires:
             - rc_e2e_tests_38
+            - test_container_rc
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_rc_tags
@@ -435,6 +475,13 @@ workflows:
           filters: *filter_semver_tags
           requires:
             - push_prod_image
+      - container_tests:
+          name: test_container_prod
+          test_env: prod
+          context: dockerhub-prod
+          filters: *filter_semver_tags
+          requires:
+            - push_prod_image
 
   rebuild_image_workflow:
     jobs:
@@ -453,13 +500,17 @@ workflows:
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
-            - lint_38
             - unit_tests_38
       - build:
           filters: *filter_rebuild_tags
           requires:
-            - lint_38
             - unit_tests_38
+      - container_tests:
+          name: test_container_rebuild
+          test_env: dev
+          filters: *filter_rebuild_tags
+          requires:
+            - build
       - functional_tests:
           name: functional_tests_38_legacy
           vulnerabilities_provider: "legacy"
@@ -491,6 +542,7 @@ workflows:
             - functional_tests_38_legacy
             - functional_tests_38_grype
             - integration_tests_38
+            - test_container_rebuild
       - anchore/image_scan:
           name: anchore_image_scan
           context: dockerhub
