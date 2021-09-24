@@ -12,6 +12,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from operator import itemgetter
+from typing import Any, Dict, List
 
 from ijson import common as ijcommon
 from ijson.backends import python as ijpython
@@ -858,3 +859,53 @@ def bytes_to_mb(value, round_to=None):
         mb = round(mb, round_to)
 
     return mb
+
+
+def dedup_list_of_dicts(list_of_dicts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    This helper function will sort and dedup a list of dicts. Dicts are not hashable, so you can't just call set on
+    them. This will recursively convert nested dictionaries to frozensets, add them to a set, recursively
+    convert the frozensets back to dictionaries, and convert the set to a list.
+
+    :param list_of_dicts: list of dictionaries to deduplicate
+    :type list_of_dicts: List[Dict[str, Any]]
+    :return: deduplicated list of dictionaries
+    :rtype: List[Dict[str, Any]]
+    """
+    unique_items = set(_recursive_freeze(child_dict) for child_dict in list_of_dicts)
+    return [
+        _recursive_unfreeze(child_frozenset) for child_frozenset in sorted(unique_items)
+    ]
+
+
+def _recursive_unfreeze(to_unfreeze: Any) -> Any:
+    """
+    Recursively convert frozenset to nested dictionaries.
+
+    :param to_unfreeze: frozenset to convert to dictionary
+    :type to_unfreeze: Any
+    :return: unfrozen dictionary
+    :rtype: Any
+    """
+    if not isinstance(to_unfreeze, frozenset):
+        return to_unfreeze
+    to_unfreeze = dict(to_unfreeze)
+    for k, v in to_unfreeze.items():
+        to_unfreeze[k] = _recursive_unfreeze(v)
+    return to_unfreeze
+
+
+def _recursive_freeze(to_freeze: Any) -> Any:
+    """
+    Recursively convert nested dictionary to frozenset.
+
+    :param to_freeze: dictionary to convert to frozenset
+    :type to_freeze: Any
+    :return: frozen dictionary
+    :rtype: Any
+    """
+    if not isinstance(to_freeze, dict):
+        return to_freeze
+    for k, v in to_freeze.items():
+        to_freeze[k] = _recursive_freeze(v)
+    return frozenset(to_freeze.items())
