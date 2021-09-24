@@ -923,10 +923,17 @@ class EngineGrypeDBMapper:
             if grype_vulnerability:
 
                 # Transform the versions block
-                if grype_vulnerability.deserialized_version_constraint:
-                    version = ",".join(
-                        grype_vulnerability.deserialized_version_constraint
-                    )
+                if grype_vulnerability.version_constraint:
+                    if "unspecified" in grype_vulnerability.version_constraint.lower():
+                        version = "*"
+                    else:
+                        version_strings = [
+                            version.strip(" '\"")
+                            for version in grype_vulnerability.version_constraint.split(
+                                "||"
+                            )
+                        ]
+                        version = ",".join(version_strings)
                 else:
                     version = "*"
 
