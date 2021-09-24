@@ -1,7 +1,13 @@
 import time
 
 from tests.functional import get_logger
-from tests.functional.services.utils.http_utils import RequestFailedError, http_get
+from tests.functional.services.utils.http_utils import (
+    RequestFailedError,
+    get_api_conf,
+    http_del,
+    http_get,
+    http_post,
+)
 
 WAIT_TIMEOUT_SEC = 60 * 5
 
@@ -65,3 +71,26 @@ def wait_for_image_to_analyze(image_id, api_conf: callable):
                 int(time.time() - start_time_sec)
             )
         )
+
+
+def add_image(tag, api_conf=get_api_conf):
+    add_image_resp = http_post(["images"], {"tag": tag}, config=api_conf)
+    if add_image_resp.code != 200:
+        raise RequestFailedError(
+            add_image_resp.url, add_image_resp.code, add_image_resp.body
+        )
+
+    return add_image_resp
+
+
+def delete_image_by_id(image_id, api_conf=get_api_conf):
+    delete_image_resp = http_del(
+        ["images", "by_id", image_id], query={"force": True}, config=api_conf
+    )
+
+    if delete_image_resp.code != 200:
+        raise RequestFailedError(
+            delete_image_resp.url, delete_image_resp.code, delete_image_resp.body
+        )
+
+    return delete_image_resp
