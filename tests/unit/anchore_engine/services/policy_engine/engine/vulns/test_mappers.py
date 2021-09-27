@@ -350,7 +350,7 @@ class TestImageContentAPIToGrypeSbom:
                         "cpe:2.3:a:ssl:ssl-client:1.32.1-r5:*:*:*:*:*:*:*",
                     ],
                     "locations": [{"path": "pkgdb"}],
-                    "metadataType": "ApkgMetadata",
+                    "metadataType": "ApkMetadata",
                     "metadata": {"originPackage": "busybox"},
                 },
                 id="apkg-with-source",
