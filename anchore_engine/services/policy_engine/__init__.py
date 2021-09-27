@@ -104,6 +104,7 @@ def process_preflight():
     preflight_check_functions = [
         init_db_content,
         init_feed_registry,
+        init_vulnerabilities_provider,
         init_display_mapper,
     ]
 
@@ -192,6 +193,10 @@ def init_feed_registry():
 def init_display_mapper():
     provider = get_vulnerabilities_provider()
     provider.init_display_mapper()
+
+
+def init_vulnerabilities_provider():
+    get_vulnerabilities_provider()
 
 
 def do_feed_sync(msg):
