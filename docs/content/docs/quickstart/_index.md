@@ -22,7 +22,7 @@ In this section, you'll learn how to get up and running with a stand-alone Ancho
 
 The following instructions assume you are using a system running Docker v1.12 or higher, and a version of Docker Compose that supports at least v2 of the docker-compose configuration format.
 
-* A stand-alone installation will requires at least 4GB of RAM, and enough disk space available to support the largest container images you intend to analyze (we recommend 3x largest container image size).  For small images/testing (basic Linux distro images, database images, etc), between 5GB and 10GB of disk space should be sufficient.
+* A stand-alone installation requires at least 4GB of RAM, and enough disk space available to support the largest container images you intend to analyze (we recommend 3x largest container image size).  For small images/testing (basic Linux distro images, database images, etc), between 5GB and 10GB of disk space should be sufficient.
 
 
 ### Step 1: Download the docker-compose.yaml file and start.
@@ -177,11 +177,11 @@ Policy ID: 2c53a13c-1765-11e8-82ef-23527761d060
 
 ### Next Steps
 
-Now that you have Anchore Engine running, you can begin to learning more about Anchore Architecture, Anchore Concepts and Anchore Usage.
+Now that you have Anchore Engine running, you can begin to learn more about Anchore architecture, Anchore concepts, and Anchore usage.
 
-- To learn more about Anchore Engine, go to [Overview]({{< ref "/docs/general" >}})
-- To learn more about Anchore Concepts, go to [Concepts]({{< ref "/docs/general/concepts" >}})
-- To learn more about using Anchore Usage, go to [Usage]({{< ref "/docs/usage" >}})
+- For more information about Anchore Engine, see [Overview]({{< ref "/docs/general" >}}).
+- For more information about Anchore Concepts, see [Concepts]({{< ref "/docs/general/concepts" >}}).
+- For more information about Anchore Usage, see [Usage]({{< ref "/docs/usage" >}}).
 
 
 ### Optional: Enabling Prometheus Monitoring

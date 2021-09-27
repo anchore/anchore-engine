@@ -21,9 +21,7 @@ For most users the only configuration option that is typically updated is the fe
 ### Feed Settings
 
 Feed sync configuration is set in the config.yaml file used by policy engine service. The `services.policy_engine.vulnerabilities.sync.data` section
-of the configuration file in the policy engine's container controls the behavior of feed syncs done by that particular container. Note that the location
-and format of this config data changed slightly in Anchore Engine 0.10 to reflect some internal refactoring.  Ensure this config is synchronized between
-containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.
+of the configuration file in the policy engine's container controls the behavior of feed syncs done by that particular container. Ensure this config is synchronized between containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.
 
 The Anchore Engine will default to downloading feed data from Anchore's feed service hosted at https://ancho.re/v1/service/feeds and running in AWS in the
 us-west-2 region.
@@ -44,25 +42,17 @@ services:
           grypedb:
             enabled: true
             url: ${ANCHORE_GRYPE_DB_URL}
-          vulnerabilities:
-            enabled: true
-            url: ${ANCHORE_FEEDS_URL}
-          nvdv2:
-            enabled: true
-            url: ${ANCHORE_FEEDS_URL}
-          github:
+          packages:
             enabled: true
             url: ${ANCHORE_FEEDS_URL}
 ```
 
-***Note:*** As show above, Anchore Engine now has a new feed for Grype. This feed will only be synced if the
-[tech preview Grype vulnerability scanner]({{< ref "/docs/grype" >}}) is also enabled. Furthermore, if it is enabled this will be the only feed that Engine syncs, as it
-replaces (and contains vulnerability data from) the other groups.
+***Note:*** As shown above, Anchore Engine's default is now Grype. The Grype feed is the default, and the only one that Anchore Engine syncs.
 
 #### Read Timeout
 
 Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
-some other temporary condition. However, if you want to increase the timeout to increate the likelihood of success, modify the _read_timeout_seconds_ of the feeds configuration:
+some other temporary condition. However, if you want to increase the timeout to improve the likelihood of success, modify the _read_timeout_seconds_ of the feeds configuration:
 
 ```
 feeds:
@@ -72,7 +62,7 @@ feeds:
 
 ### Controlling Which Feeds and Groups are Synced
 
-Note: The package and nvd data feeds are large, resulting in the initial sync taking some time time.
+Note: The package and nvd data feeds are large, resulting in the initial sync taking some time.
 
 During initial feed sync, you can always query the progress and status of the feed sync using the anchore-cli.
 
@@ -131,13 +121,13 @@ vulnerabilities        ubuntu:19.04           2020-03-27T20:40:18.628869        
 vulnerabilities        ubuntu:19.10           2020-03-27T20:41:20.828796        7327      
 ```
 
-***Note:*** If the tech preview Grype vulnerability scanner is enabled, the Grype feed is the only feed that will be synced. It will
+***Note:*** The Grype feed is the only feed that will be synced. It will
 contain the records from all the other groups. It is not possible to include or exclude groups from the Grype feed.
 
 ### Using the Config File to Include/Exclude Feeds at System Bootstrap
 
 The most common way to set which feeds are synced is in the config.yaml for the policy engine. By default, 
-the _vulnerabilities_, _nvdv2_, and _github_ feeds are synced to provide good vulnerability matching support for a variety of linux distros
+the _grypedb_ and _packages_ feeds are synced to provide good vulnerability matching support for a variety of linux distros
 and application package types. Normally it will not be necessary to modify that set.
 
 To disable a feed or enable a disabled feed, modify the config.yaml's _feeds_ section to:
@@ -147,13 +137,11 @@ feeds:
   selective_sync: 
     enabled: true
     feeds:
-      vulnerabilities: true
-      nvdv2: true
-      github: true
-      packages: false
+      grypedb: true
+      packages: true
 ```
 
-Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and settng
+Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and setting
 a feed to 'false' will not remove any data or show in the API/CLI, it will simply skip updates during sync operations.
 
 
@@ -410,5 +398,5 @@ vulnerabilities        centos:5               success        1347               
 
 ```
 
-With these controls you can better customize the data set that anchore stores in the db. However, note that this should not normally be necessary
-and modifying feed groups & data has implication on the sets of distros and types of artifacts Anchore can match vulnerabilities against.
+With these controls you can better customize the data set that anchore stores in the database. However, note that this should not normally be necessary
+and modifying feed groups & data has implications on the sets of distros and types of artifacts Anchore can match vulnerabilities against.
