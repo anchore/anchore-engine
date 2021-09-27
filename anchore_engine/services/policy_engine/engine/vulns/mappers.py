@@ -18,6 +18,7 @@ from anchore_engine.common.models.policy_engine import (
 from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
+from anchore_engine.util.rpm import split_fullversion
 
 
 class DistroMapper:
@@ -155,6 +156,18 @@ class RpmMapper(LinuxDistroPackageMapper):
         if image_package.normalized_src_pkg != "N/A":
             artifact["metadataType"] = "RpmdbMetadata"
             artifact["metadata"] = {"sourceRpm": image_package.src_pkg}
+
+            # This epoch handling is necessary because in RPMs the epoch of the binary package is often not part of the
+            # sourceRpm name, but Grype needs it to do the version comparison correctly.
+            # Without this step Grype will use the wrong version string for the vulnerability match
+            epoch_str, version, release = split_fullversion(image_package.fullversion)
+            if epoch_str:
+                try:
+                    artifact["epoch"] = int(epoch_str)
+                except ValueError:
+                    # not a valid epoch, something went wrong
+                    pass
+
         return artifact
 
     def image_content_to_grype_sbom(self, record: Dict):
@@ -167,9 +180,35 @@ class RpmMapper(LinuxDistroPackageMapper):
 
         """
         artifact = super().image_content_to_grype_sbom(record)
+
+        # Handle Epoch
+
+        # This epoch handling is necessary because in RPMs the epoch of the binary package is often not part of the
+        # sourceRpm name, but Grype needs it to do the version comparison correctly.
+        # Without this step Grype will use the wrong version string for the vulnerability match
+        full_version = record.get("version")
+        epoch = None
+
+        if full_version:
+            epoch_str, version, release = split_fullversion(full_version)
+            if epoch_str:
+                try:
+                    epoch = int(epoch_str)
+                except ValueError:
+                    # not a valid epoch, something went wrong
+                    pass
+
+        # Get the sourceRpm info
+        source_rpm = None
         if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
-            artifact["metadataType"] = "RpmdbMetadata"
-            artifact["metadata"] = {"sourceRpm": record.get("sourcepkg")}
+            source_rpm = record.get("sourcepkg")
+
+        artifact["metadataType"] = "RpmdbMetadata"
+        artifact["metadata"] = {
+            "sourceRpm": source_rpm,
+            "epoch": epoch,
+        }
+
         return artifact
 
 
