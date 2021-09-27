@@ -266,7 +266,7 @@ class ApkgMapper(LinuxDistroPackageMapper):
 
         artifact = super().image_content_to_grype_sbom(record)
         if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
-            artifact["metadataType"] = "ApkgMetadata"
+            artifact["metadataType"] = "ApkMetadata"
             artifact["metadata"] = {"originPackage": record.get("sourcepkg")}
         return artifact
 
