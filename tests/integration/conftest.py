@@ -46,3 +46,14 @@ def bundle():
             return json.load(f)
 
     return find
+
+
+@pytest.fixture(autouse=True)
+def set_legacy_provider(monkeysession):
+    def _provider_name(section):
+        return "legacy"
+
+    monkeysession.setattr(
+        "anchore_engine.services.policy_engine.engine.vulns.providers.get_provider_name",
+        _provider_name,
+    )

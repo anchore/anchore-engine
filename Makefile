@@ -134,7 +134,7 @@ test-functional: venv setup-test-infra ## Run functional tests, assuming compose
 PHONY: setup-and-test-functional-grype
 setup-and-test-functional-grype: venv setup-test-infra ## Stand up/start docker-compose, run functional tests, tear down/stop docker-compose
 	@$(ACTIVATE_VENV) && $(CI_CMD) prep-local-docker-registry-credentials
-	@$(MAKE) compose-up
+	@$(MAKE) compose-up ANCHORE_VULNERABILITIES_PROVIDER="grype"
 	@$(MAKE) test-functional
 	@$(MAKE) compose-down
 
