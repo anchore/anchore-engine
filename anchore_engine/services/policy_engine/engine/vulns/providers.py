@@ -1606,23 +1606,27 @@ def set_provider():
     global PROVIDER
 
     provider_name = get_provider_name(get_section_for_vulnerabilities())
+    if not provider_name:
+        raise ValueError(
+            "No vulnerabilities->provider found in the policy-engine configuration, set the provider in your helm chart or docker-compose.yaml"
+        )
+
     provider_class = next(
         (item for item in PROVIDER_CLASSES if item.__config__name__ == provider_name),
         None,
     )
 
     if not provider_class:
-        logger.warn(
-            "No implementation found for configured provider %s. Falling back to default",
+        raise ValueError(
+            'No vulnerabilities provider implementation found for configured provider %s. Supported providers are "grype" or "legacy"',
             provider_name,
         )
-        provider_class = LegacyProvider
 
     PROVIDER = provider_class()
     logger.info("Initialized vulnerabilities provider: %s", PROVIDER.get_config_name())
 
 
-def get_vulnerabilities_provider() -> VulnerabilitiesProvider:
+def get_vulnerabilities_provider() -> Optional[VulnerabilitiesProvider]:
     if not PROVIDER:
         set_provider()
 
