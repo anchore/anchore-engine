@@ -225,7 +225,7 @@ jobs:
           name: Run functional tests
           command: make setup-and-test-functional-<< parameters.vulnerabilities_provider >>
 
-  e2e_tests:
+  cli_smoke_tests:
     parameters:
       py_version:
         type: string
@@ -240,9 +240,9 @@ jobs:
       - <<: *load_docker_image
       - <<: *ssh_forward_port
       - run:
-          name: Run e2e tests
+          name: Run anchore-cli smoke tests
           no_output_timeout: 30m
-          command: make setup-and-test-e2e
+          command: make setup-and-test-cli
 
   push_image:
     description: Uses make script to push images to DockerHub - dev, rc, prod
@@ -387,8 +387,8 @@ workflows:
           filters: *filter_nightly
           requires:
             - build
-      - e2e_tests:
-          name: e2e_tests_38
+      - cli_smoke_tests:
+          name: cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_nightly
@@ -403,7 +403,7 @@ workflows:
             - functional_tests_38_legacy
             - functional_tests_38_grype
             - integration_tests_38
-            - e2e_tests_38
+            - cli_smoke_tests_38
             - test_container_nightly
       - anchore/image_scan:
           context: dockerhub
@@ -424,8 +424,8 @@ workflows:
           filters: *filter_rc_tags
           requires:
             - build
-      - e2e_tests:
-          name: rc_e2e_tests_38
+      - cli_smoke_tests:
+          name: rc_cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_rc_tags
@@ -437,7 +437,7 @@ workflows:
           context: dockerhub
           filters: *filter_rc_tags
           requires:
-            - rc_e2e_tests_38
+            - rc_cli_smoke_tests_38
             - test_container_rc
       - anchore/image_scan:
           context: dockerhub
@@ -451,8 +451,8 @@ workflows:
 
   prod_image_workflow:
     jobs:
-      - e2e_tests:
-          name: prod_e2e_tests_38
+      - cli_smoke_tests:
+          name: prod_cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
@@ -460,7 +460,7 @@ workflows:
           type: approval
           filters: *filter_semver_tags
           requires:
-            - prod_e2e_tests_38
+            - prod_cli_smoke_tests_38
       - push_image:
           name: push_prod_image
           make_job: push-prod
@@ -525,8 +525,8 @@ workflows:
           filters: *filter_rebuild_tags
           requires:
             - build
-      - e2e_tests:
-          name: e2e_tests_38
+      - cli_smoke_tests:
+          name: cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_rebuild_tags
@@ -538,7 +538,7 @@ workflows:
           context: dockerhub
           filters: *filter_rebuild_tags
           requires:
-            - e2e_tests_38
+            - cli_smoke_tests_38
             - functional_tests_38_legacy
             - functional_tests_38_grype
             - integration_tests_38
