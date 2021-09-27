@@ -19,7 +19,6 @@ from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
 from anchore_engine.util.rpm import split_fullversion
-from anchore_engine.utils import dedup_list_of_dicts
 
 
 class DistroMapper:
@@ -948,8 +947,12 @@ class EngineGrypeDBMapper:
                 )
 
         for _, vulnerability in intermediate_tuple_list.items():
-            vulnerability["affected_packages"] = dedup_list_of_dicts(
-                vulnerability["affected_packages"]
+            unique_affected_packages = set(
+                frozenset(affected_package.items())
+                for affected_package in vulnerability["affected_packages"]
             )
+            vulnerability["affected_packages"] = [
+                dict(affected_package) for affected_package in unique_affected_packages
+            ]
 
         return list(intermediate_tuple_list.values())
