@@ -556,6 +556,86 @@ class TestImageContentAPIToGrypeSbom:
                 },
                 id="rpm-no-src-but-epoch",
             ),
+            pytest.param(
+                ENGINE_PACKAGE_MAPPERS.get("go"),
+                {
+                    "cpes": [],
+                    "package": "openssl-libs",
+                    "type": "go",
+                    "version": "1.1.1",
+                },
+                {
+                    "cpes": [
+                        "cpe:2.3:a:-:openssl-libs:1.1.1:*:*:*:*:*:*:*",
+                    ],
+                    "name": "openssl-libs",
+                    "type": "go-module",
+                    "language": "go",
+                    "version": "1.1.1",
+                },
+                id="go-mod-no-cpes",
+            ),
+            pytest.param(
+                ENGINE_PACKAGE_MAPPERS.get("go"),
+                {
+                    "cpes": [
+                        "cpe:2.3:a:myvendor:openssl-libs:1.1.1-a:*:*:*:*:*:*:*",
+                    ],
+                    "package": "openssl-libs",
+                    "type": "go",
+                    "version": "1.1.1",
+                },
+                {
+                    "cpes": [
+                        "cpe:2.3:a:myvendor:openssl-libs:1.1.1-a:*:*:*:*:*:*:*",
+                    ],
+                    "name": "openssl-libs",
+                    "type": "go-module",
+                    "language": "go",
+                    "version": "1.1.1",
+                },
+                id="go-mod-with-cpes",
+            ),
+            pytest.param(
+                ENGINE_PACKAGE_MAPPERS.get("binary"),
+                {
+                    "cpes": [],
+                    "package": "openssl-libs",
+                    "type": "go",
+                    "version": "1.1.1",
+                },
+                {
+                    "cpes": [
+                        "cpe:2.3:a:-:openssl-libs:1.1.1:*:*:*:*:*:*:*",
+                    ],
+                    "name": "openssl-libs",
+                    "type": "binary",
+                    "language": "",
+                    "version": "1.1.1",
+                },
+                id="binary-no-cpes",
+            ),
+            pytest.param(
+                ENGINE_PACKAGE_MAPPERS.get("binary"),
+                {
+                    "cpes": [
+                        "cpe:2.3:a:myvendor:openssl-libs:1.1.1-a:*:*:*:*:*:*:*",
+                    ],
+                    "package": "openssl-libs",
+                    "type": "go",
+                    "version": "1.1.1",
+                },
+                {
+                    "cpes": [
+                        "cpe:2.3:a:myvendor:openssl-libs:1.1.1-a:*:*:*:*:*:*:*",
+                    ],
+                    "name": "openssl-libs",
+                    "type": "binary",
+                    "language": "",
+                    "version": "1.1.1",
+                },
+                id="binary-with-cpes",
+            ),
         ],
     )
     def test_mappers(self, mapper, test_input, expected):

@@ -19,6 +19,10 @@ from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
 from anchore_engine.util.rpm import split_fullversion
+from anchore_engine.services.policy_engine.engine.vulns.cpe_utils import (
+    generate_simple_cpes,
+    generate_fuzzy_go_cpes,
+)
 
 
 class DistroMapper:
@@ -362,6 +366,32 @@ class CPEMapper(PackageMapper):
         return artifact
 
 
+class BinaryMapper(CPEMapper):
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Inserts cpes if they are missing from the content input
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        if not artifact.get("cpes"):
+            artifact["cpes"] = generate_simple_cpes(
+                artifact.get("name"), artifact.get("version")
+            )
+        return artifact
+
+
+class GoMapper(CPEMapper):
+    def image_content_to_grype_sbom(self, record: Dict):
+        """
+        Inserts cpes if they are missing from the content input
+        """
+        artifact = super().image_content_to_grype_sbom(record)
+        if not artifact.get("cpes"):
+            artifact["cpes"] = generate_fuzzy_go_cpes(
+                artifact.get("name"), artifact.get("version")
+            )
+        return artifact
+
+
 class JavaMapper(CPEMapper):
     @staticmethod
     def _image_content_to_grype_metadata(metadata: Optional[Dict]) -> Dict:
@@ -690,8 +720,8 @@ ENGINE_PACKAGE_MAPPERS = {
     "java": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
-    "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
-    "binary": CPEMapper(engine_type="binary", grype_type="binary"),
+    "go": GoMapper(engine_type="go", grype_type="go-module", grype_language="go"),
+    "binary": BinaryMapper(engine_type="binary", grype_type="binary"),
     "maven": CPEMapper(
         engine_type="maven", grype_type="java-archive", grype_language="java"
     ),
@@ -717,8 +747,10 @@ GRYPE_PACKAGE_MAPPERS = {
     "jenkins-plugin": JavaMapper(
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
-    "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
-    "binary": CPEMapper(engine_type="binary", grype_type="binary"),
+    "go-module": GoMapper(
+        engine_type="go", grype_type="go-module", grype_language="go"
+    ),
+    "binary": BinaryMapper(engine_type="binary", grype_type="binary"),
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
     "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
