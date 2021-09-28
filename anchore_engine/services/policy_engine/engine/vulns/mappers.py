@@ -922,10 +922,14 @@ class EngineGrypeDBMapper:
             if grype_vulnerability:
 
                 # Transform the versions block
-                if grype_vulnerability.deserialized_fixed_in_versions:
-                    version = ",".join(
-                        grype_vulnerability.deserialized_fixed_in_versions
-                    )
+                if grype_vulnerability.version_constraint:
+                    version_strings = [
+                        version.strip(" '\"")
+                        for version in grype_vulnerability.version_constraint.split(
+                            "||"
+                        )
+                    ]
+                    version = ",".join(version_strings)
                 else:
                     version = "*"
 
@@ -938,5 +942,14 @@ class EngineGrypeDBMapper:
                         "will_not_fix": grype_vulnerability.fix_state == "wont-fix",
                     }
                 )
+
+        for _, vulnerability in intermediate_tuple_list.items():
+            unique_affected_packages = set(
+                frozenset(affected_package.items())
+                for affected_package in vulnerability["affected_packages"]
+            )
+            vulnerability["affected_packages"] = [
+                dict(affected_package) for affected_package in unique_affected_packages
+            ]
 
         return list(intermediate_tuple_list.values())
