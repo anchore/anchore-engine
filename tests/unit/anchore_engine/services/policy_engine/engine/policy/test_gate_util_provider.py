@@ -86,9 +86,10 @@ class TestGateUtilProvider:
         "distro, version, expected",
         [
             ("amzn", "2", False),
-            ("alpine", "3.10", True),
+            ("alpine", "3.10", False),
             ("debian", "10", True),
-            ("github", "python", True),
+            ("debian", "11", True),
+            ("github", "python", False),
         ],
     )
     def test_have_vulnerabilities_for_grype_provider(
