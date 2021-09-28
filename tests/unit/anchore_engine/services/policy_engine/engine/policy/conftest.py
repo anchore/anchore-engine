@@ -34,9 +34,7 @@ def mock_distromapping_query(monkeypatch):
 
 
 @pytest.fixture
-def mock_gate_util_provider_oldest_namespace_feed_sync(
-    monkeypatch, mock_distromapping_query
-):
+def mock_gate_util_provider_feed_data(monkeypatch, mock_distromapping_query):
     """
     Mocks for anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GateUtilProvider.oldest_namespace_feed_sync
     """
@@ -54,13 +52,29 @@ def mock_gate_util_provider_oldest_namespace_feed_sync(
     def raise_no_active_grypedb(session):
         raise NoActiveGrypeDB
 
-    def _setup_mocks(feed_group_metadata=None, grype_db_feed_metadata=None):
+    def _setup_mocks(
+        feed_group_metadata=None, grype_db_feed_metadata=None, feed_metadata=None
+    ):
         # required for FeedOutOfDateTrigger.evaluate
         # mocks anchore_engine.services.policy_engine.engine.feeds.db.get_feed_group_detached
         monkeypatch.setattr(
             "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.session_scope",
             mock_session_scope,
         )
+
+        # required for UnsupportedDistroTrigger.evaluate
+        monkeypatch.setattr(
+            "anchore_engine.services.policy_engine.engine.feeds.feeds.get_session",
+            lambda: None,
+        )
+
+        # if feed metadata provided patch get_feed json for have_vulnerabilities_for legacy (UnsupportedDistroTrigger)
+        if feed_metadata:
+            monkeypatch.setattr(
+                "anchore_engine.services.policy_engine.engine.feeds.feeds.get_feed_json",
+                lambda db_session, feed_name: feed_metadata.to_json(),
+            )
+
         if grype_db_feed_metadata:
             monkeypatch.setattr(
                 "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.get_most_recent_active_grypedb",

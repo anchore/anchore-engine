@@ -14,10 +14,15 @@ from anchore_engine.services.policy_engine.engine.policy.gate_util_provider impo
     GrypeGateUtilProvider,
     LegacyGateUtilProvider,
 )
-from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
-    production_grype_db_dir,
-    test_grype_wrapper_singleton,
-    patch_grype_wrapper_singleton,
+
+grype_db_for_unsupported_distro = GrypeDBFeedMetadata(
+    groups=[
+        {"name": "ubuntu:20.04", "record_count": 4909},
+        {"name": "amzn:2", "record_count": 0},
+        {"name": "alpine:3.10", "record_count": 200},
+        {"name": "debian:10", "record_count": 500},
+        {"name": "github:python", "record_count": 800},
+    ]
 )
 
 
@@ -67,12 +72,12 @@ class TestGateUtilProvider:
         grype_db_feed_metadata: Optional[GrypeDBFeedMetadata],
         expected_oldest_update: Optional[datetime.datetime],
         mock_distromapping_query,
-        mock_gate_util_provider_oldest_namespace_feed_sync,
+        mock_gate_util_provider_feed_data,
     ):
         ns = DistroNamespace(name="DEB", version="10", like_distro=None)
         ns.like_namespace_names = ["debian:10"]
 
-        mock_gate_util_provider_oldest_namespace_feed_sync(
+        mock_gate_util_provider_feed_data(
             feed_group_metadata=feed_group_metadata,
             grype_db_feed_metadata=grype_db_feed_metadata,
         )
@@ -83,31 +88,37 @@ class TestGateUtilProvider:
         assert oldest_update == expected_oldest_update
 
     @pytest.mark.parametrize(
-        "distro, version, expected",
+        "grypedb, distro, version, expected",
         [
-            ("amzn", "2", False),
-            ("alpine", "3.10", False),
-            ("debian", "10", True),
-            ("debian", "11", True),
-            ("github", "python", False),
+            (grype_db_for_unsupported_distro, "amzn", "2", False),
+            (grype_db_for_unsupported_distro, "alpine", "3.10", True),
+            (grype_db_for_unsupported_distro, "debian", "10", True),
+            (grype_db_for_unsupported_distro, "github", "python", True),
+            (grype_db_for_unsupported_distro, "ubuntu", "17.04", False),
+            (None, "alpine", "3.10", False),  # This one tests no active grypedb
+            (GrypeDBFeedMetadata(groups=None), "alpine", "3.10", False),
         ],
     )
     def test_have_vulnerabilities_for_grype_provider(
         self,
+        grypedb,
         distro: str,
         version: str,
         expected: bool,
-        patch_grype_wrapper_singleton,
+        mock_gate_util_provider_feed_data,
     ):
         # Setup
-        patch_grype_wrapper_singleton(
-            [
-                "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GrypeWrapperSingleton.get_instance"
-            ]
-        )
         distro_namespace = Mock()
-        distro_namespace.like_namespace_names = [distro + ":" + version]
+        base_distro_name = distro + ":" + version
+        distro_namespace.like_namespace_names = [
+            f"{base_distro_name}.0",
+            f"{base_distro_name}.1",
+            f"{base_distro_name}.2",
+            base_distro_name,
+        ]
         provider = GrypeGateUtilProvider()
+
+        mock_gate_util_provider_feed_data(grype_db_feed_metadata=grypedb)
 
         # Method under test
         result = provider.have_vulnerabilities_for(distro_namespace)
