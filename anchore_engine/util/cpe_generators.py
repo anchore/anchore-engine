@@ -41,7 +41,7 @@ NOMATCH_INCLUSIONS = {
 }
 
 
-def generate_simple_cpes(name: str, version: str) -> List[str]:
+def generate_simple_cpe(name: str, version: str) -> str:
     """
     Given a name and version, generate a list of fuzzy cpes and return it as a list
     of strings
@@ -56,7 +56,21 @@ def generate_simple_cpes(name: str, version: str) -> List[str]:
     if not version:
         version = "*"
 
-    return [VENDORLESS_CPE_FORMAT.format(name=name, version=version)]
+    return VENDORLESS_CPE_FORMAT.format(name=name, version=version)
+
+
+def generate_fuzzy_cpes(name: str, version: str, package_type: str) -> List[str]:
+    """
+    Generate simple cpes
+
+    :param name:
+    :param version:
+    :param package_type:
+    :return:
+    """
+    names = generate_products(name, package_type)
+    cpes = [generate_simple_cpe(name, version) for name in names]
+    return cpes
 
 
 def generate_fuzzy_go_cpes(name: str, version: str) -> List[str]:
@@ -76,9 +90,7 @@ def generate_fuzzy_go_cpes(name: str, version: str) -> List[str]:
         if simplified_version not in candidate_versions:
             candidate_versions.append(simplified_version)
 
-    cpes = []
-    for v in candidate_versions:
-        cpes.extend(generate_simple_cpes(name, v))
+    cpes = [generate_simple_cpe(name, v) for v in candidate_versions]
 
     return cpes
 
@@ -129,142 +141,148 @@ def generate_java_cpes(image_content_dict: dict) -> List[str]:
     :return:
     """
 
+    # Compare with the verbatim code from the loader
+    names, versions = _fuzzy_java(image_content_dict)
+    legacy_cpes = []
+    for name in names:
+        for version in versions:
+            legacy_cpes.append(generate_simple_cpe(name, version))
+    deduped = list(set(legacy_cpes))
+    return deduped
+
+
+def _fuzzy_java(input_el):
+    """
+    Pulled over from the loaders.py verbatim for test validation.
+
+    :param input_el:
+    :return:
+    """
+
     known_nomatch_inclusions = NOMATCH_INCLUSIONS.get("java", {})
 
     ret_names = []
-    ret_versions = [
-        image_content_dict.get("implementation-version", "N/A"),
-        image_content_dict.get("specification-version", "N/A"),
-        image_content_dict.get("maven-version", "N/A"),
-    ]
+    ret_versions = []
+
+    iversion = input_el.get("implementation-version", "N/A")
+    if iversion != "N/A":
+        ret_versions.append(iversion)
+
+    sversion = input_el.get("specification-version", "N/A")
+    if sversion != "N/A":
+        if sversion not in ret_versions:
+            ret_versions.append(sversion)
+
+    mversion = input_el.get("maven-version", "N/A")
+    if mversion != "N/A" and mversion not in ret_versions:
+        if mversion not in ret_versions:
+            ret_versions.append(mversion)
 
     for rversion in ret_versions:
-        clean_version = cleaned_version(rversion)
+        clean_version = re.sub("\.(RELEASE|GA|SEC.*)$", "", rversion)
         if clean_version not in ret_versions:
             ret_versions.append(clean_version)
 
+    # do some heuristic tokenizing
     try:
-        t_names, t_versions = tokenize(image_content_dict=image_content_dict)
-        ret_names.extend(t_names)
-        ret_versions.extend(t_versions)
+        toks = re.findall("[^-]+", input_el["name"])
+        firstname = None
+        fullname = []
+        firstversion = None
+        fullversion = []
+
+        doingname = True
+        for tok in toks:
+            if re.match("^[0-9]", tok):
+                doingname = False
+
+            if doingname:
+                if not firstname:
+                    firstname = tok
+                else:
+                    fullname.append(tok)
+            else:
+                if not firstversion:
+                    firstversion = tok
+                else:
+                    fullversion.append(tok)
+
+        if firstname:
+            firstname_nonums = re.sub("[0-9].*$", "", firstname)
+            for gthing in [firstname, firstname_nonums]:
+                if gthing not in ret_names:
+                    ret_names.append(gthing)
+                if "-".join([gthing] + fullname) not in ret_names:
+                    ret_names.append("-".join([gthing] + fullname))
+
+        if firstversion:
+            firstversion_nosuffix = re.sub("\.(RELEASE|GA|SEC.*)$", "", firstversion)
+            for gthing in [firstversion, firstversion_nosuffix]:
+                if gthing not in ret_versions:
+                    ret_versions.append(gthing)
+                if "-".join([gthing] + fullversion) not in ret_versions:
+                    ret_versions.append("-".join([gthing] + fullversion))
+
+        # attempt to get some hints from the manifest, if available
+        try:
+            manifest = input_el["metadata"].get("MANIFEST.MF", None)
+            if manifest:
+                pnames = []
+                manifest = re.sub("\r\n ", "", manifest)
+                for mline in manifest.splitlines():
+                    if mline:
+                        key, val = mline.split(" ", 1)
+                        if key.lower() == "export-package:":
+                            val = re.sub(';uses:=".*?"', "", val)
+                            val = re.sub(';version=".*?"', "", val)
+                            val = val.split(";")[0]
+                            pnames = pnames + val.split(",")
+                        # elif key.lower() == 'bundle-symbolicname:':
+                        #    pnames.append(val)
+                        # elif key.lower() == 'name:':
+                        #    tmp = val.split("/")
+                        #    pnames.append('.'.join(tmp[:-1]))
+
+                packagename = None
+                if pnames:
+                    shortest = min(pnames)
+                    longest = max(pnames)
+                    if shortest == longest:
+                        packagename = shortest
+                    else:
+                        for i in range(0, len(shortest)):
+                            if i > 0 and shortest[i] != longest[i]:
+                                packagename = shortest[: i - 1]
+                                break
+                if packagename:
+                    candidate = packagename.split(".")[-1]
+                    if candidate in list(known_nomatch_inclusions.keys()):
+                        for matchmap_candidate in known_nomatch_inclusions[candidate]:
+                            if matchmap_candidate not in ret_names:
+                                ret_names.append(matchmap_candidate)
+                    elif candidate not in ["com", "org", "net"] and len(candidate) > 2:
+                        for r in list(ret_names):
+                            if r in candidate and candidate not in ret_names:
+                                ret_names.append(candidate)
+
+        except Exception as err:
+            logger.err(err)
+
     except Exception as err:
         logger.warn(
-            "Error tokenizing java metadata for cpe generation. Continuing. Err = %s",
-            err,
+            "failed to detect java package name/version guesses - exception: "
+            + str(err)
         )
 
     for rname in list(ret_names):
-        underscore_name = hyphen_to_underscore(rname)
+        underscore_name = re.sub("-", "_", rname)
         if underscore_name not in ret_names:
             ret_names.append(underscore_name)
 
     for rname in list(ret_names):
-        for product in generate_products(rname, "java"):
-            if product not in ret_names:
-                ret_names.append(product)
+        if rname in list(known_nomatch_inclusions.keys()):
+            for matchmap_candidate in known_nomatch_inclusions[rname]:
+                if matchmap_candidate not in ret_names:
+                    ret_names.append(matchmap_candidate)
 
-    cpes = []
-    for name in ret_names:
-        for version in ret_versions:
-            cpes.extend(generate_simple_cpes(name, version))
-
-    deduped_cpes = list(set(cpes))
-    return deduped_cpes
-
-
-def tokenize(image_content_dict: dict) -> tuple:
-
-    names = []
-    versions = []
-
-    # do some heuristic tokenizing
-
-    toks = re.findall("[^-]+", image_content_dict["package"])
-    firstname = None
-    fullname = []
-    firstversion = None
-    fullversion = []
-
-    doingname = True
-    for tok in toks:
-        if re.match("^[0-9]", tok):
-            doingname = False
-
-        if doingname:
-            if not firstname:
-                firstname = tok
-            else:
-                fullname.append(tok)
-        else:
-            if not firstversion:
-                firstversion = tok
-            else:
-                fullversion.append(tok)
-
-    if firstname:
-        firstname_nonums = re.sub("[0-9].*$", "", firstname)
-        for gthing in [firstname, firstname_nonums]:
-            if gthing not in names:
-                names.append(gthing)
-            if "-".join([gthing] + fullname) not in names:
-                names.append("-".join([gthing] + fullname))
-
-    if firstversion:
-        firstversion_nosuffix = cleaned_version(firstversion)
-        for gthing in [firstversion, firstversion_nosuffix]:
-            if gthing not in versions:
-                versions.append(gthing)
-            if "-".join([gthing] + fullversion) not in versions:
-                versions.append("-".join([gthing] + fullversion))
-
-    # attempt to get some hints from the manifest, if available
-    manifest = image_content_dict["metadata"].get("MANIFEST.MF", None)
-    if manifest:
-        pnames = []
-        manifest = re.sub("\r\n ", "", manifest)
-        for mline in manifest.splitlines():
-            if mline:
-                key, val = mline.split(" ", 1)
-                if key.lower() == "export-package:":
-                    val = re.sub(';uses:=".*?"', "", val)
-                    val = re.sub(';version=".*?"', "", val)
-                    val = val.split(";")[0]
-                    pnames = pnames + val.split(",")
-
-        packagename = None
-        if pnames:
-            shortest = min(pnames)
-            longest = max(pnames)
-            if shortest == longest:
-                packagename = shortest
-            else:
-                for i in range(0, len(shortest)):
-                    if i > 0 and shortest[i] != longest[i]:
-                        packagename = shortest[: i - 1]
-                        break
-        if packagename:
-            candidate = packagename.split(".")[-1]
-            known_nomatch_inclusions = NOMATCH_INCLUSIONS.get("java")
-
-            if candidate in list(known_nomatch_inclusions.keys()):
-                for matchmap_candidate in known_nomatch_inclusions[candidate]:
-                    if matchmap_candidate not in names:
-                        names.append(matchmap_candidate)
-            elif candidate not in ["com", "org", "net"] and len(candidate) > 2:
-                for r in list(names):
-                    if r in candidate and candidate not in names:
-                        names.append(candidate)
-
-    return names, versions
-
-
-def hyphen_to_underscore(name: str) -> str:
-    """
-    Convert a name with hyphens into underscores.
-
-    If none are found, the same string is returned
-
-    :param name:
-    :return:
-    """
-    return re.sub("-", "_", name)
+    return ret_names, ret_versions

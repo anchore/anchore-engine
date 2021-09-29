@@ -23,7 +23,7 @@ from anchore_engine.util.rpm import split_fullversion
 from anchore_engine.util.cpe_generators import (
     generate_fuzzy_go_cpes,
     generate_java_cpes,
-    generate_simple_cpes,
+    generate_fuzzy_cpes,
 )
 
 
@@ -343,7 +343,9 @@ class CPEMapper(PackageMapper):
             raise ValueError("No CPEs found for package={}".format(image_package.name))
 
     def fallback_cpe_generator(self, record: Dict) -> List[str]:
-        return generate_simple_cpes(record.get("package"), record.get("version"))
+        return generate_fuzzy_cpes(
+            record.get("package"), record.get("version"), self.engine_type
+        )
 
     def image_content_to_grype_sbom(self, record: Dict):
         """
