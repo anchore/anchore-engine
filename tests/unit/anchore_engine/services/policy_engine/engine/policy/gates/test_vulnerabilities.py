@@ -12,7 +12,6 @@ from anchore_engine.db.entities.policy_engine import (
     FeedMetadata,
     GrypeDBFeedMetadata,
 )
-from anchore_engine.services.policy_engine import init_feed_registry
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
 from anchore_engine.services.policy_engine.engine.policy.gates.vulnerabilities import (
     FeedOutOfDateTrigger,
@@ -26,11 +25,11 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
     LegacyProvider,
 )
 from tests.unit.anchore_engine.clients.test_grype_wrapper import (  # pylint: disable=W0611
-    TestGrypeWrapperSingleton,
-    production_grype_db_dir,
     GRYPE_DB_VERSION,
-    test_grype_wrapper_singleton,
+    TestGrypeWrapperSingleton,
     patch_grype_wrapper_singleton,
+    production_grype_db_dir,
+    test_grype_wrapper_singleton,
 )
 
 
@@ -98,39 +97,6 @@ def setup_mocks_vulnerabilities_gate(
     return _setup_mocks_vulnerabilities_gate
 
 
-@pytest.fixture
-def setup_mocks_unsupported_distro_trigger(
-    monkeypatch, mock_distromapping_query, set_provider, patch_grype_wrapper_singleton
-):
-    # required for UnsupportedDistroTrigger.evaluate
-    # setup for anchore_engine.services.policy_engine.engine.feeds.feeds.FeedRegistry.registered_vulnerability_feed_names
-    init_feed_registry()
-
-    # required for UnsupportedDistroTrigger.evaluate
-    monkeypatch.setattr(
-        "anchore_engine.services.policy_engine.engine.feeds.feeds.get_session",
-        lambda: None,
-    )
-
-    def _setup_mocks(feed_metadata, provider_name):
-        set_provider(provider_name)
-        if provider_name == "legacy":
-            # required for UnsupportedDistroTrigger.evaluate
-            monkeypatch.setattr(
-                "anchore_engine.services.policy_engine.engine.feeds.feeds.get_feed_json",
-                lambda db_session, feed_name: feed_metadata.to_json(),
-            )
-        if provider_name == "grype":
-            # required for UnsupportedDistroTrigger.evaluate
-            patch_grype_wrapper_singleton(
-                [
-                    "anchore_engine.services.policy_engine.engine.policy.gate_util_provider.GrypeWrapperSingleton.get_instance"
-                ]
-            )
-
-    return _setup_mocks
-
-
 class TestVulnerabilitiesGate:
     @pytest.mark.parametrize(
         "vuln_provider, image_obj, mock_vuln_report, feed_group_metadata, grype_db_feed_metadata, expected_trigger_fired",
@@ -194,10 +160,10 @@ class TestVulnerabilitiesGate:
         grype_db_feed_metadata,
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
-        mock_gate_util_provider_oldest_namespace_feed_sync,
+        mock_gate_util_provider_feed_data,
     ):
         setup_mocks_vulnerabilities_gate(mock_vuln_report, vuln_provider)
-        mock_gate_util_provider_oldest_namespace_feed_sync(
+        mock_gate_util_provider_feed_data(
             feed_group_metadata=feed_group_metadata,
             grype_db_feed_metadata=grype_db_feed_metadata,
         )
@@ -216,7 +182,7 @@ class TestVulnerabilitiesGate:
             )
 
     @pytest.mark.parametrize(
-        "vuln_provider, image_obj, mock_vuln_report, feed_metadata, expected_trigger_fired",
+        "vuln_provider, image_obj, mock_vuln_report, feed_metadata, grypedb, expected_trigger_fired",
         [
             (
                 "legacy",
@@ -227,6 +193,7 @@ class TestVulnerabilitiesGate:
                 FeedMetadata(
                     name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:10")]
                 ),
+                None,
                 False,
             ),
             (
@@ -238,6 +205,7 @@ class TestVulnerabilitiesGate:
                 FeedMetadata(
                     name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:9")]
                 ),
+                None,
                 True,
             ),
             (
@@ -246,8 +214,9 @@ class TestVulnerabilitiesGate:
                     id="1", user_id="admin", distro_name="debian", distro_version="9"
                 ),
                 "debian_1_os_will-fix.json",
-                FeedMetadata(
-                    name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:9")]
+                None,
+                GrypeDBFeedMetadata(
+                    groups=[{"name": "debian:10", "record_count": 200}]
                 ),
                 True,
             ),
@@ -257,10 +226,21 @@ class TestVulnerabilitiesGate:
                     id="1", user_id="admin", distro_name="debian", distro_version="10"
                 ),
                 "debian_1_os_will-fix.json",
-                FeedMetadata(
-                    name="vulnerabilities", groups=[FeedGroupMetadata(name="debian:10")]
+                None,
+                GrypeDBFeedMetadata(
+                    groups=[{"name": "debian:10", "record_count": 200}]
                 ),
                 False,
+            ),
+            (
+                "grype",
+                Image(
+                    id="1", user_id="admin", distro_name="debian", distro_version="10"
+                ),
+                "debian_1_os_will-fix.json",
+                None,
+                None,
+                True,
             ),
         ],
     )
@@ -270,12 +250,15 @@ class TestVulnerabilitiesGate:
         image_obj,
         mock_vuln_report,
         feed_metadata,
+        grypedb,
         expected_trigger_fired,
         setup_mocks_vulnerabilities_gate,
-        setup_mocks_unsupported_distro_trigger,
+        mock_gate_util_provider_feed_data,
     ):
         setup_mocks_vulnerabilities_gate(mock_vuln_report, vuln_provider)
-        setup_mocks_unsupported_distro_trigger(feed_metadata, vuln_provider)
+        mock_gate_util_provider_feed_data(
+            feed_metadata=feed_metadata, grype_db_feed_metadata=grypedb
+        )
         vulns_gate = VulnerabilitiesGate()
         trigger = UnsupportedDistroTrigger(parent_gate_cls=VulnerabilitiesGate)
         exec_context = ExecutionContext(db_session=None, configuration={})
