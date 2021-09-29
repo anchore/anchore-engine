@@ -20,6 +20,12 @@ from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_end
 from anchore_engine.subsys import logger as log
 from anchore_engine.util.rpm import split_fullversion
 
+from anchore_engine.util.cpe_generators import (
+    generate_fuzzy_go_cpes,
+    generate_java_cpes,
+    generate_simple_cpes,
+)
+
 
 class DistroMapper:
     engine_distro = None
@@ -336,6 +342,9 @@ class CPEMapper(PackageMapper):
         else:
             raise ValueError("No CPEs found for package={}".format(image_package.name))
 
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_simple_cpes(record.get("package"), record.get("version"))
+
     def image_content_to_grype_sbom(self, record: Dict):
         """
         Initializes grype sbom artifact and sets the location
@@ -359,7 +368,16 @@ class CPEMapper(PackageMapper):
         artifact["language"] = self.grype_language
         if record.get("location") not in [None, "N/A", "n/a"]:
             artifact["locations"] = [{"path": record.get("location")}]
+
+        if not artifact.get("cpes"):
+            artifact["cpes"] = self.fallback_cpe_generator(record)
+
         return artifact
+
+
+class GoMapper(CPEMapper):
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_fuzzy_go_cpes(record.get("package"), record.get("version"))
 
 
 class JavaMapper(CPEMapper):
@@ -392,7 +410,6 @@ class JavaMapper(CPEMapper):
                 log.warn(
                     "Unknown format for pom.properties %s, skip parsing", pom_properties
                 )
-
         return result
 
     def image_content_to_grype_sbom(self, record: Dict):
@@ -402,6 +419,9 @@ class JavaMapper(CPEMapper):
             artifact["metadataType"] = "JavaMetadata"
             artifact["metadata"] = grype_metadata
         return artifact
+
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_java_cpes(record)
 
 
 class VulnerabilityMapper:
@@ -690,7 +710,7 @@ ENGINE_PACKAGE_MAPPERS = {
     "java": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
-    "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
+    "go": GoMapper(engine_type="go", grype_type="go-module", grype_language="go"),
     "binary": CPEMapper(engine_type="binary", grype_type="binary"),
     "maven": CPEMapper(
         engine_type="maven", grype_type="java-archive", grype_language="java"
@@ -717,7 +737,9 @@ GRYPE_PACKAGE_MAPPERS = {
     "jenkins-plugin": JavaMapper(
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
-    "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
+    "go-module": GoMapper(
+        engine_type="go", grype_type="go-module", grype_language="go"
+    ),
     "binary": CPEMapper(engine_type="binary", grype_type="binary"),
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
