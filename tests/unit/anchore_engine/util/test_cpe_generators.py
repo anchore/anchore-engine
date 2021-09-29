@@ -1,15 +1,15 @@
-from anchore_engine.util.cpe_generators import (
-    generate_java_cpes,
-    generate_products,
-    generate_simple_cpe,
-    generate_fuzzy_go_cpes,
-    generate_python_products,
-    generate_npm_products,
-    generate_gem_products,
-    generate_fuzzy_cpes,
-    _fuzzy_java,
-)
 import pytest
+
+from anchore_engine.util.cpe_generators import (
+    generate_fuzzy_cpes,
+    generate_fuzzy_go_cpes,
+    generate_gem_products,
+    generate_java_cpes,
+    generate_npm_products,
+    generate_products,
+    generate_python_products,
+    generate_simple_cpe,
+)
 
 
 @pytest.mark.parametrize(
