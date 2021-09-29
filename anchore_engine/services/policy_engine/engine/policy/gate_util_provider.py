@@ -2,7 +2,6 @@ import datetime
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
 from anchore_engine.db import DistroNamespace, session_scope
 from anchore_engine.db.db_grype_db_feed_metadata import (
     NoActiveGrypeDB,
@@ -119,9 +118,22 @@ class GrypeGateUtilProvider(GateUtilProvider):
                 return None
 
     def have_vulnerabilities_for(self, distro_namespace_obj: DistroNamespace) -> bool:
-        wrapper = GrypeWrapperSingleton.get_instance()
-        source_counts = wrapper.query_record_source_counts()
-        groups = [source.group for source in source_counts if source.count > 0]
+        with session_scope() as session:
+            try:
+                grypedb = get_most_recent_active_grypedb(session)
+            except NoActiveGrypeDB:
+                logger.info(
+                    "No vulnerabilities for image distro found because no active grype db found"
+                )
+                return False
+
+            if not grypedb or not grypedb.groups:
+                return False
+
+            groups = [
+                group["name"] for group in grypedb.groups if group["record_count"] > 0
+            ]
+
         for namespace_name in distro_namespace_obj.like_namespace_names:
             if namespace_name in groups:
                 return True

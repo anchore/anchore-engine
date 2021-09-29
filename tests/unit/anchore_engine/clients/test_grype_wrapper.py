@@ -1189,12 +1189,10 @@ def test_query_vulnerabilities_missing_session():
 @pytest.mark.parametrize(
     "expected_group, expected_count, use_staging",
     [
-        ("debian:10", 3, True),
-        ("alpine:3.10", 2, True),
-        ("github:python", 2, True),
-        ("debian:10", 4, False),
-        ("alpine:3.10", 3, False),
-        ("github:python", 3, False),
+        ("debian:10", 10, True),
+        ("debian:11", 10, True),
+        ("debian:10", 10, False),
+        ("debian:11", 10, False),
     ],
 )
 def test_query_record_source_counts(

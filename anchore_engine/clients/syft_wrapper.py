@@ -17,6 +17,6 @@ def run_syft(image):
 
     cmd = "syft -vv -o json oci-dir:{image}".format(image=image)
 
-    stdout, _ = run_check(shlex.split(cmd), env=proc_env)
+    stdout, _ = run_check(shlex.split(cmd), env=proc_env, log_level="spew")
 
     return json.loads(stdout)

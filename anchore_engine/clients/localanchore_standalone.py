@@ -897,9 +897,12 @@ def run_anchore_analyzers(
 
     myconfig = localconfig.get("services", {}).get("analyzer", {})
     if not myconfig.get("enable_hints", False):
+        logger.info("image content hints status: disabled")
         # install an empty hints file to ensure that any discovered hints overrides is ignored during analysis
         with open(os.path.join(unpackdir, "anchore_hints.json"), "w") as OFH:
             OFH.write(json.dumps({}))
+    else:
+        logger.info("image content hints status: enabled")
 
     analyzer_report = analyzer_manager.run(
         configdir,

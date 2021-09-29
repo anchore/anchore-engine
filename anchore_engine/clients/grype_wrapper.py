@@ -871,10 +871,10 @@ class GrypeWrapperSingleton(object):
             with self.grype_session_scope(use_staging) as session:
                 results = (
                     session.query(
-                        GrypeVulnerability.namespace,
-                        func.count(GrypeVulnerability.namespace).label("count"),
+                        GrypeVulnerabilityMetadata.namespace,
+                        func.count(GrypeVulnerabilityMetadata.namespace).label("count"),
                     )
-                    .group_by(GrypeVulnerability.namespace)
+                    .group_by(GrypeVulnerabilityMetadata.namespace)
                     .all()
                 )
 

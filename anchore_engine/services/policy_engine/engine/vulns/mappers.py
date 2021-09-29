@@ -18,6 +18,13 @@ from anchore_engine.common.models.policy_engine import (
 from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
+from anchore_engine.util.rpm import split_fullversion
+
+from anchore_engine.util.cpe_generators import (
+    generate_fuzzy_go_cpes,
+    generate_java_cpes,
+    generate_fuzzy_cpes,
+)
 
 
 class DistroMapper:
@@ -155,6 +162,18 @@ class RpmMapper(LinuxDistroPackageMapper):
         if image_package.normalized_src_pkg != "N/A":
             artifact["metadataType"] = "RpmdbMetadata"
             artifact["metadata"] = {"sourceRpm": image_package.src_pkg}
+
+            # This epoch handling is necessary because in RPMs the epoch of the binary package is often not part of the
+            # sourceRpm name, but Grype needs it to do the version comparison correctly.
+            # Without this step Grype will use the wrong version string for the vulnerability match
+            epoch_str, version, release = split_fullversion(image_package.fullversion)
+            if epoch_str:
+                try:
+                    artifact["epoch"] = int(epoch_str)
+                except ValueError:
+                    # not a valid epoch, something went wrong
+                    pass
+
         return artifact
 
     def image_content_to_grype_sbom(self, record: Dict):
@@ -167,9 +186,35 @@ class RpmMapper(LinuxDistroPackageMapper):
 
         """
         artifact = super().image_content_to_grype_sbom(record)
+
+        # Handle Epoch
+
+        # This epoch handling is necessary because in RPMs the epoch of the binary package is often not part of the
+        # sourceRpm name, but Grype needs it to do the version comparison correctly.
+        # Without this step Grype will use the wrong version string for the vulnerability match
+        full_version = record.get("version")
+        epoch = None
+
+        if full_version:
+            epoch_str, version, release = split_fullversion(full_version)
+            if epoch_str:
+                try:
+                    epoch = int(epoch_str)
+                except ValueError:
+                    # not a valid epoch, something went wrong
+                    pass
+
+        # Get the sourceRpm info
+        source_rpm = None
         if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
-            artifact["metadataType"] = "RpmdbMetadata"
-            artifact["metadata"] = {"sourceRpm": record.get("sourcepkg")}
+            source_rpm = record.get("sourcepkg")
+
+        artifact["metadataType"] = "RpmdbMetadata"
+        artifact["metadata"] = {
+            "sourceRpm": source_rpm,
+            "epoch": epoch,
+        }
+
         return artifact
 
 
@@ -266,7 +311,7 @@ class ApkgMapper(LinuxDistroPackageMapper):
 
         artifact = super().image_content_to_grype_sbom(record)
         if record.get("sourcepkg") not in [None, "N/A", "n/a"]:
-            artifact["metadataType"] = "ApkgMetadata"
+            artifact["metadataType"] = "ApkMetadata"
             artifact["metadata"] = {"originPackage": record.get("sourcepkg")}
         return artifact
 
@@ -297,6 +342,11 @@ class CPEMapper(PackageMapper):
         else:
             raise ValueError("No CPEs found for package={}".format(image_package.name))
 
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_fuzzy_cpes(
+            record.get("package"), record.get("version"), self.engine_type
+        )
+
     def image_content_to_grype_sbom(self, record: Dict):
         """
         Initializes grype sbom artifact and sets the location
@@ -320,7 +370,16 @@ class CPEMapper(PackageMapper):
         artifact["language"] = self.grype_language
         if record.get("location") not in [None, "N/A", "n/a"]:
             artifact["locations"] = [{"path": record.get("location")}]
+
+        if not artifact.get("cpes"):
+            artifact["cpes"] = self.fallback_cpe_generator(record)
+
         return artifact
+
+
+class GoMapper(CPEMapper):
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_fuzzy_go_cpes(record.get("package"), record.get("version"))
 
 
 class JavaMapper(CPEMapper):
@@ -353,7 +412,6 @@ class JavaMapper(CPEMapper):
                 log.warn(
                     "Unknown format for pom.properties %s, skip parsing", pom_properties
                 )
-
         return result
 
     def image_content_to_grype_sbom(self, record: Dict):
@@ -363,6 +421,9 @@ class JavaMapper(CPEMapper):
             artifact["metadataType"] = "JavaMetadata"
             artifact["metadata"] = grype_metadata
         return artifact
+
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_java_cpes(record)
 
 
 class VulnerabilityMapper:
@@ -651,7 +712,7 @@ ENGINE_PACKAGE_MAPPERS = {
     "java": JavaMapper(
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
-    "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
+    "go": GoMapper(engine_type="go", grype_type="go-module", grype_language="go"),
     "binary": CPEMapper(engine_type="binary", grype_type="binary"),
     "maven": CPEMapper(
         engine_type="maven", grype_type="java-archive", grype_language="java"
@@ -678,7 +739,9 @@ GRYPE_PACKAGE_MAPPERS = {
     "jenkins-plugin": JavaMapper(
         engine_type="java", grype_type="jenkins-plugin", grype_language="java"
     ),
-    "go": CPEMapper(engine_type="go", grype_type="go", grype_language="go"),
+    "go-module": GoMapper(
+        engine_type="go", grype_type="go-module", grype_language="go"
+    ),
     "binary": CPEMapper(engine_type="binary", grype_type="binary"),
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
@@ -883,10 +946,14 @@ class EngineGrypeDBMapper:
             if grype_vulnerability:
 
                 # Transform the versions block
-                if grype_vulnerability.deserialized_fixed_in_versions:
-                    version = ",".join(
-                        grype_vulnerability.deserialized_fixed_in_versions
-                    )
+                if grype_vulnerability.version_constraint:
+                    version_strings = [
+                        version.strip(" '\"")
+                        for version in grype_vulnerability.version_constraint.split(
+                            "||"
+                        )
+                    ]
+                    version = ",".join(version_strings)
                 else:
                     version = "*"
 
@@ -899,5 +966,14 @@ class EngineGrypeDBMapper:
                         "will_not_fix": grype_vulnerability.fix_state == "wont-fix",
                     }
                 )
+
+        for _, vulnerability in intermediate_tuple_list.items():
+            unique_affected_packages = set(
+                frozenset(affected_package.items())
+                for affected_package in vulnerability["affected_packages"]
+            )
+            vulnerability["affected_packages"] = [
+                dict(affected_package) for affected_package in unique_affected_packages
+            ]
 
         return list(intermediate_tuple_list.values())
