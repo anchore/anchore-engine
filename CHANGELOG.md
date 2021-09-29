@@ -6,8 +6,33 @@ API version - 0.1.19
 
 DB Schema version - 0.0.15
 
+Engine 1.0.0 makes the Grype-based vulnerabilities provider, introduced in v0.10.0, the default for new deployments. This release
+also improves the scanning results and API consistency when using the "grype" provider. The "legacy" provider is deprecated 
+and will be removed in a future release. Current deployments and upgrades will not automatically convert to the new provider, so 
+please update your configurations and templates to use the new Grype provider.
+
+See the [documentation](https://engine.anchore.io/docs/releasenotes/) for more information on the transition process and upgrade options.
+
+### Deprecations
+
+The "legacy" vulnerability provider mode is deprecated. It will be removed in a future release.
+
 ### Changes
 
++ Added - Sets default vulnerabilities provider to Grype for new deployments via Docker Compose or Helm. Note: the "legacy" provider is deprecated.
++ Added - Support for vuln scanning binary and go content types with Grype provider
++ Added - Updates Syft to 0.24.1 and Grype to 0.21.0
++ Added - Vulnerability scanning support for SLES/SUSE in both legacy and Grype scanners
++ Fixed - Add logic to the gate util providers for UnsupportedDistroTrigger to call, so the trigger works for both vuln providers. Fixes #1184
++ Fixed - Support for FeedOutOfDateTrigger in Vulnerabilities gate for Grype provider. Fixes #1179
++ Fixed - Content hints vulnerability scanning for Grype-mode provider including golang and binary-type hints
++ Fixed - Adds epoch to rpm metadata SBoM generation for Syft to fix version mismatch in Grype mode.
++ Fixed - Set will_not_fix in Vulnerability definition to Boolean type in the Swagger specification of external API 
++ Improved - Update Click dependency version to 8.0.1 and SQLAlchemy dependency version to 1.4.23.  Fixes #908, #1204 
++ Improved - When using the Grype provider, the ability to enable, disable, and delete groups within the "vulnerabilities" feed is not supported and returns a clear error message.
++ Improved - Make the Syft invocation only log the full output of the command at spew level instead of debug to ensure logs are not flooded with large Syft SBoMs.
++ Improved - Rename "grypedb" feed to be called "vulnerabilities" for clarity and consistency. Fixes #1192
++ Improved - Removes default config fallback for vulnerability provider, users must now explicitly specify this configuration value
 
 
 ## 0.10.2
@@ -31,12 +56,12 @@ DB Schema version - 0.0.15
 + Fixed - /tmp directory not cleaned up after an image analysis
 + Fixed - Updates syft version to 0.19.1
 + Fixed - Update certifi path in the docker entrypoint script to ensure cert updates are set properly. Fixes #1171 
-+ Fixed - incorrect handling of hints file input. Fixes #1165
++ Fixed - Incorrect handling of hints file input. Fixes #1165
 + Fixed - Ensures all tags attempted for image pull if multiple tags on image being analyzed. Fixes #1139
 + Fixed- Ensures events generated for images analyzed that have multiple tags. Fixes #1164
 + Fixed - Handles "release" rpm field for hints input correctly. Fixes #1149
 + Improved - Installs CLI into a virtual env for dependency isolation. Fixes #1076
-+ Improved - hints file entries can only add new data to analysis report, not modify any entries found by analyzers.
++ Improved - Hints file entries can only add new data to analysis report, not modify any entries found by analyzers.
 + Updates dependencies to remove non-impacting vulnerabilities
 
 ## 0.10.0
