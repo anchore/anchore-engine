@@ -19,9 +19,11 @@ from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
 from anchore_engine.util.rpm import split_fullversion
-from anchore_engine.services.policy_engine.engine.vulns.cpe_utils import (
-    generate_simple_cpes,
+
+from anchore_engine.util.cpe_generators import (
     generate_fuzzy_go_cpes,
+    generate_java_cpes,
+    generate_simple_cpes,
 )
 
 
@@ -340,6 +342,9 @@ class CPEMapper(PackageMapper):
         else:
             raise ValueError("No CPEs found for package={}".format(image_package.name))
 
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_simple_cpes(record.get("package"), record.get("version"))
+
     def image_content_to_grype_sbom(self, record: Dict):
         """
         Initializes grype sbom artifact and sets the location
@@ -363,33 +368,16 @@ class CPEMapper(PackageMapper):
         artifact["language"] = self.grype_language
         if record.get("location") not in [None, "N/A", "n/a"]:
             artifact["locations"] = [{"path": record.get("location")}]
-        return artifact
 
-
-class BinaryMapper(CPEMapper):
-    def image_content_to_grype_sbom(self, record: Dict):
-        """
-        Inserts cpes if they are missing from the content input
-        """
-        artifact = super().image_content_to_grype_sbom(record)
         if not artifact.get("cpes"):
-            artifact["cpes"] = generate_simple_cpes(
-                artifact.get("name"), artifact.get("version")
-            )
+            artifact["cpes"] = self.fallback_cpe_generator(record)
+
         return artifact
 
 
 class GoMapper(CPEMapper):
-    def image_content_to_grype_sbom(self, record: Dict):
-        """
-        Inserts cpes if they are missing from the content input
-        """
-        artifact = super().image_content_to_grype_sbom(record)
-        if not artifact.get("cpes"):
-            artifact["cpes"] = generate_fuzzy_go_cpes(
-                artifact.get("name"), artifact.get("version")
-            )
-        return artifact
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_fuzzy_go_cpes(record.get("package"), record.get("version"))
 
 
 class JavaMapper(CPEMapper):
@@ -422,7 +410,6 @@ class JavaMapper(CPEMapper):
                 log.warn(
                     "Unknown format for pom.properties %s, skip parsing", pom_properties
                 )
-
         return result
 
     def image_content_to_grype_sbom(self, record: Dict):
@@ -432,6 +419,9 @@ class JavaMapper(CPEMapper):
             artifact["metadataType"] = "JavaMetadata"
             artifact["metadata"] = grype_metadata
         return artifact
+
+    def fallback_cpe_generator(self, record: Dict) -> List[str]:
+        return generate_java_cpes(record)
 
 
 class VulnerabilityMapper:
@@ -721,7 +711,7 @@ ENGINE_PACKAGE_MAPPERS = {
         engine_type="java", grype_type="java-archive", grype_language="java"
     ),
     "go": GoMapper(engine_type="go", grype_type="go-module", grype_language="go"),
-    "binary": BinaryMapper(engine_type="binary", grype_type="binary"),
+    "binary": CPEMapper(engine_type="binary", grype_type="binary"),
     "maven": CPEMapper(
         engine_type="maven", grype_type="java-archive", grype_language="java"
     ),
@@ -750,7 +740,7 @@ GRYPE_PACKAGE_MAPPERS = {
     "go-module": GoMapper(
         engine_type="go", grype_type="go-module", grype_language="go"
     ),
-    "binary": BinaryMapper(engine_type="binary", grype_type="binary"),
+    "binary": CPEMapper(engine_type="binary", grype_type="binary"),
     "js": CPEMapper(engine_type="js", grype_type="js", grype_language="javascript"),
     "composer": CPEMapper(engine_type="composer", grype_type="composer"),
     "nuget": CPEMapper(engine_type="nuget", grype_type="nuget"),
