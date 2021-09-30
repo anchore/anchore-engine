@@ -40,7 +40,7 @@ from .mappers import grype_to_engine_image_vulnerabilities, image_content_to_gry
 
 # debug option for saving image sbom, defaults to not saving
 SAVE_SBOM_TO_FILE = (
-    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "true").lower() == "true"
+    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "false").lower() == "true"
 )
 
 # Distros that only add a CVE record to their secdb entries when a fix is available
