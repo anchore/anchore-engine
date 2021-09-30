@@ -129,6 +129,7 @@ ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json" \
     ANCHORE_ENABLE_PACKAGE_FILTERING="true"
 
+ENV PATH "${PATH}:/anchore-cli/bin"
 
 # Insecure transport required in case for things like tls sidecars
 

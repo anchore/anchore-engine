@@ -28,7 +28,4 @@ if [[ -d "/home/anchore/certs" ]] && [[ -n "$(ls -A /home/anchore/certs)" ]]; th
     export SSL_CERT_DIR=/home/anchore/certs_override/os/
 fi
 
-# Add the CLI virtual env bin path
-export PATH=$PATH:/anchore-cli/bin
-
 exec "$@"
