@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   description: "Catalog service for anchore-engine"
-  version: "0.10.0"
+  version: "0.10.1"
   title: "Catalog"
   contact:
     email: "dev@anchore.com"
