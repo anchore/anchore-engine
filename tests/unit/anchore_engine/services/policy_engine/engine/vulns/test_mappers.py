@@ -5,6 +5,7 @@ from anchore_engine.services.policy_engine.engine.vulns.mappers import (
     ENGINE_DISTRO_MAPPERS,
     ENGINE_PACKAGE_MAPPERS,
     GRYPE_PACKAGE_MAPPERS,
+    EngineGrypeDBMapper,
     JavaMapper,
     VulnerabilityMapper,
 )
@@ -725,3 +726,198 @@ class TestVulnerabilityMapper:
     )
     def test_try_make_link(self, vuln_id, url, expected):
         assert VulnerabilityMapper._try_make_link(vuln_id, url) == expected
+
+
+class TestEngineGrypeDBMapper:
+    @pytest.mark.parametrize(
+        "cvss_dict, expected",
+        [
+            pytest.param(
+                {
+                    "VendorMetadata": None,
+                    "Metrics": {
+                        "BaseScore": 7.8,
+                        "ExploitabilityScore": 10,
+                        "ImpactScore": 6.9,
+                    },
+                    "Vector": "AV:N/AC:L/Au:N/C:N/I:N/A:C",
+                    "Version": "2.0",
+                },
+                {
+                    "version": "2.0",
+                    "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:C",
+                    "severity": "High",
+                    "base_metrics": {
+                        "base_score": 7.8,
+                        "expolitability_score": 10,
+                        "impact_score": 6.9,
+                    },
+                },
+                id="nvd-cvss-2",
+            ),
+            pytest.param(
+                {
+                    "VendorMetadata": None,
+                    "Metrics": {
+                        "BaseScore": 7.5,
+                        "ExploitabilityScore": 3.9,
+                        "ImpactScore": 3.6,
+                    },
+                    "Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                    "Version": "3.1",
+                },
+                {
+                    "version": "3.1",
+                    "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                    "severity": "High",
+                    "base_metrics": {
+                        "base_score": 7.5,
+                        "expolitability_score": 3.9,
+                        "impact_score": 3.6,
+                    },
+                },
+                id="nvd-cvss-3",
+            ),
+            pytest.param(
+                {
+                    "VendorMetadata": {
+                        "access_complexity": "LOW",
+                        "access_vector": "NETWORK",
+                        "authentication": "NONE",
+                        "availability_impact": "NONE",
+                        "base_score": 5,
+                        "confidentiality_impact": "NONE",
+                        "exploitability_score": 10,
+                        "impact_score": 2.9,
+                        "integrity_impact": "PARTIAL",
+                    },
+                    "Metrics": {
+                        "BaseScore": 5,
+                        "ExploitabilityScore": 10,
+                        "ImpactScore": 2.9,
+                    },
+                    "Vector": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+                    "Version": "2.0",
+                },
+                {
+                    "version": "2.0",
+                    "vector_string": "AV:N/AC:L/Au:N/C:N/I:P/A:N",
+                    "severity": "Medium",
+                    "base_metrics": {
+                        "base_score": 5,
+                        "expolitability_score": 10,
+                        "impact_score": 2.9,
+                    },
+                },
+                id="third-party-cvss-2",
+            ),
+            pytest.param(
+                {
+                    "VendorMetadata": {"BaseSeverity": "High", "Status": "verified"},
+                    "Metrics": {
+                        "BaseScore": 7.5,
+                        "ExploitabilityScore": 3.9,
+                        "ImpactScore": 3.6,
+                    },
+                    "Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                    "Version": "3.1",
+                },
+                {
+                    "version": "3.1",
+                    "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                    "severity": "High",
+                    "base_metrics": {
+                        "base_score": 7.5,
+                        "expolitability_score": 3.9,
+                        "impact_score": 3.6,
+                    },
+                },
+                id="rhel-cvss-3",
+            ),
+        ],
+    )
+    def test_transform_cvss_score(self, cvss_dict, expected):
+        assert EngineGrypeDBMapper()._transform_cvss_score(cvss_dict) == expected
+
+    @pytest.mark.parametrize(
+        "vuln_id, cvss_dict, expected",
+        [
+            pytest.param(
+                "CVE-xyz",
+                {
+                    "VendorMetadata": None,
+                    "Metrics": {
+                        "BaseScore": 7.8,
+                        "ExploitabilityScore": 10,
+                        "ImpactScore": 6.9,
+                    },
+                    "Vector": "AV:N/AC:L/Au:N/C:N/I:N/A:C",
+                    "Version": "2.0",
+                },
+                {
+                    "cvss_v2": {
+                        "version": "2.0",
+                        "vector_string": "AV:N/AC:L/Au:N/C:N/I:N/A:C",
+                        "severity": "High",
+                        "base_metrics": {
+                            "base_score": 7.8,
+                            "expolitability_score": 10,
+                            "impact_score": 6.9,
+                        },
+                    },
+                    "cvss_v3": None,
+                    "id": "CVE-xyz",
+                },
+                id="nvd-cvss-2",
+            ),
+            pytest.param(
+                "CVE-abc",
+                {
+                    "VendorMetadata": None,
+                    "Metrics": {
+                        "BaseScore": 7.5,
+                        "ExploitabilityScore": 3.9,
+                        "ImpactScore": 3.6,
+                    },
+                    "Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                    "Version": "3.1",
+                },
+                {
+                    "cvss_v2": None,
+                    "cvss_v3": {
+                        "version": "3.1",
+                        "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+                        "severity": "High",
+                        "base_metrics": {
+                            "base_score": 7.5,
+                            "expolitability_score": 3.9,
+                            "impact_score": 3.6,
+                        },
+                    },
+                    "id": "CVE-abc",
+                },
+                id="nvd-cvss-3",
+            ),
+        ],
+    )
+    def test_transform_cvss(self, vuln_id, cvss_dict, expected):
+        assert EngineGrypeDBMapper()._transform_cvss(vuln_id, cvss_dict) == expected
+
+    @pytest.mark.parametrize(
+        "urls, expected",
+        [
+            pytest.param("a.b.c", [], id="invalid-string"),
+            pytest.param(None, [], id="invalid-none"),
+            pytest.param([], [], id="invalid-empty"),
+            pytest.param(
+                ["a.b.c"], [{"url": "a.b.c", "source": "N/A"}], id="valid-single"
+            ),
+            pytest.param(
+                ["a.b.c", "x.y.z"],
+                [{"url": "a.b.c", "source": "N/A"}, {"url": "x.y.z", "source": "N/A"}],
+                id="valid-multiple",
+            ),
+        ],
+    )
+    def test__transform_urls(self, urls, expected):
+        assert EngineGrypeDBMapper._transform_urls(urls) == expected

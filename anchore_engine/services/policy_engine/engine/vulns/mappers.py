@@ -18,13 +18,12 @@ from anchore_engine.common.models.policy_engine import (
 from anchore_engine.db import Image, ImageCpe, ImagePackage
 from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger as log
-from anchore_engine.util.rpm import split_fullversion
-
 from anchore_engine.util.cpe_generators import (
+    generate_fuzzy_cpes,
     generate_fuzzy_go_cpes,
     generate_java_cpes,
-    generate_fuzzy_cpes,
 )
+from anchore_engine.util.rpm import split_fullversion
 
 
 class DistroMapper:
@@ -844,16 +843,101 @@ def grype_to_engine_image_vulnerabilities(grype_response):
 
 
 class EngineGrypeDBMapper:
-    def _transform_cvss(self, cvss, cvss_template):
-        score_dict = copy.deepcopy(cvss_template)
-        score_dict["version"] = cvss.get("Version")
-        score_dict["vector"] = cvss.get("Vector", None)
-        score_dict["base_score"] = cvss.get("Metrics", {}).get("BaseScore", -1.0)
-        score_dict["expolitability_score"] = cvss.get("Metrics", {}).get(
-            "ExploitabilityScore", -1.0
+    return_el_template = {
+        "id": None,
+        "namespace": None,
+        "severity": None,
+        "link": None,
+        "affected_packages": [],
+        "description": None,
+        "references": [],
+        "nvd_data": [],
+        "vendor_data": [],
+    }
+    cvss_template = {
+        "version": None,
+        "vector_string": None,
+        "severity": None,
+        "base_metrics": {
+            "base_score": -1.0,
+            "expolitability_score": -1.0,
+            "impact_score": -1.0,
+        },
+    }
+
+    def _transform_cvss_score(self, cvss):
+        score_dict = copy.deepcopy(self.cvss_template)
+        version = cvss.get("Version")
+        base_score = cvss.get("Metrics", {}).get("BaseScore", -1.0)
+
+        score_dict["version"] = version
+        score_dict["vector_string"] = cvss.get("Vector", None)
+        score_dict["base_metrics"] = dict(
+            base_score=base_score,
+            expolitability_score=cvss.get("Metrics", {}).get(
+                "ExploitabilityScore", -1.0
+            ),
+            impact_score=cvss.get("Metrics", {}).get("ImpactScore", -1.0),
         )
-        score_dict["impact_score"] = cvss.get("Metrics", {}).get("ImpactScore", -1.0)
+
+        # NVD qualitative ratings based on base score https://nvd.nist.gov/vuln-metrics/cvss
+        severity = "Unknown"
+        if base_score is not None:
+            if version and version.startswith("2"):
+                if base_score <= 3.9:
+                    severity = "Low"
+                elif base_score <= 6.9:
+                    severity = "Medium"
+                elif base_score <= 10:
+                    severity = "High"
+            elif version and version.startswith("3"):
+                if base_score <= 3.9:
+                    severity = "Low"
+                elif base_score <= 6.9:
+                    severity = "Medium"
+                elif base_score <= 8.9:
+                    severity = "High"
+                elif base_score <= 10:
+                    severity = "Critical"
+        score_dict["severity"] = severity
+
         return score_dict
+
+    def _transform_cvss(self, vulnerability_id: str, cvss: Dict) -> Dict:
+        version = cvss["Version"]
+        if version.startswith("2"):
+            score_dict = self._transform_cvss_score(cvss)
+            result = {
+                "cvss_v2": score_dict,
+                "cvss_v3": None,  # legacy mode compatibility
+                "id": vulnerability_id,
+            }
+        elif version.startswith("3"):
+            score_dict = self._transform_cvss_score(cvss)
+            result = {
+                "cvss_v2": None,  # legacy mode compatibility
+                "cvss_v3": score_dict,
+                "id": vulnerability_id,
+            }
+        else:
+            log.warn(
+                "Omitting the following cvss with unknown version from vulnerability %s: %s",
+                vulnerability_id,
+                cvss,
+            )
+            result = None
+
+        return result
+
+    @staticmethod
+    def _transform_urls(urls: List[str]) -> List:
+        results = []
+        if not urls or not isinstance(urls, list):
+            return results
+
+        results = [{"source": "N/A", "url": item} for item in urls]
+
+        return results
 
     def to_engine_vulnerabilities(self, grype_vulnerabilities):
         """
@@ -862,25 +946,6 @@ class EngineGrypeDBMapper:
         """
         transformed_vulnerabilities = []
         intermediate_tuple_list = {}
-
-        return_el_template = {
-            "id": None,  # done
-            "namespace": None,  # done
-            "severity": None,  # done
-            "link": None,  # done
-            "affected_packages": [],  # done
-            "description": None,  # done
-            "references": None,  # leaving this be
-            "nvd_data": [],
-            "vendor_data": [],  # leaving this be
-        }
-        cvss_template = {
-            "version": None,
-            "vector": None,
-            "base_score": -1.0,
-            "expolitability_score": -1.0,
-            "impact_score": -1.0,
-        }
 
         for grype_raw_result in grype_vulnerabilities:
             grype_vulnerability = grype_raw_result.GrypeVulnerability
@@ -894,7 +959,7 @@ class EngineGrypeDBMapper:
             )
 
             if not vuln_dict:
-                vuln_dict = copy.deepcopy(return_el_template)
+                vuln_dict = copy.deepcopy(self.return_el_template)
                 intermediate_tuple_list[
                     (
                         grype_vulnerability_metadata.id,
@@ -906,41 +971,28 @@ class EngineGrypeDBMapper:
                 vuln_dict["namespace"] = grype_vulnerability_metadata.namespace
                 vuln_dict["description"] = grype_vulnerability_metadata.description
                 vuln_dict["severity"] = grype_vulnerability_metadata.severity
-                vuln_dict["link"] = grype_vulnerability_metadata.data_source
-                vuln_dict["references"] = grype_vulnerability_metadata.deserialized_urls
+                vuln_dict["link"] = VulnerabilityMapper._try_make_link(
+                    grype_vulnerability_metadata.id,
+                    grype_vulnerability_metadata.data_source,
+                )
+                vuln_dict["references"] = self._transform_urls(
+                    grype_vulnerability_metadata.deserialized_urls
+                )
 
                 # Transform the cvss blocks
                 cvss_combined = grype_vulnerability_metadata.deserialized_cvss
+                vulnerability_cvss_data = []
 
                 for cvss in cvss_combined:
-                    version = cvss["Version"]
-                    if version.startswith("2"):
-                        score_dict = self._transform_cvss(cvss, cvss_template)
+                    result = self._transform_cvss(grype_vulnerability_metadata.id, cvss)
+                    if result:
+                        vulnerability_cvss_data.append(result)
 
-                        vuln_dict["vendor_data"].append(
-                            {
-                                "cvss_v2": score_dict,
-                                "id": grype_vulnerability_metadata.id,
-                            }
-                        )
-                    elif version.startswith("3"):
-                        score_dict = self._transform_cvss(cvss, cvss_template)
-
-                        vuln_dict["vendor_data"].append(
-                            {
-                                "cvss_v3": score_dict,
-                                "id": grype_vulnerability_metadata.id,
-                            }
-                        )
-                    else:
-                        log.warn(
-                            "Omitting the following cvss with unknown version from vulnerability %s: %s",
-                            grype_vulnerability_metadata.id,
-                            cvss,
-                        )
-                        continue
-
-                # parse_nvd_data() using grype_vulnerability_metadata
+                if grype_vulnerability_metadata.namespace.lower() in ["nvd"]:
+                    vuln_dict["nvd_data"] = vulnerability_cvss_data
+                else:
+                    vuln_dict["vendor_data"] = vulnerability_cvss_data
+                    # TODO look up nvd cvss data
 
             # results are produced by left outer join, hence the check
             if grype_vulnerability:
