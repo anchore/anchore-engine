@@ -343,9 +343,6 @@ def handle_grypedb_sync(*args, **kwargs):
     # import code in function so that it is not imported to all contexts that import policy engine
     # this is an issue caused by these handlers being declared within the __init__.py file
     # See https://github.com/anchore/anchore-engine/issues/991
-    from anchore_engine.services.policy_engine.engine.feeds.grypedb_sync import (
-        GrypeDBSyncError,
-    )
     from anchore_engine.services.policy_engine.engine.tasks import GrypeDBSyncTask
 
     logger.info("init args: {}".format(kwargs))
