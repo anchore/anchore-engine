@@ -227,7 +227,7 @@ class ExternalAuthorizer(object):
         return result_list
 
 
-class JwtRealm(UsernamePasswordRealm):
+class JwtRealm(UsernamePasswordRealm):  # pylint: disable=too-many-ancestors
     """
     Customized version of the UsernamePassword realm but for interacting with a TokenStore
 
