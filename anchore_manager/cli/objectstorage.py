@@ -1,24 +1,27 @@
 import copy
-import datetime
 import json
-
-import click
+import sys
 import yaml
-from prettytable import PLAIN_COLUMNS, PrettyTable
+import click
+import datetime
+from prettytable import PrettyTable, PLAIN_COLUMNS
 
-from anchore_engine.configuration.localconfig import get_config, load_config
-from anchore_engine.db import ArchiveMigrationTask, db_tasks, session_scope
 from anchore_engine.subsys import object_store
-from anchore_engine.subsys.object_store import config as obj_config
-from anchore_engine.subsys.object_store import migration
+from anchore_engine.configuration.localconfig import (
+    load_config,
+    get_config,
+    localconfig,
+)
+from anchore_engine.subsys.object_store import migration, config as obj_config
 from anchore_engine.subsys.object_store.config import (
+    DEFAULT_OBJECT_STORE_MANAGER_ID,
     ALT_OBJECT_STORE_CONFIG_KEY,
     ANALYSIS_ARCHIVE_MANAGER_ID,
-    DEFAULT_OBJECT_STORE_MANAGER_ID,
 )
-from anchore_manager.util.db import db_context, db_preflight, init_db_context
-from anchore_manager.util.logging import log_error, logger
-from anchore_manager.util.proc import ExitCode, doexit, fail_exit
+from anchore_engine.db import db_tasks, ArchiveMigrationTask, session_scope
+from anchore_manager.util.proc import ExitCode, fail_exit, doexit
+from anchore_manager.util.logging import logger, log_error
+from anchore_manager.util.db import db_preflight, init_db_context, db_context
 
 config = {}
 module = None
