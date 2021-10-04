@@ -754,8 +754,6 @@ def db_upgrade_007_008():
 
 
 def catalog_upgrade_007_008():
-    from anchore_engine.db import session_scope
-
     log.err("performing catalog table upgrades")
     engine = anchore_engine.db.entities.common.get_engine()
     new_columns = [
@@ -1112,8 +1110,6 @@ def db_upgrade_008_009():
     :return:
     """
 
-    from anchore_engine.db import session_scope
-
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1149,7 +1145,6 @@ def cpe_vulnerability_upgrade_009_010():
 
     :return:
     """
-    from anchore_engine.db import session_scope
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1179,8 +1174,6 @@ def archive_document_upgrade_009_010():
     :return:
     """
 
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     exec_commands = [
@@ -1209,8 +1202,6 @@ def registry_name_upgrade_010_011():
 
     :return:
     """
-
-    from anchore_engine.db import session_scope
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1262,8 +1253,6 @@ def fixed_artifacts_upgrade_010_011():
 
     :return:
     """
-
-    from anchore_engine.db import session_scope
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1408,8 +1397,6 @@ def db_upgrade_package_size_011_012():
     Update the column type for image package size from int to bigint
     :return:
     """
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     # Add constraints and index
@@ -1423,8 +1410,6 @@ def event_type_index_upgrade_011_012():
 
     :return:
     """
-
-    from anchore_engine.db import session_scope
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1590,8 +1575,6 @@ def db_upgrade_012_013():
 
 
 def upgrade_014_archive_rules():
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     new_columns = [
