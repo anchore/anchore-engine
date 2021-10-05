@@ -59,6 +59,10 @@
     only:
       - master
 
+.filter_publish_docs: &filter_publish_docs
+  branches:
+    ignore: /^publish-docs$/
+
 # Start circleci configuration
 version: 2.1
 orbs:
@@ -290,34 +294,42 @@ workflows:
           name: unit_tests_38
           py_version: "3.8"
           tox_env: "py38"
+          filters: *filter_publish_docs
       - lint:
           name: lint_38
           py_version: "3.8"
-      - validate_swagger
+          filters: *filter_publish_docs
+      - validate_swagger:
+          filters: *filter_publish_docs
       - integration_tests:
           name: integration_tests_38
           py_version: "3.8"
           tox_env: "py38"
+          filters: *filter_publish_docs
           requires:
             - unit_tests_38
       - build:
+          filters: *filter_publish_docs
           requires:
             - unit_tests_38
       - container_tests:
           name: test_container_dev
           test_env: "dev"
+          filters: *filter_publish_docs
           requires:
             - build
       - functional_tests:
           name: functional_tests_38_legacy
           tox_env: "py38"
           vulnerabilities_provider: "legacy"
+          filters: *filter_publish_docs
           requires:
             - build
       - functional_tests:
           name: functional_tests_38_grype
           vulnerabilities_provider: "grype"
           tox_env: "py38"
+          filters: *filter_publish_docs
           requires:
             - build
       - push_image:
@@ -332,6 +344,7 @@ workflows:
             - test_container_dev
       - anchore/image_scan:
           context: dockerhub
+          filters: *filter_publish_docs
           requires:
             - push_dev_image
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
