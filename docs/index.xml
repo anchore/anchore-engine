@@ -478,9 +478,7 @@ cycle_timers:
 feed_sync: 14400
 &lt;/code>&lt;/pre>&lt;h3 id="feed-settings">Feed Settings&lt;/h3>
 &lt;p>Feed sync configuration is set in the config.yaml file used by policy engine service. The &lt;code>services.policy_engine.vulnerabilities.sync.data&lt;/code> section
-of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Note that the location
-and format of this config data changed slightly in Anchore Engine 0.10 to reflect some internal refactoring. Ensure this config is synchronized between
-containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
+of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Ensure this config is synchronized between containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
 &lt;p>The Anchore Engine will default to downloading feed data from Anchore&amp;rsquo;s feed service hosted at &lt;a href="https://ancho.re/v1/service/feeds">https://ancho.re/v1/service/feeds&lt;/a> and running in AWS in the
 us-west-2 region.&lt;/p>
 &lt;p>By default, Anchore Engine will only sync the non-grype feeds enabled in the config section shown below. Setting additional feed types to true or false will
@@ -497,26 +495,18 @@ data:
 grypedb:
 enabled: true
 url: ${ANCHORE_GRYPE_DB_URL}
-vulnerabilities:
+packages:
 enabled: true
 url: ${ANCHORE_FEEDS_URL}
-nvdv2:
-enabled: true
-url: ${ANCHORE_FEEDS_URL}
-github:
-enabled: true
-url: ${ANCHORE_FEEDS_URL}
-&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> As show above, Anchore Engine now has a new feed for Grype. This feed will only be synced if the
-&lt;a href="/docs/grype/">tech preview Grype vulnerability scanner&lt;/a> is also enabled. Furthermore, if it is enabled this will be the only feed that Engine syncs, as it
-replaces (and contains vulnerability data from) the other groups.&lt;/p>
+&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> As shown above, Anchore Engine&amp;rsquo;s default is now Grype. The Grype feed is the default, and the only one that Anchore Engine syncs.&lt;/p>
 &lt;h4 id="read-timeout">Read Timeout&lt;/h4>
 &lt;p>Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
-some other temporary condition. However, if you want to increase the timeout to increate the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
+some other temporary condition. However, if you want to increase the timeout to improve the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
 &lt;pre>&lt;code>feeds:
 ...
 read_timeout_seconds: 180
 &lt;/code>&lt;/pre>&lt;h3 id="controlling-which-feeds-and-groups-are-synced">Controlling Which Feeds and Groups are Synced&lt;/h3>
-&lt;p>Note: The package and nvd data feeds are large, resulting in the initial sync taking some time time.&lt;/p>
+&lt;p>Note: The package and nvd data feeds are large, resulting in the initial sync taking some time.&lt;/p>
 &lt;p>During initial feed sync, you can always query the progress and status of the feed sync using the anchore-cli.&lt;/p>
 &lt;pre>&lt;code>anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds list
 Feed Group LastSync RecordCount
@@ -570,22 +560,20 @@ vulnerabilities ubuntu:18.04 2020-03-27T20:37:35.077867 12547
 vulnerabilities ubuntu:18.10 2020-03-27T20:39:20.097963 8397
 vulnerabilities ubuntu:19.04 2020-03-27T20:40:18.628869 8664
 vulnerabilities ubuntu:19.10 2020-03-27T20:41:20.828796 7327
-&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> If the tech preview Grype vulnerability scanner is enabled, the Grype feed is the only feed that will be synced. It will
+&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> The Grype feed is the only feed that will be synced. It will
 contain the records from all the other groups. It is not possible to include or exclude groups from the Grype feed.&lt;/p>
 &lt;h3 id="using-the-config-file-to-includeexclude-feeds-at-system-bootstrap">Using the Config File to Include/Exclude Feeds at System Bootstrap&lt;/h3>
 &lt;p>The most common way to set which feeds are synced is in the config.yaml for the policy engine. By default,
-the &lt;em>vulnerabilities&lt;/em>, &lt;em>nvdv2&lt;/em>, and &lt;em>github&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
+the &lt;em>grypedb&lt;/em> and &lt;em>packages&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
 and application package types. Normally it will not be necessary to modify that set.&lt;/p>
 &lt;p>To disable a feed or enable a disabled feed, modify the config.yaml&amp;rsquo;s &lt;em>feeds&lt;/em> section to:&lt;/p>
 &lt;pre>&lt;code>feeds:
 selective_sync:
 enabled: true
 feeds:
-vulnerabilities: true
-nvdv2: true
-github: true
-packages: false
-&lt;/code>&lt;/pre>&lt;p>Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and settng
+grypedb: true
+packages: true
+&lt;/code>&lt;/pre>&lt;p>Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and setting
 a feed to &amp;lsquo;false&amp;rsquo; will not remove any data or show in the API/CLI, it will simply skip updates during sync operations.&lt;/p>
 &lt;h3 id="using-the-cli-to-configure-feeds">Using the CLI to Configure Feeds&lt;/h3>
 &lt;h4 id="disabling-an-entire-feed">Disabling an Entire Feed&lt;/h4>
@@ -783,8 +771,8 @@ Feed Group Status Records Updated Sync Duration
 ...
 vulnerabilities centos:5 success 1347 27.41s
 ...
-&lt;/code>&lt;/pre>&lt;p>With these controls you can better customize the data set that anchore stores in the db. However, note that this should not normally be necessary
-and modifying feed groups &amp;amp; data has implication on the sets of distros and types of artifacts Anchore can match vulnerabilities against.&lt;/p></description></item><item><title>Docs: Feed Configuration</title><link>/docs/usage/cli_usage/feeds/feed_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/feeds/feed_configuration/</guid><description>
+&lt;/code>&lt;/pre>&lt;p>With these controls you can better customize the data set that anchore stores in the database. However, note that this should not normally be necessary
+and modifying feed groups &amp;amp; data has implications on the sets of distros and types of artifacts Anchore can match vulnerabilities against.&lt;/p></description></item><item><title>Docs: Feed Configuration</title><link>/docs/usage/cli_usage/feeds/feed_configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/cli_usage/feeds/feed_configuration/</guid><description>
 &lt;h3 id="feed-synchronization-interval">Feed Synchronization Interval&lt;/h3>
 &lt;p>The default configuration for the Anchore Engine will download vulnerability data from Anchore&amp;rsquo;s feed service every 21,600 seconds (6hours).&lt;/p>
 &lt;p>For most users the only configuration option that is typically updated is the feed synchronization interval - the time interval (in seconds) at which the feed sync is run.&lt;/p>
@@ -2272,6 +2260,7 @@ Password: The service principal password&lt;/li>
 &lt;li>For anchore 0.3.X, the base container is Ubuntu 18.04, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.6/dist-packages/certifi/cacert.pem&lt;/code>&lt;/li>
 &lt;li>For anchore 0.4.X and newer, the base container is Red Hat Universal Base Image 7, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/opt/rh/rh-python36/root/usr/lib/python3.6/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
 &lt;li>For anchore 0.7.X and newer, the base container is Red Hat Universal Base Image 8, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.6/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
+&lt;li>For anchore 0.9.x and newer, the base container is Red Hat Universal Base Image 8, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.8/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
 &lt;/ul>
 &lt;p>The following Dockerfile illustrates an example of how this general process can be automated to produce your own anchore-engine container (based on version 0.2.4 of anchore-engine) with new custom CA cert installed. A similiar process can be used for anchore-engine 0.4.X or newer, with the commands adjusted as appropriate with the differences described above.&lt;/p>
 &lt;p>&lt;strong>Dockerfile&lt;/strong>&lt;/p>
@@ -2796,11 +2785,15 @@ paths:
 &lt;p>If using the default config.yaml included in the image, you may instead set an environment variable (e.g for use in our provided config for Docker Compose for &lt;a href="/docs/quickstart/">Quickstart&lt;/a>):&lt;/p>
 &lt;p>&lt;code>ANCHORE_HINTS_ENABLED=true&lt;/code> environment variable for the analyzer service.&lt;/p>
 &lt;p>For Helm: see the Helm installation instructions for enabling the hints file mechanism when deploying with Helm.&lt;/p></description></item><item><title>Docs: Content Hints</title><link>/docs/general/concepts/images/analysis/content_hints/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/analysis/content_hints/</guid><description>
-&lt;p>Anchore Engine includes the ability to read a user-supplied &amp;lsquo;hints&amp;rsquo; file to allow users to override and/or augment the software artifacts that are
-discovered by Anchore during its image analysis process. The hints file, if present, contains records that describe a software package characteristics explicitly,
-and are then added to the software bill of materials (SBOM). For example, if the owner of a CI/CD container build process knows that there are some
-software packages installed explicitly in a container image, but Anchore&amp;rsquo;s regular analyzers are either not discovering the software or the analysis of the software
-package is incomplete, this mechanism can be used to include that information in the image&amp;rsquo;s SBOM, exactly as if the package were discovered normally.&lt;/p>
+&lt;p>Anchore Engine includes the ability to read a user-supplied &amp;lsquo;hints&amp;rsquo; file to allow users to add software artifacts to Anchore&amp;rsquo;s
+analysis report. The hints file, if present, contains records that describe a software package characteristics explicitly,
+and are then added to the software bill of materials (SBOM). For example, if the owner of a CI/CD container build process
+knows that there are some
+software packages installed explicitly in a container image, but Anchore&amp;rsquo;s regular analyzers fail to identify them, this mechanism
+can be used to include that information in the image&amp;rsquo;s SBOM, exactly as if the packages were discovered normally.&lt;/p>
+&lt;p>Hints cannot be used to modify the findings of Anchore&amp;rsquo;s analyzer beyond adding new packages to the report. If a user specifies
+a package in the hints file that is found by Anchore&amp;rsquo;s image analyzers, the hint is ignored and a warning message is logged
+to notify the user of the conflict.&lt;/p>
 &lt;h3 id="configuration">Configuration&lt;/h3>
 &lt;p>See &lt;a href="/docs/install/configuration/content_hints/">Configuring Content Hints&lt;/a>&lt;/p>
 &lt;p>Once enabled, the analyzer services will look for a file with a specific name, location and format located within the container image - &lt;code>/anchore_hints.json&lt;/code>.&lt;br>

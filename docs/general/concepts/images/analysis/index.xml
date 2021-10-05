@@ -45,11 +45,15 @@ the version metadata is during a db update.&lt;/p>
 &lt;p>A policy gate called &lt;code>malware&lt;/code> is available with a &lt;code>scans&lt;/code> trigger that will fire for each file and signature combination found in the image so that you can fail an evaluation of an image
 if malware was detected during the analysis scan.&lt;/p>
 &lt;p>See &lt;a href="/docs/usage/cli_usage/policies/policy_checks/">policy checks&lt;/a> for more details&lt;/p></description></item><item><title>Docs: Content Hints</title><link>/docs/general/concepts/images/analysis/content_hints/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/general/concepts/images/analysis/content_hints/</guid><description>
-&lt;p>Anchore Engine includes the ability to read a user-supplied &amp;lsquo;hints&amp;rsquo; file to allow users to override and/or augment the software artifacts that are
-discovered by Anchore during its image analysis process. The hints file, if present, contains records that describe a software package characteristics explicitly,
-and are then added to the software bill of materials (SBOM). For example, if the owner of a CI/CD container build process knows that there are some
-software packages installed explicitly in a container image, but Anchore&amp;rsquo;s regular analyzers are either not discovering the software or the analysis of the software
-package is incomplete, this mechanism can be used to include that information in the image&amp;rsquo;s SBOM, exactly as if the package were discovered normally.&lt;/p>
+&lt;p>Anchore Engine includes the ability to read a user-supplied &amp;lsquo;hints&amp;rsquo; file to allow users to add software artifacts to Anchore&amp;rsquo;s
+analysis report. The hints file, if present, contains records that describe a software package characteristics explicitly,
+and are then added to the software bill of materials (SBOM). For example, if the owner of a CI/CD container build process
+knows that there are some
+software packages installed explicitly in a container image, but Anchore&amp;rsquo;s regular analyzers fail to identify them, this mechanism
+can be used to include that information in the image&amp;rsquo;s SBOM, exactly as if the packages were discovered normally.&lt;/p>
+&lt;p>Hints cannot be used to modify the findings of Anchore&amp;rsquo;s analyzer beyond adding new packages to the report. If a user specifies
+a package in the hints file that is found by Anchore&amp;rsquo;s image analyzers, the hint is ignored and a warning message is logged
+to notify the user of the conflict.&lt;/p>
 &lt;h3 id="configuration">Configuration&lt;/h3>
 &lt;p>See &lt;a href="/docs/install/configuration/content_hints/">Configuring Content Hints&lt;/a>&lt;/p>
 &lt;p>Once enabled, the analyzer services will look for a file with a specific name, location and format located within the container image - &lt;code>/anchore_hints.json&lt;/code>.&lt;br>

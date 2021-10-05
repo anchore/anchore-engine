@@ -8,9 +8,7 @@ cycle_timers:
 feed_sync: 14400
 &lt;/code>&lt;/pre>&lt;h3 id="feed-settings">Feed Settings&lt;/h3>
 &lt;p>Feed sync configuration is set in the config.yaml file used by policy engine service. The &lt;code>services.policy_engine.vulnerabilities.sync.data&lt;/code> section
-of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Note that the location
-and format of this config data changed slightly in Anchore Engine 0.10 to reflect some internal refactoring. Ensure this config is synchronized between
-containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
+of the configuration file in the policy engine&amp;rsquo;s container controls the behavior of feed syncs done by that particular container. Ensure this config is synchronized between containers if you are running more than one policy engine. This is usually handled for you by Helm Charts on Kubernetes, for example.&lt;/p>
 &lt;p>The Anchore Engine will default to downloading feed data from Anchore&amp;rsquo;s feed service hosted at &lt;a href="https://ancho.re/v1/service/feeds">https://ancho.re/v1/service/feeds&lt;/a> and running in AWS in the
 us-west-2 region.&lt;/p>
 &lt;p>By default, Anchore Engine will only sync the non-grype feeds enabled in the config section shown below. Setting additional feed types to true or false will
@@ -27,26 +25,18 @@ data:
 grypedb:
 enabled: true
 url: ${ANCHORE_GRYPE_DB_URL}
-vulnerabilities:
+packages:
 enabled: true
 url: ${ANCHORE_FEEDS_URL}
-nvdv2:
-enabled: true
-url: ${ANCHORE_FEEDS_URL}
-github:
-enabled: true
-url: ${ANCHORE_FEEDS_URL}
-&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> As show above, Anchore Engine now has a new feed for Grype. This feed will only be synced if the
-&lt;a href="/docs/grype/">tech preview Grype vulnerability scanner&lt;/a> is also enabled. Furthermore, if it is enabled this will be the only feed that Engine syncs, as it
-replaces (and contains vulnerability data from) the other groups.&lt;/p>
+&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> As shown above, Anchore Engine&amp;rsquo;s default is now Grype. The Grype feed is the default, and the only one that Anchore Engine syncs.&lt;/p>
 &lt;h4 id="read-timeout">Read Timeout&lt;/h4>
 &lt;p>Under rare circumstances you may see syncs failing with errors to fetch data due to timeouts. This is typically due to load on the feed service, network issues, or
-some other temporary condition. However, if you want to increase the timeout to increate the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
+some other temporary condition. However, if you want to increase the timeout to improve the likelihood of success, modify the &lt;em>read_timeout_seconds&lt;/em> of the feeds configuration:&lt;/p>
 &lt;pre>&lt;code>feeds:
 ...
 read_timeout_seconds: 180
 &lt;/code>&lt;/pre>&lt;h3 id="controlling-which-feeds-and-groups-are-synced">Controlling Which Feeds and Groups are Synced&lt;/h3>
-&lt;p>Note: The package and nvd data feeds are large, resulting in the initial sync taking some time time.&lt;/p>
+&lt;p>Note: The package and nvd data feeds are large, resulting in the initial sync taking some time.&lt;/p>
 &lt;p>During initial feed sync, you can always query the progress and status of the feed sync using the anchore-cli.&lt;/p>
 &lt;pre>&lt;code>anchore@93d6977e2061 anchore-engine]$ anchore-cli system feeds list
 Feed Group LastSync RecordCount
@@ -100,22 +90,20 @@ vulnerabilities ubuntu:18.04 2020-03-27T20:37:35.077867 12547
 vulnerabilities ubuntu:18.10 2020-03-27T20:39:20.097963 8397
 vulnerabilities ubuntu:19.04 2020-03-27T20:40:18.628869 8664
 vulnerabilities ubuntu:19.10 2020-03-27T20:41:20.828796 7327
-&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> If the tech preview Grype vulnerability scanner is enabled, the Grype feed is the only feed that will be synced. It will
+&lt;/code>&lt;/pre>&lt;p>&lt;em>&lt;strong>Note:&lt;/strong>&lt;/em> The Grype feed is the only feed that will be synced. It will
 contain the records from all the other groups. It is not possible to include or exclude groups from the Grype feed.&lt;/p>
 &lt;h3 id="using-the-config-file-to-includeexclude-feeds-at-system-bootstrap">Using the Config File to Include/Exclude Feeds at System Bootstrap&lt;/h3>
 &lt;p>The most common way to set which feeds are synced is in the config.yaml for the policy engine. By default,
-the &lt;em>vulnerabilities&lt;/em>, &lt;em>nvdv2&lt;/em>, and &lt;em>github&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
+the &lt;em>grypedb&lt;/em> and &lt;em>packages&lt;/em> feeds are synced to provide good vulnerability matching support for a variety of linux distros
 and application package types. Normally it will not be necessary to modify that set.&lt;/p>
 &lt;p>To disable a feed or enable a disabled feed, modify the config.yaml&amp;rsquo;s &lt;em>feeds&lt;/em> section to:&lt;/p>
 &lt;pre>&lt;code>feeds:
 selective_sync:
 enabled: true
 feeds:
-vulnerabilities: true
-nvdv2: true
-github: true
-packages: false
-&lt;/code>&lt;/pre>&lt;p>Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and settng
+grypedb: true
+packages: true
+&lt;/code>&lt;/pre>&lt;p>Those boolean values can be used to enable/disable the feeds. Note that changes will require a restart of the policy engine to take effect and setting
 a feed to &amp;lsquo;false&amp;rsquo; will not remove any data or show in the API/CLI, it will simply skip updates during sync operations.&lt;/p>
 &lt;h3 id="using-the-cli-to-configure-feeds">Using the CLI to Configure Feeds&lt;/h3>
 &lt;h4 id="disabling-an-entire-feed">Disabling an Entire Feed&lt;/h4>
@@ -313,8 +301,8 @@ Feed Group Status Records Updated Sync Duration
 ...
 vulnerabilities centos:5 success 1347 27.41s
 ...
-&lt;/code>&lt;/pre>&lt;p>With these controls you can better customize the data set that anchore stores in the db. However, note that this should not normally be necessary
-and modifying feed groups &amp;amp; data has implication on the sets of distros and types of artifacts Anchore can match vulnerabilities against.&lt;/p></description></item><item><title>Docs: Configuration</title><link>/docs/install/configuration/config/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/config/</guid><description>
+&lt;/code>&lt;/pre>&lt;p>With these controls you can better customize the data set that anchore stores in the database. However, note that this should not normally be necessary
+and modifying feed groups &amp;amp; data has implications on the sets of distros and types of artifacts Anchore can match vulnerabilities against.&lt;/p></description></item><item><title>Docs: Configuration</title><link>/docs/install/configuration/config/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/install/configuration/config/</guid><description>
 &lt;h2 id="initial-configuration">Initial Configuration&lt;/h2>
 &lt;p>A single configuration file config.yaml is required to run the Anchore Engine - by default, this file is embedded in the anchore-engine container image, located in /config/config.yaml. The default configuration file is provided as a way to get started, which is functional out of the box, without modification, when combined with either the Helm method or docker-compose method of installing anchore-engine. The default configuration is set up to use environment variable substitutions so that configuration values can be controlled by setting the corresponding environment variables at deployment time (see &lt;a href="/docs/install/configuration/using_env_vars/">Using Environment Variables in Anchore&lt;/a>. To review the embedded configuration file settings, see the &lt;a href="https://github.com/anchore/anchore-engine/blob/master/conf/default_config.yaml">default config.yaml on github&lt;/a> which is populated with several environment variables (all starting with ANCHORE_), the &lt;a href="https://github.com/anchore/anchore-engine/blob/master/docker-compose.yaml">example docker-compose.yaml on github&lt;/a> which includes several site-specific environment variable default settings, and the &lt;a href="https://github.com/anchore/anchore-engine/tree/master/Dockerfile">anchore engine Dockerfile on github&lt;/a> which sets baseline environment variable settings.&lt;/p>
 &lt;p>Each environment variable (starting with ANCHORE_) in the default config.yaml is set (either the baseline as set in the Dockerfile, or an override in docker-compose or Helm) to ensure that the system comes up with a fully populated configuration.&lt;/p>
@@ -396,6 +384,7 @@ and modifying feed groups &amp;amp; data has implication on the sets of distros 
 &lt;li>For anchore 0.3.X, the base container is Ubuntu 18.04, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.6/dist-packages/certifi/cacert.pem&lt;/code>&lt;/li>
 &lt;li>For anchore 0.4.X and newer, the base container is Red Hat Universal Base Image 7, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/opt/rh/rh-python36/root/usr/lib/python3.6/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
 &lt;li>For anchore 0.7.X and newer, the base container is Red Hat Universal Base Image 8, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.6/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
+&lt;li>For anchore 0.9.x and newer, the base container is Red Hat Universal Base Image 8, certifi&amp;rsquo;s cacert.pem is installed in &lt;code>/usr/local/lib/python3.8/site-packages/certifi/cacert.pem&lt;/code>&lt;/li>
 &lt;/ul>
 &lt;p>The following Dockerfile illustrates an example of how this general process can be automated to produce your own anchore-engine container (based on version 0.2.4 of anchore-engine) with new custom CA cert installed. A similiar process can be used for anchore-engine 0.4.X or newer, with the commands adjusted as appropriate with the differences described above.&lt;/p>
 &lt;p>&lt;strong>Dockerfile&lt;/strong>&lt;/p>

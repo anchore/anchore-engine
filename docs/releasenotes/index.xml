@@ -1,4 +1,54 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 0.10.0</title><link>/docs/releasenotes/0100/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0100/</guid><description>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 1.0.0</title><link>/docs/releasenotes/1.0.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/1.0.0/</guid><description>
+&lt;h2 id="anchore-engine-100">Anchore Engine 1.0.0&lt;/h2>
+&lt;p>API version - 0.1.19&lt;/p>
+&lt;p>DB Schema version - 0.0.16&lt;/p>
+&lt;p>This release contains a database schema update.&lt;/p>
+&lt;h3 id="v2-vulnerability-provider-based-on-grype">V2 vulnerability provider, based on Grype&lt;/h3>
+&lt;p>Version 1.0.0 is a significant release for Engine as it now has Grype integration for vulnerability scanning enabled by default. This creates a unified vulnerability scanning core across local tools as well as stateful Engine services.&lt;/p>
+&lt;p>The legacy provider (non-Grype) is no longer the default for new deployments. If you are a current engine user and want to keep the existing non-Grype scanner, you can upgrade to 1.0.0 and configure Engine to use the legacy scanner. You do not have to use Grype, although upgrading to Grype is recommended because the legacy scanner will be deprecated at some point in the future.&lt;/p>
+&lt;p>The new V2 vulnerability provider syncs vulnerability data from the same upstream sources as Engine, but uses the Grype DB update mechanism to achieve much faster feed updates, and no longer uses the (&lt;a href="https://ancho.re">https://ancho.re&lt;/a>) endpoint for retrieving data.&lt;/p>
+&lt;h3 id="suse-linux-enterprise-server-support">SUSE Linux Enterprise Server support&lt;/h3>
+&lt;p>There is now Grype support for generating lists of CVEs for SLES and OpenSUSE. This is based on published data at (&lt;a href="https://www.suse.com/support/security/)">https://www.suse.com/support/security/)&lt;/a>.&lt;/p>
+&lt;h3 id="fixed">Fixed&lt;/h3>
+&lt;p>Dependency updates to resolve non-impacting vulnerability findings&lt;/p>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;p>Upgrading to 1.0.0 involves a database upgrade that the system will handle itself. It may cause the upgrade to take several minutes.&lt;/p>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.10.2</title><link>/docs/releasenotes/0102/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0102/</guid><description>
+&lt;h2 id="anchore-engine-0102">Anchore Engine 0.10.2&lt;/h2>
+&lt;p>API version - 0.1.19&lt;/p>
+&lt;p>DB Schema version - 0.0.15&lt;/p>
+&lt;h3 id="changes">Changes&lt;/h3>
+&lt;ul>
+&lt;li>Improved - Updates Dockerfile to enable run compatibility on FIPs enabled hosts.&lt;/li>
+&lt;li>Improved - Updates calls to hashing library functions (hashlib.md5) to enable run compatibility on FIPs enabled hosts.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.10.1</title><link>/docs/releasenotes/0101/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0101/</guid><description>
+&lt;h2 id="anchore-engine-0101">Anchore Engine 0.10.1&lt;/h2>
+&lt;p>API version - 0.1.19&lt;/p>
+&lt;p>DB Schema version - 0.0.15&lt;/p>
+&lt;h3 id="changes">Changes&lt;/h3>
+&lt;ul>
+&lt;li>Added - &amp;lsquo;will_not_fix&amp;rsquo; field added to vulnerability report API response and vulnerability information query. Fixes #1160&lt;/li>
+&lt;li>Fixed - /tmp directory not cleaned up after an image analysis&lt;/li>
+&lt;li>Fixed - Updates syft version to 0.19.1&lt;/li>
+&lt;li>Fixed - Update certifi path in the docker entrypoint script to ensure cert updates are set properly. Fixes #1171&lt;/li>
+&lt;li>Fixed - incorrect handling of hints file input. Fixes #1165&lt;/li>
+&lt;li>Fixed - Ensures all tags attempted for image pull if multiple tags on image being analyzed. Fixes #1139&lt;/li>
+&lt;li>Fixed- Ensures events generated for images analyzed that have multiple tags. Fixes #1164&lt;/li>
+&lt;li>Fixed - Handles &amp;ldquo;release&amp;rdquo; rpm field for hints input correctly. Fixes #1149&lt;/li>
+&lt;li>Improved - Installs CLI into a virtual env for dependency isolation. Fixes #1076&lt;/li>
+&lt;li>Improved - hints file entries can only add new data to analysis report, not modify any entries found by analyzers.&lt;/li>
+&lt;li>Updates dependencies to remove non-impacting vulnerabilities&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 0.10.0</title><link>/docs/releasenotes/0100/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0100/</guid><description>
 &lt;h2 id="anchore-engine-0100">Anchore Engine 0.10.0&lt;/h2>
 &lt;p>API version - 0.1.18&lt;/p>
 &lt;p>DB Schema version - 0.0.15&lt;/p>
