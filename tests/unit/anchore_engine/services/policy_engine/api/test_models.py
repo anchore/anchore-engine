@@ -13,8 +13,7 @@ from anchore_engine.common.models.policy_engine import (
     LegacyTableReport,
     LegacyMultiReport,
 )
-
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 def test_feeds():

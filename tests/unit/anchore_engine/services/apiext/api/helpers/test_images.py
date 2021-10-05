@@ -51,6 +51,7 @@ class TestBuildOsResponse:
                     "cpe:2.3:*:*:apt:1.8.2:*:*:*:*:*:*:*",
                     "cpe:2.3:*:apt:apt:1.8.2:*:*:*:*:*:*:*",
                 ],
+                "sourcepkg": "apt-1.8.2",
             }
         ]
 
@@ -271,6 +272,7 @@ class TestBuildJavaResponse:
                 "implementation-version": "N/A",
                 "location": "/usr/lib/jvm/java-8-openjdk-amd64/jre/lib/charsets.jar",
                 "maven-version": "N/A",
+                "metadata": {"MANIFEST.MF": "(truncated manifest data)"},
                 "origin": "N/A",
                 "package": "charsets",
                 "specification-version": "N/A",
@@ -279,6 +281,7 @@ class TestBuildJavaResponse:
                     "cpe:2.3:*:*:charsets:N/A:*:*:*:*:*:*:*",
                     "cpe:2.3:*:charsets:charsets:N/A:*:*:*:*:*:*:*",
                 ],
+                "version": "N/A",
             }
         ]
 

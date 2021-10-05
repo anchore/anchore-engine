@@ -43,7 +43,8 @@ from anchore_engine.subsys.events import (
     ImageRestoreFailed,
 )
 from anchore_engine.subsys.object_store.manager import ObjectStorageManager
-from anchore_engine.utils import datetime_to_rfc3339, ensure_str, ensure_bytes
+from anchore_engine.util.time import datetime_to_rfc3339
+from anchore_engine.utils import ensure_bytes, ensure_str
 
 DRY_RUN_ENV_VAR = "ANCHORE_ANALYSIS_ARCHIVE_DRYRUN_ENABLED"
 DRY_RUN_MODE = os.getenv(DRY_RUN_ENV_VAR, "false").lower() == "true"

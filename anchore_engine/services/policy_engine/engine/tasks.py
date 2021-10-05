@@ -241,7 +241,7 @@ class FeedsUpdateTask(IAsyncTask):
             updated_data_feeds = list()
             updated_data_feeds.extend(
                 DataFeeds.sync(
-                    sync_util_provider=GrypeProvider().get_sync_utils(
+                    sync_util_provider=GrypeProvider().get_sync_util_provider(
                         self.sync_configs
                     ),
                     full_flush=self.full_flush,
@@ -251,7 +251,7 @@ class FeedsUpdateTask(IAsyncTask):
             )
             updated_data_feeds.extend(
                 DataFeeds.sync(
-                    sync_util_provider=LegacyProvider().get_sync_utils(
+                    sync_util_provider=LegacyProvider().get_sync_util_provider(
                         self.sync_configs
                     ),
                     full_flush=self.full_flush,

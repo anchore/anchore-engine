@@ -42,6 +42,10 @@ class TestDebianPaths:
         metadata = dict(metadata)
         metadata.pop("license")
 
+        # cpe ordering keeps changing, so sort both lists.
+        loaded["cpes"] = sorted(loaded["cpes"])
+        metadata["cpes"] = sorted(metadata["cpes"])
+
         assert loaded == metadata
 
     @pytest.mark.parametrize("pkg,metadata", debian.pkgs_allinfo.items())

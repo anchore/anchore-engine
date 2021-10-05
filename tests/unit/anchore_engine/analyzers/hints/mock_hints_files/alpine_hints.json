@@ -1,0 +1,28 @@
+{
+  "packages": [
+    {
+      "name": "tzdata",
+      "version": "2021a-1.fc34",
+      "arch": "noarch",
+      "type": "apkg"
+    },
+    {
+      "name": "ncurses-base",
+      "version": "6.2-7.20210508.fc35",
+      "arch": "noarch",
+      "type": "apkg"
+    },
+    {
+      "name": "libssh-config",
+      "version": "0.9.5-2.fc34",
+      "arch": "noarch",
+      "type": "apkg"
+    },
+    {
+      "name": "fedora-gpg-keys",
+      "version": "35-0.4",
+      "arch": "noarch",
+      "type": "apkg"
+    }
+  ]
+}

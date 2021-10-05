@@ -10,7 +10,7 @@ class TestRepositoriesAPIGetReturns200:
         resp = http_post(
             ["repositories"],
             None,
-            query={"repository": "docker.io/alpine"},
+            query={"repository": "docker.io/anchore/repo-watcher-testing"},
             config=api_conf,
         )
         assert resp == APIResponse(200)

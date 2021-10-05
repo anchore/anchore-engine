@@ -227,7 +227,7 @@ def test_get_normalized_map_from_table_exceptions(test_input, error):
                             "advisories": [],
                             "observed_at": "2021-03-31T17:30:49Z",
                             "versions": ["3.7.4"],
-                            "wont_fix": False,
+                            "will_not_fix": False,
                         },
                         "match": {"detected_at": "2021-06-07T20:20:47Z"},
                         "nvd": [],

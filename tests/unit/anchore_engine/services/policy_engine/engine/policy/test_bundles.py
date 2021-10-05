@@ -6,7 +6,7 @@ from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     ExecutableWhitelistItem,
 )
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 class TestExecutableWhitelistItem:

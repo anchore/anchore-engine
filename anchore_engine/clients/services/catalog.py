@@ -118,6 +118,21 @@ class CatalogClient(InternalServiceClient):
             path_params={"image_digest": image_digest, "content_type": content_type},
         )
 
+    def get_image_content_multiple_types(
+        self, image_digest, content_types=None, allow_analyzing_state=False
+    ):
+        return self.call_api(
+            http.anchy_get,
+            "images/{image_digest}/content",
+            path_params={"image_digest": image_digest},
+            query_params={
+                "content_types": ",".join(content_types)
+                if content_types and isinstance(content_types, list)
+                else None,
+                "allow_analyzing_state": allow_analyzing_state,
+            },
+        )
+
     def get_image_by_id(self, imageId):
         return self.call_api(
             http.anchy_get, "images", query_params={"imageId": imageId}
@@ -305,10 +320,12 @@ class CatalogClient(InternalServiceClient):
         self, subscription_key=None, subscription_type=None, subscription_id=None
     ):
         if subscription_key and subscription_type:
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [self.request_namespace, subscription_key, subscription_type]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
 
         return self.call_api(
@@ -325,22 +342,26 @@ class CatalogClient(InternalServiceClient):
         if subscription_id:
             pass
         elif subscription_key and subscription_type:
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [self.request_namespace, subscription_key, subscription_type]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
         elif subscriptiondata.get("subscription_key", None) and subscriptiondata.get(
             "subscription_type", None
         ):
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [
                         self.request_namespace,
                         subscriptiondata.get("subscription_key"),
                         subscriptiondata.get("subscription_type"),
                     ]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
         else:
             raise Exception(

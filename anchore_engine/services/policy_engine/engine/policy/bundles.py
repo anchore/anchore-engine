@@ -40,7 +40,10 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
-from anchore_engine.utils import rfc3339str_to_datetime
+from anchore_engine.subsys import logger
+from anchore_engine.util.docker import parse_dockerimage_string
+from anchore_engine.util.matcher import is_match, regexify
+from anchore_engine.util.time import rfc3339str_to_datetime
 
 
 class VersionedEntityMixin(object):

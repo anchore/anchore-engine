@@ -8,7 +8,6 @@ from typing import Dict, List, Optional
 from marshmallow.exceptions import ValidationError
 from sqlalchemy import asc, func, orm
 
-from anchore_engine.clients.services.common import get_service_endpoint
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.common.models.policy_engine import Advisory, Artifact
 from anchore_engine.common.models.policy_engine import (
@@ -63,18 +62,37 @@ from anchore_engine.services.policy_engine.engine.feeds.sync_utils import (
     LegacySyncUtilProvider,
     SyncUtilProvider,
 )
+from anchore_engine.services.policy_engine.engine.policy.gate_util_provider import (
+    GateUtilProvider,
+    GrypeGateUtilProvider,
+    LegacyGateUtilProvider,
+)
 from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     get_imageId_to_record,
     merge_nvd_metadata,
     merge_nvd_metadata_image_packages,
 )
+from anchore_engine.services.policy_engine.engine.vulns.dedup import (
+    get_image_vulnerabilities_deduper,
+    transfer_vulnerability_timestamps,
+)
+from anchore_engine.services.policy_engine.engine.vulns.feed_display_mapper import (
+    FeedDisplayMapper,
+)
+from anchore_engine.services.policy_engine.engine.vulns.mappers import (
+    EngineGrypeDBMapper,
+)
+from anchore_engine.services.policy_engine.engine.vulns.scanners import (
+    GrypeScanner,
+    LegacyScanner,
+)
+from anchore_engine.services.policy_engine.engine.vulns.stores import (
+    ImageVulnerabilitiesStore,
+    Status,
+)
+from anchore_engine.services.policy_engine.engine.vulns.utils import get_api_endpoint
 from anchore_engine.subsys import logger, metrics
 from anchore_engine.utils import timer
-
-from .dedup import get_image_vulnerabilities_deduper, transfer_vulnerability_timestamps
-from .mappers import EngineGrypeDBMapper
-from .scanners import GrypeScanner, LegacyScanner
-from .stores import ImageVulnerabilitiesStore, Status
 
 
 class InvalidFeed(Exception):
@@ -92,6 +110,18 @@ class VulnerabilitiesProvider(ABC):
     __store__ = None
     __config__name__ = None
     __default_sync_config__ = None
+    _display_mapper = None
+
+    @property
+    def display_mapper(self) -> FeedDisplayMapper:
+        return self._display_mapper
+
+    @abstractmethod
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        ...
 
     def get_config_name(self) -> str:
         """
@@ -141,7 +171,9 @@ class VulnerabilitiesProvider(ABC):
         ...
 
     @abstractmethod
-    def get_sync_utils(self, sync_configs: Dict[str, SyncConfig]) -> SyncUtilProvider:
+    def get_sync_util_provider(
+        self, sync_configs: Dict[str, SyncConfig]
+    ) -> SyncUtilProvider:
         """
         Get a SyncUtilProvider.
         """
@@ -269,6 +301,13 @@ class VulnerabilitiesProvider(ABC):
         """
         ...
 
+    @abstractmethod
+    def get_gate_util_provider(self) -> GateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        ...
+
 
 class LegacyProvider(VulnerabilitiesProvider):
     """
@@ -290,6 +329,16 @@ class LegacyProvider(VulnerabilitiesProvider):
         "github": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
+    _display_mapper = FeedDisplayMapper()
+
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        for feed_name in self.__default_sync_config__.keys():
+            self._display_mapper.register(
+                internal_name=feed_name, display_name=feed_name
+            )
 
     def load_image(self, image: Image, db_session, use_store=True):
         # initialize the scanner
@@ -393,7 +442,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                     nvd_refs = []
 
                 advisories = []
-                if fixed_artifact.fix_metadata:
+                if fixed_artifact and fixed_artifact.fix_metadata:
                     vendor_advisories = fixed_artifact.fix_metadata.get(
                         "VendorAdvisorySummary", []
                     )
@@ -432,7 +481,9 @@ class LegacyProvider(VulnerabilitiesProvider):
                         ),
                         fix=FixedArtifact(
                             versions=[fixed_in] if fixed_in else [],
-                            wont_fix=vuln.fix_has_no_advisory(fixed_in=fixed_artifact),
+                            will_not_fix=vuln.fix_has_no_advisory(
+                                fixed_in=fixed_artifact
+                            ),
                             observed_at=fixed_artifact.fix_observed_at
                             if fixed_artifact
                             else None,
@@ -452,7 +503,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                 if not all_cpe_matches:
                     all_cpe_matches = []
 
-                api_endpoint = self._get_api_endpoint()
+                api_endpoint = get_api_endpoint()
 
                 for image_cpe, vulnerability_cpe in all_cpe_matches:
                     link = vulnerability_cpe.parent.link
@@ -494,7 +545,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             ),
                             fix=FixedArtifact(
                                 versions=vulnerability_cpe.get_fixed_in(),
-                                wont_fix=False,
+                                will_not_fix=False,
                                 observed_at=vulnerability_cpe.created_at
                                 if vulnerability_cpe.get_fixed_in()
                                 else None,
@@ -579,7 +630,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         logger.spew("Vuln query 1 timing: {}".format(time.time() - t1))
 
-        api_endpoint = self._get_api_endpoint()
+        api_endpoint = get_api_endpoint()
 
         if not namespace or ("nvdv2:cves" in namespace):
             dedupped_return_hash = {}
@@ -615,6 +666,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             "name": v_pkg.name,
                             "version": v_pkg.version,
                             "type": "*",
+                            "will_not_fix": False,
                         }
                         namespace_el["affected_packages"].append(pkg_el)
 
@@ -689,6 +741,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                             "name": v_pkg.name,
                             "version": v_pkg.version,
                             "type": v_pkg.version_format,
+                            "will_not_fix": v_pkg.vendor_no_advisory,
                         }
                         if not v_pkg.version or v_pkg.version.lower() == "none":
                             pkg_el["version"] = "*"
@@ -888,26 +941,7 @@ class LegacyProvider(VulnerabilitiesProvider):
 
         return advisory_cache.get(phash)
 
-    @staticmethod
-    def _get_api_endpoint():
-        """
-        Utility function for fetching the url to external api
-        """
-        try:
-            return get_service_endpoint("apiext").strip("/")
-        except:
-            logger.warn(
-                "Could not find valid apiext endpoint for links so will use policy engine endpoint instead"
-            )
-            try:
-                return get_service_endpoint("policy_engine").strip("/")
-            except:
-                logger.warn(
-                    "No policy engine endpoint found either, using default but invalid url"
-                )
-                return "http://<valid endpoint not found>"
-
-    def get_sync_utils(
+    def get_sync_util_provider(
         self, sync_configs: Dict[str, SyncConfig]
     ) -> LegacySyncUtilProvider:
         """
@@ -1050,6 +1084,12 @@ class LegacyProvider(VulnerabilitiesProvider):
         for pkg_vuln in image.vulnerabilities():
             db_session.delete(pkg_vuln)
 
+    def get_gate_util_provider(self) -> LegacyGateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        return LegacyGateUtilProvider()
+
 
 class GrypeProvider(VulnerabilitiesProvider):
     __scanner__ = GrypeScanner
@@ -1062,6 +1102,16 @@ class GrypeProvider(VulnerabilitiesProvider):
         ),
         "packages": SyncConfig(enabled=False, url="https://ancho.re/v1/service/feeds"),
     }
+    _display_mapper = FeedDisplayMapper()
+
+    def init_display_mapper(self) -> None:
+        """
+        Populate the display mapper for this provider.
+        """
+        self._display_mapper.register(
+            internal_name="grypedb", display_name="vulnerabilities"
+        )
+        self._display_mapper.register(internal_name="packages", display_name="packages")
 
     def load_image(self, image: Image, db_session, use_store=True):
         with timer("grype provider load-image", log_level="info"):
@@ -1085,7 +1135,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                 if not isinstance(report, ImageVulnerabilitiesReport):
                     report = ImageVulnerabilitiesReport.from_json(report)
 
-                report.results = self._exclude_wont_fix(report.results)
+                report.results = self._exclude_will_not_fix(report.results)
                 report = report.to_json()
             else:
                 if isinstance(report, ImageVulnerabilitiesReport):
@@ -1111,20 +1161,22 @@ class GrypeProvider(VulnerabilitiesProvider):
                 report = ImageVulnerabilitiesReport.from_json(report)
 
             if vendor_only:
-                report.results = self._exclude_wont_fix(report.results)
+                report.results = self._exclude_will_not_fix(report.results)
 
             return report
 
     @staticmethod
-    def _exclude_wont_fix(matches: List[VulnerabilityMatch]):
+    def _exclude_will_not_fix(matches: List[VulnerabilityMatch]):
         """
-        Exclude matches that are explicitly marked wont_fix = True. Includes all other matches, wont_fix = False, None or any string which should never be the case
+        Exclude matches that are explicitly marked will_not_fix = True. Includes all other matches, will_not_fix = False, None or any string which should never be the case
         """
         return (
             list(
                 filter(
                     lambda x: not (
-                        x.fix and isinstance(x.fix.wont_fix, bool) and x.fix.wont_fix
+                        x.fix
+                        and isinstance(x.fix.will_not_fix, bool)
+                        and x.fix.will_not_fix
                     ),
                     matches,
                 )
@@ -1330,7 +1382,7 @@ class GrypeProvider(VulnerabilitiesProvider):
         #                         "advisories": [],
         #                         "observed_at": "2021-06-04T02:27:35Z",
         #                         "versions": ["8.232.09-r0"],
-        #                         "wont_fix": False,
+        #                         "will_not_fix": False,
         #                     },
         #                     "match": {"detected_at": "2021-06-03T05:20:09Z"},
         #                     "nvd": [],
@@ -1449,7 +1501,7 @@ class GrypeProvider(VulnerabilitiesProvider):
                 if (
                     isinstance(vendor_only, bool)
                     and vendor_only  # true means vendor may fix
-                    and match.fix.wont_fix  # true means vendor won't fix
+                    and match.fix.will_not_fix  # true means vendor won't fix
                 ):
                     continue
 
@@ -1467,7 +1519,7 @@ class GrypeProvider(VulnerabilitiesProvider):
 
         return filtered_dicts
 
-    def get_sync_utils(
+    def get_sync_util_provider(
         self, sync_configs: Dict[str, SyncConfig]
     ) -> GrypeDBSyncUtilProvider:
         """
@@ -1483,12 +1535,6 @@ class GrypeProvider(VulnerabilitiesProvider):
         grype-db feed sync will refresh the matches for all images in the system
         """
         pass
-
-    def update_feed_group_counts(self) -> None:
-        """
-        Counts on grypedb are static so no need to update
-        """
-        return
 
     def _get_feed_groups(self, db_feed: FeedMetadata) -> List[APIFeedGroupMetadata]:
         """
@@ -1546,6 +1592,12 @@ class GrypeProvider(VulnerabilitiesProvider):
     def delete_image_vulnerabilities(self, image: Image, db_session):
         ImageVulnerabilitiesStore(image_object=image).delete_all(session=db_session)
 
+    def get_gate_util_provider(self) -> GrypeGateUtilProvider:
+        """
+        Get a GateUtilProvider.
+        """
+        return GrypeGateUtilProvider()
+
 
 # Override this map for associating different provider classes
 PROVIDER_CLASSES = [LegacyProvider, GrypeProvider]
@@ -1557,23 +1609,27 @@ def set_provider():
     global PROVIDER
 
     provider_name = get_provider_name(get_section_for_vulnerabilities())
+    if not provider_name:
+        raise ValueError(
+            "No vulnerabilities->provider found in the policy-engine configuration, set the provider in your helm chart or docker-compose.yaml"
+        )
+
     provider_class = next(
         (item for item in PROVIDER_CLASSES if item.__config__name__ == provider_name),
         None,
     )
 
     if not provider_class:
-        logger.warn(
-            "No implementation found for configured provider %s. Falling back to default",
+        raise ValueError(
+            'No vulnerabilities provider implementation found for configured provider %s. Supported providers are "grype" or "legacy"',
             provider_name,
         )
-        provider_class = LegacyProvider
 
     PROVIDER = provider_class()
     logger.info("Initialized vulnerabilities provider: %s", PROVIDER.get_config_name())
 
 
-def get_vulnerabilities_provider():
+def get_vulnerabilities_provider() -> Optional[VulnerabilitiesProvider]:
     if not PROVIDER:
         set_provider()
 

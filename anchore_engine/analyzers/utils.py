@@ -54,7 +54,9 @@ def init_analyzer_cmdline(argv, name):
     ret["name"] = name
 
     with open(argv[0], "r") as FH:
-        ret["selfcsum"] = hashlib.md5(FH.read().encode("utf-8")).hexdigest()
+        ret["selfcsum"] = hashlib.new(
+            "md5", FH.read().encode("utf-8"), usedforsecurity=False
+        ).hexdigest()
 
     ret["imgid"] = argv[2]
 
@@ -485,11 +487,6 @@ def _get_extractable_member(
 def _checksum_member_function(tfl, member, csums=["sha256", "md5"], memberhash={}):
     ret = {}
 
-    funcmap = {
-        "sha256": hashlib.sha256,
-        "sha1": hashlib.sha1,
-        "md5": hashlib.md5,
-    }
     if member.isreg():
         extractable_member = member
     elif member.islnk():
@@ -502,7 +499,9 @@ def _checksum_member_function(tfl, member, csums=["sha256", "md5"], memberhash={
     for ctype in csums:
         if extractable_member:
             with tfl.extractfile(extractable_member) as mfd:
-                ret[ctype] = funcmap[ctype](mfd.read()).hexdigest()
+                ret[ctype] = hashlib.new(
+                    ctype, mfd.read(), usedforsecurity=False
+                ).hexdigest()
         else:
             ret[ctype] = "DIRECTORY_OR_OTHER"
 
@@ -511,12 +510,6 @@ def _checksum_member_function(tfl, member, csums=["sha256", "md5"], memberhash={
 
 def get_checksums_from_squashtar(squashtar, csums=["sha256", "md5"]):
     allfiles = {}
-
-    funcmap = {
-        "sha256": hashlib.sha256,
-        "sha1": hashlib.sha1,
-        "md5": hashlib.md5,
-    }
 
     try:
         results = anchore_engine.analyzers.utils.run_tarfile_member_function(

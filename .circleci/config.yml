@@ -8,7 +8,7 @@
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
-  LATEST_RELEASE_MAJOR_VERSION: 0.10.0
+  LATEST_RELEASE_MAJOR_VERSION: 1.0.0
   TERM: xterm
 
 .attach_workspace: &attach_workspace
@@ -207,7 +207,7 @@ jobs:
         type: string
       vulnerabilities_provider:
         type: string
-        default: ""
+        default: "-grype"
 
     machine:
       image: ubuntu-1604:202007-01
@@ -223,9 +223,9 @@ jobs:
           echo 'export TOX_ENV="<< parameters.tox_env >>"' >> $BASH_ENV
       - run:
           name: Run functional tests
-          command: make setup-and-test-functional<< parameters.vulnerabilities_provider >>
+          command: make setup-and-test-functional-<< parameters.vulnerabilities_provider >>
 
-  e2e_tests:
+  cli_smoke_tests:
     parameters:
       py_version:
         type: string
@@ -240,9 +240,9 @@ jobs:
       - <<: *load_docker_image
       - <<: *ssh_forward_port
       - run:
-          name: Run e2e tests
+          name: Run anchore-cli smoke tests
           no_output_timeout: 30m
-          command: make setup-and-test-e2e
+          command: make setup-and-test-cli
 
   push_image:
     description: Uses make script to push images to DockerHub - dev, rc, prod
@@ -260,6 +260,28 @@ jobs:
       - run:
           name: Push to Dockerhub
           command: make << parameters.make_job >>
+
+  container_tests:
+    description: Check container properties
+    parameters:
+      # dev:  a docker build job *must* take place before the job so that
+      #       there is a local image for it to run
+      # prod: the script that this invokes pulls the image from dockerhub
+      test_env:
+        type: enum
+        default: "dev"
+        enum: ["dev", "prod"]
+    docker:
+      - image: circleci/python:3.8
+    environment: *global_environment_vars
+    steps:
+      - setup_remote_docker
+      - checkout
+      - <<: *attach_workspace
+      - <<: *load_docker_image
+      - run:
+          name: Run container-structure-tests
+          command: make test-container-<< parameters.test_env >>
 
 workflows:
   default_workflow:
@@ -280,17 +302,21 @@ workflows:
             - unit_tests_38
       - build:
           requires:
-            - lint_38
             - unit_tests_38
+      - container_tests:
+          name: test_container_dev
+          test_env: "dev"
+          requires:
+            - build
       - functional_tests:
           name: functional_tests_38_legacy
           tox_env: "py38"
-          vulnerabilities_provider: ""
+          vulnerabilities_provider: "legacy"
           requires:
             - build
       - functional_tests:
           name: functional_tests_38_grype
-          vulnerabilities_provider: "-grype"
+          vulnerabilities_provider: "grype"
           tox_env: "py38"
           requires:
             - build
@@ -303,6 +329,7 @@ workflows:
             - functional_tests_38_grype
             - functional_tests_38_legacy
             - integration_tests_38
+            - test_container_dev
       - anchore/image_scan:
           context: dockerhub
           requires:
@@ -339,16 +366,29 @@ workflows:
       - build:
           filters: *filter_nightly
           requires:
-            - lint_38
             - unit_tests_38
+      - container_tests:
+          name: test_container_nightly
+          test_env: "dev"
+          filters: *filter_nightly
+          requires:
+            - build
       - functional_tests:
-          name: functional_tests_38
+          name: functional_tests_38_legacy
+          vulnerabilities_provider: "legacy"
           tox_env: "py38"
           filters: *filter_nightly
           requires:
             - build
-      - e2e_tests:
-          name: e2e_tests_38
+      - functional_tests:
+          name: functional_tests_38_grype
+          vulnerabilities_provider: "grype"
+          tox_env: "py38"
+          filters: *filter_nightly
+          requires:
+            - build
+      - cli_smoke_tests:
+          name: cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_nightly
@@ -360,9 +400,11 @@ workflows:
           context: dockerhub
           filters: *filter_nightly
           requires:
-            - functional_tests_38
+            - functional_tests_38_legacy
+            - functional_tests_38_grype
             - integration_tests_38
-            - e2e_tests_38
+            - cli_smoke_tests_38
+            - test_container_nightly
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_nightly
@@ -376,8 +418,14 @@ workflows:
     jobs:
       - build:
           filters: *filter_rc_tags
-      - e2e_tests:
-          name: rc_e2e_tests_38
+      - container_tests:
+          name: test_container_rc
+          test_env: dev
+          filters: *filter_rc_tags
+          requires:
+            - build
+      - cli_smoke_tests:
+          name: rc_cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_rc_tags
@@ -389,7 +437,8 @@ workflows:
           context: dockerhub
           filters: *filter_rc_tags
           requires:
-            - rc_e2e_tests_38
+            - rc_cli_smoke_tests_38
+            - test_container_rc
       - anchore/image_scan:
           context: dockerhub
           filters: *filter_rc_tags
@@ -402,8 +451,8 @@ workflows:
 
   prod_image_workflow:
     jobs:
-      - e2e_tests:
-          name: prod_e2e_tests_38
+      - cli_smoke_tests:
+          name: prod_cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
@@ -411,7 +460,7 @@ workflows:
           type: approval
           filters: *filter_semver_tags
           requires:
-            - prod_e2e_tests_38
+            - prod_cli_smoke_tests_38
       - push_image:
           name: push_prod_image
           make_job: push-prod
@@ -422,6 +471,13 @@ workflows:
       - push_image:
           name: push_redhat_image
           make_job: push-redhat
+          context: dockerhub-prod
+          filters: *filter_semver_tags
+          requires:
+            - push_prod_image
+      - container_tests:
+          name: test_container_prod
+          test_env: prod
           context: dockerhub-prod
           filters: *filter_semver_tags
           requires:
@@ -444,21 +500,33 @@ workflows:
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
-            - lint_38
             - unit_tests_38
       - build:
           filters: *filter_rebuild_tags
           requires:
-            - lint_38
             - unit_tests_38
+      - container_tests:
+          name: test_container_rebuild
+          test_env: dev
+          filters: *filter_rebuild_tags
+          requires:
+            - build
       - functional_tests:
-          name: functional_tests_38
+          name: functional_tests_38_legacy
+          vulnerabilities_provider: "legacy"
           tox_env: "py38"
           filters: *filter_rebuild_tags
           requires:
             - build
-      - e2e_tests:
-          name: e2e_tests_38
+      - functional_tests:
+          name: functional_tests_38_grype
+          vulnerabilities_provider: "grype"
+          tox_env: "py38"
+          filters: *filter_rebuild_tags
+          requires:
+            - build
+      - cli_smoke_tests:
+          name: cli_smoke_tests_38
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_rebuild_tags
@@ -470,9 +538,11 @@ workflows:
           context: dockerhub
           filters: *filter_rebuild_tags
           requires:
-            - e2e_tests_38
-            - functional_tests_38
+            - cli_smoke_tests_38
+            - functional_tests_38_legacy
+            - functional_tests_38_grype
             - integration_tests_38
+            - test_container_rebuild
       - anchore/image_scan:
           name: anchore_image_scan
           context: dockerhub

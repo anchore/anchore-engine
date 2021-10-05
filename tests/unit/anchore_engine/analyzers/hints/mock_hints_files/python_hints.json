@@ -1,0 +1,10 @@
+{
+  "packages": [
+	{
+	    "name": "pip",
+	    "version": "3.0",
+	    "location": "/usr/bin",
+	    "type": "python"
+	}
+  ]
+}

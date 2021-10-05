@@ -1,6 +1,14 @@
 # Anchore Engine [![CircleCI](https://circleci.com/gh/anchore/anchore-engine/tree/master.svg?style=svg)](https://circleci.com/gh/anchore/anchore-engine/tree/master)
 
-For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://engine.anchore.io)
+For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://engine.anchore.io).
+
+## We'll be at KubeCon 2021!
+
+Attending KubeCon 2021 in person? Join us for a meetup on **Tuesday, October 12th**.
+
+We’ll have free swag, giveaways, snacks, and sips. Space will be limited, so make sure to [save your seat](https://get.anchore.com/2021-kubecon-na-opensource-happy-hour/)!
+
+---
 
 The Anchore Engine is an open-source project that provides a centralized service for inspection, analysis, and certification of container images. The Anchore Engine is provided as a Docker container image that can be run standalone or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
 
@@ -112,7 +120,6 @@ List operating system packages present in an image:
 
     anchore-cli image content docker.io/library/debian:latest os
 
-
 ## API
 
 For the external API definition (the user-facing service), see [External API Swagger Spec](https://github.com/anchore/anchore-engine/blob/master/anchore_engine/services/apiext/swagger/swagger.yaml). If you have Anchore Engine running, you can also review the Swagger by directing your browser at http://<your-anchore-engine-api-host>:8228/v1/ui/ (NOTE: the trailing slash is required for the embedded swagger UI browser to be viewed properly).
@@ -127,7 +134,7 @@ For further details on the use of the Anchore CLI with the Anchore Engine, pleas
 
 This repo was reformatted using [Black](https://black.readthedocs.io/en/stable/) in Nov. 2020. This commit can
 be ignored in your local environment when using `git blame` since it impacted so many files. To ignore the commit you need
-to configure git-blame to use the provided file:  .git-blame-ignore-revs as a list of commits to ignore for blame.
+to configure git-blame to use the provided file: .git-blame-ignore-revs as a list of commits to ignore for blame.
 
 Set your local git configuration to use the provided file by running this from within the root of this source tree:
 `git config blame.ignoreRevsFile .git-blame-ignore-revs`

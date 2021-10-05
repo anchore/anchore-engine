@@ -11,6 +11,7 @@ import anchore_engine.common
 import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.metrics
+import anchore_engine.util.time
 from anchore_engine import utils
 from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.apis.authorization import (
@@ -1090,7 +1091,7 @@ def analyze_image(
                 ts = img_source.get("creation_timestamp_override")
                 if ts:
                     try:
-                        ts = utils.rfc3339str_to_epoch(ts)
+                        ts = anchore_engine.util.time.rfc3339str_to_epoch(ts)
                     except Exception as err:
                         raise api_exceptions.InvalidDateFormat(
                             "source.creation_timestamp_override", ts

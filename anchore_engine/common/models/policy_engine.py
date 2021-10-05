@@ -721,7 +721,7 @@ class Advisory(JsonSerializable):
 class FixedArtifact(JsonSerializable):
     class FixedArtifactV1Schema(Schema):
         versions = fields.List(fields.Str())
-        wont_fix = fields.Bool()
+        will_not_fix = fields.Bool()
         observed_at = RFC3339DateTime(
             allow_none=True,
             missing=None,
@@ -734,9 +734,11 @@ class FixedArtifact(JsonSerializable):
 
     __schema__ = FixedArtifactV1Schema()
 
-    def __init__(self, versions=None, wont_fix=None, observed_at=None, advisories=None):
+    def __init__(
+        self, versions=None, will_not_fix=None, observed_at=None, advisories=None
+    ):
         self.versions = versions
-        self.wont_fix = wont_fix
+        self.will_not_fix = will_not_fix
         self.observed_at = observed_at
         self.advisories = advisories
 

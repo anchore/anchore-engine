@@ -107,10 +107,14 @@ def bootstrap_logger_intercept(level):
         def wrapper(*args, **kwds):
             global bootstrap_logger_enabled
             if bootstrap_logger_enabled:
-                if level == "EXCEPTION":
-                    bootstrap_logger.exception(msg=args[0])
+                if len(args) > 1:
+                    msg = safe_formatter(args[0], args[1::])
                 else:
-                    bootstrap_logger.log(level=level, msg=args[0])
+                    msg = args[0]
+                if level == "EXCEPTION":
+                    bootstrap_logger.exception(msg=msg)
+                else:
+                    bootstrap_logger.log(level=level, msg=msg)
             return f(*args, **kwds)
 
         return wrapper

@@ -76,7 +76,7 @@ from anchore_engine.services.policy_engine.engine.vulnerabilities import (
     process_updated_vulnerability,
 )
 from anchore_engine.subsys import logger
-from anchore_engine.utils import rfc3339str_to_datetime
+from anchore_engine.util.time import rfc3339str_to_datetime
 
 IMAGE_VULNERABILITIES_QUEUE = "image_vulnerabilities"
 MESSAGE_BATCH_SIZE = 10
@@ -1071,8 +1071,10 @@ class GrypeDBFeed(LogContextMixin, DataFeed):
             # Check that the data that we downloaded matches the checksum provided
             checksum = record.metadata["checksum"]
             GrypeDBFile.verify_integrity(record.data, checksum)
-            # If there aren't any other database files with the same checksum, then this is a new database file.
-            matches = self._get_db_metadata_records(db, checksum)
+
+            # If there aren't any other active database files with the same checksum, then treat this as a new one
+            matches = self._get_db_metadata_records(db, checksum, True)
+
             if len(matches) == 0:
                 # Cache the file to temporary storage
                 with GrypeDBStorage() as grypedb_file:

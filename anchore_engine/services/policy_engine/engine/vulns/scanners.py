@@ -5,12 +5,14 @@ A scanner may use persistence context or an external tool to match image content
 import datetime
 import json
 import os
-import typing
-from typing import List
+from typing import Dict, List
 
 from sqlalchemy.orm.session import Session
 
 from anchore_engine.clients.grype_wrapper import GrypeWrapperSingleton
+from anchore_engine.clients.services import internal_client_for
+from anchore_engine.clients.services.catalog import CatalogClient
+from anchore_engine.common import nonos_package_types
 from anchore_engine.common.models.policy_engine import (
     ImageVulnerabilitiesReport,
     VulnerabilitiesReportMetadata,
@@ -33,11 +35,11 @@ from anchore_engine.subsys import logger
 from anchore_engine.utils import timer
 from .cpe_matchers import NonOSCpeMatcher, DistroEnabledCpeMatcher
 from .dedup import get_image_vulnerabilities_deduper
-from .mappers import to_grype_sbom, to_engine_vulnerabilities
+from .mappers import grype_to_engine_image_vulnerabilities, image_content_to_grype_sbom
 
 # debug option for saving image sbom, defaults to not saving
 SAVE_SBOM_TO_FILE = (
-    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "true").lower() == "true"
+    os.getenv("ANCHORE_POLICY_ENGINE_SAVE_SBOM_TO_FILE", "false").lower() == "true"
 )
 
 # Distros that only add a CVE record to their secdb entries when a fix is available
@@ -65,15 +67,13 @@ class LegacyScanner:
 
     def flush_and_recompute_vulnerabilities(
         self, image_obj: Image, db_session: Session
-    ) -> typing.List[ImagePackageVulnerability]:
+    ) -> List[ImagePackageVulnerability]:
         """
         Wrapper for rescan_image function.
         """
         return vulnerabilities.rescan_image(image_obj, db_session)
 
-    def get_vulnerabilities(
-        self, image: Image
-    ) -> typing.List[ImagePackageVulnerability]:
+    def get_vulnerabilities(self, image: Image) -> List[ImagePackageVulnerability]:
         distro_matches = image.vulnerabilities()
         return distro_matches
 
@@ -115,6 +115,67 @@ class GrypeScanner:
             )
             .all()
         )
+
+    def _get_image_content(self, image: Image) -> Dict:
+        """
+        Produces image content map where the key is either 'os' or one of the non-os package types, values are lists of packages
+
+        Example output
+        {
+          "java": [
+            {
+              "cpes": [
+                "cpe:2.3:a:twilio:TwilioNotifier:0.2.1:*:*:*:*:java:*:*"
+              ],
+              "implementation-version": "0.2.1",
+              "location": "/TwilioNotifier.hpi",
+              "maven-version": "0.2.1",
+              "origin": "com.twilio.jenkins",
+              "package": "TwilioNotifier",
+              "specification-version": "N/A",
+              "type": "JAVA-HPI",
+              "version": "0.2.1"
+            }
+          ],
+          "os": [
+            {
+              "cpes": [
+                "cpe:2.3:a:alpine-baselayout:alpine-baselayout:3.2.0-r8:*:*:*:*:*:*:*"
+              ],
+              "license": "GPL-2.0-only",
+              "licenses": [
+                "GPL-2.0-only"
+              ],
+              "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+              "package": "alpine-baselayout",
+              "size": "409600",
+              "sourcepkg": "alpine-baselayout",
+              "type": "APKG",
+              "version": "3.2.0-r8"
+            }
+          ]
+        }
+        """
+        all_content = {}
+        catalog_client = internal_client_for(CatalogClient, userId=image.user_id)
+
+        # for now supported content types are os and non-os packages
+        supported_content_types = ["os"] + list(nonos_package_types)
+
+        logger.debug(
+            "Fetching %s content for %s from catalog",
+            supported_content_types,
+            image.digest,
+        )
+
+        # fetch image content from catalog for now. preferred approach is provide image content as the input to vuln matcher
+        all_content = catalog_client.get_image_content_multiple_types(
+            image_digest=image.digest,
+            content_types=supported_content_types,
+            allow_analyzing_state=True,
+        )
+
+        return all_content
 
     def _get_report_generated_by(self, grype_response):
         generated_by = {"scanner": self.__class__.__name__}
@@ -172,9 +233,7 @@ class GrypeScanner:
 
         # create the image sbom
         try:
-            sbom = to_grype_sbom(
-                image, image.packages, self._get_image_cpes(image, db_session)
-            )
+            sbom = image_content_to_grype_sbom(image, self._get_image_content(image))
         except Exception:
             logger.exception(
                 "Failed to create the image sbom for %s/%s", image.user_id, image.id
@@ -224,7 +283,7 @@ class GrypeScanner:
 
         # transform grype response to engine vulnerabilities and dedup
         try:
-            results = to_engine_vulnerabilities(grype_response)
+            results = grype_to_engine_image_vulnerabilities(grype_response)
             report.results = get_image_vulnerabilities_deduper().execute(results)
             report.metadata.generated_by = self._get_report_generated_by(grype_response)
         except Exception:

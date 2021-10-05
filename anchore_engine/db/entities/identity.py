@@ -2,21 +2,19 @@ from collections import namedtuple
 import enum
 import datetime
 import time
-import re
 
-from sqlalchemy import (
-    Column,
-    String,
-    Boolean,
-    Enum,
-    Integer,
-    ForeignKey,
-    Text,
-    DateTime,
-)
+from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
+from authlib.integrations.sqla_oauth2.tokens_mixins import TokenMixin
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
-from anchore_engine.db.entities.common import Base, UtilMixin, anchore_now, anchore_uuid
+from anchore_engine.db.entities.common import (
+    Base,
+    UtilMixin,
+    anchore_now,
+    anchore_uuid,
+    truncate_index_name,
+)
 
 from authlib.integrations.sqla_oauth2.client_mixin import OAuth2ClientMixin
 
@@ -93,16 +91,14 @@ class AccountUser(Base, UtilMixin):
     __tablename__ = "account_users"
 
     username = Column(String, primary_key=True)  # Enforce globally unique user names
-    account_name = Column(String, ForeignKey(Account.name), index=True)
+    account_name = Column(String, ForeignKey(Account.name))
     type = Column(
         Enum(UserTypes, name="user_types"), nullable=False, default=UserTypes.native
     )
     source = Column(String)
     created_at = Column(Integer, default=anchore_now)
     last_updated = Column(Integer, default=anchore_now)
-    uuid = Column(
-        "uuid", String, unique=True, nullable=False, default=anchore_uuid, index=True
-    )
+    uuid = Column("uuid", String, nullable=False, default=anchore_uuid)
 
     account = relationship(
         "Account", back_populates="users", lazy="joined", innerjoin=True
@@ -112,6 +108,11 @@ class AccountUser(Base, UtilMixin):
         back_populates="user",
         lazy="joined",
         cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index(truncate_index_name("ix_account_users_account_name"), account_name),
+        Index(truncate_index_name("ix_account_users_uuid"), uuid, unique=True),
     )
 
     def to_dict(self):
@@ -172,11 +173,16 @@ class OAuth2Token(Base, UtilMixin, TokenMixin):
     client_id = Column(String)
     token_type = Column(String)
     access_token = Column(String, unique=True, nullable=False)
-    refresh_token = Column(String, index=True)
+    refresh_token = Column(String)
     scope = Column(Text, default="")
     revoked = Column(Boolean, default=False)
     issued_at = Column(Integer, nullable=False, default=lambda: int(time.time()))
     expires_in = Column(Integer, nullable=False, default=0)
+
+    __table_args__ = (
+        Index(truncate_index_name("ix_oauth2_tokens_refresh_token"), refresh_token),
+        {},
+    )
 
     def get_scope(self):
         return self.scope

@@ -3,8 +3,7 @@ import copy
 import json
 import datetime
 from anchore_engine.subsys import logger
-from urllib import parse as urlparse
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 class BasicApiClient(object):

@@ -30,14 +30,10 @@ from anchore_engine.db import (
     db_registries,
     db_services,
 )
-from anchore_engine.clients.services import internal_client_for
-from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
-import anchore_engine.subsys.events
-from anchore_engine.db import session_scope
-from collections import namedtuple
-from anchore_engine.util.docker import DockerImageReference
-from anchore_engine.services.catalog.utils import diff_image_vulnerabilities
+from anchore_engine.services.catalog import utils
+from anchore_engine.subsys import logger, notifications, object_store, taskstate
+from anchore_engine.subsys.events.util import analysis_complete_notification_factory
+from anchore_engine.util.docker import parse_dockerimage_string
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 
@@ -1754,10 +1750,12 @@ def perform_policy_evaluation(
                 curr_evaluation_result["status"] = "fail"
 
         # set up the newest evaluation
-        evalId = hashlib.md5(
+        evalId = hashlib.new(
+            "md5",
             ":".join(
-                [policyId, userId, imageDigest, fulltag, str(curr_final_action)]
-            ).encode("utf8")
+                [policyId, userId, imageDigest, fulltag, str(curr_final_action)],
+            ).encode("utf8"),
+            usedforsecurity=False,
         ).hexdigest()
         curr_evaluation_record = anchore_engine.common.helpers.make_eval_record(
             userId,
@@ -1965,7 +1963,6 @@ def add_or_update_image(
             dockerfile = None
             dockerfile_mode = None
 
-    # logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
     addlist = {}
     for registry in list(image_ids.keys()):
         for repo in list(image_ids[registry].keys()):
@@ -2084,6 +2081,9 @@ def add_or_update_image(
                             )
 
                     else:
+                        # Only generate an event if this is a new tag
+                        generate_event = is_new_tag(image_record, registry, repo, t)
+
                         # Update existing image record
                         new_image_detail = anchore_engine.common.images.clean_docker_image_details_for_update(
                             new_image_record["image_detail"]
@@ -2163,6 +2163,25 @@ def add_or_update_image(
                                 manifest = json.dumps({})
                             if not parent_manifest:
                                 parent_manifest = json.dumps({})
+
+                            # If image status is already analyzed, and this is a new tag, generate a UserAnalyzeImageCompleted event
+                            if (
+                                image_record["analysis_status"]
+                                == anchore_engine.subsys.taskstate.complete_state(
+                                    "analyze"
+                                )
+                                and generate_event
+                            ):
+                                event = analysis_complete_notification_factory(
+                                    userId,
+                                    image_record["imageDigest"],
+                                    image_record["analysis_status"],
+                                    image_record["analysis_status"],
+                                    fulltag,
+                                    annotations,
+                                )
+                                add_event(event, dbsession)
+
                         except Exception as err:
                             raise anchore_engine.common.helpers.make_anchore_exception(
                                 err,
@@ -2176,6 +2195,32 @@ def add_or_update_image(
         ret.append(addlist[imageDigest])
 
     return ret
+
+
+def is_new_tag(image_record: dict, registry: str, repo: str, tag: str):
+    """
+    Returns false if the provided registry, repo, tag tuple exactly match those fields in one of the image_detail objects in
+    image_record. If no such match is possible, return true.
+    """
+
+    # If we are missing an image_details block entirely or it is None, assume this is a new tag
+    if image_record and not image_record.get("image_detail"):
+        return True
+    else:
+        # Iterate through each existing image_detail objects and look for an exact match
+        for image_detail in image_record.get("image_detail", []):
+            existing_registry = image_detail.get("registry")
+            existing_repo = image_detail.get("repo")
+            existing_tag = image_detail.get("tag")
+
+            if (
+                existing_registry == registry
+                and existing_repo == repo
+                and existing_tag == tag
+            ):
+                return False
+        else:
+            return True
 
 
 def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False):

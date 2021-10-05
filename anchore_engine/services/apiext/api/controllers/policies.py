@@ -164,8 +164,10 @@ def add_policy(bundle):
         if "id" in jsondata and jsondata["id"]:
             policyId = jsondata["id"]
         else:
-            policyId = hashlib.md5(
-                str(userId + ":" + jsondata["name"]).encode("utf8")
+            policyId = hashlib.new(
+                "md5",
+                str(userId + ":" + jsondata["name"]).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
             jsondata["id"] = policyId
 

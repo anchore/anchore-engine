@@ -27,7 +27,7 @@ from anchore_engine.services.catalog.archiver import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.utils import epoch_to_rfc3339
+from anchore_engine.util.time import epoch_to_rfc3339
 
 authorizer = get_authorizer()
 
