@@ -59,6 +59,11 @@
     only:
       - master
 
+.filter_docs_branches: &filter_docs_branches
+  branches:
+    ignore: publish-docs
+
+
 # Start circleci configuration
 version: 2.1
 orbs:
@@ -290,9 +295,11 @@ workflows:
           name: unit_tests_38
           py_version: "3.8"
           tox_env: "py38"
+          filters: *filter_docs_branches
       - lint:
           name: lint_38
           py_version: "3.8"
+          filters: *filter_docs_branches
       - validate_swagger
       - integration_tests:
           name: integration_tests_38
@@ -300,26 +307,31 @@ workflows:
           tox_env: "py38"
           requires:
             - unit_tests_38
+          filters: *filter_docs_branches
       - build:
           requires:
             - unit_tests_38
+          filters: *filter_docs_branches
       - container_tests:
           name: test_container_dev
           test_env: "dev"
           requires:
             - build
+          filters: *filter_docs_branches
       - functional_tests:
           name: functional_tests_38_legacy
           tox_env: "py38"
           vulnerabilities_provider: "legacy"
           requires:
             - build
+          filters: *filter_docs_branches
       - functional_tests:
           name: functional_tests_38_grype
           vulnerabilities_provider: "grype"
           tox_env: "py38"
           requires:
             - build
+          filters: *filter_docs_branches
       - push_image:
           name: push_dev_image
           make_job: push-dev
@@ -337,7 +349,7 @@ workflows:
           image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
           private_registry: true
           timeout: "2000"
-
+          filters: *filter_docs_branches
   nightly_build:
     triggers:
       - schedule:

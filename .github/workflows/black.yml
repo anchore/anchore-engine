@@ -1,5 +1,11 @@
 name: Lint Python Code Using Black
-on: [push, pull_request]
+on:
+  push:
+    branches-ignore:
+      - publish-docs
+  pull_request:
+    branches-ignore:
+      - publish-docs
 jobs:
   lint:
     runs-on: ubuntu-latest
