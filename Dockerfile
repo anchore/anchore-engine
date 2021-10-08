@@ -8,6 +8,7 @@ ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 ENV GOPATH=/go
 ENV SYFT_VERSION=v0.26.0
 ENV GRYPE_VERSION=v0.22.0
+ENV PIP_VERSION=21.0.1
 
 COPY . /buildsource
 WORKDIR /buildsource
@@ -21,7 +22,8 @@ RUN set -ex && \
     yum update -y && \
     yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y gcc make python38 git python38-wheel python38-devel python38-psycopg2 go  && \
-    pip3 install pip==21.0.1 && \
+    pip3 install pip=="${PIP_VERSION}" && \
+    pip3 download -d /build_output/wheels pip=="${PIP_VERSION}" && \
     yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
     yum install -y --downloadonly --downloaddir=/build_output/build_deps/ dpkg clamav clamav-update
 
@@ -144,7 +146,7 @@ RUN set -ex && \
     yum update -y && \
     yum module disable -y python36 && yum module enable -y python38 && \
     yum install -y python38 python38-wheel procps psmisc python38-psycopg2 skopeo && \
-    pip3 install pip==21.0.1
+    pip3 install --upgrade --no-index --find-links=/build_output/wheels/ pip
 
 # Setup container default configs and directories
 
