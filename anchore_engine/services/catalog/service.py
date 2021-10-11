@@ -62,6 +62,8 @@ from anchore_engine.subsys.object_store.config import (
 )
 from anchore_engine.utils import AnchoreException, bytes_to_mb
 
+MAX_DELETION_WORKERS = 10
+
 ##########################################################
 
 # monitor section
@@ -2004,14 +2006,15 @@ def handle_archive_tasks(*args, **kwargs):
     return True
 
 
-def handle_image_gc(*args, **kwargs):
+def handle_image_gc(*args, **kwargs) -> bool:
     """
     Periodic handler for cleaning up images that are marked for deletion, can be extended to cover other states in the future
     Serializes image deletion across the board to minimize the load on database
 
-    :param args:
-    :param kwargs:
-    :return:
+    :param args: (unused)
+    :param kwargs: cycle timer configuration
+    :return: True on success
+    :rtype: bool
     """
     watcher = str(kwargs["mythread"]["taskType"])
     handler_success = True
@@ -2026,7 +2029,9 @@ def handle_image_gc(*args, **kwargs):
             queued_images = db_catalog_image.get_all_by_filter(
                 session=dbsession, **dbfilter
             )
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=MAX_DELETION_WORKERS
+        ) as executor:
             future_to_image_obj = {
                 executor.submit(_handle_single_image_gc, to_be_deleted): to_be_deleted
                 for to_be_deleted in queued_images
@@ -2073,7 +2078,12 @@ def handle_image_gc(*args, **kwargs):
     return True
 
 
-def _handle_single_image_gc(to_be_deleted: Dict[str, Any]):
+def _handle_single_image_gc(to_be_deleted: Dict[str, Any]) -> None:
+    """
+    (Thread worker) Sends the http requests to the catalog worker to initiate the process for single image deletion.
+    :param to_be_deleted: dictionary containing CatalogImage KV pairs
+    :type to_be_deleted: Dict[str, Any]
+    """
     account = to_be_deleted["userId"]
     digest = to_be_deleted["imageDigest"]
 
