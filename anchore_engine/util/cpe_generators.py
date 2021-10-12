@@ -10,7 +10,7 @@ from typing import List
 from anchore_engine.subsys import logger
 
 SIMPLIFIED_SEMVER_REGEX = r".*([0-9]+\.[0-9]+\.[0-9]+).*"
-VENDORLESS_CPE_FORMAT = "cpe:2.3:a:-:{name}:{version}:*:*:*:*:*:*:*"
+VENDORLESS_CPE_FORMAT = "cpe:2.3:a:*:{name}:{version}:*:*:*:*:*:*:*"
 VERSION_CLEANUP_REGEX = r"\.(RELEASE|GA|SEC.*)$"
 
 # this is a static mapping of known package names (keys) to official cpe names for each package
