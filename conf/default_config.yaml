@@ -123,6 +123,8 @@ services:
       repo_watcher: 60
       archive_tasks: 43200 # 12 hours between archive task run
       image_gc: 60
+    image_gc:
+      max_worker_threads: 8
     event_log:
       notification:
         enabled: ${ANCHORE_EVENTS_NOTIFICATIONS_ENABLED}

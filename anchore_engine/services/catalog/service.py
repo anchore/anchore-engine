@@ -62,8 +62,6 @@ from anchore_engine.subsys.object_store.config import (
 )
 from anchore_engine.utils import AnchoreException, bytes_to_mb
 
-MAX_DELETION_WORKERS = 10
-
 ##########################################################
 
 # monitor section
@@ -2021,7 +2019,14 @@ def handle_image_gc(*args, **kwargs) -> bool:
 
     timer = time.time()
     logger.debug("FIRING: " + str(watcher))
-
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    max_deletion_workers = (
+        localconfig.get("services", {})
+        .get("catalog", {})
+        .get("image_gc", {})
+        .get("max_worker_threads", 8)
+    )
+    logger.debug("Starting deletion with %d workers...", max_deletion_workers)
     try:
         # iterate over all images marked for deletion
         with db.session_scope() as dbsession:
@@ -2030,7 +2035,7 @@ def handle_image_gc(*args, **kwargs) -> bool:
                 session=dbsession, **dbfilter
             )
         with concurrent.futures.ThreadPoolExecutor(
-            max_workers=MAX_DELETION_WORKERS
+            max_workers=max_deletion_workers
         ) as executor:
             future_to_image_obj = {
                 executor.submit(_handle_single_image_gc, to_be_deleted): to_be_deleted
