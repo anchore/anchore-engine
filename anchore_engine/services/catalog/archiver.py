@@ -1,6 +1,7 @@
 """
 Module for handling archive tasks
 """
+import concurrent
 import datetime
 import fnmatch
 import io
@@ -29,6 +30,7 @@ from anchore_engine.db import (
     db_catalog_image,
     db_catalog_image_docker,
     db_policyeval,
+    get_thread_scoped_session,
     session_scope,
 )
 from anchore_engine.db.entities.common import anchore_now_datetime
@@ -48,6 +50,7 @@ from anchore_engine.utils import ensure_bytes, ensure_str
 
 DRY_RUN_ENV_VAR = "ANCHORE_ANALYSIS_ARCHIVE_DRYRUN_ENABLED"
 DRY_RUN_MODE = os.getenv(DRY_RUN_ENV_VAR, "false").lower() == "true"
+MAX_ARCHIVAL_WORKERS = 1
 
 _add_event_fn = None
 
@@ -385,56 +388,72 @@ class ImageAnalysisArchiver(object):
         return archive_merger.full_matched_digests()
 
     def _do_archive(self, to_archive):
-        for img_digest in to_archive:
-            logger.info("Archiving image {}/{}".format(self.account, img_digest))
-            try:
-                if not DRY_RUN_MODE:
-                    t = ArchiveImageTask(account=self.account, image_digest=img_digest)
-                    status, msg = t.run()
-                    logger.info(
-                        "Archive task result: status={}, detail={}".format(status, msg)
+        if DRY_RUN_MODE:
+            for img_digest in to_archive:
+                logger.info(
+                    "Archive task DRY_RUN mode enabled via {}, would have archived image {}/{}".format(
+                        DRY_RUN_ENV_VAR, self.account, img_digest
                     )
+                )
+        else:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=ArchiveImageTask.get_max_archival_workers()
+            ) as executor:
+                future_to_digest = {
+                    executor.submit(self._image_archive_task_worker, digest): digest
+                    for digest in to_archive
+                }
+                for future in concurrent.futures.as_completed(future_to_digest):
+                    digest = future_to_digest[future]
+                    try:
+                        future.result()
+                    except Exception:
+                        logger.exception(
+                            "Caught unhandled exception in archive task for image digest %s",
+                            digest,
+                        )
 
-                    if status == "archived":
+    def _image_archive_task_worker(self, img_digest: str) -> None:
+        """
+        Worker in charge of running image archive task and deleting source records afterwards.
+
+        :param img_digest: image digest to archive
+        :type img_digest: str
+        :rtype: None
+        """
+        logger.info("Archiving image {}/{}".format(self.account, img_digest))
+        t = ArchiveImageTask(account=self.account, image_digest=img_digest)
+        status, msg = t.run()
+        logger.info("Archive task result: status={}, detail={}".format(status, msg))
+
+        if status == "archived":
+            logger.info(
+                "Deleting source analysis for image {} after archiving".format(
+                    img_digest
+                )
+            )
+            if self.delete_source:
+                inputs = {
+                    "method": "DELETE",
+                    "params": {"force": True},
+                    "auth": ("", ""),
+                    "userId": self.account,
+                }
+                with get_thread_scoped_session() as session:
+                    resp, http_code = image_imageDigest(
+                        session,
+                        request_inputs=inputs,
+                        imageDigest=img_digest,
+                        bodycontent=None,
+                    )
+                    if http_code not in [200, 204]:
+                        logger.error("Could not delete image analysis: {}".format(resp))
+                    else:
                         logger.info(
-                            "Deleting source analysis for image {} after archiving".format(
+                            "Deleted image analysis for {} successfully".format(
                                 img_digest
                             )
                         )
-                        if self.delete_source:
-                            inputs = {
-                                "method": "DELETE",
-                                "params": {"force": True},
-                                "auth": ("", ""),
-                                "userId": self.account,
-                            }
-                            with session_scope() as session:
-                                resp, http_code = image_imageDigest(
-                                    session,
-                                    request_inputs=inputs,
-                                    imageDigest=img_digest,
-                                    bodycontent=None,
-                                )
-                                if http_code not in [200, 204]:
-                                    logger.error(
-                                        "Could not delete image analysis: {}".format(
-                                            resp
-                                        )
-                                    )
-                                else:
-                                    logger.info(
-                                        "Deleted image analysis for {} successfully".format(
-                                            img_digest
-                                        )
-                                    )
-                else:
-                    logger.info(
-                        "Archive task DRY_RUN mode enabled via {}, would have archived image {}/{}".format(
-                            DRY_RUN_ENV_VAR, self.account, img_digest
-                        )
-                    )
-            except Exception as ex:
-                logger.exception("Caught unhandled exception in archive task")
 
     def run(self):
         try:
@@ -1235,9 +1254,21 @@ class ArchiveImageTask(object):
 
         self._catalog_record = None
 
+    @classmethod
+    def get_max_archival_workers(cls):
+        local_config = localconfig.get_config()
+        max_archival_workers = (
+            local_config.get("services", {})
+            .get("catalog", {})
+            .get("archive_tasks", {})
+            .get("max_worker_threads", MAX_ARCHIVAL_WORKERS)
+        )
+        logger.debug("Archival configured with %d workers...", max_archival_workers)
+        return max_archival_workers
+
     def run(self, merge=False):
         """
-
+        Create or update an ArchivedImage record.
         :param merge:
         :return: (str, str) tuple, with status as first element and detail msg as second
         """
@@ -1248,7 +1279,7 @@ class ArchiveImageTask(object):
         self.started = datetime.datetime.utcnow()
 
         try:
-            with session_scope() as session:
+            with get_thread_scoped_session() as session:
                 found = db_archived_images.get(session, self.account, self.image_digest)
                 if found and not merge:
                     # Short-circuit, since already exists
@@ -1285,6 +1316,7 @@ class ArchiveImageTask(object):
                 else:
                     img = session.add(img)
 
+                session.commit()
         except Exception as ex:
             add_event(
                 ImageArchivingFailed(
@@ -1311,7 +1343,7 @@ class ArchiveImageTask(object):
         dest_archive_mgr = archive.get_manager()
         data_written = False
 
-        with session_scope() as session:
+        with get_thread_scoped_session() as session:
             record = db_archived_images.get(session, self.account, self.image_digest)
 
             if not record:

@@ -2,8 +2,10 @@
 API controller for /archives routes
 
 """
+import concurrent
 import json
 import uuid
+from typing import List, Tuple
 
 from sqlalchemy import or_
 
@@ -330,12 +332,16 @@ def list_analysis_archive():
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def archive_image_analysis(imageReferences):
+def archive_image_analysis(imageReferences: List[str]):
     """
     POST /archives/images
 
     body = [digest1, digest2, ... ]
 
+    :param imageReferences: list of image digests to archive
+    :type imageReferences: List[str]
+    :return: response body and status code
+    :rtype: Tuple[Any, int]
     """
 
     try:
@@ -350,30 +356,56 @@ def archive_image_analysis(imageReferences):
 
         results = []
 
-        for digest in imageReferences:
-            try:
-                # Do synchronous part to start the state transition
-                task = ArchiveImageTask(
-                    account=ApiRequestContextProxy.namespace(), image_digest=digest
-                )
-                result_status, result_detail = task.run()
-                results.append(
-                    {
-                        "digest": task.image_digest,
-                        "status": result_status,
-                        "detail": result_detail,
-                    }
-                )
-            except Exception as ex:
-                logger.exception(
-                    "Unexpected an uncaught exception from the archive task execution"
-                )
-                results.append({"digest": digest, "status": "error", "detail": str(ex)})
+        logger.info("Images to archive: %d", len(imageReferences))
 
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=ArchiveImageTask.get_max_archival_workers()
+        ) as executor:
+            future_to_digest = {
+                executor.submit(
+                    _image_archive_task_worker,
+                    ApiRequestContextProxy.namespace(),
+                    digest,
+                ): digest
+                for digest in imageReferences
+            }
+            for future in concurrent.futures.as_completed(future_to_digest):
+                digest = future_to_digest[future]
+                try:
+                    result_status, result_detail = future.result()
+                except Exception as exc:
+                    logger.exception(
+                        "Unexpected an uncaught exception from the archive task execution"
+                    )
+                    results.append(
+                        {"digest": digest, "status": "error", "detail": str(exc)}
+                    )
+                else:
+                    results.append(
+                        {
+                            "digest": digest,
+                            "status": result_status,
+                            "detail": result_detail,
+                        }
+                    )
         return results, 200
     except Exception as err:
         logger.exception("Error processing image add")
         return make_response_error(err, in_httpcode=500), 500
+
+
+def _image_archive_task_worker(account: str, digest: str) -> Tuple[str, str]:
+    """
+    Worker for instantiating ArchiveImageTask and calling run method.
+
+    :param account: account making the request
+    :type account: str
+    :param digest: digets of image to archive
+    :type digest: str
+    :return: tuple containing result status and result detail
+    :rtype: Tuple[str, str]
+    """
+    return ArchiveImageTask(account=account, image_digest=digest).run()
 
 
 @flask_metrics.do_not_track()

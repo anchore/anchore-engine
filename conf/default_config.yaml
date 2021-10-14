@@ -125,6 +125,8 @@ services:
       image_gc: 60
     image_gc:
       max_worker_threads: 1
+    archive_tasks:
+      max_worker_threads: 1
     event_log:
       notification:
         enabled: ${ANCHORE_EVENTS_NOTIFICATIONS_ENABLED}
