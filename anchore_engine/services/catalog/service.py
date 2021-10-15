@@ -62,6 +62,7 @@ from anchore_engine.subsys.object_store.config import (
 )
 from anchore_engine.utils import AnchoreException, bytes_to_mb
 
+MAX_DELETION_WORKERS = 1
 ##########################################################
 
 # monitor section
@@ -2024,7 +2025,7 @@ def handle_image_gc(*args, **kwargs) -> bool:
         localconfig.get("services", {})
         .get("catalog", {})
         .get("image_gc", {})
-        .get("max_worker_threads", 8)
+        .get("max_worker_threads", MAX_DELETION_WORKERS)
     )
     logger.debug("Starting deletion with %d workers...", max_deletion_workers)
     try:
