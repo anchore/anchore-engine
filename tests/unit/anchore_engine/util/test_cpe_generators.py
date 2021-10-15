@@ -80,7 +80,7 @@ def test_generate_products(name, package_type, expected_list):
 
 @pytest.mark.parametrize(
     "name, version, cpe",
-    [("product", "version", "cpe:2.3:a:-:product:version:*:*:*:*:*:*:*")],
+    [("product", "version", "cpe:2.3:a:*:product:version:*:*:*:*:*:*:*")],
 )
 def test_simple_cpe_generation(name, version, cpe):
     assert generate_simple_cpe(name, version) == cpe
@@ -89,13 +89,13 @@ def test_simple_cpe_generation(name, version, cpe):
 @pytest.mark.parametrize(
     "name, version, cpes",
     [
-        ("product", "version", ["cpe:2.3:-:product:version:*:*:*:*:*:*:*"]),
+        ("product", "version", ["cpe:2.3:*:product:version:*:*:*:*:*:*:*"]),
         (
             "product",
             "v3.1.0",
             [
-                "cpe:2.3:-:product:v3.1.0:*:*:*:*:*:*:*",
-                "cpe:2.3:-:product:3.1.0:*:*:*:*:*:*:*",
+                "cpe:2.3:*:product:v3.1.0:*:*:*:*:*:*:*",
+                "cpe:2.3:*:product:3.1.0:*:*:*:*:*:*:*",
             ],
         ),
     ],
