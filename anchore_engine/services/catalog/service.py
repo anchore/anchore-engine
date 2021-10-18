@@ -1,9 +1,11 @@
+import concurrent.futures
 import copy
 import datetime
 import json
 import os
 import threading
 import time
+from typing import Any, Dict
 
 import pkg_resources
 from sqlalchemy.exc import IntegrityError
@@ -60,6 +62,7 @@ from anchore_engine.subsys.object_store.config import (
 )
 from anchore_engine.utils import AnchoreException, bytes_to_mb
 
+MAX_DELETION_WORKERS = 1
 ##########################################################
 
 # monitor section
@@ -2002,21 +2005,29 @@ def handle_archive_tasks(*args, **kwargs):
     return True
 
 
-def handle_image_gc(*args, **kwargs):
+def handle_image_gc(*args, **kwargs) -> bool:
     """
     Periodic handler for cleaning up images that are marked for deletion, can be extended to cover other states in the future
     Serializes image deletion across the board to minimize the load on database
 
-    :param args:
-    :param kwargs:
-    :return:
+    :param args: (unused)
+    :param kwargs: cycle timer configuration
+    :return: True on success
+    :rtype: bool
     """
     watcher = str(kwargs["mythread"]["taskType"])
     handler_success = True
 
     timer = time.time()
     logger.debug("FIRING: " + str(watcher))
-
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+    max_deletion_workers = (
+        localconfig.get("services", {})
+        .get("catalog", {})
+        .get("image_gc", {})
+        .get("max_worker_threads", MAX_DELETION_WORKERS)
+    )
+    logger.debug("Starting deletion with %d workers...", max_deletion_workers)
     try:
         # iterate over all images marked for deletion
         with db.session_scope() as dbsession:
@@ -2024,41 +2035,28 @@ def handle_image_gc(*args, **kwargs):
             queued_images = db_catalog_image.get_all_by_filter(
                 session=dbsession, **dbfilter
             )
-
-        for to_be_deleted in queued_images:
-            try:
-                account = to_be_deleted["userId"]
-                digest = to_be_deleted["imageDigest"]
-
-                logger.debug(
-                    "Starting image gc for account id: %s, digest: %s"
-                    % (account, digest)
-                )
-
-                with db.session_scope() as dbsession:
-                    logger.debug("Checking image status one final time")
-                    expected_status = taskstate.queued_state("image_status")
-                    current_status = db_catalog_image.get_image_status(
-                        account, digest, dbsession
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=max_deletion_workers
+        ) as executor:
+            future_to_image_obj = {
+                executor.submit(_handle_single_image_gc, to_be_deleted): to_be_deleted
+                for to_be_deleted in queued_images
+            }
+            for future in concurrent.futures.as_completed(future_to_image_obj):
+                deleted_image = future_to_image_obj[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    logger.exception(
+                        "failed deleting image %s (may try again on next cycle): %s",
+                        deleted_image["imageDigest"],
+                        exc,
                     )
-                    if current_status and current_status == expected_status:
-                        # set force to true since all deletion checks should be cleared at this point
-                        retobj, httpcode = catalog_impl.do_image_delete(
-                            account, to_be_deleted, dbsession, force=True
-                        )
-                        if httpcode != 200:
-                            logger.warn(
-                                "Image deletion failed with error: {}".format(retobj)
-                            )
-                    else:
-                        logger.warn(
-                            "Skipping image gc due to status check mismatch. account id: %s, digest: %s, current status: %s, expected status: %s"
-                            % (account, digest, current_status, expected_status)
-                        )
-                # not necessary to state transition to deleted as the records should have gone
-            except:
-                logger.exception("Error deleting image, may retry on next cycle")
-                # TODO state transition to faulty to avoid further usage?
+                else:
+                    logger.debug(
+                        "Success deleting image %s", deleted_image["imageDigest"]
+                    )
+
     except Exception as err:
         logger.warn("failure in handler - exception: " + str(err))
 
@@ -2084,6 +2082,37 @@ def handle_image_gc(*args, **kwargs):
         )
 
     return True
+
+
+def _handle_single_image_gc(to_be_deleted: Dict[str, Any]) -> None:
+    """
+    (Thread worker) Sends the http requests to the catalog worker to initiate the process for single image deletion.
+    :param to_be_deleted: dictionary containing CatalogImage KV pairs
+    :type to_be_deleted: Dict[str, Any]
+    """
+    account = to_be_deleted["userId"]
+    digest = to_be_deleted["imageDigest"]
+
+    logger.debug("Starting image gc for account id: %s, digest: %s" % (account, digest))
+
+    with db.get_thread_scoped_session() as dbsession:
+        logger.debug("Checking image status one final time")
+        expected_status = taskstate.queued_state("image_status")
+        current_status = db_catalog_image.get_image_status(account, digest, dbsession)
+        if current_status and current_status == expected_status:
+            # set force to true since all deletion checks should be cleared at this point
+            retobj, httpcode = catalog_impl.do_image_delete(
+                account, to_be_deleted, dbsession, force=True
+            )
+            if httpcode != 200:
+                logger.warn("Image deletion failed with error: {}".format(retobj))
+        else:
+            logger.warn(
+                "Skipping image gc due to status check mismatch. account id: %s, digest: %s, current status: %s, expected status: %s"
+                % (account, digest, current_status, expected_status)
+            )
+        dbsession.commit()
+        dbsession.flush()
 
 
 click = 0
