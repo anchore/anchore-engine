@@ -84,6 +84,7 @@ ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
 # Default values overrideable at runtime of the container
 ENV ANCHORE_CONFIG_DIR=/config \
     ANCHORE_SERVICE_DIR=/anchore_service \
+    TMP_DIR=/analysis_scratch \
     ANCHORE_LOG_LEVEL=INFO \
     ANCHORE_ENABLE_METRICS=false \
     ANCHORE_DISABLE_METRICS_AUTH=false \
