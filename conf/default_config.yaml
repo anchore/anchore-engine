@@ -8,7 +8,7 @@
 # execution will overwrite values needed.
 
 service_dir: ${ANCHORE_SERVICE_DIR}
-tmp_dir: ${TMP_DIR}
+tmp_dir: /analysis_scratch
 log_level: ${ANCHORE_LOG_LEVEL}
 
 # When set, if a registry credential username is set to 'iamauto' for an ecr registry, the engine will

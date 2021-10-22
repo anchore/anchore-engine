@@ -269,8 +269,6 @@ def load_config(configdir=None, configfile=None, validate_params=None):
             )
 
     # setup tmp dir
-    if localconfig["tmp_dir"] == "${TMP_DIR}" and 'TMP_DIR' in os.environ:
-        localconfig["tmp_dir"] = os.path.expandvars(localconfig["tmp_dir"])
     if not os.path.exists(os.path.join(localconfig["tmp_dir"])):
         success = False
         for i in range(0, 5):
