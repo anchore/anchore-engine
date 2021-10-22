@@ -33,11 +33,11 @@ def filter_artifacts(artifacts, relationships):
     return [a for a in artifacts if filter_fn(a)]
 
 
-def catalog_image(imagedir, package_filtering_enabled=True):
+def catalog_image(unpackdir, imagedir, package_filtering_enabled=True):
     """
     Catalog the given image with syft, keeping only select artifacts in the returned results.
     """
-    all_results = run_syft(imagedir)
+    all_results = run_syft(unpackdir, imagedir)
     return convert_syft_to_engine(all_results, package_filtering_enabled)
 
 
