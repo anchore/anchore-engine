@@ -5,12 +5,13 @@ import shlex
 from anchore_engine.utils import run_check
 
 
-def run_syft(image):
+def run_syft(unpackdir, image):
     proc_env = os.environ.copy()
 
     syft_env = {
         "SYFT_CHECK_FOR_APP_UPDATE": "0",
         "SYFT_LOG_STRUCTURED": "1",
+        "TMPDIR": unpackdir,
     }
 
     proc_env.update(syft_env)
