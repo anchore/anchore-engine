@@ -33,7 +33,7 @@ RUN set -ex && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
     cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh && \
-    cp -R ./conf/clamav /build_output/configs/
+    cp -R ./anchore_engine/conf/clamav /build_output/configs/
 
 # stage anchore dependency binaries
 RUN set -ex && \
