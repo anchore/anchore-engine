@@ -50,7 +50,10 @@ RUN set -ex && \
     echo "installing Grype" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "$GRYPE_VERSION"
 
-RUN tar -z -c -v -C /build_output -f /anchore-buildblob.tgz .
+# create p1 buildblob & checksum
+RUN set -ex && \
+    tar -z -c -v -C /build_output -f /anchore-buildblob.tgz . && \
+    sha256sum /anchore-buildblob.tgz > /buildblob.tgz.sha256sum
 
 # Build setup section
 
