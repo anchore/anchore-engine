@@ -306,6 +306,7 @@ workflows:
             - unit_tests_38
       - cli_smoke_tests:
           context: e2e-testing
+          py_version: "3.8"
           requires:
             - build
           filters: *filter_release_branch
