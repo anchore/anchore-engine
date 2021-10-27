@@ -234,7 +234,8 @@ jobs:
     resource_class: large
     environment: *global_environment_vars
     steps:
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
@@ -303,6 +304,11 @@ workflows:
       - build:
           requires:
             - unit_tests_38
+      - cli_smoke_tests:
+          context: e2e-testing
+          requires:
+            - build
+          filters: *filter_release_branch
       - container_tests:
           name: test_container_dev
           test_env: "dev"
