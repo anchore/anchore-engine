@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.1
+API version - 0.1.20
+
+DB Schema version - 0.0.15
+
+Engine v1.0.1 fixes some bugs that arose from 1.0.0
+
+### Changes
++ Fixed - policy-engine feeds failing for GitHub group due to a constraint violation
++ Fixed - Upgrade to Syft v0.26.0 fixed issue in analysis caused by unexpected python package format 
++ Fixed - Content hints now correctly use '*' for vendor field instead of '-' in generated cpes. Fixes [#1279](https://github.com/anchore/anchore-engine/issues/1279).
++ Fixed - Syft invocation during image analysis uses analyzer unpack directory configured in engine as opposed to OS default temp directory
+
+
 ## 1.0.0
 
 API version - 0.1.19
