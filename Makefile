@@ -196,6 +196,8 @@ push-redhat: setup-test-infra ## (Not available outside of CI) Push prod Anchore
 push-rebuild: setup-test-infra ## Rebuild and push prod Anchore Engine docker image to Docker Hub (not available outside of CI)
 	@$(CI_CMD) push-prod-image-rebuild "$(COMMIT_SHA)" "$(DEV_IMAGE_REPO)" "$(GIT_TAG)"
 
+ironbank-artifacts: anchore-ci ## (Not available outside of CI) Create and upload ironbank buildblob artifacts
+	@$(CI_CMD) create-ironbank-artifacts anchore-engine "$(GIT_TAG)"
 
 # Helper targets
 #########################
