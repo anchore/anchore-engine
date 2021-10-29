@@ -262,6 +262,18 @@ jobs:
           name: Push to Dockerhub
           command: make << parameters.make_job >>
 
+  ironbank-artifacts:
+    description: Use make script to create ironbank artifacts & push up to s3
+    docker:
+      - image: circleci/python:3.8
+    environment: *global_environment_vars
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: create ironbank artifacts
+          command: make ironbank-artifacts
+
   container_tests:
     description: Check container properties
     parameters:
@@ -472,6 +484,11 @@ workflows:
           name: push_prod_image
           make_job: push-prod
           context: dockerhub-prod
+          filters: *filter_semver_tags
+          requires:
+            - hold_for_approval
+      - ironbank-artifacts:
+          context: aws-prod
           filters: *filter_semver_tags
           requires:
             - hold_for_approval
