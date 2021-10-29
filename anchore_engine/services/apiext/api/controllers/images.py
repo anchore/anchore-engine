@@ -934,47 +934,6 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     return return_object, httpcode
 
 
-# @flask_metrics.do_not_track()
-# @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-# def import_image(analysis_report):
-#    try:
-#        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-#        return_object, httpcode = do_import_image(request_inputs, analysis_report)
-#
-#    except Exception as err:
-#        httpcode = 500
-#        return_object = str(err)
-#
-#    return return_object, httpcode
-
-
-# def do_import_image(request_inputs, importRequest):
-#    user_auth = request_inputs['auth']
-#    method = request_inputs['method']
-#    bodycontent = request_inputs['bodycontent']
-#    params = request_inputs['params']
-#
-#    return_object = {}
-#    httpcode = 500
-#
-#    userId, pw = user_auth
-#
-#    try:
-#        client = internal_client_for(CatalogClient, request_inputs['userId'])
-#        return_object = []
-#        image_records = client.import_image(json.loads(bodycontent))
-#        for image_record in image_records:
-#            return_object.append(make_response_image(image_record))
-#        httpcode = 200
-#
-#    except Exception as err:
-#        logger.debug("operation exception: " + str(err))
-#        return_object = make_response_error(err, in_httpcode=httpcode)
-#        httpcode = return_object['httpcode']
-#
-#    return(return_object, httpcode)
-
-
 def do_list_images(
     account,
     filter_tag=None,
