@@ -8,7 +8,7 @@
 # Define YAML anchors
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
-  LATEST_RELEASE_MAJOR_VERSION: 1.0.0
+  LATEST_RELEASE_MAJOR_VERSION: 1.0.1
   TERM: xterm
 
 .attach_workspace: &attach_workspace
@@ -234,7 +234,8 @@ jobs:
     resource_class: large
     environment: *global_environment_vars
     steps:
-      - setup_remote_docker
+      - setup_remote_docker:
+          version: 20.10.7
       - checkout
       - <<: *attach_workspace
       - <<: *load_docker_image
@@ -260,6 +261,18 @@ jobs:
       - run:
           name: Push to Dockerhub
           command: make << parameters.make_job >>
+
+  ironbank-artifacts:
+    description: Use make script to create ironbank artifacts & push up to s3
+    docker:
+      - image: circleci/python:3.8
+    environment: *global_environment_vars
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: create ironbank artifacts
+          command: make ironbank-artifacts
 
   container_tests:
     description: Check container properties
@@ -303,6 +316,12 @@ workflows:
       - build:
           requires:
             - unit_tests_38
+      - cli_smoke_tests:
+          context: e2e-testing
+          py_version: "3.8"
+          requires:
+            - build
+          filters: *filter_release_branch
       - container_tests:
           name: test_container_dev
           test_env: "dev"
@@ -465,6 +484,11 @@ workflows:
           name: push_prod_image
           make_job: push-prod
           context: dockerhub-prod
+          filters: *filter_semver_tags
+          requires:
+            - hold_for_approval
+      - ironbank-artifacts:
+          context: aws-prod
           filters: *filter_semver_tags
           requires:
             - hold_for_approval

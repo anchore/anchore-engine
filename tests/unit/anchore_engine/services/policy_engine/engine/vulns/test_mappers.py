@@ -567,7 +567,7 @@ class TestImageContentAPIToGrypeSbom:
                 },
                 {
                     "cpes": [
-                        "cpe:2.3:a:-:openssl-libs:1.1.1:*:*:*:*:*:*:*",
+                        "cpe:2.3:a:*:openssl-libs:1.1.1:*:*:*:*:*:*:*",
                     ],
                     "name": "openssl-libs",
                     "type": "go-module",
@@ -607,7 +607,7 @@ class TestImageContentAPIToGrypeSbom:
                 },
                 {
                     "cpes": [
-                        "cpe:2.3:a:-:openssl-libs:1.1.1:*:*:*:*:*:*:*",
+                        "cpe:2.3:a:*:openssl-libs:1.1.1:*:*:*:*:*:*:*",
                     ],
                     "name": "openssl-libs",
                     "type": "binary",
