@@ -8,8 +8,10 @@ FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as anchore-engine-builder
 
 ARG CLI_COMMIT
 
-ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
-ENV GOPATH=/go
+ENV LANG=en_US.UTF-8 
+ENV LC_ALL=C.UTF-8
+
+# environment variables for dependent binary versions
 ENV SYFT_VERSION=v0.26.0
 ENV GRYPE_VERSION=v0.22.0
 ENV PIP_VERSION=21.0.1
@@ -83,57 +85,59 @@ LABEL anchore_cli_commit="${CLI_COMMIT}" \
       description="Anchore is an open platform for container security and compliance that allows developers, operations, and security teams to discover, analyze, and certify container images on-premises or in the cloud. Anchore Engine is the on-prem, OSS, API accessible service that allows ops and developers to perform detailed analysis, run queries, produce reports and define policies on container images that can be used in CI/CD pipelines to ensure that only containers that meet your organization’s requirements are deployed into production."
 
 # Environment variables to be present in running environment
-ENV LANG=en_US.UTF-8 LC_ALL=C.UTF-8
+ENV AUTHLIB_INSECURE_TRANSPORT=true
+ENV LANG=en_US.UTF-8 
+ENV LC_ALL=C.UTF-8
+ENV PATH="${PATH}:/anchore-cli/bin"
+ENV SET_HOSTID_TO_HOSTNAME=false
 
 # Default values overrideable at runtime of the container
-ENV ANCHORE_CONFIG_DIR=/config \
-    ANCHORE_SERVICE_DIR=/anchore_service \
-    ANCHORE_LOG_LEVEL=INFO \
-    ANCHORE_ENABLE_METRICS=false \
+ENV ANCHORE_ADMIN_EMAIL=admin@myanchore \
+    ANCHORE_ADMIN_PASSWORD=null \
+    ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
+    ANCHORE_AUTH_PRIVKEY=null \
+    ANCHORE_AUTH_PUBKEY=null \
+    ANCHORE_AUTH_SECRET=null \
+    ANCHORE_AUTHZ_HANDLER=native \
+    ANCHORE_CATALOG_NOTIFICATION_INTERVAL_SEC=30 \
+    ANCHORE_CLI_PASS=foobar \
+    ANCHORE_CLI_USER=admin \
+    ANCHORE_CLI_URL="http://localhost:8228" \
+    ANCHORE_CONFIG_DIR=/config \
+    ANCHORE_DB_NAME=postgres \
+    ANCHORE_DB_PORT=5432 \
+    ANCHORE_DB_USER=postgres \
     ANCHORE_DISABLE_METRICS_AUTH=false \
-    ANCHORE_INTERNAL_SSL_VERIFY=false \
-    ANCHORE_WEBHOOK_DESTINATION_URL=null \
-    ANCHORE_HINTS_ENABLED=false \
-    ANCHORE_FEEDS_ENABLED=true \
-    ANCHORE_FEEDS_SSL_VERIFY=true \
+    ANCHORE_ENABLE_METRICS=false \
+    ANCHORE_ENABLE_PACKAGE_FILTERING="true" \
     ANCHORE_ENDPOINT_HOSTNAME=localhost \
     ANCHORE_EVENTS_NOTIFICATIONS_ENABLED=false \
-    ANCHORE_CATALOG_NOTIFICATION_INTERVAL_SEC=30 \
-    ANCHORE_FEED_SYNC_INTERVAL_SEC=21600 \
+    ANCHORE_EXTERNAL_AUTHZ_ENDPOINT=null \
     ANCHORE_EXTERNAL_PORT=null \
     ANCHORE_EXTERNAL_TLS=false \
-    ANCHORE_AUTHZ_HANDLER=native \
-    ANCHORE_EXTERNAL_AUTHZ_ENDPOINT=null \
-    ANCHORE_ADMIN_PASSWORD=null \
-    ANCHORE_ADMIN_EMAIL=admin@myanchore \
-    ANCHORE_HOST_ID="anchore-quickstart" \
-    ANCHORE_DB_PORT=5432 \
-    ANCHORE_DB_NAME=postgres \
-    ANCHORE_DB_USER=postgres \
-    SET_HOSTID_TO_HOSTNAME=false \
-    ANCHORE_CLI_USER=admin \
-    ANCHORE_CLI_PASS=foobar \
-    ANCHORE_SERVICE_PORT=8228 \
-    ANCHORE_CLI_URL="http://localhost:8228" \
-    ANCHORE_FEEDS_URL="https://ancho.re/v1/service/feeds" \
     ANCHORE_FEEDS_CLIENT_URL="https://ancho.re/v1/account/users" \
+    ANCHORE_FEEDS_ENABLED=true \
+    ANCHORE_FEEDS_SSL_VERIFY=true \
+    ANCHORE_FEED_SYNC_INTERVAL_SEC=21600 \
     ANCHORE_FEEDS_TOKEN_URL="https://ancho.re/oauth/token" \
-    ANCHORE_GLOBAL_CLIENT_READ_TIMEOUT=0 \
+    ANCHORE_FEEDS_URL="https://ancho.re/v1/service/feeds" \
     ANCHORE_GLOBAL_CLIENT_CONNECT_TIMEOUT=0 \
-    ANCHORE_AUTH_PUBKEY=null \
-    ANCHORE_AUTH_PRIVKEY=null \
-    ANCHORE_AUTH_SECRET=null \
+    ANCHORE_GLOBAL_CLIENT_READ_TIMEOUT=0 \
+    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180 \
+    ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json" \
+    ANCHORE_HINTS_ENABLED=false \
+    ANCHORE_HOST_ID="anchore-quickstart" \
+    ANCHORE_INTERNAL_SSL_VERIFY=false \
+    ANCHORE_LOG_LEVEL=INFO \
+    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
     ANCHORE_OAUTH_ENABLED=false \
     ANCHORE_OAUTH_TOKEN_EXPIRATION=3600 \
-    ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS=false \
-    AUTHLIB_INSECURE_TRANSPORT=true \
-    ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB=-1 \
-    ANCHORE_GLOBAL_SERVER_REQUEST_TIMEOUT_SEC=180 \
+    ANCHORE_SERVICE_DIR=/anchore_service \
+    ANCHORE_SERVICE_PORT=8228 \
     ANCHORE_VULNERABILITIES_PROVIDER=null \
-    ANCHORE_GRYPE_DB_URL="https://toolbox-data.anchore.io/grype/databases/listing.json" \
-    ANCHORE_ENABLE_PACKAGE_FILTERING="true"
+    ANCHORE_WEBHOOK_DESTINATION_URL=null
 
-ENV PATH "${PATH}:/anchore-cli/bin"
+#### Perform OS setup
 
 # Insecure transport required in case for things like tls sidecars
 
