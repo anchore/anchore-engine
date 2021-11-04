@@ -19,42 +19,63 @@ ENV PIP_VERSION=21.0.1
 COPY . /buildsource
 WORKDIR /buildsource
 
+# setup build artifact directory
 RUN set -ex && \
-    mkdir -p /build_output /build_output/deps /build_output/configs /build_output/wheels /build_output/cli_wheels
+    mkdir -p \
+        /build_output/configs \
+        /build_output/cli_wheels \
+        /build_output/deps \
+        /build_output/wheels
 
+# installing build dependencies
 RUN set -ex && \
-    echo "installing OS dependencies" && \
+    echo "installing build dependencies" && \
+    # keepcache is used so that subsequent invocations of yum do not remove the cached RPMs in --downloaddir
     echo "keepcache = 1" >> /etc/yum.conf && \
     yum update -y && \
-    yum module disable -y python36 && yum module enable -y python38 && \
-    yum install -y gcc make python38 git python38-wheel python38-devel python38-psycopg2 go  && \
-    pip3 install pip=="${PIP_VERSION}" && \
-    pip3 download -d /build_output/wheels pip=="${PIP_VERSION}" && \
+    yum module disable -y python36 && \
+    yum module enable -y python38 && \
+    yum install -y \
+        gcc \
+        git \
+        go \
+        make \
+        python38 \
+        python38-devel \
+        python38-psycopg2 \
+        python38-wheel && \
     yum install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm && \
-    yum install -y --downloadonly --downloaddir=/build_output/build_deps/ dpkg clamav clamav-update
+    pip3 install pip=="${PIP_VERSION}"
 
-# create anchore binaries
+# stage dependent binaries into /build_output
 RUN set -ex && \
-    echo "installing anchore" && \
+    echo "downloading OS dependencies" && \
+    pip3 download -d /build_output/wheels pip=="${PIP_VERSION}" && \
+    yum install -y --downloadonly --downloaddir=/build_output/build_deps/ \
+        clamav \
+        clamav-update \
+        dpkg
+
+RUN set -ex && \
+    echo "downloading anchore-cli" && \
+    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@"${CLI_COMMIT}"\#egg=anchorecli
+
+RUN set -ex && \
+    echo "downloading Syft" && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps "${SYFT_VERSION}"
+
+RUN set -ex && \
+    echo "downloading Grype" && \
+    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "${GRYPE_VERSION}"
+
+# stage anchore-engine wheels and default application configs into /build_output
+RUN set -ex && \
+    echo "creating anchore-engine wheels" && \
     pip3 wheel --wheel-dir=/build_output/wheels . && \
-    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@"$CLI_COMMIT"\#egg=anchorecli && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
     cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh && \
     cp -R ./anchore_engine/conf/clamav /build_output/configs/
-
-# stage anchore dependency binaries
-RUN set -ex && \
-    echo "installing GO" && \
-    mkdir -p /go
-
-RUN set -ex && \
-    echo "installing Syft" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps "$SYFT_VERSION"
-
-RUN set -ex && \
-    echo "installing Grype" && \
-    curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "$GRYPE_VERSION"
 
 # create p1 buildblob & checksum
 RUN set -ex && \
