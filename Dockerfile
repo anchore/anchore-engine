@@ -160,33 +160,58 @@ ENV ANCHORE_ADMIN_EMAIL=admin@myanchore \
 
 #### Perform OS setup
 
-# Insecure transport required in case for things like tls sidecars
-
-# Container run environment settings
-
-#VOLUME /analysis_scratch
-EXPOSE "${ANCHORE_SERVICE_PORT}"
-
-# Build dependencies
-
-RUN set -ex && \
-    yum update -y && \
-    yum module disable -y python36 && yum module enable -y python38 && \
-    yum install -y python38 python38-wheel procps psmisc python38-psycopg2 skopeo && \
-    pip3 install --upgrade --no-index --find-links=/build_output/wheels/ pip
-
-# Setup container default configs and directories
-
-WORKDIR /anchore-engine
-
-# Perform OS setup
-
+# Setup container user/group and required application directories
 RUN set -ex && \
     groupadd --gid 1000 anchore && \
     useradd --uid 1000 --gid anchore --shell /bin/bash --create-home anchore && \
-    mkdir /config && \
-    mkdir /licenses && \
-    mkdir -p /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service/bundles "${ANCHORE_SERVICE_DIR}"/bundles /home/anchore/clamav/db && \
+    mkdir -p \
+        /analysis_scratch \
+        "${ANCHORE_SERVICE_DIR}"/bundles \
+        /config \
+        /home/anchore/clamav/db \
+        /licenses \
+        /var/log/anchore \
+        /var/run/anchore \
+        /workspace \
+        /workspace_preload && \
+    chown -R 1000:0 \
+        /analysis_scratch \
+        "${ANCHORE_SERVICE_DIR}" \
+        /config \
+        /home/anchore \
+        /licenses \
+        /var/log/anchore \
+        /var/run/anchore \
+        /workspace \
+        /workspace_preload && \
+    chmod -R g+rwX \
+        /analysis_scratch \
+        "${ANCHORE_SERVICE_DIR}" \
+        /config \
+        /home/anchore \
+        /licenses \
+        /var/log/anchore \
+        /var/run/anchore \
+        /workspace \
+        /workspace_preload
+
+# Install build dependencies
+RUN set -ex && \
+    yum update -y && \
+    yum module disable -y python36 && \
+    yum module enable -y python38 && \
+    yum install -y \
+        procps \
+        psmisc \
+        python38 \
+        python38-psycopg2 \
+        python38-wheel \
+        skopeo && \
+    yum clean all
+
+# Copy default application configuration files
+RUN set -ex && \
+    echo "copying default application config files" && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
@@ -222,6 +247,10 @@ HEALTHCHECK --start-period=20s \
     CMD curl -f http://localhost:8228/health || exit 1
 
 USER 1000
+
+EXPOSE "${ANCHORE_SERVICE_PORT}"
+
+WORKDIR /anchore-engine
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["anchore-manager", "service", "start", "--all"]
