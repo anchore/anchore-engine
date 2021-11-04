@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -euvo pipefail
+set -exuvo pipefail
 
 COMMIT_SHA="${1:?'Missing required parameter: COMMIT_SHA'}"
 GIT_TAG="${2:?'Missing required parameter: GIT_TAG'}"
@@ -20,10 +20,12 @@ fi
 
 print_colorized INFO "Building Anchore Engine image ${TEST_IMAGE_NAME}; installing anchore-cli from git@${anchore_cli_commit}."; echo
 
-# A targeted build can be used to populate the cache in circleci if you're using the docker_layer_caching option in the job.
-# Since we're not using docker_layer_caching, this build step can be ignored.
-# docker build --target anchore-engine-builder -t anchore-engine:builder -f ./Dockerfile .
+if [[ ${CI:-false} == "true" ]]; then
+  BUILD_CACHE_ARG="--no-cache"
+else
+  BUILD_CACHE_ARG=""
+fi
 
-docker build --build-arg ANCHORE_COMMIT="${COMMIT_SHA}" --build-arg CLI_COMMIT="${anchore_cli_commit}" -t "${TEST_IMAGE_NAME}" -f ./Dockerfile .
+docker build ${BUILD_CACHE_ARG} --build-arg ANCHORE_COMMIT="${COMMIT_SHA}" --build-arg CLI_COMMIT="${anchore_cli_commit}" -t "${TEST_IMAGE_NAME}" -f ./Dockerfile .
 
 print_colorized INFO "Built Anchore Engine image ${TEST_IMAGE_NAME}."; echo
