@@ -1,6 +1,10 @@
-FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-builder
+ARG BASE_REGISTRY=registry.access.redhat.com
+ARG BASE_IMAGE=ubi8/ubi
+ARG BASE_TAG=8.4
 
-######## This is stage1 where anchore wheels, binary deps, and any items from the source tree get staged to /build_output ########
+#### Start first stage
+#### Anchore wheels, binary dependencies, etc. are staged to /build_output for second stage
+FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as anchore-engine-builder
 
 ARG CLI_COMMIT
 
@@ -55,11 +59,9 @@ RUN set -ex && \
     tar -z -c -v -C /build_output -f /anchore-buildblob.tgz . && \
     sha256sum /anchore-buildblob.tgz > /buildblob.tgz.sha256sum
 
-# Build setup section
-
-FROM registry.access.redhat.com/ubi8/ubi:8.4 as anchore-engine-final
-
-######## This is stage2 which does setup and install entirely from items from stage1's /build_output ########
+#### Start second stage
+#### Setup and install using first stage artifacts in /build_output
+FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
@@ -70,16 +72,13 @@ ARG ANCHORE_ENGINE_RELEASE="r0"
 COPY --from=anchore-engine-builder /build_output /build_output
 
 # Container metadata section
-
-MAINTAINER dev@anchore.com
-
-LABEL anchore_cli_commit="$CLI_COMMIT" \
-      anchore_commit="$ANCHORE_COMMIT" \
+LABEL anchore_cli_commit="${CLI_COMMIT}" \
+      anchore_commit="${ANCHORE_COMMIT}" \
       name="anchore-engine" \
       maintainer="dev@anchore.com" \
       vendor="Anchore Inc." \
-      version="$ANCHORE_ENGINE_VERSION" \
-      release="$ANCHORE_ENGINE_RELEASE" \
+      version="${ANCHORE_ENGINE_VERSION}" \
+      release="${ANCHORE_ENGINE_RELEASE}" \
       summary="Anchore Engine - container image scanning service for policy-based security, best-practice and compliance enforcement." \
       description="Anchore is an open platform for container security and compliance that allows developers, operations, and security teams to discover, analyze, and certify container images on-premises or in the cloud. Anchore Engine is the on-prem, OSS, API accessible service that allows ops and developers to perform detailed analysis, run queries, produce reports and define policies on container images that can be used in CI/CD pipelines to ensure that only containers that meet your organization’s requirements are deployed into production."
 
