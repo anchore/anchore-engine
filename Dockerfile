@@ -91,9 +91,6 @@ ARG ANCHORE_COMMIT
 ARG ANCHORE_ENGINE_VERSION="1.0.1"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
-# Copy skopeo artifacts from build step
-COPY --from=anchore-engine-builder /build_output /build_output
-
 # Container metadata section
 LABEL anchore_cli_commit="${CLI_COMMIT}" \
       anchore_commit="${ANCHORE_COMMIT}" \
@@ -209,37 +206,44 @@ RUN set -ex && \
         skopeo && \
     yum clean all
 
-# Copy default application configuration files
+# Copy the installed artifacts from the first stage
+COPY --from=anchore-engine-builder /build_output /build_output
+
+# install application & all dependencies from /build_output
 RUN set -ex && \
-    echo "copying default application config files" && \
-    cp /build_output/LICENSE /licenses/ && \
-    cp /build_output/configs/default_config.yaml /config/config.yaml && \
-    cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
-    cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && \
-    chown -R 1000:0 /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service "${ANCHORE_SERVICE_DIR}" /home/anchore && \
-    chmod -R g+rwX /workspace_preload /var/log/anchore /var/run/anchore /analysis_scratch /workspace /anchore_service "${ANCHORE_SERVICE_DIR}" /home/anchore && \
-    chmod -R ug+rw /home/anchore/clamav && \
-    md5sum /config/config.yaml > /config/build_installed && \
-    chmod +x /docker-entrypoint.sh
-
-
-# Perform any base OS specific setup
-
-# Perform the cli install into a virtual env
-RUN set -ex && \
+    echo "updating pip" && \
+    pip3 install --upgrade --no-index --find-links=/build_output/wheels/ pip && \
+    # Install anchore-cli into a virtual environment
+    echo "installing anchore-cli into virtual environment" && \
     python3 -m venv /anchore-cli && \
     source /anchore-cli/bin/activate && \
     pip3 install --no-index --find-links=/build_output/cli_wheels/ anchorecli && \
-    deactivate
-
-# Perform the anchore-engine build and install
-
-RUN set -ex && \
+    deactivate && \
+    # Install anchore-engine & required dependencies
+    echo "installing anchore-engine and required dependencies" && \
     pip3 install --no-index --find-links=/build_output/wheels/ anchore-engine && \
+    # copy all staged dependent binaries to PATH
     cp /build_output/deps/syft /usr/bin/syft && \
     cp /build_output/deps/grype /usr/bin/grype && \
     yum install -y /build_output/build_deps/*.rpm && \
-    rm -rf /build_output /root/.cache
+    # Copy default application configuration files
+    echo "copying default application config files" && \
+    cp /build_output/LICENSE /licenses/ && \
+    cp /build_output/configs/default_config.yaml /config/config.yaml && \
+    md5sum /config/config.yaml > /config/build_installed && \
+    cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
+    chmod +x /docker-entrypoint.sh && \
+    cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && \
+    chmod -R ug+rw /home/anchore/clamav && \
+    # clean up unnecessary artifacts from filesystem
+    yum clean all && \
+    echo "cleaning up unneccesary files used for testing/cache/build" && \
+    rm -rf \
+        /build_output \
+        /root/.cache \
+        /usr/local/lib64/python3.8/site-packages/twisted/test \
+        /usr/local/lib64/python3.8/site-packages/Crypto/SelfTest \
+        /usr/share/doc
 
 # Container runtime instructions
 
