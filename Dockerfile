@@ -16,9 +16,6 @@ ENV SYFT_VERSION=v0.26.0
 ENV GRYPE_VERSION=v0.22.0
 ENV PIP_VERSION=21.0.1
 
-COPY . /buildsource
-WORKDIR /buildsource
-
 # setup build artifact directory
 RUN set -ex && \
     mkdir -p \
@@ -67,6 +64,9 @@ RUN set -ex && \
 RUN set -ex && \
     echo "downloading Grype" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "${GRYPE_VERSION}"
+
+COPY . /buildsource
+WORKDIR /buildsource
 
 # stage anchore-engine wheels and default application configs into /build_output
 RUN set -ex && \
