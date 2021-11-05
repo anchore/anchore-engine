@@ -4,8 +4,19 @@ from anchore_engine.util.langpack import compare_versions
 
 enable_training = False
 
-all_languages = ["java", "maven", "js", "npm", "ruby", "gem", "nuget", "python"]
-generic_languages = ["js", "npm", "ruby", "gem", "nuget"]
+all_languages = [
+    "java",
+    "maven",
+    "js",
+    "npm",
+    "ruby",
+    "gem",
+    "nuget",
+    "python",
+    "go",
+    "binary",
+]
+generic_languages = ["js", "npm", "ruby", "gem", "nuget", "go"]
 
 lesser_versions = [
     "0.0",
@@ -248,8 +259,7 @@ class TestSemver:
         assert compare_versions(left, right, lang) is False
 
     def test_unsupported(self):
-        with pytest.raises(Exception):
-            compare_versions("> 1.0", "1.0", "VimScript")
+        assert compare_versions("> 1.0", "1.0", "VimScript") is False
 
     @pytest.mark.parametrize("left,right", error_matches)
     @pytest.mark.parametrize("lang", all_languages)
