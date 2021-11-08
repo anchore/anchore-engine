@@ -1,0 +1,13 @@
+-r requirements.txt
+
+coverage >= 6.1.1
+docker >= 5.0.3
+flask-testing >= 0.8.1
+memory_profiler >= 0.58.0
+pytest >= 6.2.5
+tox >= 3.24.4
+
+# We install the psycopg2-binary package here so that virtual environments have it since our normal
+# Docker build installs it via an RPM for fips-support.
+psycopg2-binary >= 2.8.4
+
