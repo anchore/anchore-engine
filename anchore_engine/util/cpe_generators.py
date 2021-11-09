@@ -7,6 +7,7 @@ duty, so this module is not expected to grow.
 
 import re
 from typing import List
+
 from anchore_engine.subsys import logger
 
 SIMPLIFIED_SEMVER_REGEX = r".*([0-9]+\.[0-9]+\.[0-9]+).*"
@@ -37,6 +38,9 @@ NOMATCH_INCLUSIONS = {
     },
     "python": {
         "python-rrdtool": ["rrdtool"],
+    },
+    "nuget": {
+        "Microsoft.NETCore.App": [".net_core"],
     },
 }
 
