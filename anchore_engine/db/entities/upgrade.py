@@ -1970,7 +1970,10 @@ def remove_incorrect_github_vuln_data():
     namespace_names = ["github:os", "github:unknown"]
 
     to_delete = (
-        (ImagePackageVulnerability, ImagePackageVulnerability.vulnerability_namespace_name),
+        (
+            ImagePackageVulnerability,
+            ImagePackageVulnerability.vulnerability_namespace_name,
+        ),
         (VulnerableArtifact, VulnerableArtifact.namespace_name),
         (FixedArtifact, FixedArtifact.namespace_name),
         (Vulnerability, Vulnerability.namespace_name),
@@ -1986,23 +1989,19 @@ def remove_incorrect_github_vuln_data():
 
         try:
             with session_scope() as session:
-                results = session.query(type).filter(
-                    column.in_(namespace_names)
-                ).all()
+                results = session.query(type).filter(column.in_(namespace_names)).all()
                 for result in results:
                     session.delete(result)
         except Exception as e:
-            err_string = (
-                f"Failed to perform deletion on {type} - exception: {str(e)}"
-            )
+            err_string = f"Failed to perform deletion on {type} - exception: {str(e)}"
             log.err(err_string)
             raise Exception(err_string)
 
 
 def db_upgrade_015_016():
-    """ "
+    """
     Run upgrade tasks for version 14 to 15 of the db. This includes the folowing:
-        - Remove 'github:os' and 'github:unknown' vulnerability entries from  policy engine
+        - Remove 'github:os' and 'github:unknown' vulnerability entries from policy engine
     """
     remove_incorrect_github_vuln_data()
 
