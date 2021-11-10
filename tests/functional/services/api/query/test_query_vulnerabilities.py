@@ -34,6 +34,8 @@ class TestQueryVulnerabilities:
         assert resp == APIResponse(200)
 
         for vuln in resp.body["vulnerabilities"]:
+            assert len(vuln["nvd_data"]) > 0
+
             for package in vuln["affected_packages"]:
                 assert "will_not_fix" in package
                 assert isinstance(package["will_not_fix"], bool) is True
