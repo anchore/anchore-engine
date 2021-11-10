@@ -170,7 +170,7 @@ class DuplicateIdentifierFoundError(ValidationError):
 
 class UnsupportedVersionError(ValidationError):
     """
-    A bundle, policy, or whitelist version is unsupported.
+    A bundle, policy, or allowlist version is unsupported.
     """
 
     supported_versions = None

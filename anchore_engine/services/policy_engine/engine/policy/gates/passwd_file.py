@@ -23,12 +23,12 @@ class FileNotStoredTrigger(BaseTrigger):
         return
 
 
-class PentryBlacklistMixin(object):
-    def exec_blacklist(self, blacklist_items, pentry_index, pentries_dict):
+class PentryDenylistMixin(object):
+    def exec_denylist(self, denylist_items, pentry_index, pentries_dict):
         """
-        Process a blacklist against pentries
+        Process a denylist against pentries
 
-        :param blacklist_items: list of strings to check for in pentry locations
+        :param denylist_items: list of strings to check for in pentry locations
         :param pentry_index: item index in the pentry to check against, -1 means user-name, and None means entire entry
         :param pentries_dict: {'username': <array form of a pentry minus usename> }
         :return: list of match tuples where each tuple is (<matched candidate>, <entire matching pentry>)
@@ -40,19 +40,20 @@ class PentryBlacklistMixin(object):
             else:
                 candidate = ":".join([user] + pentry)
 
-            if candidate in blacklist_items:
+            if candidate in denylist_items:
                 matches.append((candidate, ":".join([user] + pentry)))
         return matches
 
 
-class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
-    __trigger_name__ = "blacklist_usernames"
+class UsernameMatchDenyTrigger(BaseTrigger, PentryDenylistMixin):
+    __trigger_name__ = "denylist_usernames"
+    __msg_base__ = "Denylisted user "
     __description__ = "Triggers if specified username is found in the /etc/passwd file"
-
-    user_blacklist = CommaDelimitedStringListParameter(
+    
+    user_denylist = CommaDelimitedStringListParameter(
         name="user_names",
         example_str="daemon,ftp",
-        aliases=["usernameblacklist"],
+        aliases=["usernameblacklist", "usernamedenylist"],
         description="List of usernames that will cause the trigger to fire if found in /etc/passwd.",
         is_required=True,
     )
@@ -63,27 +64,31 @@ class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 
         user_entries = context.data.get("passwd_entries")
         find_users = set(
-            [x.strip() for x in self.user_blacklist.value()]
-            if self.user_blacklist.value()
+            [x.strip() for x in self.user_denylist.value()]
+            if self.user_denylist.value()
             else []
         )
 
-        for username, pentry in self.exec_blacklist(find_users, -1, user_entries):
+        for username, pentry in self.exec_denylist(find_users, -1, user_entries):
             self._fire(
-                msg="Blacklisted user '{}' found in image's /etc/passwd: pentry={}".format(
+                msg=self.__msg_base__ + "'{}' found in image's /etc/passwd: pentry={}".format(
                     username, pentry
                 )
             )
 
+class UsernameMatchTrigger(UsernameMatchDenyTrigger, PentryDenylistMixin):
+    __trigger_name__ = "blacklist_usernames"
+    __msg_base__ = "Blacklisted user "
 
-class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
-    __trigger_name__ = "blacklist_userids"
+class UserIdMatchDenyTrigger(BaseTrigger, PentryDenylistMixin):
+    __trigger_name__ = "denylist_userids"
+    __msg_base__ = "Denylisted uid "
     __description__ = "Triggers if specified user id is found in the /etc/passwd file"
 
-    user_id_blacklist = CommaDelimitedNumberListParameter(
+    user_id_denylist = CommaDelimitedNumberListParameter(
         name="user_ids",
         example_str="0,1",
-        aliases=["useridblacklist"],
+        aliases=["useridblacklist", "useriddenylist"],
         description="List of userids (numeric) that will cause the trigger to fire if found in /etc/passwd.",
         is_required=True,
     )
@@ -94,24 +99,28 @@ class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 
         user_entries = context.data.get("passwd_entries")
         find_users = set(
-            [str(x) for x in self.user_id_blacklist.value()]
-            if self.user_id_blacklist.value()
+            [str(x) for x in self.user_id_denylist.value()]
+            if self.user_id_denylist.value()
             else []
         )
 
-        for uid, pentry in self.exec_blacklist(find_users, 1, user_entries):
+        for uid, pentry in self.exec_denylist(find_users, 1, user_entries):
             self._fire(
-                msg="Blacklisted uid '{}' found in image's /etc/passwd: pentry={}".format(
+                msg=self.__msg_base__ + "'{}' found in image's /etc/passwd: pentry={}".format(
                     uid, str(pentry)
                 )
             )
 
-
-class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
-    __trigger_name__ = "blacklist_groupids"
+class UserIdMatchTrigger(UserIdMatchDenyTrigger, PentryDenylistMixin):
+    __trigger_name__ = "blacklist_userids"    
+    __msg_base__ = "Blacklisted uid "
+    
+class GroupIdMatchDenyTrigger(BaseTrigger, PentryDenylistMixin):
+    __trigger_name__ = "denylist_groupids"
+    __msg_base__ = "Denylisted gid "
     __description__ = "Triggers if specified group id is found in the /etc/passwd file"
-
-    group_id_blacklist = CommaDelimitedNumberListParameter(
+    
+    group_id_denylist = CommaDelimitedNumberListParameter(
         name="group_ids",
         example_str="999,20",
         description="List of groupids (numeric) that will cause the trigger ot fire if found in /etc/passwd.",
@@ -124,28 +133,33 @@ class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 
         user_entries = context.data.get("passwd_entries")
         find_gid = set(
-            [str(x) for x in self.group_id_blacklist.value()]
-            if self.group_id_blacklist.value()
+            [str(x) for x in self.group_id_denylist.value()]
+            if self.group_id_denylist.value()
             else []
         )
 
-        for gid, pentry in self.exec_blacklist(find_gid, 2, user_entries):
+        for gid, pentry in self.exec_denylist(find_gid, 2, user_entries):
             self._fire(
-                msg="Blacklisted gid '{}' found in image's /etc/passwd: pentry={}".format(
+                msg=self.__msg_base__ + "'{}' found in image's /etc/passwd: pentry={}".format(
                     gid, str(pentry)
                 )
             )
 
-
-class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
-    __trigger_name__ = "blacklist_shells"
+# For backward compatilbility only    
+class GroupIdMatchTrigger(GroupIdMatchDenyTrigger, PentryDenylistMixin):
+    __trigger_name__ = "blacklist_groupids"    
+    __msg_base__ = "Blacklisted gid "
+    
+class ShellMatchDenyTrigger(BaseTrigger, PentryDenylistMixin):
+    __trigger_name__ = "denylist_shells"
+    __msg_base__ = "Denylisted shell "
     __aliases__ = ["shellmatch"]
     __description__ = "Triggers if specified login shell for any user is found in the /etc/passwd file"
-
-    shell_blacklist = CommaDelimitedStringListParameter(
+    
+    shell_denylist = CommaDelimitedStringListParameter(
         name="shells",
         example_str="/bin/bash,/bin/zsh",
-        description="List of shell commands to blacklist.",
+        description="List of shell commands to denylist.",
         is_required=True,
     )
 
@@ -155,26 +169,31 @@ class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
 
         user_entries = context.data.get("passwd_entries")
         find_shell = (
-            set(self.shell_blacklist.value()) if self.shell_blacklist.value() else set()
+            set(self.shell_denylist.value()) if self.shell_denylist.value() else set()
         )
 
-        for shell, pentry in self.exec_blacklist(find_shell, 5, user_entries):
+        for shell, pentry in self.exec_denylist(find_shell, 5, user_entries):
             self._fire(
-                msg="Blacklisted shell '{}' found in image's /etc/passwd: pentry={}".format(
+                msg=self.__msg_base__ + "'{}' found in image's /etc/passwd: pentry={}".format(
                     shell, str(pentry)
                 )
             )
 
         return
 
+# For backward compatilbility only    
+class ShellMatchTrigger(ShellMatchDenyTrigger, PentryDenylistMixin):
+    __trigger_name__ = "blacklist_shells"    
+    __msg_base__ = "Blacklisted shell "
 
-class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
-    __trigger_name__ = "blacklist_full_entry"
+class PEntryMatchDenyTrigger(BaseTrigger, PentryDenylistMixin):    
+    __trigger_name__ = "denylist_full_entry"
+    __msg_base__ = "Denylisted pentry "    
     __description__ = (
         "Triggers if entire specified passwd entry is found in the /etc/passwd file."
     )
-
-    pentry_blacklist = TriggerParameter(
+    
+    pentry_denylist = TriggerParameter(
         name="entry",
         example_str="ftp:x:14:50:FTP User:/var/ftp:/sbin/nologin",
         description="Full entry to match in /etc/passwd.",
@@ -187,16 +206,21 @@ class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             return
 
         user_entries = context.data.get("passwd_entries")
-        blacklisted = [self.pentry_blacklist.value().strip()]
+        denylisted = [self.pentry_denylist.value().strip()]
 
-        for pentry, pentry in self.exec_blacklist(blacklisted, None, user_entries):
+        for pentry, pentry in self.exec_denylist(denylisted, None, user_entries):
             self._fire(
-                msg="Blacklisted pentry '{}' found in image's /etc/passwd: pentry={}".format(
+                msg=self.__msg_base__ + "'{}' found in image's /etc/passwd: pentry={}".format(
                     pentry, str(pentry)
                 )
             )
 
         return
+
+# For backwards compatibility only    
+class PEntryMatchTrigger(PEntryMatchDenyTrigger, PentryDenylistMixin):
+    __trigger_name__ = "blacklist_full_entry"
+    __msg_base__ = "Blacklisted pentry "
 
 
 class FileparsePasswordGate(Gate):
@@ -209,6 +233,11 @@ class FileparsePasswordGate(Gate):
         GroupIdMatchTrigger,
         ShellMatchTrigger,
         PEntryMatchTrigger,
+        UsernameMatchDenyTrigger,
+        UserIdMatchDenyTrigger,
+        GroupIdMatchDenyTrigger,
+        ShellMatchDenyTrigger,
+        PEntryMatchDenyTrigger,        
     ]
 
     def prepare_context(self, image_obj, context):

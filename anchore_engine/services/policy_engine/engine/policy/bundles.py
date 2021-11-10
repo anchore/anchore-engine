@@ -72,17 +72,17 @@ class SimpleMemoryBundleCache(object):
         self._bundles = {}
 
 
-class WhitelistAwarePolicyDecider(object):
+class AllowlistAwarePolicyDecider(object):
     @classmethod
     def decide(cls, decisions):
         candidate_actions = [
             x.action
-            for x in [d for d in decisions if not getattr(d, "is_whitelisted", False)]
+            for x in [d for d in decisions if not getattr(d, "is_allowlisted", False)]
         ]
         if candidate_actions:
             return min(candidate_actions)
         else:
-            return GateAction.go  # No matches or everything is whitelisted
+            return GateAction.go  # No matches or everything is allowlisted
 
 
 class AlwaysStopDecider(object):
@@ -113,7 +113,7 @@ class PolicyRuleDecision(object):
         :return: a rule evaluation's GateAction result
         """
         if self.match and not (
-            hasattr(self.match, "is_whitelisted") and self.match.is_whitelisted
+            hasattr(self.match, "is_allowlisted") and self.match.is_allowlisted
         ):
             return self.policy_rule.action
         else:
@@ -211,12 +211,12 @@ class PolicyRuleFailure(PolicyRuleDecision):
 class PolicyDecision(object):
     """
     A policy decision is a set of rule decisions and a final decision computed from those.
-    Each policy rule decision can have whitelist decorators and if so will be ignored in the
+    Each policy rule decision can have allowlist decorators and if so will be ignored in the
     final decision computation.
 
     """
 
-    __decider__ = WhitelistAwarePolicyDecider
+    __decider__ = AllowlistAwarePolicyDecider
 
     def __init__(self, policy_obj=None, rule_decisions=None):
         self.evaluated_policy = policy_obj
@@ -236,26 +236,26 @@ class PolicyDecision(object):
 
 class BundleDecision(object):
     """
-    Extentions of a PolicyDecision to include Image Blacklist and Whitelist abilities
+    Extentions of a PolicyDecision to include Image Denylist and Allowlist abilities
     """
 
-    def __init__(self, policy_decisions, whitelist_match=None, blacklist_match=None):
+    def __init__(self, policy_decisions, allowlist_match=None, denylist_match=None):
         self.policy_decisions = (
             policy_decisions if policy_decisions else [FallThruPolicyDecision()]
         )
-        self.whitelisted_image = whitelist_match if whitelist_match else None
-        self.blacklisted_image = blacklist_match if blacklist_match else None
+        self.allowlisted_image = allowlist_match if allowlist_match else None
+        self.denylisted_image = denylist_match if denylist_match else None
 
         self.final_policy_decision = min(
             [d.final_decision for d in self.policy_decisions]
         )
 
-        if self.blacklisted_image:
+        if self.denylisted_image:
             self.final_decision = GateAction.stop
-            self.reason = "blacklisted"
-        elif self.whitelisted_image:
+            self.reason = "denylisted"
+        elif self.allowlisted_image:
             self.final_decision = GateAction.go
-            self.reason = "whitelisted"
+            self.reason = "allowlisted"
         else:
             self.final_decision = self.final_policy_decision
             self.reason = "policy_evaluation"
@@ -268,11 +268,11 @@ class BundleDecision(object):
             if self.policy_decisions
             else None,
             "policy_final_action": self.final_policy_decision.name,
-            "matched_whitelisted_image_rule": self.whitelisted_image.json()
-            if self.whitelisted_image
+            "matched_allowlisted_image_rule": self.allowlisted_image.json()
+            if self.allowlisted_image
             else None,
-            "matched_blacklisted_image_rule": self.blacklisted_image.json()
-            if self.blacklisted_image
+            "matched_denylisted_image_rule": self.denylisted_image.json()
+            if self.denylisted_image
             else None,
             "final_action": self.final_decision.name,
             "reason": self.reason,
@@ -349,8 +349,8 @@ class BundleExecution(object):
             policy_rule_decision.match.trigger.__trigger_name__,
             policy_rule_decision.match.msg,
             policy_rule_decision.action.name,
-            policy_rule_decision.match.whitelisted_json()
-            if hasattr(policy_rule_decision.match, "whitelisted_json")
+            policy_rule_decision.match.allowlisted_json()
+            if hasattr(policy_rule_decision.match, "allowlisted_json")
             else False,
             policy_rule_decision.policy_rule.parent_policy.id,
         ]
@@ -380,9 +380,9 @@ class BundleExecution(object):
                 },
             },
             "policy_data": [],
-            "whitelist_data": [],
+            "allowlist_data": [],
             "policy_name": "",  # Use empty string here instead of 'null' to make more parser friendly
-            "whitelist_names": [],
+            "allowlist_names": [],
         }
 
         return table
@@ -597,7 +597,7 @@ class ExecutablePolicyRule(PolicyRule):
     def _safe_execute(self, image_obj, exec_context):
         """
         An alternate execution path that treats failures like specific triggers so they can be handled with
-        whitelists etc. NOT CURRENTLY USED!
+        allowlists etc. NOT CURRENTLY USED!
 
         :param image_obj:
         :param exec_context:
@@ -664,7 +664,7 @@ class ExecutablePolicy(VersionedEntityMixin):
     def __init__(self, raw_json=None, strict_validation=True):
         self.raw = raw_json
         if not raw_json:
-            raise ValueError("Empty whitelist json")
+            raise ValueError("Empty allowlist json")
         self.verify_version(raw_json)
         self.version = raw_json.get("version")
 
@@ -880,7 +880,11 @@ class PolicyMappingRule(MappingRule):
                 )
             )
 
-        self.whitelist_ids = rule_json.get("whitelist_ids")
+        self.allowlist_ids = rule_json.get("allowlist_ids")
+        # For backwards compatibility only
+        if not self.allowlist_ids:
+            self.allowlist_ids = rule_json.get("whitelist_ids")            
+            
 
     def json(self):
         if self.raw:
@@ -888,7 +892,7 @@ class PolicyMappingRule(MappingRule):
         else:
             r = super(PolicyMappingRule, self).json()
             r["policy_ids"] = (self.policy_ids,)
-            r["whitelist_ids"] = self.whitelist_ids
+            r["allowlist_ids"] = self.allowlist_ids
             return r
 
 
@@ -905,7 +909,7 @@ class ExecutableMapping(object):
 
     def execute(self, image_obj, tag):
         """
-        Execute the mapping by performing a match and returning the policy and whitelists referenced.
+        Execute the mapping by performing a match and returning the policy and allowlists referenced.
 
         :param image_obj: loaded image object from db
         :param tag: tag string
@@ -936,44 +940,44 @@ class ExecutableMapping(object):
             return [m.json() for m in self.mapping_rules]
 
 
-class WhitelistedTriggerMatch(TriggerMatch):
+class AllowlistedTriggerMatch(TriggerMatch):
     """
-    A recursive type extension for trigger match to indicate a whitelist match. May match against a base trigger match or
-    another type of trigger match including other WhitelistedTriggerMatches.
+    A recursive type extension for trigger match to indicate a allowlist match. May match against a base trigger match or
+    another type of trigger match including other AllowlistedTriggerMatches.
     """
 
-    def __init__(self, trigger_match, matched_whitelist_item):
-        super(WhitelistedTriggerMatch, self).__init__(
+    def __init__(self, trigger_match, matched_allowlist_item):
+        super(AllowlistedTriggerMatch, self).__init__(
             trigger_match.trigger, trigger_match.id, trigger_match.msg
         )
-        self.whitelist_match = matched_whitelist_item
+        self.allowlist_match = matched_allowlist_item
 
-    def is_whitelisted(self):
-        return self.whitelist_match is not None
+    def is_allowlisted(self):
+        return self.allowlist_match is not None
 
-    def whitelisted_json(self):
+    def allowlisted_json(self):
         return {
-            "whitelist_name": self.whitelist_match.parent_whitelist.name,
-            "whitelist_id": self.whitelist_match.parent_whitelist.id,
-            "matched_rule_id": self.whitelist_match.id,
+            "allowlist_name": self.allowlist_match.parent_allowlist.name,
+            "allowlist_id": self.allowlist_match.parent_allowlist.id,
+            "matched_rule_id": self.allowlist_match.id,
         }
 
     def json(self):
-        j = super(WhitelistedTriggerMatch, self).json()
+        j = super(AllowlistedTriggerMatch, self).json()
 
-        # Note: encode this as an object in the 'whitelisted' col for tabular output.
-        # Note when rendering to json for result, a regular FiredTrigger's 'whitelisted' column should = bool false
-        j["whitelisted"] = {
-            "whitelist_name": self.whitelist_match.parent_whitelist.name,
-            "whitelist_id": self.whitelist_match.parent_whitelist.id,
-            "matched_rule_id": self.whitelist_match.id,
+        # Note: encode this as an object in the 'allowlisted' col for tabular output.
+        # Note when rendering to json for result, a regular FiredTrigger's 'allowlisted' column should = bool false
+        j["allowlisted"] = {
+            "allowlist_name": self.allowlist_match.parent_allowlist.name,
+            "allowlist_id": self.allowlist_match.parent_allowlist.id,
+            "matched_rule_id": self.allowlist_match.id,
         }
         return j
 
 
-class ExecutableWhitelistItem(object):
+class ExecutableAllowlistItem(object):
     """
-    A single whitelist item to evaluate against a single gate trigger instance
+    A single allowlist item to evaluate against a single gate trigger instance
     """
 
     def __init__(self, item_json, parent):
@@ -987,7 +991,7 @@ class ExecutableWhitelistItem(object):
             except Exception as err:
                 logger.exception("Failed to parse")
                 raise err
-        self.parent_whitelist = parent
+        self.parent_allowlist = parent
 
     def is_expired(self):
         now_utc = anchore_now_datetime().replace(tzinfo=datetime.timezone.utc)
@@ -1001,20 +1005,20 @@ class ExecutableWhitelistItem(object):
         """
         Return a processed instance
         :param trigger_inst: the trigger instance to check
-        :return: a WhitelistedTriggerInstance or a TriggerInstance depending on if the items match
+        :return: a AllowlistedTriggerInstance or a TriggerInstance depending on if the items match
         """
-        # If this whitelist rule is expired, we do not search for any matches
+        # If this allowlist rule is expired, we do not search for any matches
         # When expires_on is parsed it's translated to UTC, so we must do the same for getting the current time
         # so that we can compare them
         if self.is_expired():
             return trigger_match
 
-        if hasattr(trigger_match, "is_whitelisted") and trigger_match.is_whitelisted():
+        if hasattr(trigger_match, "is_allowlisted") and trigger_match.is_allowlisted():
             return trigger_match
 
         if hasattr(trigger_match, "id"):
             if self.matches(trigger_match):
-                return WhitelistedTriggerMatch(trigger_match, self)
+                return AllowlistedTriggerMatch(trigger_match, self)
             else:
                 return trigger_match
 
@@ -1033,14 +1037,14 @@ class ExecutableWhitelistItem(object):
         return {"id": self.id, "gate": self.gate, "trigger_id": self.trigger_id}
 
 
-class IWhitelistItemIndex(object):
+class IAllowlistItemIndex(object):
     """
-    A data structure to lookup potential whitelist items for a given gate output
+    A data structure to lookup potential allowlist items for a given gate output
     """
 
     def add(self, item):
         """
-        Add the whitelist item to the index for lookup
+        Add the allowlist item to the index for lookup
 
         :param item:
         :return:
@@ -1049,19 +1053,19 @@ class IWhitelistItemIndex(object):
 
     def candidates_for(self, decision_match):
         """
-        Return whitelist items that may match the decision. Depending on the implementation may be an exact or fuzzy match.
+        Return allowlist items that may match the decision. Depending on the implementation may be an exact or fuzzy match.
 
         :param decision_match:
-        :return: list of ExecutableWhitelistItem objects
+        :return: list of ExecutableAllowlistItem objects
         """
         raise NotImplementedError()
 
 
-class HybridTriggerIdKeyedItemIndex(IWhitelistItemIndex):
+class HybridTriggerIdKeyedItemIndex(IAllowlistItemIndex):
     """
     An index that has a primary keyed lookup and a secondary list for unkeyed entries.
 
-    Each gate has its own index composed of a keyed index and an array for any whitelist items that are not triggerid specific
+    Each gate has its own index composed of a keyed index and an array for any allowlist items that are not triggerid specific
     """
 
     GateItemIndex = namedtuple("GateItemIndex", ["keyed", "unkeyed"])
@@ -1117,12 +1121,12 @@ class StandardCVETriggerIdKey(object):
     supported_gates = [AnchoreSecGate.__gate_name__.lower()]
 
     @classmethod
-    def whitelist_item_key(cls, item):
+    def allowlist_item_key(cls, item):
         """
         Return a key value for the item if the item is an ANCHORESEC gate with trigger_id of the
         form <CVE>+<pkg> where <pkg> may be '*'. Else return None
 
-        :param item: a whitelist item json
+        :param item: a allowlist item json
         :return: a key for a dictionary or None if not hashable/indexable
         """
 
@@ -1160,66 +1164,66 @@ class StandardCVETriggerIdKey(object):
         return None
 
 
-class ExecutableWhitelist(VersionedEntityMixin):
+class ExecutableAllowlist(VersionedEntityMixin):
     """
-    A list of items to whitelist. Executable in the sense that the whitelist can be executed against a policy output
-    to result in a WhitelistedPolicyEvaluation.
+    A list of items to allowlist. Executable in the sense that the allowlist can be executed against a policy output
+    to result in a AllowlistedPolicyEvaluation.
     """
 
     _use_indexes = True
 
-    def __init__(self, whitelist_json):
-        self.raw = whitelist_json
-        if not whitelist_json:
-            raise ValueError("Empty whitelist json")
+    def __init__(self, allowlist_json):
+        self.raw = allowlist_json
+        if not allowlist_json:
+            raise ValueError("Empty allowlist json")
 
-        self.verify_version(whitelist_json)
-        self.version = whitelist_json.get("version")
+        self.verify_version(allowlist_json)
+        self.version = allowlist_json.get("version")
 
-        self.id = whitelist_json.get("id")
-        self.name = whitelist_json.get("name")
-        self.comment = whitelist_json.get("comment")
+        self.id = allowlist_json.get("id")
+        self.name = allowlist_json.get("name")
+        self.comment = allowlist_json.get("comment")
 
         self.items = []
-        self.whitelist_item_index = HybridTriggerIdKeyedItemIndex(
-            item_key_fn=StandardCVETriggerIdKey.whitelist_item_key,
+        self.allowlist_item_index = HybridTriggerIdKeyedItemIndex(
+            item_key_fn=StandardCVETriggerIdKey.allowlist_item_key,
             match_key_fn=StandardCVETriggerIdKey.decision_item_key,
         )
         self.items_by_gate = OrderedDict()
 
         for item in self.raw.get("items"):
-            i = ExecutableWhitelistItem(item, self)
+            i = ExecutableAllowlistItem(item, self)
             self.items.append(i)
-            self.whitelist_item_index.add(i)
+            self.allowlist_item_index.add(i)
 
             if not item.get("gate").lower() in self.items_by_gate:
                 self.items_by_gate[item.get("gate").lower()] = []
             self.items_by_gate[item.get("gate").lower()].append(
-                ExecutableWhitelistItem(item, self)
+                ExecutableAllowlistItem(item, self)
             )
 
     def execute(self, policyrule_decisions):
         """
-        Transform the given list of fired triggers into a set of WhitelistedFiredTriggers as defined by this policy.
-        Resulting list may contain a mix of FiredTrigger and WhitelistedFiredTrigger objects.
+        Transform the given list of fired triggers into a set of AllowlistedFiredTriggers as defined by this policy.
+        Resulting list may contain a mix of FiredTrigger and AllowlistedFiredTrigger objects.
 
-        Any trigger already whitelisted should be modified and simply passed thru.
+        Any trigger already allowlisted should be modified and simply passed thru.
 
-        :param evaluation_result: a list of TriggerMatch objects or WhitelistedTrigger objects to process
-        :return: a new modified list of TriggerMatch objects updated with the policy specified by this whitelist
+        :param evaluation_result: a list of TriggerMatch objects or AllowlistedTrigger objects to process
+        :return: a new modified list of TriggerMatch objects updated with the policy specified by this allowlist
         """
 
         processed_decisions = copy.deepcopy(policyrule_decisions)
 
         for decision in processed_decisions:
-            if ExecutableWhitelist._use_indexes:
-                rules = self.whitelist_item_index.candidates_for(decision)
+            if ExecutableAllowlist._use_indexes:
+                rules = self.allowlist_item_index.candidates_for(decision)
             else:
                 rules = self.items_by_gate.get(
                     decision.match.trigger.gate_cls.__gate_name__.lower(), []
                 )
 
-            # If whitelist match, wrap it with the match data, else pass thru
+            # If allowlist match, wrap it with the match data, else pass thru
             for rule in rules:
                 decision.match = rule.execute(decision.match)
 
@@ -1266,10 +1270,10 @@ class ExecutableBundle(VersionedEntityMixin):
         self.version = self.raw.get("version")
         self.comment = self.raw.get("comment")
         self.policies = {}
-        self.whitelists = {}
+        self.allowlists = {}
         self.mapping = None
         self.trusted_image_mappings = []
-        self.blacklisted_image_mappings = []
+        self.denylisted_image_mappings = []
 
         self.init_errors = []
         if tag:
@@ -1278,15 +1282,27 @@ class ExecutableBundle(VersionedEntityMixin):
             self.target_tag = None
 
         try:
-            # Build the mapping first, then build reachable policies and whitelists
+            # Build the mapping first, then build reachable policies and allowlists
             self.mapping = ExecutableMapping(
                 self.raw.get("mappings", []), rule_cls=PolicyMappingRule
             )
-            self.whitelisted_image_mapping = ExecutableMapping(
-                self.raw.get("whitelisted_images", [])
+            
+            allowlisted_images = self.raw.get("allowlisted_images", [])
+            # For backwards compatibility only
+            if not allowlisted_images:
+                allowlisted_images = self.raw.get("whitelisted_images", [])
+
+            self.allowlisted_image_mapping = ExecutableMapping(
+                allowlisted_images
             )
-            self.blacklisted_image_mapping = ExecutableMapping(
-                self.raw.get("blacklisted_images", [])
+            
+            denylisted_images = self.raw.get("denylisted_images", [])
+            # For backwards compatibility only
+            if not denylisted_images:
+                denylisted_images = self.raw.get("blacklisted_images", [])
+                
+            self.denylisted_image_mapping = ExecutableMapping(
+                denylisted_images
             )
 
             # If building for a specific tag target, only build the mapped rules, else build all rules
@@ -1329,22 +1345,27 @@ class ExecutableBundle(VersionedEntityMixin):
                     else:
                         self.init_errors.append(e)
 
-                # Build the whitelists for the rule
-                for wl in rule.whitelist_ids:
+                # Build the allowlists for the rule
+                for wl in rule.allowlist_ids:
                     try:
-                        whitelist = [
-                            x for x in self.raw.get("whitelists", []) if x["id"] == wl
+                        raw_al = self.raw.get("allowlists", [])
+                        if not raw_al:
+                            raw_al = self.raw.get("whitelists", [])                            
+                            
+                        allowlist = [
+                            x for x in raw_al if x["id"] == wl
                         ]
-                        if not whitelist:
+                        logger.info("MEHMEH: {} - {}".format(allowlist, raw_al))
+                        if not allowlist:
                             raise ReferencedObjectNotFoundError(
-                                reference_id=wl, reference_type="whitelist"
+                                reference_id=wl, reference_type="allowlist"
                             )
-                        elif len(whitelist) > 1:
+                        elif len(allowlist) > 1:
                             raise DuplicateIdentifierFoundError(
-                                identifier=wl, identifier_type="whitelist"
+                                identifier=wl, identifier_type="allowlist"
                             )
 
-                        self.whitelists[wl] = ExecutableWhitelist(whitelist[0])
+                        self.allowlists[wl] = ExecutableAllowlist(allowlist[0])
                     except Exception as e:
                         if isinstance(e, InitializationError):
                             self.init_errors += e.causes
@@ -1365,10 +1386,10 @@ class ExecutableBundle(VersionedEntityMixin):
                     raise ReferencedObjectNotFoundError(
                         reference_id=policy_id, reference_type="policy"
                     )
-            for w in m.whitelist_ids:
-                if w not in self.whitelists:
+            for w in m.allowlist_ids:
+                if w not in self.allowlists:
                     raise ReferencedObjectNotFoundError(
-                        reference_id=w, reference_type="whitelist"
+                        reference_id=w, reference_type="allowlist"
                     )
 
     def validate(self):
@@ -1380,7 +1401,7 @@ class ExecutableBundle(VersionedEntityMixin):
         return self.init_errors
 
     def _process_mapping(self, bundle_exec, image_object, tag):
-        # Execute the mapping to find the policy and whitelists to execute next
+        # Execute the mapping to find the policy and allowlists to execute next
 
         try:
             if self.mapping:
@@ -1435,9 +1456,9 @@ class ExecutableBundle(VersionedEntityMixin):
                         )
                         bundle_exec.errors += errors
 
-                    # Send thru the whitelist handlers
-                    for wl in bundle_exec.executed_mapping.whitelist_ids:
-                        policy_decision.decisions = self.whitelists[wl].execute(
+                    # Send thru the allowlist handlers
+                    for wl in bundle_exec.executed_mapping.allowlist_ids:
+                        policy_decision.decisions = self.allowlists[wl].execute(
                             policy_decision.decisions
                         )
 
@@ -1445,24 +1466,24 @@ class ExecutableBundle(VersionedEntityMixin):
             else:
                 errors = None
 
-            # Send thru the whitelist mapping
-            whitelisted_image_match = None
-            if self.whitelisted_image_mapping:
-                whitelisted_image_match = self.whitelisted_image_mapping.execute(
+            # Send thru the allowlist mapping
+            allowlisted_image_match = None
+            if self.allowlisted_image_mapping:
+                allowlisted_image_match = self.allowlisted_image_mapping.execute(
                     image_obj=image_object, tag=tag
                 )
 
-            # Send thru the blacklist mapping
-            blacklist_image_match = None
-            if self.blacklisted_image_mapping:
-                blacklist_image_match = self.blacklisted_image_mapping.execute(
+            # Send thru the denylist mapping
+            denylist_image_match = None
+            if self.denylisted_image_mapping:
+                denylist_image_match = self.denylisted_image_mapping.execute(
                     image_obj=image_object, tag=tag
                 )
 
             bundle_exec.bundle_decision = BundleDecision(
                 policy_decisions=policy_decisions,
-                whitelist_match=whitelisted_image_match,
-                blacklist_match=blacklist_image_match,
+                allowlist_match=allowlisted_image_match,
+                denylist_match=denylist_image_match,
             )
 
         except PolicyEvaluationError as e:
@@ -1508,7 +1529,7 @@ class ExecutableBundle(VersionedEntityMixin):
                 "version": self.version,
                 "comment": self.comment,
                 "policies": [p.json() for p in self.policies],
-                "whitelists": [w.json() for w in self.whitelists],
+                "allowlists": [w.json() for w in self.allowlists],
                 "mappings": self.mapping.json(),
             }
 

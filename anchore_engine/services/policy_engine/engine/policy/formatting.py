@@ -3,7 +3,7 @@ import uuid
 
 policy_line_format = "{gate}:{trigger}:{action}"
 param_format = "{name}={value} "
-whitelist_format = "{gate} {trigger}"
+allowlist_format = "{gate} {trigger}"
 
 
 def policy_json_to_txt(policy_json):
@@ -30,16 +30,16 @@ def policy_json_to_txt(policy_json):
     return ret
 
 
-def whitelist_json_to_txt(whitelist_json):
+def allowlist_json_to_txt(allowlist_json):
     """
     Taken from nurmi's branch of anchore
     """
 
     ret = []
-    if whitelist_json.get("version", None) == "1_0":
-        for item in whitelist_json["items"]:
+    if allowlist_json.get("version", None) == "1_0":
+        for item in allowlist_json["items"]:
             ret.append(
-                whitelist_format.format(gate=item["gate"], trigger=item["trigger_id"])
+                allowlist_format.format(gate=item["gate"], trigger=item["trigger_id"])
             )
 
     return ret
@@ -85,28 +85,29 @@ def policy_txt_to_json(policy_txt):
     return policy
 
 
-def whitelist_txt_to_json(whitelist_txt):
+def allowlist_txt_to_json(allowlist_txt):
     gen_date = datetime.datetime.utcnow().isoformat()
-    whitelist = {
+    allowlist = {
         "id": uuid.uuid4().get_hex(),  # Generate an id
-        "name": "GeneratedWhitelist-{}".format(gen_date),
+        "name": "GeneratedAllowlist-{}".format(gen_date),
         "version": "1_0",
-        "comment": "Whitelist json generated automatically from raw txt document on {}".format(
+        "comment": "Allowlist json generated automatically from raw txt document on {}".format(
             gen_date
         ),
         "items": [],
     }
-    for line in whitelist_txt.splitlines():
+    for line in allowlist_txt.splitlines():
         if line.startswith("#") or len(line.strip()) == 0:
             continue
 
         tokens = line.split(" ")
 
-        whitelist["items"].append({"gate": tokens[0], "trigger_id": tokens[1]})
-    return whitelist
+        allowlist["items"].append({"gate": tokens[0], "trigger_id": tokens[1]})
+    return allowlist
 
 
 conversion_map = {
-    "whitelist": {str: whitelist_txt_to_json, dict: whitelist_json_to_txt},
+    "allowlist": {str: allowlist_txt_to_json, dict: allowlist_json_to_txt},    
+    "whitelist": {str: allowlist_txt_to_json, dict: allowlist_json_to_txt},
     "policy": {str: policy_txt_to_json, dict: policy_json_to_txt},
 }

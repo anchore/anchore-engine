@@ -120,15 +120,16 @@ class BadVersionTrigger(BaseTrigger):
                 )
 
 
-class BlacklistedGemTrigger(BaseTrigger):
-    __trigger_name__ = "blacklist"
+class DenylistedGemTrigger(BaseTrigger):
+    __trigger_name__ = "denylist"
+    __msg_base__ = "Gem Package is denylisted: "    
     __description__ = "Triggers if the evaluated image has a GEM package installed that matches the specified name and version."
-
+    
     name = TriggerParameter(
         validator=TypeValidator("string"),
         name="name",
         is_required=True,
-        description="Gem name to blacklist.",
+        description="Gem name to denylist.",
         example_str="time_diff",
         sort_order=1,
     )
@@ -136,14 +137,14 @@ class BlacklistedGemTrigger(BaseTrigger):
         validator=TypeValidator("string"),
         name="version",
         is_required=False,
-        description="Optional version to blacklist specifically.",
+        description="Optional version to denylist specifically.",
         example_str="0.2.9",
         sort_order=2,
     )
 
     def evaluate(self, image_obj, context):
         """
-        Fire for any gem that is on the blacklist with a full name + version match
+        Fire for any gem that is on the denylist with a full name + version match
         :param image_obj:
         :param context:
         :return:
@@ -161,11 +162,15 @@ class BlacklistedGemTrigger(BaseTrigger):
 
         if name in pkgs:
             if version and version in pkgs.get(name, []):
-                self._fire(msg="Gem Package is blacklisted: " + name + "-" + version)
+                self._fire(msg=self.__msg_base__ + name + "-" + version)
             elif version is None:
-                self._fire(msg="Gem Package is blacklisted: " + name)
+                self._fire(msg=self.__msg_base__ + name)
 
-
+# For backward compatibility only
+class BlacklistedGemTrigger(DenylistedGemTrigger):
+    __trigger_name__ = "blacklist"
+    __msg_base__ = "Gem Package is blacklisted: "
+    
 class NoFeedTrigger(BaseTrigger):
     __trigger_name__ = "feed_data_unavailable"
     __description__ = "Triggers if anchore does not have access to the GEM data feed."
@@ -193,6 +198,7 @@ class GemCheckGate(Gate):
         NotOfficialTrigger,
         BadVersionTrigger,
         BlacklistedGemTrigger,
+        DenylistedGemTrigger,
         NoFeedTrigger,
     ]
 

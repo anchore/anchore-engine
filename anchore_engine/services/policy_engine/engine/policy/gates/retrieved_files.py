@@ -22,9 +22,9 @@ class RetrievedFileMixin(object):
 
     def get_file(self, context):
         """
-        Process a blacklist against pentries
+        Process a denylist against pentries
 
-        :param blacklist_items: list of strings to check for in pentry locations
+        :param denylist_items: list of strings to check for in pentry locations
         :param pentry_index: item index in the pentry to check against, -1 means user-name, and None means entire entry
         :param pentries_dict: {'username': <array form of a pentry minus usename> }
         :return: list of match tuples where each tuple is (<matched candidate>, <entire matching pentry>)

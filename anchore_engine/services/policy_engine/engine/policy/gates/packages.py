@@ -264,14 +264,15 @@ class RequiredPackageTrigger(BaseTrigger):
                 )
 
 
-class BlackListTrigger(BaseTrigger):
-    __trigger_name__ = "blacklist"
+class DenyListTrigger(BaseTrigger):
+    __trigger_name__ = "denylist"
+    __msg_base__ = "Package is denylisted: "
     __description__ = "Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well."
-
+    
     pkg_name = TriggerParameter(
         name="name",
         example_str="openssh-server",
-        description="Package name to blacklist.",
+        description="Package name to denylist.",
         sort_order=1,
         validator=TypeValidator("string"),
         is_required=True,
@@ -279,7 +280,7 @@ class BlackListTrigger(BaseTrigger):
     pkg_version = TriggerParameter(
         name="version",
         example_str="1.0.1",
-        description="Specific version of package to blacklist.",
+        description="Specific version of package to denylist.",
         validator=TypeValidator("string"),
         sort_order=2,
         is_required=False,
@@ -296,17 +297,21 @@ class BlackListTrigger(BaseTrigger):
                 )
                 for m in matches:
                     self._fire(
-                        msg="Package is blacklisted: " + m.name + "-" + m.version
+                        msg=self.__msg_base__ + m.name + "-" + m.version
                     )
             else:
                 matches = image_obj.packages.filter(ImagePackage.name == pkg)
                 for m in matches:
-                    self._fire(msg="Package is blacklisted: " + m.name)
+                    self._fire(msg=self.__msg_base__ + m.name)
         except Exception as e:
             logger.exception("Error filtering packages for full match")
             pass
 
-
+# For backwards compatibility only        
+class BlackListTrigger(DenyListTrigger):
+    __trigger_name__ = "blacklist"
+    __msg_base__ = "Package is blacklisted: "
+    
 class PackagesCheckGate(Gate):
     __gate_name__ = "packages"
     __description__ = "Distro package checks"
@@ -314,4 +319,5 @@ class PackagesCheckGate(Gate):
         RequiredPackageTrigger,
         VerifyTrigger,
         BlackListTrigger,
+        DenyListTrigger,
     ]

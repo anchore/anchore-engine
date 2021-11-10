@@ -781,7 +781,11 @@ definitions:
       whitelists:
         type: "array"
         items:
-          $ref: "#/definitions/Whitelist"
+          $ref: "#/definitions/Allowlist"
+      allowlists:
+        type: "array"
+        items:
+          $ref: "#/definitions/Allowlist"
       policies:
         type: "array"
         items:
@@ -791,16 +795,26 @@ definitions:
         items:
           $ref: "#/definitions/MappingRule"
       whitelisted_images:
-        description: List of mapping rules that define which images should always be passed (unless also on the blacklist), regardless of policy result.
+        description: List of mapping rules that define which images should always be passed (unless also on the denylist), regardless of policy result.
         type: array
         items:
           $ref: "#/definitions/ImageSelectionRule"
       blacklisted_images:
-        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in whitelisted_images
+        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in allowlisted_images
         type: array
         items:
           $ref: "#/definitions/ImageSelectionRule"
-  WhitelistItem:
+      allowlisted_images:
+        description: List of mapping rules that define which images should always be passed (unless also on the denylist), regardless of policy result.
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
+      denylisted_images:
+        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in allowlisted_images
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
+  AllowlistItem:
     type: object
     required:
     - "gate"
@@ -842,7 +856,7 @@ definitions:
               type: string
             value:
               type: string
-  Whitelist:
+  Allowlist:
     type: object
     required:
     - "id"
@@ -859,7 +873,7 @@ definitions:
       items:
         type: "array"
         items:
-          $ref: "#/definitions/WhitelistItem"
+          $ref: "#/definitions/AllowlistItem"
   ImageRef:
     type: object
     required:
@@ -921,7 +935,7 @@ definitions:
         type: string
       name:
         type: string
-      whitelist_ids:
+      allowlist_ids:
         type: array
         items:
           type: string
@@ -1073,8 +1087,8 @@ definitions:
       - final_action
       - matched_mapping_rule
       - result
-      - matched_whitelisted_images_rule
-      - matched_blacklisted_images_rule
+      - matched_allowlisted_images_rule
+      - matched_denylisted_images_rule
       - final_action_reason
     properties:
       user_id:
@@ -1091,18 +1105,18 @@ definitions:
         type: object
         description: >-
           The bundle mapping rule that was evaluated to result in the evaluated
-          policy and whitelists being selected
-      matched_whitelisted_images_rule:
+          policy and allowlists being selected
+      matched_allowlisted_images_rule:
         type: object
         description: The trusted image entry matched if any
-      matched_blacklisted_images_rule:
+      matched_denylisted_images_rule:
         type: object
-        description: The image blacklist entry matched if any
+        description: The image denylist entry matched if any
       result:
         type: object
         description: >-
           Object containing the evaluation result for the given policy and
-          whitelists against the image
+          allowlists against the image
       created_at:
         type: integer
         description: Epoch time on server of record creation
@@ -1118,6 +1132,8 @@ definitions:
         enum:
         - whitelisted
         - blacklisted
+        - allowlisted
+        - denylisted
         - policy_evaluation
       evaluation_problems:
         type: array
@@ -1137,7 +1153,11 @@ definitions:
       whitelists:
         type: "array"
         items:
-          $ref: "#/definitions/Whitelist"
+          $ref: "#/definitions/Allowlist"
+      allowlists:
+        type: "array"
+        items:
+          $ref: "#/definitions/Allowlist"
   PolicyEvaluationLight:
     type: object
     properties:
@@ -1150,7 +1170,11 @@ definitions:
       whitelists:
         type: array
         items:
-          $ref: "#/definitions/Whitelist"
+          $ref: "#/definitions/Allowlist"
+      allowlists:
+        type: array
+        items:
+          $ref: "#/definitions/Allowlist"
       evaluation_result:
         type: object
       evaluation_problems:

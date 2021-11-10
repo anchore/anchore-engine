@@ -86,13 +86,13 @@ def process_cve_status(old_cves_result=None, new_cves_result=None):
         new_cve_header,
         new_cve_rows,
         key_names=["CVE_ID", "Vulnerable_Package"],
-        whitelist_headers=summary_elements,
+        allowlist_headers=summary_elements,
     )
     old_cves = pivot_rows_to_keys(
         old_cve_header,
         old_cve_rows,
         key_names=["CVE_ID", "Vulnerable_Package"],
-        whitelist_headers=summary_elements,
+        allowlist_headers=summary_elements,
     )
     diff = item_diffs(old_cves, new_cves)
 
@@ -157,7 +157,7 @@ def map_rows(header_list, row_list):
     return mapped
 
 
-def pivot_rows_to_keys(header_list, row_list, key_names=[], whitelist_headers=None):
+def pivot_rows_to_keys(header_list, row_list, key_names=[], allowlist_headers=None):
     """
     Slightly more direct converter for header,row combo into a dict of objects
 
@@ -171,7 +171,7 @@ def pivot_rows_to_keys(header_list, row_list, key_names=[], whitelist_headers=No
         for v in [
             x
             for x in header_list
-            if not whitelist_headers or x in whitelist_headers or x in key_names
+            if not allowlist_headers or x in allowlist_headers or x in key_names
         ]
     }
 
@@ -190,16 +190,16 @@ def pivot_rows_to_keys(header_list, row_list, key_names=[], whitelist_headers=No
     }
 
 
-def filter_record_keys(record_list, whitelist_keys):
+def filter_record_keys(record_list, allowlist_keys):
     """
     Filter the list records to remove verbose entries and make it suitable for notification format
     :param record_dict: dict containing values to process
-    :param whitelist_keys: keys to leave in the record dicts
-    :return: a new list with dicts that only contain the whitelisted elements
+    :param allowlist_keys: keys to leave in the record dicts
+    :return: a new list with dicts that only contain the allowlisted elements
     """
 
     filtered = [
-        {k: v for k, v in [y for y in list(x.items()) if y[0] in whitelist_keys]}
+        {k: v for k, v in [y for y in list(x.items()) if y[0] in allowlist_keys]}
         for x in record_list
     ]
     return filtered

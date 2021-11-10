@@ -6,44 +6,49 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 )
 
 
-class FullMatchTrigger(BaseTrigger):
-    __trigger_name__ = "blacklist_exact_match"
+class FullMatchDenyTrigger(BaseTrigger):
+    __trigger_name__ = "denylist_exact_match"
+    __msg_base__ = "LICFULLMATCH Packages are installed that have denylisted licenses: "    
     __description__ = "Triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s)."
-
-    license_blacklist = CommaDelimitedStringListParameter(
+    
+    license_denylist = CommaDelimitedStringListParameter(
         name="licenses",
         example_str="GPLv2+,GPL-3+,BSD-2-clause",
-        description="List of license names to blacklist exactly.",
+        description="List of license names to denylist exactly.",
         is_required=True,
     )
 
     def evaluate(self, image_obj, context):
         fullmatchpkgs = []
-        blacklist = (
-            [x.strip() for x in self.license_blacklist.value()]
-            if self.license_blacklist.value()
+        denylist = (
+            [x.strip() for x in self.license_denylist.value()]
+            if self.license_denylist.value()
             else []
         )
 
         for pkg, license in context.data.get("licenses", []):
-            if license in blacklist:
+            if license in denylist:
                 fullmatchpkgs.append(pkg + "(" + license + ")")
 
         if fullmatchpkgs:
             self._fire(
-                msg="LICFULLMATCH Packages are installed that have blacklisted licenses: "
-                + ", ".join(fullmatchpkgs)
+                msg=self.__msg_base__ + ", ".join(fullmatchpkgs)
             )
 
+# For backward compatibility only
+class FullMatchTrigger(FullMatchDenyTrigger):
+    __trigger_name__ = "blacklist_exact_match"
+    __msg_base__ = "LICFULLMATCH Packages are installed that have blacklisted licenses: "
 
-class SubstringMatchTrigger(BaseTrigger):
-    __trigger_name__ = "blacklist_partial_match"
+class SubstringMatchDenyTrigger(BaseTrigger):
+    __trigger_name__ = "denylist_partial_match"
+    __msg_base__ = "LICSUBMATCH Packages are installed that have denylisted licenses: "    
     __description__ = "triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)"
-
-    licenseblacklist_submatches = CommaDelimitedStringListParameter(
+    
+    licensedenylist_submatches = CommaDelimitedStringListParameter(
         name="licenses",
         example_str="LGPL,BSD",
-        description="List of strings to do substring match for blacklist.",
+        description="List of strings to do substring match for denylist.",
         is_required=True,
     )
 
@@ -51,8 +56,8 @@ class SubstringMatchTrigger(BaseTrigger):
         matchpkgs = []
 
         match_vals = (
-            [x.strip() for x in self.licenseblacklist_submatches.value()]
-            if self.licenseblacklist_submatches.value()
+            [x.strip() for x in self.licensedenylist_submatches.value()]
+            if self.licensedenylist_submatches.value()
             else []
         )
 
@@ -63,17 +68,21 @@ class SubstringMatchTrigger(BaseTrigger):
 
         if matchpkgs:
             self._fire(
-                msg="LICSUBMATCH Packages are installed that have blacklisted licenses: "
-                + ", ".join(matchpkgs)
+                msg = self.__msg_base__ + ", ".join(matchpkgs)
             )
 
-
+# For backwards compatibility only
+class SubstringMatchTrigger(SubstringMatchDenyTrigger):
+    __trigger_name__ = "blacklist_partial_match"
+    __msg_base__ = "LICSUBMATCH Packages are installed that have blacklisted licenses: "
+    
+    
 class LicensesGate(Gate):
     __gate_name__ = "licenses"
     __description__ = (
         "License checks against found software licenses in the container image"
     )
-    __triggers__ = [FullMatchTrigger, SubstringMatchTrigger]
+    __triggers__ = [FullMatchTrigger, SubstringMatchTrigger, FullMatchDenyTrigger, SubstringMatchDenyTrigger]
 
     def prepare_context(self, image_obj, context):
         """

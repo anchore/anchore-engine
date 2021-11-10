@@ -86,7 +86,7 @@ class ParameterizedDockerfileModeBaseTrigger(BaseTrigger):
 
 class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
     __trigger_name__ = "effective_user"
-    __description__ = "Checks if the effective user matches the provided user names, either as a whitelist or blacklist depending on the type parameter setting."
+    __description__ = "Checks if the effective user matches the provided user names, either as a allowlist or denylist depending on the type parameter setting."
 
     user = CommaDelimitedStringListParameter(
         name="users",
@@ -98,8 +98,8 @@ class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
     )
     allowed_type = EnumStringParameter(
         name="type",
-        enum_values=["whitelist", "blacklist"],
-        example_str="blacklist",
+        enum_values=["whitelist", "blacklist", "allowlist", "denylist"],
+        example_str="denylist",
         description="How to treat the provided user names.",
         is_required=True,
         sort_order=2,
@@ -109,7 +109,7 @@ class EffectiveUserTrigger(DockerfileModeCheckedBaseTrigger):
 
     def _evaluate(self, image_obj, context):
         rule_users = self.user.value()
-        is_allowed = self.allowed_type.value().lower() == "whitelist"
+        is_allowed = self.allowed_type.value().lower() in ["whitelist", "allowlist"]
 
         user_lines = context.data.get("prepared_dockerfile").get("USER", [])
 
@@ -228,7 +228,7 @@ class InstructionCheckTrigger(ParameterizedDockerfileModeBaseTrigger):
 
 class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
     __trigger_name__ = "exposed_ports"
-    __description__ = "Evaluates the set of ports exposed. Allows configuring whitelist or blacklist behavior. If type=whitelist, then any ports found exposed that are not in the list will cause the trigger to fire. If type=blacklist, then any ports exposed that are in the list will cause the trigger to fire."
+    __description__ = "Evaluates the set of ports exposed. Allows configuring allowlist or denylist behavior. If type=allowlist, then any ports found exposed that are not in the list will cause the trigger to fire. If type=denylist, then any ports exposed that are in the list will cause the trigger to fire."
 
     ports = CommaDelimitedNumberListParameter(
         name="ports",
@@ -239,20 +239,20 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
     )
     allowed_type = EnumStringParameter(
         name="type",
-        example_str="blacklist",
-        enum_values=["whitelist", "blacklist"],
-        description="Whether to use port list as a whitelist or blacklist.",
+        example_str="denylist",
+        enum_values=["whitelist", "blacklist", "allowlist", "denylist"],
+        description="Whether to use port list as a allowlist or denylist.",
         is_required=True,
         sort_order=2,
     )
 
     def _evaluate(self, image_obj, context):
-        if self.allowed_type.value().lower() == "whitelist":
-            whitelisted_ports = [str(x) for x in self.ports.value(default_if_none=[])]
-            blacklisted_ports = []
-        elif self.allowed_type.value().lower() == "blacklist":
-            whitelisted_ports = []
-            blacklisted_ports = [str(x) for x in self.ports.value(default_if_none=[])]
+        if self.allowed_type.value().lower() in ["whitelist", "allowlist"]:
+            allowlisted_ports = [str(x) for x in self.ports.value(default_if_none=[])]
+            denylisted_ports = []
+        elif self.allowed_type.value().lower() in ["blacklist", "denylist"]:
+            allowlisted_ports = []
+            denylisted_ports = [str(x) for x in self.ports.value(default_if_none=[])]
         else:
             raise ValueError(
                 'Invalid value for "type" parameter: {}'.format(
@@ -272,14 +272,14 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
 
             if matchstr:
                 iexpose = matchstr.split()
-                if blacklisted_ports:
-                    if 0 in blacklisted_ports and len(iexpose) > 0:
+                if denylisted_ports:
+                    if 0 in denylisted_ports and len(iexpose) > 0:
                         self._fire(
                             msg="Dockerfile exposes network ports but policy sets DENIEDPORTS=0: "
                             + str(iexpose)
                         )
                     else:
-                        for p in blacklisted_ports:
+                        for p in denylisted_ports:
                             if p in iexpose:
                                 self._fire(
                                     msg="Dockerfile exposes port ("
@@ -299,14 +299,14 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
                                     + "/udp) which is in policy file DENIEDPORTS list"
                                 )
 
-                if whitelisted_ports:
-                    if 0 in whitelisted_ports and len(iexpose) > 0:
+                if allowlisted_ports:
+                    if 0 in allowlisted_ports and len(iexpose) > 0:
                         self._fire(
                             msg="Dockerfile exposes network ports but policy sets ALLOWEDPORTS=0: "
                             + str(iexpose)
                         )
                     else:
-                        for p in whitelisted_ports:
+                        for p in allowlisted_ports:
                             done = False
                             while not done:
                                 try:

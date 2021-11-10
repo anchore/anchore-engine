@@ -687,8 +687,8 @@ class UnsupportedDistroTrigger(BaseTrigger):
             )
 
 
-class VulnerabilityBlacklistTrigger(BaseTrigger):
-    __trigger_name__ = "blacklist"
+class VulnerabilityDenylistTrigger(BaseTrigger):
+    __trigger_name__ = "denylist"
     __description__ = "Triggers if any of a list of specified vulnerabilities has been detected in the image."
 
     vulnerability_ids = CommaDelimitedStringListParameter(
@@ -730,10 +730,13 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
 
         if found_vids:
             self._fire(
-                msg="Blacklisted vulnerabilities detected: {}".format(found_vids)
+                msg="Denylisted vulnerabilities detected: {}".format(found_vids)
             )
 
-
+# For backward compatibility only            
+class VulnerabilityBlacklistTrigger(VulnerabilityDenylistTrigger):
+    __trigger_name__ = "blacklist"
+    
 class VulnerabilitiesGate(Gate):
     __gate_name__ = "vulnerabilities"
     __description__ = "CVE/Vulnerability checks."
@@ -742,6 +745,7 @@ class VulnerabilitiesGate(Gate):
         FeedOutOfDateTrigger,
         UnsupportedDistroTrigger,
         VulnerabilityBlacklistTrigger,
+        VulnerabilityDenylistTrigger,        
     ]
 
     def prepare_context(self, image_obj, context):

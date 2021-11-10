@@ -517,8 +517,8 @@ class PolicyEvaluation(JsonSerializable):
         tag = fields.Str()
         bundle = fields.Dict()
         matched_mapping_rule = fields.Dict()
-        matched_whitelisted_images_rule = fields.Dict()
-        matched_blacklisted_images_rule = fields.Dict()
+        matched_allowlisted_images_rule = fields.Dict()
+        matched_denylisted_images_rule = fields.Dict()
         result = fields.Dict()
         created_at = fields.Int()
         last_modified = fields.Int()
@@ -541,8 +541,8 @@ class PolicyEvaluation(JsonSerializable):
         tag=None,
         bundle=None,
         matched_mapping_rule=None,
-        matched_whitelisted_images_rule=None,
-        matched_blacklisted_images_rule=None,
+        matched_allowlisted_images_rule=None,
+        matched_denylisted_images_rule=None,
         result=None,
         created_at=None,
         last_modified=None,
@@ -555,8 +555,8 @@ class PolicyEvaluation(JsonSerializable):
         self.tag = tag
         self.bundle = bundle
         self.matched_mapping_rule = matched_mapping_rule
-        self.matched_whitelisted_images_rule = matched_whitelisted_images_rule
-        self.matched_blacklisted_images_rule = matched_blacklisted_images_rule
+        self.matched_allowlisted_images_rule = matched_allowlisted_images_rule
+        self.matched_denylisted_images_rule = matched_denylisted_images_rule
         self.result = result
         self.created_at = created_at
         self.last_modified = last_modified

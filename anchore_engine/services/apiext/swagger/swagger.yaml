@@ -3208,7 +3208,7 @@ definitions:
       digest:
         type: string
   PolicyBundle:
-    description: A bundle containing a set of policies, whitelists, and rules for mapping them to specific images
+    description: A bundle containing a set of policies, allowlists, and rules for mapping them to specific images
     type: object
     required:
       - id
@@ -3229,31 +3229,46 @@ definitions:
         type: string
         description: Version id for this bundle format
       whitelists:
-        description: Whitelists which define which policy matches to disregard explicitly in the final policy decision
+        description: Allowlists which define which policy matches to disregard explicitly in the final policy decision
         type: array
         items:
-          $ref: "#/definitions/Whitelist"
+          $ref: "#/definitions/Allowlist"
+      allowlists:
+        description: Allowlists which define which policy matches to disregard explicitly in the final policy decision
+        type: array
+        items:
+          $ref: "#/definitions/Allowlist"	  
       policies:
         description: Policies which define the go/stop/warn status of an image using rule matches on image properties
         type: "array"
         items:
           $ref: "#/definitions/Policy"
       mappings:
-        description: Mapping rules for defining which policy and whitelist(s) to apply to an image based on a match of the image tag or id. Evaluated in order.
+        description: Mapping rules for defining which policy and allowlist(s) to apply to an image based on a match of the image tag or id. Evaluated in order.
         type: "array"
         items:
           $ref: "#/definitions/MappingRule"
       whitelisted_images:
-        description: List of mapping rules that define which images should always be passed (unless also on the blacklist), regardless of policy result.
+        description: List of mapping rules that define which images should always be passed (unless also on the denylist), regardless of policy result.
         type: array
         items:
           $ref: "#/definitions/ImageSelectionRule"
       blacklisted_images:
-        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in whitelisted_images
+        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in allowlisted_images
         type: array
         items:
           $ref: "#/definitions/ImageSelectionRule"
-  WhitelistItem:
+      allowlisted_images:
+        description: List of mapping rules that define which images should always be passed (unless also on the denylist), regardless of policy result.
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"
+      denylisted_images:
+        description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in allowlisted_images
+        type: array
+        items:
+          $ref: "#/definitions/ImageSelectionRule"	  
+  AllowlistItem:
     type: object
     description: Identifies a specific gate and trigger match from a policy against an image and indicates it should be ignored in final policy decisions
     required:
@@ -3301,9 +3316,9 @@ definitions:
               type: string
             value:
               type: string
-  Whitelist:
+  Allowlist:
     type: object
-    description: A collection of whitelist items to match a policy evaluation against.
+    description: A collection of allowlist items to match a policy evaluation against.
     required:
       - id
       - version
@@ -3319,7 +3334,7 @@ definitions:
       items:
         type: array
         items:
-          $ref: "#/definitions/WhitelistItem"
+          $ref: "#/definitions/AllowlistItem"
   ImageRef:
     type: object
     description: A reference to an image
@@ -3405,7 +3420,7 @@ definitions:
         type: string
       name:
         type: string
-      whitelist_ids:
+      allowlist_ids:
         type: array
         items:
           type: string

@@ -120,15 +120,16 @@ class BadVersionTrigger(BaseTrigger):
                 )
 
 
-class PkgMatchTrigger(BaseTrigger):
-    __trigger_name__ = "blacklisted_name_version"
+class PkgMatchDenyTrigger(BaseTrigger):
+    __trigger_name__ = "denylisted_name_version"
+    __msg_base__ = "NPM Package is denylisted: "
     __description__ = "Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters."
 
     name = TriggerParameter(
         validator=TypeValidator("string"),
         name="name",
         is_required=True,
-        description="Npm package name to blacklist.",
+        description="Npm package name to denylist.",
         example_str="time_diff",
         sort_order=1,
     )
@@ -136,14 +137,14 @@ class PkgMatchTrigger(BaseTrigger):
         validator=TypeValidator("string"),
         name="version",
         is_required=False,
-        description="Npm package version to blacklist specifically.",
+        description="Npm package version to denylist specifically.",
         example_str="0.2.9",
         sort_order=2,
     )
 
     def evaluate(self, image_obj, context):
         """
-        Fire for any npm that is on the blacklist with a full name + version match
+        Fire for any npm that is on the denylist with a full name + version match
         :param image_obj:
         :param context:
         :return:
@@ -164,9 +165,13 @@ class PkgMatchTrigger(BaseTrigger):
             if not pkg_versions:
                 pkg_versions = []
             if version and version in pkg_versions:
-                self._fire(msg="NPM Package is blacklisted: " + name + "-" + version)
+                self._fire(msg=self.__msg_base__ + name + "-" + version)
             elif version is None:
-                self._fire(msg="NPM Package is blacklisted: " + name)
+                self._fire(msg=self.__msg_base__ + name)
+
+class PkgMatchTrigger(PkgMatchDenyTrigger):
+    __trigger_name__ = "blacklisted_name_version"
+    __msg_base__ = "NPM Package is blacklisted: "
 
 
 class NoFeedTrigger(BaseTrigger):
