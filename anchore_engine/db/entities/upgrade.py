@@ -1967,29 +1967,33 @@ def remove_incorrect_github_vuln_data():
     """
     engine = anchore_engine.db.entities.common.get_engine()
 
-    namespace_names = "('github:os', 'github:unknown')"
+    namespace_names = ["github:os", "github:unknown"]
+
     to_delete = (
-        (ImagePackageVulnerability.__tablename__, "vulnerability_namespace_name"),
-        (VulnerableArtifact.__tablename__, "namespace_name"),
-        (FixedArtifact.__tablename__, "namespace_name"),
-        (Vulnerability.__tablename__, "namespace_name"),
-        (FeedGroupMetadata.__tablename__, "name"),
+        (ImagePackageVulnerability, ImagePackageVulnerability.vulnerability_namespace_name),
+        (VulnerableArtifact, VulnerableArtifact.namespace_name),
+        (FixedArtifact, FixedArtifact.namespace_name),
+        (Vulnerability, Vulnerability.namespace_name),
+        (FeedGroupMetadata, FeedGroupMetadata.name),
     )
 
-    for table_name, col_name in to_delete:
+    for type, column in to_delete:
         log.err(
             "Removing records from table {} where {} is {}".format(
-                table_name, col_name, namespace_names
+                type, column, namespace_names
             ),
         )
 
         try:
-            engine.execute(
-                f"DELETE from {table_name} WHERE {col_name} IN {namespace_names}"
-            )
+            with session_scope() as session:
+                results = session.query(type).filter(
+                    column.in_(namespace_names)
+                ).all()
+                for result in results:
+                    session.delete(result)
         except Exception as e:
             err_string = (
-                f"Failed to perform deletion on {table_name} - exception: {str(e)}"
+                f"Failed to perform deletion on {type} - exception: {str(e)}"
             )
             log.err(err_string)
             raise Exception(err_string)
