@@ -3237,7 +3237,7 @@ definitions:
         description: Allowlists which define which policy matches to disregard explicitly in the final policy decision
         type: array
         items:
-          $ref: "#/definitions/Allowlist"	  
+          $ref: "#/definitions/Allowlist"
       policies:
         description: Policies which define the go/stop/warn status of an image using rule matches on image properties
         type: "array"
@@ -3267,7 +3267,7 @@ definitions:
         description: List of mapping rules that define which images should always result in a STOP/FAIL policy result regardless of policy content or presence in allowlisted_images
         type: array
         items:
-          $ref: "#/definitions/ImageSelectionRule"	  
+          $ref: "#/definitions/ImageSelectionRule"
   AllowlistItem:
     type: object
     description: Identifies a specific gate and trigger match from a policy against an image and indicates it should be ignored in final policy decisions
