@@ -74,8 +74,7 @@ RUN set -ex && \
     pip3 wheel --wheel-dir=/build_output/wheels . && \
     cp ./LICENSE /build_output/ && \
     cp ./conf/default_config.yaml /build_output/configs/default_config.yaml && \
-    cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh && \
-    cp -R ./anchore_engine/conf/clamav /build_output/configs/
+    cp ./docker-entrypoint.sh /build_output/configs/docker-entrypoint.sh
 
 # create p1 buildblob & checksum
 RUN set -ex && \
@@ -233,7 +232,7 @@ RUN set -ex && \
     md5sum /config/config.yaml > /config/build_installed && \
     cp /build_output/configs/docker-entrypoint.sh /docker-entrypoint.sh && \
     chmod +x /docker-entrypoint.sh && \
-    cp /build_output/configs/clamav/freshclam.conf /home/anchore/clamav/ && \
+    cp -R $(pip3 show anchore-engine | grep Location: | cut -c 11-)/anchore_engine/conf/clamav/freshclam.conf /home/anchore/clamav/ && \
     chmod -R ug+rw /home/anchore/clamav && \
     # clean up unnecessary artifacts from filesystem
     yum clean all && \
