@@ -48,7 +48,7 @@ RUN set -ex && \
 RUN set -ex && \
     echo "downloading OS dependencies" && \
     pip3 download -d /build_output/wheels pip=="${PIP_VERSION}" && \
-    yum install -y --downloadonly --downloaddir=/build_output/build_deps/ \
+    yum install -y --downloadonly --downloaddir=/build_output/deps/ \
         clamav \
         clamav-update \
         dpkg
@@ -57,11 +57,11 @@ RUN set -ex && \
     echo "downloading anchore-cli" && \
     pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@"${CLI_COMMIT}"\#egg=anchorecli
 
-RUN set -ex && \
+RUN set -exo pipefail && \
     echo "downloading Syft" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /build_output/deps "${SYFT_VERSION}"
 
-RUN set -ex && \
+RUN set -exo pipefail && \
     echo "downloading Grype" && \
     curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /build_output/deps "${GRYPE_VERSION}"
 
@@ -208,24 +208,27 @@ RUN set -ex && \
 # Copy the installed artifacts from the first stage
 COPY --from=anchore-engine-builder /build_output /build_output
 
-# install application & all dependencies from /build_output
+# Install anchore-cli into a virtual environment
 RUN set -ex && \
     echo "updating pip" && \
     pip3 install --upgrade --no-index --find-links=/build_output/wheels/ pip && \
-    # Install anchore-cli into a virtual environment
     echo "installing anchore-cli into virtual environment" && \
     python3 -m venv /anchore-cli && \
     source /anchore-cli/bin/activate && \
     pip3 install --no-index --find-links=/build_output/cli_wheels/ anchorecli && \
-    deactivate && \
-    # Install anchore-engine & required dependencies
-    echo "installing anchore-engine and required dependencies" && \
-    pip3 install --no-index --find-links=/build_output/wheels/ anchore-engine && \
-    # copy all staged dependent binaries to PATH
+    deactivate
+
+# Install required OS deps & application config files
+RUN set -exo pipefail && \
     cp /build_output/deps/syft /usr/bin/syft && \
     cp /build_output/deps/grype /usr/bin/grype && \
-    yum install -y /build_output/build_deps/*.rpm && \
-    # Copy default application configuration files
+    yum install -y /build_output/deps/*.rpm && \
+    yum clean all
+
+# Install anchore-engine & cleanup filesystem
+RUN set -ex && \
+    echo "installing anchore-engine and required dependencies" && \
+    pip3 install --no-index --find-links=/build_output/wheels/ anchore-engine && \
     echo "copying default application config files" && \
     cp /build_output/LICENSE /licenses/ && \
     cp /build_output/configs/default_config.yaml /config/config.yaml && \
@@ -234,8 +237,6 @@ RUN set -ex && \
     chmod +x /docker-entrypoint.sh && \
     cp -R $(pip3 show anchore-engine | grep Location: | cut -c 11-)/anchore_engine/conf/clamav/freshclam.conf /home/anchore/clamav/ && \
     chmod -R ug+rw /home/anchore/clamav && \
-    # clean up unnecessary artifacts from filesystem
-    yum clean all && \
     echo "cleaning up unneccesary files used for testing/cache/build" && \
     rm -rf \
         /build_output \
