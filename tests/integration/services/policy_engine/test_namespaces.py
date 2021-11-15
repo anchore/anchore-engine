@@ -231,8 +231,12 @@ def test_distromappings(initialized_mappings):
     assert c7.like_namespace_names == ["rhel:7"]
 
     r7 = DistroNamespace(name="rhel", version="7", like_distro="rhel")
-    assert set(r7.mapped_names()) == {"centos", "fedora", "rhel", "redhat"}
+    assert set(r7.mapped_names()) == {"centos", "fedora", "rhel", "redhat", "rocky"}
     assert r7.like_namespace_names == ["rhel:7"]
+
+    rocky7 = DistroNamespace(name="rocky", version="7", like_distro="rhel")
+    assert rocky7.mapped_names() == []
+    assert rocky7.like_namespace_names == ["rhel:7"]
 
     assert sorted(DistroMapping.distros_mapped_to("rhel", "7")) == sorted(
         [
@@ -240,6 +244,7 @@ def test_distromappings(initialized_mappings):
             DistroTuple("rhel", "7", "RHEL"),
             DistroTuple("centos", "7", "RHEL"),
             DistroTuple("fedora", "7", "RHEL"),
+            DistroTuple("rocky", "7", "RHEL"),
         ]
     )
 
@@ -250,4 +255,7 @@ def test_mapped_distros(initialized_mappings):
     ]
     assert DistroMapping.distros_for("centos", "6", "centos") == [
         DistroTuple("rhel", "6", "RHEL")
+    ]
+    assert DistroMapping.distros_for("rocky", "8", "rhel") == [
+        DistroTuple("rhel", "8", "RHEL")
     ]

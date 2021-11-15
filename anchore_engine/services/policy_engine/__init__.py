@@ -137,6 +137,7 @@ def _init_distro_mappings():
         DistroMapping(
             from_distro="sles", to_distro="sles", flavor="RHEL"
         ),  # RHEL since it uses RPMs for version checks
+        DistroMapping(from_distro="rocky", to_distro="rhel", flavor="RHEL"),
     ]
 
     # set up any data necessary at system init

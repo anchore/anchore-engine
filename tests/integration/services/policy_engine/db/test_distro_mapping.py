@@ -75,5 +75,10 @@ def test_distro_from(anchore_db):
         logger.info("Distros for magaiea 5 (fedora, mandriva) = {}".format(distros))
         assert distros is not None
         assert len(distros) == 1
+
+        distros = DistroMapping.distros_for("rocky", "8", "rhel")
+        logger.info("Distros for rocky 8 (rhel) = {}".format(distros))
+        assert distros is not None
+        assert len(distros) == 1
     finally:
         session.commit()
