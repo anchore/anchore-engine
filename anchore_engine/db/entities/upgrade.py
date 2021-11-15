@@ -25,12 +25,15 @@ from anchore_engine.configuration.localconfig import (
     SYSTEM_ACCOUNT_NAME,
 )
 from anchore_engine.db import (
+    FeedGroupMetadata,
     Image,
     ImageGem,
     ImageNpm,
     ImagePackage,
+    ImagePackageVulnerability,
     LegacyArchiveDocument,
     ObjectStorageMetadata,
+    Vulnerability,
     db_anchore,
     db_archivedocument,
     db_catalog_image,
@@ -1955,6 +1958,51 @@ def db_upgrade_013_014():
     upgrade_oauth_client_014()
 
 
+def remove_incorrect_github_vuln_data():
+    """
+    Github feed data was being processed under incorrect types 'github:os' and 'github:unknown'. This function removes
+    those vulnerability records synced by the policy engine because they are incorrect data
+    """
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    namespace_names = ["github:os", "github:unknown"]
+
+    to_delete = (
+        (
+            ImagePackageVulnerability,
+            ImagePackageVulnerability.vulnerability_namespace_name,
+        ),
+        (Vulnerability, Vulnerability.namespace_name),
+        (FeedGroupMetadata, FeedGroupMetadata.name),
+    )
+
+    for type, column in to_delete:
+        log.err(
+            "Removing records from table {} where {} is {}".format(
+                type, column, namespace_names
+            ),
+        )
+
+        try:
+            with session_scope() as session:
+                results = session.query(type).filter(column.in_(namespace_names)).all()
+                log.err(f"Deleting {len(results)} records from {type.__tablename__}")
+                for result in results:
+                    session.delete(result)
+        except Exception as e:
+            err_string = f"Failed to perform deletion on {type} - exception: {str(e)}"
+            log.err(err_string)
+            raise Exception(err_string)
+
+
+def db_upgrade_015_016():
+    """
+    Run upgrade tasks for version 14 to 15 of the db. This includes the folowing:
+        - Remove 'github:os' and 'github:unknown' vulnerability entries from policy engine
+    """
+    remove_incorrect_github_vuln_data()
+
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -1972,4 +2020,5 @@ upgrade_functions = (
     (("0.0.11", "0.0.12"), [db_upgrade_011_012]),
     (("0.0.12", "0.0.13"), [db_upgrade_012_013]),
     (("0.0.13", "0.0.14"), [db_upgrade_013_014]),
+    (("0.0.15", "0.0.16"), [db_upgrade_015_016]),
 )
