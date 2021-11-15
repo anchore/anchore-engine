@@ -694,6 +694,9 @@ ENGINE_DISTRO_MAPPERS = {
     "windows": DistroMapper(
         engine_distro="windows", grype_os="windows", grype_like_os=""
     ),
+    "rocky": DistroMapper(
+        engine_distro="rocky", grype_os="rockylinux", grype_like_os="fedora"
+    ),
 }
 
 
