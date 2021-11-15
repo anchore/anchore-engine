@@ -41,6 +41,7 @@ def init_distro_mappings():
         DistroMapping(from_distro="ol", to_distro="ol", flavor="RHEL"),
         DistroMapping(from_distro="rhel", to_distro="centos", flavor="RHEL"),
         DistroMapping(from_distro="ubuntu", to_distro="ubuntu", flavor="DEB"),
+        DistroMapping(from_distro="rocky", to_distro="rhel", flavor="RHEL"),
     ]
 
     # set up any data necessary at system init
