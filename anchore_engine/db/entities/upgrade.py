@@ -26,7 +26,6 @@ from anchore_engine.configuration.localconfig import (
 )
 from anchore_engine.db import (
     FeedGroupMetadata,
-    FixedArtifact,
     Image,
     ImageGem,
     ImageNpm,
@@ -35,7 +34,6 @@ from anchore_engine.db import (
     LegacyArchiveDocument,
     ObjectStorageMetadata,
     Vulnerability,
-    VulnerableArtifact,
     db_anchore,
     db_archivedocument,
     db_catalog_image,
@@ -1974,8 +1972,6 @@ def remove_incorrect_github_vuln_data():
             ImagePackageVulnerability,
             ImagePackageVulnerability.vulnerability_namespace_name,
         ),
-        (VulnerableArtifact, VulnerableArtifact.namespace_name),
-        (FixedArtifact, FixedArtifact.namespace_name),
         (Vulnerability, Vulnerability.namespace_name),
         (FeedGroupMetadata, FeedGroupMetadata.name),
     )
@@ -1990,6 +1986,7 @@ def remove_incorrect_github_vuln_data():
         try:
             with session_scope() as session:
                 results = session.query(type).filter(column.in_(namespace_names)).all()
+                log.err(f"Deleting {len(results)} records from {type.__tablename__}")
                 for result in results:
                     session.delete(result)
         except Exception as e:
