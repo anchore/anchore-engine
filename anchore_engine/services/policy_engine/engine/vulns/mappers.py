@@ -769,6 +769,13 @@ def image_content_to_grype_sbom(image: Image, image_content_map: Dict) -> Dict:
     # initialize the sbom
     sbom = dict()
 
+    # set the schema version, this whole fn could be refactored as a versioned transformer
+    # not refactoring since use of source sbom will make this transformation moot
+    sbom["schema"] = {
+        "version": "1.1.0",
+        "url": "https://raw.githubusercontent.com/anchore/syft/main/schema/json/schema-1.1.0.json",
+    }
+
     # set the distro information
     sbom["distro"] = distro_mapper.to_grype_distro(image.distro_version)
     sbom["source"] = {
