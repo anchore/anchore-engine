@@ -2,14 +2,6 @@
 
 For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://engine.anchore.io).
 
-## We'll be at KubeCon 2021!
-
-Attending KubeCon 2021 in person? Join us for a meetup on **Tuesday, October 12th**.
-
-We’ll have free swag, giveaways, snacks, and sips. Space will be limited, so make sure to [save your seat](https://get.anchore.com/2021-kubecon-na-opensource-happy-hour/)!
-
----
-
 The Anchore Engine is an open-source project that provides a centralized service for inspection, analysis, and certification of container images. The Anchore Engine is provided as a Docker container image that can be run standalone or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
 
 In addition, we also have several modular container tools that can be run standalone or integrated into automated workflows such as CI/CD pipelines.
