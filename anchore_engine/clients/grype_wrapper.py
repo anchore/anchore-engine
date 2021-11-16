@@ -7,7 +7,7 @@ import tarfile
 from contextlib import contextmanager
 from dataclasses import dataclass
 from json.decoder import JSONDecodeError
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import sqlalchemy
 from readerwriterlock import rwlock
@@ -806,32 +806,29 @@ class GrypeWrapperSingleton(object):
             return json.loads(stdout)
 
     def query_vulnerability_metadata(
-        self, vuln_ids: list = [], namespaces: list = []
+        self, vuln_ids: List[str], namespaces: List[str]
     ) -> Iterable[GrypeVulnerabilityMetadata]:
         """
         Provided a list of vulnerability ids and namespaces, returns a list of matching GrypeVulnerabilityMetadata records
         """
 
-        if not vuln_ids and not namespaces:
-            logger.debug(
-                "No vulnerabilities or namespaces provided for query. Returning empty array"
-            )
+        if not vuln_ids:
+            logger.debug("No vulnerabilities provided for query")
             return []
 
         with self.read_lock_access():
             logger.debug(
-                "Querying grype_db for GrypeVulenrabilityMetadata records matching vuln_id: %s, namespace: %s",
+                "Querying grype_db for GrypeVulenrabilityMetadata records matching vuln_ids: %s, namespace: %s",
                 vuln_ids,
                 namespaces,
             )
 
             with self.grype_session_scope() as session:
-                query = session.query(GrypeVulnerabilityMetadata)
+                query = session.query(GrypeVulnerabilityMetadata).filter(
+                    GrypeVulnerabilityMetadata.id.in_(vuln_ids)
+                )
 
-                if vuln_ids is not None:
-                    query = query.filter(GrypeVulnerabilityMetadata.id.in_(vuln_ids))
-
-                if namespaces is not None:
+                if namespaces:
                     query = query.filter(
                         GrypeVulnerabilityMetadata.namespace.in_(namespaces)
                     )

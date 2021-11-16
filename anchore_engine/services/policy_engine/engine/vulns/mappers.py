@@ -940,7 +940,9 @@ class EngineGrypeDBMapper:
 
         return result
 
-    def _cvss_from_grype_raw_result(self, grype_vulnerability_metadata) -> list:
+    def _cvss_from_grype_raw_result(
+        self, grype_vulnerability_metadata: GrypeVulnerabilityMetadata
+    ) -> List:
         """
         Given the raw grype vulnerability input, returns a dict of its cvss scores
         """
@@ -955,76 +957,6 @@ class EngineGrypeDBMapper:
 
         return vulnerability_cvss_data
 
-    def _vendor_cvss_data(self, grype_vulnerability_metadata) -> List[dict]:
-        """
-        Returns the vendor_cvss_data for grype vulnerability metadata record if applicable.
-        If record is nvd namespace, returns empty array because no applicable vendor data
-        If the record is not nvd, returns the cvss data from the record
-        """
-        if "nvd" in grype_vulnerability_metadata.namespace.lower():
-            return []
-        else:
-            return self._cvss_from_grype_raw_result(grype_vulnerability_metadata)
-
-    def _nvd_cvss_data(
-        self,
-        grype_raw_result,
-        nvd_cvss_cache: dict,
-        related_nvd_metadata_records: List[GrypeVulnerabilityMetadata],
-    ) -> List[dict]:
-        """
-        Builds nvd data for provided grype vulnerability metadata record
-        Uses a cache dict param that maps a vuln id to nvd cvss data to avoid needing to search existing query results
-        or creating a new query to find nvd metadata record for each vulnerability
-        """
-        nvd_data = []
-        grype_vulnerability_metadata = grype_raw_result.GrypeVulnerabilityMetadata
-        grype_vulnerability = grype_raw_result.GrypeVulnerability
-
-        # If current record is nvd, get cvss data for record
-        if "nvd" in grype_vulnerability_metadata.namespace.lower():
-            # Check in cache before building out from grype record
-            if nvd_cvss_cache.get(grype_vulnerability_metadata.id):
-                nvd_data += nvd_cvss_cache.get(grype_vulnerability_metadata.id)
-            else:
-                raw_record_nvd_data = self._cvss_from_grype_raw_result(
-                    grype_vulnerability_metadata
-                )
-                nvd_cvss_cache[grype_vulnerability_metadata.id] = raw_record_nvd_data
-                nvd_data += raw_record_nvd_data
-
-        # get cvss data for related vulnerabilities to populate
-        if grype_vulnerability.deserialized_related_vulnerabilities:
-            for (
-                related_vuln
-            ) in grype_vulnerability.deserialized_related_vulnerabilities:
-                if "nvd" not in related_vuln["Namespace"].lower():
-                    continue
-
-                # Check cache, else find nvd record and build cvss data
-                if nvd_cvss_cache.get(related_vuln["ID"]):
-                    nvd_data += nvd_cvss_cache.get(related_vuln["ID"])
-                else:
-                    nvd_metadata_record = next(
-                        (
-                            nvd_metadata_record
-                            for nvd_metadata_record in related_nvd_metadata_records
-                            if nvd_metadata_record.id == related_vuln["ID"]
-                        ),
-                        None,
-                    )
-
-                    if nvd_metadata_record:
-                        related_vuln_nvd_data = self._cvss_from_grype_raw_result(
-                            nvd_metadata_record
-                        )
-                        nvd_cvss_cache[nvd_metadata_record.id] = related_vuln_nvd_data
-                        nvd_data += related_vuln_nvd_data
-                    else:
-                        log.debug("Missing related record for %s", related_vuln["ID"])
-
-        return nvd_data
-
     @staticmethod
     def _transform_urls(urls: List[str]) -> List:
         results = []
@@ -1036,16 +968,21 @@ class EngineGrypeDBMapper:
         return results
 
     def to_engine_vulnerabilities(
-        self, grype_vulnerabilities, related_nvd_metadata_records: list
+        self,
+        grype_vulnerabilities: List,
+        related_nvd_metadata_records: List[GrypeVulnerabilityMetadata],
     ):
         """
-        Receives a list of vulnerability_metadata records from grype_db and returns a list of vulnerabilities mapped
+        Receives query results from grype_db and returns a list of vulnerabilities mapped
         into the data structure engine expects.
-        Also recieves a list nvd metadata records that are grype_vulnerabilities' related vulns
         """
-        transformed_vulnerabilities = []
         intermediate_tuple_list = {}
-        nvd_cvss_data_map = {}
+
+        # construct the dictionary that maps cve-id->cvss-score
+        nvd_cvss_data_map = {
+            item.id: self._cvss_from_grype_raw_result(item)
+            for item in related_nvd_metadata_records
+        }
 
         for grype_raw_result in grype_vulnerabilities:
             grype_vulnerability = grype_raw_result.GrypeVulnerability
@@ -1078,14 +1015,33 @@ class EngineGrypeDBMapper:
                 vuln_dict["references"] = self._transform_urls(
                     grype_vulnerability_metadata.deserialized_urls
                 )
-                vuln_dict["nvd_data"] = self._nvd_cvss_data(
-                    grype_raw_result,
-                    nvd_cvss_data_map,
-                    related_nvd_metadata_records,
-                )
-                vuln_dict["vendor_data"] = self._vendor_cvss_data(
-                    grype_vulnerability_metadata
-                )
+
+                # populate nvd and vendor cvss data depending on the namespace
+                if "nvd" in grype_vulnerability_metadata.namespace.lower():
+                    vuln_dict["nvd_data"] = nvd_cvss_data_map.get(
+                        grype_vulnerability_metadata.id
+                    )
+                    vuln_dict["vendor_data"] = []
+                else:
+                    vuln_dict["vendor_data"] = self._cvss_from_grype_raw_result(
+                        grype_vulnerability_metadata
+                    )
+
+                    # populate nvd data of related vulnerabilities
+                    vuln_dict["nvd_data"] = []
+                    related_vulns = (
+                        grype_vulnerability.deserialized_related_vulnerabilities
+                    )
+                    if related_vulns:
+                        for related_vuln in related_vulns:
+                            # check related vuln is in nvd namespace, bail otherwise
+                            if "nvd" not in related_vuln["Namespace"].lower():
+                                continue
+
+                            # retrieve cvss score from pre-populated map
+                            nvd_cvss = nvd_cvss_data_map.get(related_vuln["ID"])
+                            if nvd_cvss:
+                                vuln_dict["nvd_data"].extend(nvd_cvss)
 
             # results are produced by left outer join, hence the check
             if grype_vulnerability:
