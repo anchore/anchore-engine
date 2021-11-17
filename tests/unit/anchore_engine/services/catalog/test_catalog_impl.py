@@ -389,6 +389,16 @@ class TestImageAddWorkflow:
                 },
                 id="valid-digest-valid-tag",
             ),
+            pytest.param(
+                {
+                    "image_key": catalog_impl.ImageKey(
+                        tag="nexus.aveng.me:5000/beats/filebeat:3.9.8",
+                        digest="sha256:1b5677e1cc3ad16dd700a1d61e488ffdc5",
+                    ),
+                    "expected": "nexus.aveng.me:5000/beats/filebeat@sha256:1b5677e1cc3ad16dd700a1d61e488ffdc5",
+                },
+                id="registry-with-port-number",
+            ),
         ],
     )
     def test_get_input_string(self, param):
