@@ -1235,6 +1235,9 @@ class ArchiveImageTask(object):
 
         self._catalog_record = None
 
+    async def run_async(self, merge=False):
+        self.run(merge)
+
     def run(self, merge=False):
         """
 

@@ -2,8 +2,10 @@
 API controller for /archives routes
 
 """
+import asyncio
 import json
 import uuid
+from typing import List
 
 from sqlalchemy import or_
 
@@ -330,12 +332,16 @@ def list_analysis_archive():
 
 
 @authorizer.requires_account(with_types=INTERNAL_SERVICE_ALLOWED)
-def archive_image_analysis(imageReferences):
+def archive_image_analysis(imageReferences: List[str]):
     """
     POST /archives/images
 
     body = [digest1, digest2, ... ]
 
+    :param imageReferences: list of image digests to archive
+    :type imageReferences: List[str]
+    :return: response body and status code
+    :rtype: Tuple[Any, int]
     """
 
     try:
@@ -347,33 +353,44 @@ def archive_image_analysis(imageReferences):
                 ),
                 400,
             )
-
-        results = []
-
-        for digest in imageReferences:
-            try:
-                # Do synchronous part to start the state transition
-                task = ArchiveImageTask(
-                    account=ApiRequestContextProxy.namespace(), image_digest=digest
-                )
-                result_status, result_detail = task.run()
-                results.append(
-                    {
-                        "digest": task.image_digest,
-                        "status": result_status,
-                        "detail": result_detail,
-                    }
-                )
-            except Exception as ex:
-                logger.exception(
-                    "Unexpected an uncaught exception from the archive task execution"
-                )
-                results.append({"digest": digest, "status": "error", "detail": str(ex)})
-
+        # method that gets the loop and runs until loop is complete
+        loop = asyncio.get_event_loop()
+        results = loop.run_until_complete(archive_image_analysis_tasks(imageReferences))
         return results, 200
     except Exception as err:
         logger.exception("Error processing image add")
         return make_response_error(err, in_httpcode=500), 500
+
+
+# method that
+async def archive_image_analysis_tasks(imageReferences: List[str]) -> List[dict]:
+    """Creates tasks on the event loop and then runs them to collect and return results"""
+    loop = asyncio.get_event_loop()
+    results = []
+    tasks = []
+    for digest in imageReferences:
+        # Do synchronous part to start the state transition
+        task = ArchiveImageTask(
+            account=ApiRequestContextProxy.namespace(), image_digest=digest
+        )
+        tasks.append((digest, loop.create_task(task.run_async())))
+
+    for digest, task in tasks:
+        try:
+            result_status, result_detail = await task
+            results.append(
+                {
+                    "digest": digest,
+                    "status": result_status,
+                    "detail": result_detail,
+                }
+            )
+        except Exception as ex:
+            logger.exception(
+                "Unexpected an uncaught exception from the archive task execution"
+            )
+            results.append({"digest": digest, "status": "error", "detail": str(ex)})
+    return results
 
 
 @flask_metrics.do_not_track()
