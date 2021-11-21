@@ -25,3 +25,9 @@ Working Directory: anchore-engine/scripts/tools/reporting
 
 Python 3.8
 Engine already installed and development environment set up
+
+
+## Improvement Notes
+- Ignore "virtual" functions in an ABC that cannot directly be called.
+- If a function doesn't belong to a class, it looks like it will just give you the directory that the function is in rather than the file (e.g. anchore_engine.clients::unpack)
+- Determine if ther'es any additional multithreading/processing we can implement that  would help lower the runtime of the script.
