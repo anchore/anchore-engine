@@ -72,18 +72,18 @@ def _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, output
                 serr = anchore_engine.utils.ensure_str(serr)
                 if rc != 0:
                     logger.error(
-                        "command failed: cmd=%s exitcode=%s stdout=%s stderr=%s".format(
-                            repr(cmdstr),
-                            repr(rc),
-                            repr(sout.strip()),
-                            repr(serr.strip()),
-                        )
+                        "command failed: cmd=%s exitcode=%s stdout=%s stderr=%s",
+                        repr(cmdstr),
+                        repr(rc),
+                        repr(sout.strip()),
+                        repr(serr.strip()),
                     )
                 else:
                     logger.debug(
-                        "command succeeded: cmd=%s stdout=%s stderr=%s".format(
-                            repr(cmdstr), repr(sout.strip()), repr(serr.strip())
-                        )
+                        "command succeeded: cmd=%s stdout=%s stderr=%s",
+                        repr(cmdstr),
+                        repr(sout.strip()),
+                        repr(serr.strip()),
                     )
             except Exception:
                 logger.exception(
