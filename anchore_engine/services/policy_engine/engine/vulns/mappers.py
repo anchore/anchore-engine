@@ -698,6 +698,9 @@ ENGINE_DISTRO_MAPPERS = {
     "rocky": DistroMapper(
         engine_distro="rocky", grype_os="rockylinux", grype_like_os="fedora"
     ),
+    "almalinux": DistroMapper(
+        engine_distro="almalinux", grype_os="almalinux", grype_like_os="fedora"
+    ),
 }
 
 
