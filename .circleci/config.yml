@@ -308,7 +308,7 @@ jobs:
                         "type": "plain_text",
                         "text": "View Source"
                       },
-                      "url": "https://github.com/anchore/anchore-engine/tree/${CIRCLE_TAG}"
+                      "url": "https://github.com/anchore/${CIRCLE_PROJECT_REPONAME}/tree/${CIRCLE_TAG}"
                     }
                   ]
                 },
