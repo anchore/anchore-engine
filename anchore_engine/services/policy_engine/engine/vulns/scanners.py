@@ -331,6 +331,12 @@ class GrypeScanner:
         nvd_namespace = None
 
         for raw_result in vulnerabilities_result:
+            # If nvd record add it to the list to be queried
+            if self._is_only_nvd_namespace(raw_result.GrypeVulnerability.namespace):
+                related_nvd_vulnerabilities.add(raw_result.GrypeVulnerability.id)
+                nvd_namespace = raw_result.GrypeVulnerability.namespace
+
+            # Add any related vulnerabilities
             related_vulns = (
                 raw_result.GrypeVulnerability.deserialized_related_vulnerabilities
             )

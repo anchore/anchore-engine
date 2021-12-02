@@ -1019,12 +1019,12 @@ class EngineGrypeDBMapper:
                 # populate nvd and vendor cvss data depending on the namespace
                 if "nvd" in grype_vulnerability_metadata.namespace.lower():
                     vuln_dict["nvd_data"] = nvd_cvss_data_map.get(
-                        grype_vulnerability_metadata.id
+                        grype_vulnerability_metadata.id, []
                     )
                     vuln_dict["vendor_data"] = []
                 else:
                     vuln_dict["vendor_data"] = self._cvss_from_grype_raw_result(
-                        grype_vulnerability_metadata
+                        grype_vulnerability_metadata, []
                     )
 
                     # populate nvd data of related vulnerabilities
