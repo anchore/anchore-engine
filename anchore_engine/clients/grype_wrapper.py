@@ -805,6 +805,31 @@ class GrypeWrapperSingleton(object):
             # Return the output as json
             return json.loads(stdout)
 
+    def query_nvd_vulnerability_metadata(
+        self, vuln_ids: List[str]
+    ) -> Iterable[GrypeVulnerabilityMetadata]:
+        """
+        Queries vulnerability metadata for provided ids in the nvd namespace
+        Since nvd namespace might not be static, it uses the like operator
+        """
+        if not vuln_ids:
+            logger.debug("No vulnerabilities provided for query")
+            return []
+
+        with self.read_lock_access():
+            logger.debug(
+                "Querying grype_db for GrypeVulenrabilityMetadata records in nvd namespace matching vuln_ids: %s",
+                vuln_ids,
+            )
+
+            with self.grype_session_scope() as session:
+                query = session.query(GrypeVulnerabilityMetadata).filter(
+                    GrypeVulnerabilityMetadata.id.in_(vuln_ids),
+                    GrypeVulnerabilityMetadata.namespace.like("%nvd%"),
+                )
+
+                return query.all()
+
     def query_vulnerability_metadata(
         self, vuln_ids: List[str], namespaces: List[str]
     ) -> Iterable[GrypeVulnerabilityMetadata]:

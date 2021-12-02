@@ -328,13 +328,11 @@ class GrypeScanner:
 
         # Get set of related nvd vulnerabilities
         related_nvd_vulnerabilities = set()
-        nvd_namespace = None
 
         for raw_result in vulnerabilities_result:
             # If nvd record add it to the list to be queried
             if self._is_only_nvd_namespace(raw_result.GrypeVulnerability.namespace):
                 related_nvd_vulnerabilities.add(raw_result.GrypeVulnerability.id)
-                nvd_namespace = raw_result.GrypeVulnerability.namespace
 
             # Add any related vulnerabilities
             related_vulns = (
@@ -343,15 +341,12 @@ class GrypeScanner:
             if related_vulns:
                 for related_vuln in related_vulns:
                     if self._is_only_nvd_namespace(related_vuln["Namespace"]):
-                        # set nvd namespace. This allows it to be dynamic based on changes in grypedb
-                        nvd_namespace = nvd_namespace or related_vuln["Namespace"]
                         related_nvd_vulnerabilities.add(related_vuln["ID"])
 
         if related_nvd_vulnerabilities:
             related_nvd_metadata_records = (
-                GrypeWrapperSingleton.get_instance().query_vulnerability_metadata(
-                    vuln_ids=related_nvd_vulnerabilities,
-                    namespaces=[nvd_namespace],
+                GrypeWrapperSingleton.get_instance().query_nvd_vulnerability_metadata(
+                    related_nvd_vulnerabilities
                 )
             )
 
