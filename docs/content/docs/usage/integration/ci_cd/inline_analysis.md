@@ -4,6 +4,13 @@ linkTitle: "Inline Image Analysis"
 weight: 3
 ---
 
+_**Warning**: The Anchore Inline Scan script is deprecated and will reach **EOL on Jan 10, 2022**. Please update your integrations to use [Grype](https://github.com/anchore/grype) for CI-based vulnerability scanning or [Syft](https://github.com/anchore/syft). We will be updating our integrations that use inline_scan during that time to use Grype directly. Until that time all integrations will continue to function and get updated vulnerability data._
+
+_**Until Jan 10, 2022**: we will continue building inline_scan images based on v0.10.x of Anchore Engine and they will be updated daily for latest feed data.
+On Jan 10, 2022, we will stop building new versions of the images with updated vulnerability data and the data will be stale._
+
+_**After Jan 10, 2022**: users should be transitioned to [Grype](https://github.com/anchore/grype) or Grype-based integrations._
+
 ## Introduction
 For use cases where it is desirable to perform image analysis for a locally build container image, and import the image analysis to an existing Anchore Engine installation, we support a methodology using the inline_scan tool.  With this technique, you can 'add' an image to your anchore engine service by analyzing any image that is available locally (say, on the docker host on which the image was built). You can then import the analysis data into anchore engine, rather than the regular method where images are pulled from a registry when added to anchore engine.
 
