@@ -1,1 +1,0 @@
-[{"Vulnerability": {"NamespaceName": "debian:9", "Severity": "Negligible", "Link": "https://security-tracker.debian.org/tracker/CVE-2011-0469", "Name": "CVE-2011-0469", "Description": "Code injection in openSUSE when running some source services used in the open build service 2.1 before March 11 2011."}}]
