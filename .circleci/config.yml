@@ -1,0 +1,8 @@
+# Define YAML anchors
+
+# Start circleci configuration
+version: 2
+
+jobs: {}
+workflows:
+  version: 2
