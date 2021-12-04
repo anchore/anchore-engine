@@ -95,7 +95,7 @@ def working_state(state_type):
 
 def next_state(state_type, current_state):
     if not current_state:
-        return state_graphs[state_type]["transisitions"]["init"]
+        return state_graphs[state_type]["transitions"]["init"]
 
     return state_graphs[state_type]["transitions"][current_state]
 
