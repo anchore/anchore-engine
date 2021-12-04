@@ -36,6 +36,11 @@ class S3ObjectStorageDriver(ObjectStorageDriver):
         self.s3_client = None
         self.session = None
 
+        if "unittest" in self.config:
+            self.prefix = self.config.get("prefix", "")
+            self.bucket_name = self.config.get("bucket")
+            return
+
         # Initialize the client
         # if 'access_key' not in self.config:
         #     raise DriverConfigurationError('Missing access_key in configuration for S3 driver')
