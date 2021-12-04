@@ -49,6 +49,11 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
             self.auth_options.pop("container")
         if "create_container" in self.auth_options:
             self.auth_options.pop("create_container")
+
+        if "unittest" in config:
+            self.prefix = self.config.get("anchore_key_prefix", "")
+            return
+
         self.client = SwiftService(options=self.auth_options)
 
         if not self.container_name:
