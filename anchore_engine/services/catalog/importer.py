@@ -25,6 +25,11 @@ IMPORT_OPERATION_ANNOTATION_KEY = (
 )
 
 
+class RequiredFieldError(Exception):
+    def __init__(self, required_field):
+        super().__init__("Field %s is required in imports but not found", required_field)
+
+
 class ImportTypes(enum.Enum):
     """
     The types of content supported for upload
@@ -298,6 +303,10 @@ def import_image(
     # Import analysis for a new digest, or re-load analysis for existing image
     logger.debug("Loading image info using import operation id %s", operation_id)
     image_references = []
+    if not import_manifest.tags:
+        # Handle missing tags
+        raise RequiredFieldError("tags")
+
     for t in import_manifest.tags:
         r = DockerImageReference.from_string(t)
         r.digest = import_manifest.digest
