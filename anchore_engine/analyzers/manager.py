@@ -1,4 +1,5 @@
 import collections
+import dataclasses
 import os
 import re
 
@@ -11,6 +12,18 @@ from anchore_engine.configuration.localconfig import analyzer_paths
 from anchore_engine.subsys import logger
 
 
+@dataclasses.dataclass
+class AnalysisResult:
+    """
+    Simple class for the results of an analysis pass
+    """
+
+    analysis_report: dict
+    image_export: list
+    syft_output: dict
+    manifest: dict
+
+
 def run(
     configdir,
     imageId,
@@ -18,10 +31,10 @@ def run(
     outputdir,
     copydir,
     owned_package_filtering_enabled=True,
-):
+) -> AnalysisResult:
     analyzer_report = collections.defaultdict(dict)
     _run_analyzer_modules(analyzer_report, configdir, imageId, unpackdir, outputdir)
-    _run_syft(
+    syft_output = _run_syft(
         analyzer_report,
         unpackdir,
         copydir,
@@ -31,7 +44,17 @@ def run(
 
     apply_hints(analyzer_report, unpackdir)
 
-    return analyzer_report
+    # Make this a dict instead of a defaultdict to ensure functional tests (standalone.py) can dump
+    # this output cleanly as a python object without the type prefix that just a 'defaultdict' adds.
+    dict_analyzer_report = dict(analyzer_report)
+
+    result = AnalysisResult(
+        analysis_report=dict_analyzer_report,
+        image_export=[],
+        syft_output=syft_output,
+        manifest={},
+    )
+    return result
 
 
 def apply_hints(analyzer_report, unpackdir):
@@ -112,12 +135,27 @@ def _run_internal_analyzers(analyzer_report, unpackdir):
     utils.merge_nested_dict(analyzer_report, results)
 
 
-def _run_syft(analyzer_report, unpackdir, copydir, package_filtering_enabled=True):
-    results = syft.catalog_image(
-        unpackdir, imagedir=copydir, package_filtering_enabled=package_filtering_enabled
+def _run_syft(
+    analyzer_report, unpackdir, copydir, package_filtering_enabled=True
+) -> dict:
+    """
+    Execute syft and merge the results into the provided analyzer report
+
+    :param analyzer_report:
+    :param unpackdir:
+    :param copydir: directory path to use fo r
+    :param package_filtering_enabled: boolean to control if packages should be filtered out if they are "owned" by another package
+    :return: the raw syft output dict
+    """
+    unified_results, raw_syft = syft.catalog_image(
+        tmp_dir=unpackdir,
+        image_oci_dir=copydir,
+        package_filtering_enabled=package_filtering_enabled,
     )
 
-    utils.merge_nested_dict(analyzer_report, results)
+    utils.merge_nested_dict(analyzer_report, unified_results)
+
+    return raw_syft
 
 
 def analyzer_name_from_path(path):

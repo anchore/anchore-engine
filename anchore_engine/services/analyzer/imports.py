@@ -2,7 +2,7 @@ import json
 import time
 
 import anchore_engine.clients.localanchore_standalone
-from anchore_engine.analyzers.syft import convert_syft_to_engine
+from anchore_engine.analyzers.syft.adapters import FilteringEngineAdapter
 from anchore_engine.analyzers.utils import merge_nested_dict
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
@@ -149,9 +149,14 @@ def process_import(
         }
 
         try:
-            syft_results = convert_syft_to_engine(
-                syft_packages, enable_package_filtering=enable_package_filtering
+            adapter = FilteringEngineAdapter(
+                syft_output=syft_packages,
+                enable_package_filtering=enable_package_filtering,
             )
+            syft_results = adapter.convert()
+            # syft_results = convert_syft_to_engine(
+            #     syft_packages, enable_package_filtering=enable_package_filtering
+            # )
             merge_nested_dict(analyzer_report, syft_results)
         except Exception as err:
             raise anchore_engine.clients.localanchore_standalone.AnalysisError(
@@ -309,8 +314,12 @@ def import_image(
                 bucket="manifest_data", name=image_digest, inobj=json.dumps(manifest)
             )
 
+            syft_analysis = sbom_map["packages"]
+
             # Save the results to the upstream components and data stores
             logger.info("storing import result")
+
+            # Save the results to the upstream components and data stores
             store_analysis_results(
                 account,
                 image_digest,
@@ -319,6 +328,7 @@ def import_image(
                 manifest,
                 analysis_events,
                 all_content_types,
+                syft_report=syft_analysis,
             )
 
             logger.info("updating image catalog record analysis_status")

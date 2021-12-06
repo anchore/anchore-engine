@@ -27,7 +27,9 @@ IMPORT_OPERATION_ANNOTATION_KEY = (
 
 class RequiredFieldError(Exception):
     def __init__(self, required_field):
-        super().__init__("Field %s is required in imports but not found", required_field)
+        super().__init__(
+            "Field %s is required in imports but not found", required_field
+        )
 
 
 class ImportTypes(enum.Enum):

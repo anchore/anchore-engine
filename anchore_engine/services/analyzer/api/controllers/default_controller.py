@@ -1,5 +1,5 @@
-from anchore_engine.subsys import servicestatus
 from anchore_engine.apis.authorization import INTERNAL_SERVICE_ALLOWED, get_authorizer
+from anchore_engine.subsys import servicestatus
 
 authorizer = get_authorizer()
 

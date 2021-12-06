@@ -9,6 +9,7 @@ import os
 import tarfile
 import tempfile
 import time
+import typing
 import uuid
 from threading import RLock
 
@@ -52,6 +53,18 @@ DRY_RUN_MODE = os.getenv(DRY_RUN_ENV_VAR, "false").lower() == "true"
 _add_event_fn = None
 
 event_init_lock = RLock()
+
+
+class ArchiveError(Exception):
+    ...
+
+
+class ArchiveRestorationError(Exception):
+    ...
+
+
+class RequiredArchiveArtifactNotFoundError(Exception):
+    ...
 
 
 def init_events(handler_fn=None):
@@ -1182,6 +1195,20 @@ class RestoreArchivedImageTaskFromArchiveTarfile(RestoreArchivedImageTask):
             )
 
 
+class ArtifactRequirement:
+    """ "
+    Describes the required status of the referenced artifact
+    """
+
+    def __init__(self, artifact: Artifact, required=True):
+        self.artifact = artifact
+        self._required = required
+
+    @property
+    def required(self):
+        return self._required
+
+
 class ArchiveImageTask(object):
     """
     An archive task that moves an image and artifacts from archiving state to archived state.
@@ -1206,30 +1233,50 @@ class ArchiveImageTask(object):
 
         self.manifest = None  # Manifest to be saved and accessible outside of the tarball/backing-store lifecycle
 
-        self.required_artifacts = [
-            Artifact(
-                name="analysis",
-                source=ObjectStoreLocation(
-                    bucket="analysis_data", key=self.image_digest
+        self.artifacts = [
+            ArtifactRequirement(
+                Artifact(
+                    name="analysis",
+                    source=ObjectStoreLocation(
+                        bucket="analysis_data", key=self.image_digest
+                    ),
+                    dest=None,
+                    metadata={},
                 ),
-                dest=None,
-                metadata={},
+                True,
             ),
-            Artifact(
-                name="image_content",
-                source=ObjectStoreLocation(
-                    bucket="image_content_data", key=self.image_digest
+            ArtifactRequirement(
+                Artifact(
+                    name="image_content",
+                    source=ObjectStoreLocation(
+                        bucket="image_content_data", key=self.image_digest
+                    ),
+                    dest=None,
+                    metadata={},
                 ),
-                dest=None,
-                metadata={},
+                True,
             ),
-            Artifact(
-                name="image_manifest",
-                source=ObjectStoreLocation(
-                    bucket="manifest_data", key=self.image_digest
+            ArtifactRequirement(
+                Artifact(
+                    name="image_manifest",
+                    source=ObjectStoreLocation(
+                        bucket="manifest_data", key=self.image_digest
+                    ),
+                    dest=None,
+                    metadata={},
                 ),
-                dest=None,
-                metadata={},
+                True,
+            ),
+            ArtifactRequirement(
+                Artifact(
+                    name="syft_sbom",
+                    source=ObjectStoreLocation(
+                        bucket="syft_sbom", key=self.image_digest
+                    ),
+                    dest=None,
+                    metadata={},
+                ),
+                False,
             ),
         ]
 
@@ -1342,9 +1389,7 @@ class ArchiveImageTask(object):
                             ),
                         }
 
-                        self.archive_required(
-                            src_obj_mgr, self.required_artifacts, img_archive
-                        )
+                        self.archive_objects(src_obj_mgr, self.artifacts, img_archive)
 
                         try:
                             vuln_artifacts = self.archive_vuln_history(img_archive)
@@ -1416,20 +1461,30 @@ class ArchiveImageTask(object):
                 )
                 return "error", str(ex)
 
-    def archive_required(
-        self, src_mgr: ObjectStorageManager, artifacts: list, img_archive: ImageArchive
+    def archive_objects(
+        self,
+        src_mgr: ObjectStorageManager,
+        artifact_requirements: typing.List[ArtifactRequirement],
+        img_archive: ImageArchive,
     ) -> list:
         """
 
         :return: tuple of (manifest (dict), bucket (str), key (str))
         """
-        for artifact in artifacts:
+        for requirement in artifact_requirements:
+            artifact = requirement.artifact
+
+            if not requirement.required and not src_mgr.exists(
+                self.account, artifact.source.bucket, artifact.source.key
+            ):
+                continue
+
             data = src_mgr.get(
                 self.account, artifact.source.bucket, artifact.source.key
             )
 
             if not data:
-                raise Exception(
+                raise RequiredArchiveArtifactNotFoundError(
                     "Required artifact not found for migration: {}".format(
                         artifact.name
                     )
@@ -1461,8 +1516,9 @@ class ArchiveImageTask(object):
 
         Policy evaluation histories are only moved, not generated, so online previously generated evaluations are migrated.
 
-        :param dest_archive_mgr:
-        :param dest_bucket:
+        :param session: active database session to use for db queries
+        :param img_archive: archive to write to
+        :param src_obj_mgr: object manager for object reads
         :return: dict mapping tags (full pull tags) to policy eval histories for the migrating image
         """
 

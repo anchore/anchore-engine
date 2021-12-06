@@ -3,7 +3,10 @@ import os
 
 import pytest
 
-from anchore_engine.analyzers.syft import convert_syft_to_engine, filter_artifacts
+from anchore_engine.analyzers.syft.adapters import (
+    _convert_syft_to_engine,
+    _filter_artifacts,
+)
 
 
 class TestFilterArtifacts:
@@ -41,7 +44,7 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(artifacts, relationships)
+        actual = _filter_artifacts(artifacts, relationships)
         assert actual == artifacts
 
     @pytest.mark.parametrize(
@@ -89,7 +92,7 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(artifacts, relationships)
+        actual = _filter_artifacts(artifacts, relationships)
         assert [a["name"] for a in actual] == ["parent-pkg"]
 
     def test_filter_artifact_missing_id(self):
@@ -105,7 +108,7 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(initial_artifacts, [])
+        actual = _filter_artifacts(initial_artifacts, [])
         assert actual == initial_artifacts
 
     @pytest.mark.parametrize(
@@ -127,7 +130,7 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(artifacts, [])
+        actual = _filter_artifacts(artifacts, [])
         assert [a["name"] for a in actual] == ["pkg-name"]
 
 
@@ -149,7 +152,7 @@ class TestConvertSyftToEngine:
         [False, True],
     )
     def test_filter_artifact_by_type(self, test_sbom, enable_package_filtering):
-        findings = convert_syft_to_engine(test_sbom, enable_package_filtering)
+        findings = _convert_syft_to_engine(test_sbom, enable_package_filtering)
         for pkg_list in findings["package_list"]:
             if pkg_list == "pkgfiles.all":
                 continue

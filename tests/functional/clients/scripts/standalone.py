@@ -137,7 +137,7 @@ def analyze(registry, manifest, repo, digest, tag, work_dir, localconfig):
 
     click.echo("Starting the analyze process...")
 
-    image_report, manifest = analyze_image(
+    result = analyze_image(
         userId,
         manifest,
         image_record,
@@ -149,7 +149,7 @@ def analyze(registry, manifest, repo, digest, tag, work_dir, localconfig):
     result_python = join(work_dir, "result.py")
     with open(result_python, "w") as python_file:
         python_file.write("result = ")
-        python_file.write(pprint.pformat(image_report))
+        python_file.write(pprint.pformat(result.image_export))
     click.echo("Saved the results of the analyzer to %s" % result_python)
 
 

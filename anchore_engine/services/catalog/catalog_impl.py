@@ -2310,6 +2310,7 @@ def _delete_image_artifacts(account_id, image_digest, image_ids, full_tags, db_s
         "image_summary_data",
         "manifest_data",
         "parent_manifest_data",
+        "syft_sbom",
     ]:
         # try-except block ensures an attempt to delete every artifact despite errors
         try:
