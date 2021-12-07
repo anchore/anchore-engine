@@ -12,8 +12,8 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # environment variables for dependent binary versions
-ENV SYFT_VERSION=v0.26.0
-ENV GRYPE_VERSION=v0.22.0
+ENV SYFT_VERSION=v0.30.1
+ENV GRYPE_VERSION=v0.25.1
 ENV PIP_VERSION=21.0.1
 
 # setup build artifact directory
@@ -87,7 +87,7 @@ FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as anchore-engine-final
 
 ARG CLI_COMMIT
 ARG ANCHORE_COMMIT
-ARG ANCHORE_ENGINE_VERSION="1.0.1"
+ARG ANCHORE_ENGINE_VERSION="1.1.0"
 ARG ANCHORE_ENGINE_RELEASE="r0"
 
 # Container metadata section

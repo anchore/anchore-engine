@@ -49,7 +49,7 @@ def test_generate_product_functions(name, expected_list, generator_function):
         pytest.param(
             "cremefraiche",
             "gem",
-            ["creme_fraishe", "cremefraiche"],
+            ["creme_fraiche", "cremefraiche"],
             id="gem-matches-inclusion-list",
         ),
         pytest.param("npm1", "npm", ["npm1"], id="npm-simple"),
@@ -67,6 +67,12 @@ def test_generate_product_functions(name, expected_list, generator_function):
             id="python-matches-inclusion-list",
         ),
         pytest.param(
+            "Microsoft.NETCore.App",
+            "nuget",
+            ["Microsoft.NETCore.App", ".net_core"],
+            id="nuget-matches-inclusion-list",
+        ),
+        pytest.param(
             "foobar",
             "unknownpackagetype",
             ["foobar"],
@@ -75,7 +81,16 @@ def test_generate_product_functions(name, expected_list, generator_function):
     ],
 )
 def test_generate_products(name, package_type, expected_list):
-    assert generate_products(name, package_type).sort() == expected_list.sort()
+    # Function under test
+    products = generate_products(name, package_type)
+
+    # Sort the observed and expected lists
+    # sort() is an in-place operation and returns None, so don't store or compare the call results
+    products.sort()
+    expected_list.sort()
+
+    # Validate output
+    assert products == expected_list
 
 
 @pytest.mark.parametrize(
