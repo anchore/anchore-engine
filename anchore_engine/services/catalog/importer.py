@@ -352,7 +352,7 @@ def import_image(
             account,
             operation_id,
             import_manifest,
-            final_state=ImportState.complete,
+            final_state=ImportState.processing,
         )
 
         # raise BadRequest(
