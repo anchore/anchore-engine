@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.1.0
+API version - 0.1.20
+
+DB Schema version - 0.0.16
+
+Engine v1.1.0 fixes some bugs that arose from 1.0.1
+
+### Changes
++ Added - Vulnerability scanning support for Rocky Linux in both legacy and Grype scanners
++ Fixed - Images with Go content and hints enabled failing analysis
++ Fixed - Missing NVD CVSS scores in query vulnerabilities API with "grype" vulnerabilities provider
+
+
 ## 1.0.1
 API version - 0.1.20
 

@@ -1870,7 +1870,9 @@ def get_input_string(image_key: ImageKey) -> str:
         if image_key.digest == "unknown":
             return image_key.tag
         else:
-            return "{}@{}".format(image_key.tag.split(":")[0], image_key.digest)
+            return "{}@{}".format(
+                image_key.tag.rsplit(":", maxsplit=1)[0], image_key.digest
+            )
     else:
         return image_key.tag
 

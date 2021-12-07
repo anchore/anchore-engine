@@ -5,7 +5,7 @@ A scanner may use persistence context or an external tool to match image content
 import datetime
 import json
 import os
-from typing import Dict, List
+from typing import Dict, List, Tuple, Union
 
 from sqlalchemy.orm.session import Session
 
@@ -300,10 +300,71 @@ class GrypeScanner:
 
     def get_vulnerabilities(
         self, ids, affected_package, affected_package_version, namespace
-    ):
-        return GrypeWrapperSingleton.get_instance().query_vulnerabilities(
-            vuln_id=ids,
-            affected_package=affected_package,
-            affected_package_version=affected_package_version,
-            namespace=namespace,
+    ) -> Tuple[List, List]:
+        """
+        Searches for grype db vulnerability and metadata records that match the ids and namespaces. Additionally queries
+        and returns the metadata records of related vulnerabilities from the first query
+        """
+        # Query requested vulnerabilities
+        vulnerabilities_result = (
+            GrypeWrapperSingleton.get_instance().query_vulnerabilities(
+                vuln_id=ids,
+                affected_package=affected_package,
+                affected_package_version=affected_package_version,
+                namespace=namespace,
+            )
         )
+
+        # if no results are found, return empty lists
+        if not vulnerabilities_result:
+            return [], []
+
+        # if namespace is only nvd, no additional query needed. return the results and the list of metadata records
+        if self._is_only_nvd_namespace(namespace):
+            return (
+                vulnerabilities_result,
+                [item.GrypeVulnerabilityMetadata for item in vulnerabilities_result],
+            )
+
+        # Get set of related nvd vulnerabilities
+        related_nvd_vulnerabilities = set()
+        nvd_namespace = None
+
+        for raw_result in vulnerabilities_result:
+            related_vulns = (
+                raw_result.GrypeVulnerability.deserialized_related_vulnerabilities
+            )
+            if related_vulns:
+                for related_vuln in related_vulns:
+                    if self._is_only_nvd_namespace(related_vuln["Namespace"]):
+                        # set nvd namespace. This allows it to be dynamic based on changes in grypedb
+                        nvd_namespace = nvd_namespace or related_vuln["Namespace"]
+                        related_nvd_vulnerabilities.add(related_vuln["ID"])
+
+        if related_nvd_vulnerabilities:
+            related_nvd_metadata_records = (
+                GrypeWrapperSingleton.get_instance().query_vulnerability_metadata(
+                    vuln_ids=related_nvd_vulnerabilities,
+                    namespaces=[nvd_namespace],
+                )
+            )
+
+            return vulnerabilities_result, related_nvd_metadata_records
+        else:
+            return vulnerabilities_result, []
+
+    @staticmethod
+    def _is_only_nvd_namespace(namespace: Union[str, list]) -> bool:
+        """
+        returns true or false based on if provided namespace is only nvd.
+        Supports either list or string param
+        """
+
+        if isinstance(namespace, list):
+            if len(namespace) > 1:
+                return False
+            return "nvd" in namespace[0].lower()
+        elif isinstance(namespace, str):
+            return "nvd" in namespace.lower()
+        else:
+            return False

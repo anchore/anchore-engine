@@ -1321,13 +1321,13 @@ class GrypeProvider(VulnerabilitiesProvider):
         scanner = self.__scanner__()
 
         # Get vulnerability results from grype db, through the grype wrapper, via the scanner
-        unmapped_results = scanner.get_vulnerabilities(
+        unmapped_results, related_nvd_metadata_records = scanner.get_vulnerabilities(
             ids, affected_package, affected_package_version, namespace
         )
 
         # Map grype db vulnerabilities into engine vulnerabilities
         mapped_results = EngineGrypeDBMapper().to_engine_vulnerabilities(
-            unmapped_results
+            unmapped_results, related_nvd_metadata_records
         )
         return mapped_results
 
