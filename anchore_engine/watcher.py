@@ -1,6 +1,7 @@
-from dataclasses import dataclass, asdict
-from typing import List, Any, Dict
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List
+
 
 @dataclass
 class WatcherConfig:
@@ -14,6 +15,7 @@ class WatcherConfig:
     initialized: bool = False
     last_queued: int = 0
     last_return: bool = False
+
 
 class BaseWatcher(ABC):
     config: WatcherConfig
