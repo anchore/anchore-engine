@@ -330,7 +330,6 @@ def extract_analyzer_content(image_data, content_type, manifest=None):
     ret = {}
     try:
         idata = image_data[0]["image"]
-        imageId = idata["imageId"]
 
         if content_type == "files":
             return extract_files_content(idata)
