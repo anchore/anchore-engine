@@ -137,8 +137,8 @@ class AnalysisWatcher(BaseWatcher):
 
         return True
 
-    @staticmethod
-    def build_task(message: QueueMessage, config: dict) -> WorkerTask:
+    @classmethod
+    def build_task(cls, message: QueueMessage, config: dict) -> WorkerTask:
         owned_package_filtering_enabled = get_bool_value(
             config.get(PACKAGE_FILTERING_ENABLED_KEY, "true")
         )
