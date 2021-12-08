@@ -1,4 +1,33 @@
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 1.0.0</title><link>/docs/releasenotes/1.0.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/1.0.0/</guid><description>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Anchore Engine – Anchore Engine Release Notes</title><link>/docs/releasenotes/</link><description>Recent Hugo news from gohugo.io</description><generator>Hugo -- gohugo.io</generator><image><url>img/hugo.png</url><title>GoHugo.io</title><link>/docs/releasenotes/</link></image><atom:link href="/docs/releasenotes/index.xml" rel="self" type="application/rss+xml"/><item><title>Docs: Anchore Engine Release Notes - Version 1.1.0</title><link>/docs/releasenotes/110/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/110/</guid><description>
+&lt;h2 id="anchore-engine-110">Anchore Engine 1.1.0&lt;/h2>
+&lt;p>API version - 0.1.20&lt;/p>
+&lt;p>DB Schema version - 0.0.16&lt;/p>
+&lt;h3 id="rocky-linux-support">Rocky Linux support&lt;/h3>
+&lt;p>Anchore Enterprise can now scan Rocky Linux images for vulnerabilities.&lt;/p>
+&lt;h3 id="fixes">Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Images that had Go content and hints enabled were failing analysis. This has been fixed.&lt;/li>
+&lt;li>Images reported via runtime inventory that also had port numbers in the registry host URL were failing to parse properly, which caused scan failures. This issue has been fixed.&lt;/li>
+&lt;li>With the Grype provider, NVD and vendor CVSS scores were missing for records in non-NVD namespaces. This is now fixed.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 1.0.1</title><link>/docs/releasenotes/101/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/101/</guid><description>
+&lt;h2 id="anchore-engine-101">Anchore Engine 1.0.1&lt;/h2>
+&lt;p>API version - 0.1.20&lt;/p>
+&lt;p>DB Schema version - 0.0.15&lt;/p>
+&lt;h3 id="change-fixes">Change Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Policy-engine feeds no longer fail for GitHub group.&lt;/li>
+&lt;li>Images failing analysis due to specific unexpected python package format issue fixed in Syft to ensure analysis can complete.&lt;/li>
+&lt;li>Content hints now correctly scan non-OS packages for vulnerabilities.&lt;/li>
+&lt;li>The Syft invocation during image analysis now uses the analyzer unpack directory consistent with other analysis data IO instead of the OS default temp directory.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item><item><title>Docs: Anchore Engine Release Notes - Version 1.0.0</title><link>/docs/releasenotes/1.0.0/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/1.0.0/</guid><description>
 &lt;h2 id="anchore-engine-100">Anchore Engine 1.0.0&lt;/h2>
 &lt;p>API version - 0.1.19&lt;/p>
 &lt;p>DB Schema version - 0.0.16&lt;/p>

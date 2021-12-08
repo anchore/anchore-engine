@@ -6,6 +6,10 @@
 &lt;p>Image Scanning can be easily integrated into your GitHub Actions pipeline using the official Anchore Engine Scan Action.&lt;/p>
 &lt;p>Documentation on how to use the action can be found in the official GitHub repository &lt;a href="https://github.com/anchore/scan-action">anchore scan-action&lt;/a>&lt;/p>
 &lt;p>Check out our Anchore Scan Action &lt;a href="https://www.brighttalk.com/webcast/17878/378430?utm_source=brighttalk-portal&amp;amp;utm_medium=web&amp;amp;utm_content=anchore%20github&amp;amp;utm_campaign=webcasts-search-results-feed">webinar demo&lt;/a>&lt;/p></description></item><item><title>Docs: Anchore Engine Inline Image Analysis/Engine Import</title><link>/docs/usage/integration/ci_cd/inline_analysis/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/inline_analysis/</guid><description>
+&lt;p>&lt;em>&lt;strong>Warning&lt;/strong>: The Anchore Inline Scan script is deprecated and will reach &lt;strong>EOL on Jan 10, 2022&lt;/strong>. Please update your integrations to use &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> for CI-based vulnerability scanning or &lt;a href="https://github.com/anchore/syft">Syft&lt;/a>. We will be updating our integrations that use inline_scan during that time to use Grype directly. Until that time all integrations will continue to function and get updated vulnerability data.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>Until Jan 10, 2022&lt;/strong>: we will continue building inline_scan images based on v0.10.x of Anchore Engine and they will be updated daily for latest feed data.
+On Jan 10, 2022, we will stop building new versions of the images with updated vulnerability data and the data will be stale.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>After Jan 10, 2022&lt;/strong>: users should be transitioned to &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> or Grype-based integrations.&lt;/em>&lt;/p>
 &lt;h2 id="introduction">Introduction&lt;/h2>
 &lt;p>For use cases where it is desirable to perform image analysis for a locally build container image, and import the image analysis to an existing Anchore Engine installation, we support a methodology using the inline_scan tool. With this technique, you can &amp;lsquo;add&amp;rsquo; an image to your anchore engine service by analyzing any image that is available locally (say, on the docker host on which the image was built). You can then import the analysis data into anchore engine, rather than the regular method where images are pulled from a registry when added to anchore engine.&lt;/p>
 &lt;p>The only requirements to run the inline_scan script with the &amp;lsquo;analyze&amp;rsquo; operation is the ability to execute Docker commands, network connectivity to an anchore engine API endpoint &amp;amp; bash. We host a versioned copy of this script that can be downloaded directly with curl and executed in a bash pipeline.&lt;/p>
@@ -53,6 +57,10 @@ Image Digest: sha256:d212a12aa728ccb4baf06fcc83dc77392d90018d13c9b40717cf455e09a
 # anchore-cli image get docker.io/alpine:latest
 Image Digest: sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
 &lt;/code>&lt;/pre></description></item><item><title>Docs: Anchore Engine Inline Scanning</title><link>/docs/usage/integration/ci_cd/inline_scanning/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/inline_scanning/</guid><description>
+&lt;p>&lt;em>&lt;strong>Warning&lt;/strong>: The Anchore Inline Scan script is deprecated and will reach &lt;strong>EOL on Jan 10, 2022&lt;/strong>. Please update your integrations to use &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> for CI-based vulnerability scanning or &lt;a href="https://github.com/anchore/syft">Syft&lt;/a>. We will be updating our integrations that use inline_scan during that time to use Grype directly. Until that time all integrations will continue to function and get updated vulnerability data.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>Until Jan 10, 2022&lt;/strong>: we will continue building inline_scan images based on v0.10.x of Anchore Engine and they will be updated daily for latest feed data.
+On Jan 10, 2022, we will stop building new versions of the images with updated vulnerability data and the data will be stale.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>After Jan 10, 2022&lt;/strong>: users should be transitioned to &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> or Grype-based integrations.&lt;/em>&lt;/p>
 &lt;h2 id="introduction">Introduction&lt;/h2>
 &lt;p>&lt;code>curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -p alpine:latest&lt;/code>&lt;/p>
 &lt;p>To make using our inline-scan container as easy as possible, we have provided a simple wrapper script called inline_scan. The only requirements to run the inline_scan script is the ability to execute Docker commands &amp;amp; bash. We host a versioned copy of this script that can be downloaded directly with curl and executed in a bash pipeline.&lt;/p>
@@ -231,62 +239,8 @@ commands:
 - docker push ${IMAGE_NAME}:${IMAGE_TAG}
 &lt;/code>&lt;/pre></description></item><item><title>Docs: Gitlab</title><link>/docs/usage/integration/ci_cd/gitlab/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/gitlab/</guid><description>
 &lt;h3 id="adding-anchore-scanning-to-gitlab">Adding Anchore Scanning to Gitlab&lt;/h3>
-&lt;p>There are two different solutions for adding Anchore Engine image scanning to your GitLab CI/CD pipelines. The &amp;lsquo;on premises&amp;rsquo; solution requires a functional installation of Anchore Engine running on a system that is accessible from your GitLab runners. The &amp;lsquo;integrated&amp;rsquo; solution allows you to run Anchore Engine directly on your GitLab docker runner and utilizes a pre-populated vulnerability database image. This solution does not require any external systems.&lt;/p>
-&lt;p>A container scanning job can be added to the CI/CD pipeline to allow any image to be scanned for vulnerabilities and policy compliance.&lt;/p>
-&lt;h4 id="integrated-solution">Integrated Solution:&lt;/h4>
-&lt;p>This sample pipeline runs directly on a GitLab runner, including shared runners on gitlab.com&lt;/p>
-&lt;p>The Docker executor is required for this job, as it utilizes the official Anchore Engine container.&lt;/p>
-&lt;p>A fully functional pipeline can be viewed at &lt;a href="https://gitlab.com/anchore/gitlab-demo/blob/master/.gitlab-ci.yml">gitlab.com/anchore/gitlab-demo&lt;/a>&lt;/p>
-&lt;p>To be a thorough as possible, this document will provide an entire Docker build/scan/publish pipeline. This is just one example of a pipeline utilizing the integrated Anchore Engine solution, users are free to tweak it to their needs. The &amp;lsquo;container_scan&amp;rsquo; job is responsible for the actual Anchore Engine image scanning, the only requirement of this job is that the image to be scanned is pushed to the GitLab registry.&lt;/p>
-&lt;pre>&lt;code>variables:
-IMAGE_NAME: ${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
-stages:
-- build
-- scan
-- publish
-container_build:
-stage: build
-image: docker:stable
-services:
-- docker:stable-dind
-variables:
-DOCKER_DRIVER: overlay2
-script:
-- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
-- docker build -t &amp;quot;$IMAGE_NAME&amp;quot; .
-container_scan_service:
-stage: scan
-variables:
-ANCHORE_CLI_URL: &amp;quot;http://anchore-engine:8228/v1&amp;quot;
-GIT_STRATEGY: none
-image: docker.io/anchore/inline-scan:v0.6.0
-services:
-- name: docker.io/anchore/inline-scan:v0.6.0
-alias: anchore-engine
-command: [&amp;quot;start&amp;quot;]
-script:
-- source /opt/rh/rh-python36/enable
-- anchore-cli system wait
-- anchore-cli registry add &amp;quot;$CI_REGISTRY&amp;quot; gitlab-ci-token &amp;quot;$CI_JOB_TOKEN&amp;quot; --skip-validate
-- anchore_ci_tools.py -a -r --timeout 500 --image $IMAGE_NAME
-artifacts:
-name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}
-paths:
-- anchore-reports/*
-container_publish:
-stage: publish
-image: docker:stable
-services:
-- docker:stable-dind
-variables:
-DOCKER_DRIVER: overlay2
-GIT_STRATEGY: none
-script:
-- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
-- docker pull &amp;quot;$IMAGE_NAME&amp;quot;
-- docker tag &amp;quot;$IMAGE_NAME&amp;quot; &amp;quot;${CI_REGISTRY_IMAGE}:latest&amp;quot;
-- docker push &amp;quot;${CI_REGISTRY_IMAGE}:latest&amp;quot;
-&lt;/code>&lt;/pre>&lt;h4 id="on-premises-solution">On Premises Solution:&lt;/h4>
+&lt;p>The &amp;lsquo;on premises&amp;rsquo; solution requires a functional installation of Anchore Engine running on a system that is accessible from your GitLab runners.&lt;/p>
+&lt;h4 id="on-premises-solution">On Premises Solution:&lt;/h4>
 &lt;p>This sample job can run a Gitlab Runner including shared runners on Gitlab.com.
 The Docker executor is not required and no special privileges are required for scanning.&lt;/p>
 &lt;p>The runner will require network access to two end points:&lt;/p>

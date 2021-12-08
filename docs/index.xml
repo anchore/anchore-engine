@@ -2323,6 +2323,10 @@ if malware was detected during the analysis scan.&lt;/p>
 &lt;p>Image Scanning can be easily integrated into your GitHub Actions pipeline using the official Anchore Engine Scan Action.&lt;/p>
 &lt;p>Documentation on how to use the action can be found in the official GitHub repository &lt;a href="https://github.com/anchore/scan-action">anchore scan-action&lt;/a>&lt;/p>
 &lt;p>Check out our Anchore Scan Action &lt;a href="https://www.brighttalk.com/webcast/17878/378430?utm_source=brighttalk-portal&amp;amp;utm_medium=web&amp;amp;utm_content=anchore%20github&amp;amp;utm_campaign=webcasts-search-results-feed">webinar demo&lt;/a>&lt;/p></description></item><item><title>Docs: Anchore Engine Inline Image Analysis/Engine Import</title><link>/docs/usage/integration/ci_cd/inline_analysis/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/inline_analysis/</guid><description>
+&lt;p>&lt;em>&lt;strong>Warning&lt;/strong>: The Anchore Inline Scan script is deprecated and will reach &lt;strong>EOL on Jan 10, 2022&lt;/strong>. Please update your integrations to use &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> for CI-based vulnerability scanning or &lt;a href="https://github.com/anchore/syft">Syft&lt;/a>. We will be updating our integrations that use inline_scan during that time to use Grype directly. Until that time all integrations will continue to function and get updated vulnerability data.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>Until Jan 10, 2022&lt;/strong>: we will continue building inline_scan images based on v0.10.x of Anchore Engine and they will be updated daily for latest feed data.
+On Jan 10, 2022, we will stop building new versions of the images with updated vulnerability data and the data will be stale.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>After Jan 10, 2022&lt;/strong>: users should be transitioned to &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> or Grype-based integrations.&lt;/em>&lt;/p>
 &lt;h2 id="introduction">Introduction&lt;/h2>
 &lt;p>For use cases where it is desirable to perform image analysis for a locally build container image, and import the image analysis to an existing Anchore Engine installation, we support a methodology using the inline_scan tool. With this technique, you can &amp;lsquo;add&amp;rsquo; an image to your anchore engine service by analyzing any image that is available locally (say, on the docker host on which the image was built). You can then import the analysis data into anchore engine, rather than the regular method where images are pulled from a registry when added to anchore engine.&lt;/p>
 &lt;p>The only requirements to run the inline_scan script with the &amp;lsquo;analyze&amp;rsquo; operation is the ability to execute Docker commands, network connectivity to an anchore engine API endpoint &amp;amp; bash. We host a versioned copy of this script that can be downloaded directly with curl and executed in a bash pipeline.&lt;/p>
@@ -2370,6 +2374,10 @@ Image Digest: sha256:d212a12aa728ccb4baf06fcc83dc77392d90018d13c9b40717cf455e09a
 # anchore-cli image get docker.io/alpine:latest
 Image Digest: sha256:acd3ca9941a85e8ed16515bfc5328e4e2f8c128caa72959a58a127b7801ee01f
 &lt;/code>&lt;/pre></description></item><item><title>Docs: Anchore Engine Inline Scanning</title><link>/docs/usage/integration/ci_cd/inline_scanning/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/inline_scanning/</guid><description>
+&lt;p>&lt;em>&lt;strong>Warning&lt;/strong>: The Anchore Inline Scan script is deprecated and will reach &lt;strong>EOL on Jan 10, 2022&lt;/strong>. Please update your integrations to use &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> for CI-based vulnerability scanning or &lt;a href="https://github.com/anchore/syft">Syft&lt;/a>. We will be updating our integrations that use inline_scan during that time to use Grype directly. Until that time all integrations will continue to function and get updated vulnerability data.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>Until Jan 10, 2022&lt;/strong>: we will continue building inline_scan images based on v0.10.x of Anchore Engine and they will be updated daily for latest feed data.
+On Jan 10, 2022, we will stop building new versions of the images with updated vulnerability data and the data will be stale.&lt;/em>&lt;/p>
+&lt;p>&lt;em>&lt;strong>After Jan 10, 2022&lt;/strong>: users should be transitioned to &lt;a href="https://github.com/anchore/grype">Grype&lt;/a> or Grype-based integrations.&lt;/em>&lt;/p>
 &lt;h2 id="introduction">Introduction&lt;/h2>
 &lt;p>&lt;code>curl -s https://ci-tools.anchore.io/inline_scan-latest | bash -s -- -p alpine:latest&lt;/code>&lt;/p>
 &lt;p>To make using our inline-scan container as easy as possible, we have provided a simple wrapper script called inline_scan. The only requirements to run the inline_scan script is the ability to execute Docker commands &amp;amp; bash. We host a versioned copy of this script that can be downloaded directly with curl and executed in a bash pipeline.&lt;/p>
@@ -2661,62 +2669,8 @@ ANCHORE_OAUTH_TOKEN_EXPIRATION = the integer value to set number of seconds a to
 ANCHORE_AUTH_ENABLE_HASHED_PASSWORDS = boolean to enable/disable hashed password storage in the anchore db instead of clear text
 &lt;/code>&lt;/pre></description></item><item><title>Docs: Gitlab</title><link>/docs/usage/integration/ci_cd/gitlab/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/usage/integration/ci_cd/gitlab/</guid><description>
 &lt;h3 id="adding-anchore-scanning-to-gitlab">Adding Anchore Scanning to Gitlab&lt;/h3>
-&lt;p>There are two different solutions for adding Anchore Engine image scanning to your GitLab CI/CD pipelines. The &amp;lsquo;on premises&amp;rsquo; solution requires a functional installation of Anchore Engine running on a system that is accessible from your GitLab runners. The &amp;lsquo;integrated&amp;rsquo; solution allows you to run Anchore Engine directly on your GitLab docker runner and utilizes a pre-populated vulnerability database image. This solution does not require any external systems.&lt;/p>
-&lt;p>A container scanning job can be added to the CI/CD pipeline to allow any image to be scanned for vulnerabilities and policy compliance.&lt;/p>
-&lt;h4 id="integrated-solution">Integrated Solution:&lt;/h4>
-&lt;p>This sample pipeline runs directly on a GitLab runner, including shared runners on gitlab.com&lt;/p>
-&lt;p>The Docker executor is required for this job, as it utilizes the official Anchore Engine container.&lt;/p>
-&lt;p>A fully functional pipeline can be viewed at &lt;a href="https://gitlab.com/anchore/gitlab-demo/blob/master/.gitlab-ci.yml">gitlab.com/anchore/gitlab-demo&lt;/a>&lt;/p>
-&lt;p>To be a thorough as possible, this document will provide an entire Docker build/scan/publish pipeline. This is just one example of a pipeline utilizing the integrated Anchore Engine solution, users are free to tweak it to their needs. The &amp;lsquo;container_scan&amp;rsquo; job is responsible for the actual Anchore Engine image scanning, the only requirement of this job is that the image to be scanned is pushed to the GitLab registry.&lt;/p>
-&lt;pre>&lt;code>variables:
-IMAGE_NAME: ${CI_REGISTRY_IMAGE}/build:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHA}
-stages:
-- build
-- scan
-- publish
-container_build:
-stage: build
-image: docker:stable
-services:
-- docker:stable-dind
-variables:
-DOCKER_DRIVER: overlay2
-script:
-- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
-- docker build -t &amp;quot;$IMAGE_NAME&amp;quot; .
-container_scan_service:
-stage: scan
-variables:
-ANCHORE_CLI_URL: &amp;quot;http://anchore-engine:8228/v1&amp;quot;
-GIT_STRATEGY: none
-image: docker.io/anchore/inline-scan:v0.6.0
-services:
-- name: docker.io/anchore/inline-scan:v0.6.0
-alias: anchore-engine
-command: [&amp;quot;start&amp;quot;]
-script:
-- source /opt/rh/rh-python36/enable
-- anchore-cli system wait
-- anchore-cli registry add &amp;quot;$CI_REGISTRY&amp;quot; gitlab-ci-token &amp;quot;$CI_JOB_TOKEN&amp;quot; --skip-validate
-- anchore_ci_tools.py -a -r --timeout 500 --image $IMAGE_NAME
-artifacts:
-name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}
-paths:
-- anchore-reports/*
-container_publish:
-stage: publish
-image: docker:stable
-services:
-- docker:stable-dind
-variables:
-DOCKER_DRIVER: overlay2
-GIT_STRATEGY: none
-script:
-- echo &amp;quot;$CI_JOB_TOKEN&amp;quot; | docker login -u gitlab-ci-token --password-stdin &amp;quot;${CI_REGISTRY}&amp;quot;
-- docker pull &amp;quot;$IMAGE_NAME&amp;quot;
-- docker tag &amp;quot;$IMAGE_NAME&amp;quot; &amp;quot;${CI_REGISTRY_IMAGE}:latest&amp;quot;
-- docker push &amp;quot;${CI_REGISTRY_IMAGE}:latest&amp;quot;
-&lt;/code>&lt;/pre>&lt;h4 id="on-premises-solution">On Premises Solution:&lt;/h4>
+&lt;p>The &amp;lsquo;on premises&amp;rsquo; solution requires a functional installation of Anchore Engine running on a system that is accessible from your GitLab runners.&lt;/p>
+&lt;h4 id="on-premises-solution">On Premises Solution:&lt;/h4>
 &lt;p>This sample job can run a Gitlab Runner including shared runners on Gitlab.com.
 The Docker executor is not required and no special privileges are required for scanning.&lt;/p>
 &lt;p>The runner will require network access to two end points:&lt;/p>
@@ -3788,113 +3742,19 @@ If you would like to override any of the default values of those commands or rep
 &lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline"> &lt;/span>- &lt;span style="color:#000">datadir=/tmp/different/datadir&lt;/span>&lt;span style="color:#f8f8f8;text-decoration:underline">
 &lt;/span>&lt;/code>&lt;/pre>&lt;/div>&lt;p>Please note that the value above will be passed &lt;em>directly&lt;/em> to the corresponding commands, e.g.:&lt;/p>
 &lt;div class="highlight">&lt;pre style="background-color:#f8f8f8;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-shell" data-lang="shell">clamscan --suppress-ok-results --infected --recursive --allmatch --archive-verbose --tempdir&lt;span style="color:#ce5c00;font-weight:bold">={&lt;/span>tempdir&lt;span style="color:#ce5c00;font-weight:bold">}&lt;/span> --database&lt;span style="color:#ce5c00;font-weight:bold">={&lt;/span>database&lt;span style="color:#ce5c00;font-weight:bold">}&lt;/span> --max-filesize&lt;span style="color:#ce5c00;font-weight:bold">=&lt;/span>1000m --max-scansize&lt;span style="color:#ce5c00;font-weight:bold">=&lt;/span>1000m &amp;lt;path_to_tar&amp;gt;
-&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Docs: Reverting Back to use RHSA Data</title><link>/docs/releasenotes/0.7.0/data_matching_rollback/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/0.7.0/data_matching_rollback/</guid><description>
-&lt;p>&lt;em>NOTE: This section is only for very specific situations where you absolutely must revert the matching system to use the RHSA data. This should not be done lightly. The newer CVE-based data is more accurate, specific, and provides a more consistent experience with other distros.&lt;/em>&lt;/p>
-&lt;p>If your processing of anchore output relies on RHSA keys as vulnerability matches, or you have large RHSA-based whitelists that cannot be converted to CVE-based,
-then it is possible, though not recommended, to migrate your system back to using the RHSA-based feeds (centos:* groups).&lt;/p>
-&lt;p>Here is the process. It requires the Anchore CLI with access to the API as well as direct access to the internal policy engine API endpoint. That may require a &lt;code>docker exec&lt;/code> or &lt;code>kubectl exec&lt;/code> call
-to achieve and will be deployment/environment specific.&lt;/p>
-&lt;ol>
-&lt;li>
-&lt;p>Revert the distro mapping records that map centos, fedora, and rhel to use the RHEL vuln data.&lt;/p>
-&lt;ol>
-&lt;li>With API access to the policy engine directly (output omitted for brevity), remove the existing &lt;em>distro mappings&lt;/em> to RHEL data. These are the used by Anchore:&lt;/li>
-&lt;/ol>
-&lt;pre>&lt;code>curl -X DELETE -u admin:foobar http://localhost:8087/v1/distro_mappings?from_distro=centos
-curl -X DELETE -u admin:foobar http://localhost:8087/v1/distro_mappings?from_distro=rhel
-curl -X DELETE -u admin:foobar http://localhost:8087/v1/distro_mappings?from_distro=fedora
-&lt;/code>&lt;/pre>&lt;ol>
-&lt;li>Continuing with API access to the policy engine directly, replace the removed mappings with new mappings to the &lt;em>centos&lt;/em> feeds:&lt;/li>
-&lt;/ol>
-&lt;pre>&lt;code>curl -H &amp;quot;Content-Type: application/json&amp;quot; -X POST -u admin:foobar -d'{&amp;quot;from_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;to_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;flavor&amp;quot;:&amp;quot;RHEL&amp;quot;}' http://localhost:8087/v1/distro_mappings
-curl -H &amp;quot;Content-Type: application/json&amp;quot; -X POST -u admin:foobar -d'{&amp;quot;from_distro&amp;quot;:&amp;quot;fedora&amp;quot;, &amp;quot;to_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;flavor&amp;quot;:&amp;quot;RHEL&amp;quot;}' http://localhost:8087/v1/distro_mappings
-curl -H &amp;quot;Content-Type: application/json&amp;quot; -X POST -u admin:foobar -d'{&amp;quot;from_distro&amp;quot;:&amp;quot;rhel&amp;quot;, &amp;quot;to_distro&amp;quot;:&amp;quot;centos&amp;quot;, &amp;quot;flavor&amp;quot;:&amp;quot;RHEL&amp;quot;}' http://localhost:8087/v1/distro_mappings
-&lt;/code>&lt;/pre>&lt;p>Note: if something went wrong and you want to undo the progress you&amp;rsquo;ve made, just make the same set of calls as the last two steps in the same order but with the &lt;code>to_distro&lt;/code> values set to &amp;lsquo;rhel&amp;rsquo;.&lt;/p>
-&lt;ol>
-&lt;li>Now, ensure you are back where you have access to the main Anchore API and the Anchore CLI installed. Disable the existing rhel feed groups&lt;/li>
-&lt;/ol>
-&lt;pre>&lt;code>anchore-cli system feeds config vulnerabilities --disable --group rhel:5
-anchore-cli system feeds config vulnerabilities --disable --group rhel:6
-anchore-cli system feeds config vulnerabilities --disable --group rhel:7
-anchore-cli system feeds config vulnerabilities --disable --group rhel:8
-&lt;/code>&lt;/pre>&lt;pre>&lt;code>anchore-cli system feeds delete vulnerabilities --group rhel:8
-anchore-cli system feeds delete vulnerabilities --group rhel:7
-anchore-cli system feeds delete vulnerabilities --group rhel:6
-anchore-cli system feeds delete vulnerabilities --group rhel:5
-&lt;/code>&lt;/pre>&lt;ol>
-&lt;li>Enable the centos feed groups that have the RHSA vulnerability data&lt;/li>
-&lt;/ol>
-&lt;pre>&lt;code>anchore-cli system feeds config vulnerabilities --enable --group centos:8
-anchore-cli system feeds config vulnerabilities --enable --group centos:7
-anchore-cli system feeds config vulnerabilities --enable --group centos:6
-anchore-cli system feeds config vulnerabilities --enable --group centos:5
-&lt;/code>&lt;/pre>&lt;p>NOTE: if you already have centos data in your feeds (verify with &lt;code>anchore-cli system feeds list&lt;/code>) then you&amp;rsquo;ll need to delete the centos data groups as well
-to ensure a clean re-syncin the next steps. This is accomplished with:&lt;/p>
-&lt;pre>&lt;code>anchore-cli system feeds delete vulnerabilities --group centos:5
-anchore-cli system feeds delete vulnerabilities --group centos:6
-anchore-cli system feeds delete vulnerabilities --group centos:7
-anchore-cli system feeds delete vulnerabilities --group centos:8
-&lt;/code>&lt;/pre>&lt;ol>
-&lt;li>Now do a sync to re-match any images using rhel/centos to the RHSA data&lt;/li>
-&lt;/ol>
-&lt;pre>&lt;code>[root@d64b49fe951c ~]# anchore-cli system feeds sync
-WARNING: This operation should not normally need to be performed except when the anchore-engine operator is certain that it is required - the operation will take a long time (hours) to complete, and there may be an impact on anchore-engine performance during the re-sync/flush.
-Really perform a manual feed data sync/flush? (y/N)y
-Feed Group Status Records Updated Sync Duration
-github github:composer success 0 0.28s
-github github:gem success 0 0.34s
-github github:java success 0 0.33s
-github github:npm success 0 0.23s
-github github:nuget success 0 0.23s
-github github:python success 0 0.29s
-nvdv2 nvdv2:cves success 0 60.59s
-vulnerabilities alpine:3.10 success 0 0.27s
-vulnerabilities alpine:3.11 success 0 0.31s
-vulnerabilities alpine:3.3 success 0 0.31s
-vulnerabilities alpine:3.4 success 0 0.25s
-vulnerabilities alpine:3.5 success 0 0.26s
-vulnerabilities alpine:3.6 success 0 0.25s
-vulnerabilities alpine:3.7 success 0 0.26s
-vulnerabilities alpine:3.8 success 0 0.35s
-vulnerabilities alpine:3.9 success 0 0.28s
-vulnerabilities amzn:2 success 0 0.26s
-vulnerabilities centos:7 success 1003 34.91s
-vulnerabilities centos:8 success 199 9.15s
-vulnerabilities debian:10 success 2 0.50s
-vulnerabilities debian:11 success 4 60.53s
-vulnerabilities debian:7 success 0 0.30s
-vulnerabilities debian:8 success 3 0.34s
-vulnerabilities debian:9 success 2 0.38s
-vulnerabilities debian:unstable success 4 0.39s
-vulnerabilities ol:5 success 0 0.31s
-vulnerabilities ol:6 success 0 0.29s
-vulnerabilities ol:7 success 0 0.41s
-vulnerabilities ol:8 success 0 0.28s
-vulnerabilities rhel:5 success 0 0.28s
-vulnerabilities rhel:6 success 0 0.43s
-vulnerabilities ubuntu:12.04 success 0 0.45s
-vulnerabilities ubuntu:12.10 success 0 0.25s
-vulnerabilities ubuntu:13.04 success 0 0.24s
-vulnerabilities ubuntu:14.04 success 0 0.37s
-vulnerabilities ubuntu:14.10 success 0 0.25s
-vulnerabilities ubuntu:15.04 success 0 0.42s
-vulnerabilities ubuntu:15.10 success 0 0.23s
-vulnerabilities ubuntu:16.04 success 0 0.35s
-vulnerabilities ubuntu:16.10 success 0 0.33s
-vulnerabilities ubuntu:17.04 success 0 0.33s
-vulnerabilities ubuntu:17.10 success 0 0.31s
-vulnerabilities ubuntu:18.04 success 0 0.42s
-vulnerabilities ubuntu:18.10 success 0 0.37s
-vulnerabilities ubuntu:19.04 success 0 0.45s
-vulnerabilities ubuntu:19.10 success 0 0.32s
-[root@d64b49fe951c ~]# anchore-cli image vuln centos os
-Vulnerability ID Package Severity Fix CVE Refs Vulnerability URL Type Feed Group Package Path
-RHSA-2020:0271 libarchive-3.3.2-7.el8 High 0:3.3.2-8.el8_1 CVE-2019-18408 https://access.redhat.com/errata/RHSA-2020:0271 rpm centos:8 pkgdb
-RHSA-2020:0273 sqlite-libs-3.26.0-3.el8 High 0:3.26.0-4.el8_1 CVE-2019-13734 https://access.redhat.com/errata/RHSA-2020:0273 rpm centos:8 pkgdb
-RHSA-2020:0575 systemd-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
-RHSA-2020:0575 systemd-libs-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
-RHSA-2020:0575 systemd-pam-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
-RHSA-2020:0575 systemd-udev-239-18.el8_1.1 High 0:239-18.el8_1.4 https://access.redhat.com/errata/RHSA-2020:0575 rpm centos:8 pkgdb
-&lt;/code>&lt;/pre>&lt;/li>
-&lt;/ol>
-&lt;p>Note in the last command output that the OS vulnerabilities are again showing &amp;lsquo;RHSA&amp;rsquo; matches. The restoration to RHSA-based vuln data is complete.&lt;/p></description></item></channel></rss>
+&lt;/code>&lt;/pre>&lt;/div></description></item><item><title>Docs: Anchore Engine Release Notes - Version 1.1.0</title><link>/docs/releasenotes/110/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>/docs/releasenotes/110/</guid><description>
+&lt;h2 id="anchore-engine-110">Anchore Engine 1.1.0&lt;/h2>
+&lt;p>API version - 0.1.20&lt;/p>
+&lt;p>DB Schema version - 0.0.16&lt;/p>
+&lt;h3 id="rocky-linux-support">Rocky Linux support&lt;/h3>
+&lt;p>Anchore Enterprise can now scan Rocky Linux images for vulnerabilities.&lt;/p>
+&lt;h3 id="fixes">Fixes&lt;/h3>
+&lt;ul>
+&lt;li>Images that had Go content and hints enabled were failing analysis. This has been fixed.&lt;/li>
+&lt;li>Images reported via runtime inventory that also had port numbers in the registry host URL were failing to parse properly, which caused scan failures. This issue has been fixed.&lt;/li>
+&lt;li>With the Grype provider, NVD and vendor CVSS scores were missing for records in non-NVD namespaces. This is now fixed.&lt;/li>
+&lt;/ul>
+&lt;h3 id="upgrading">Upgrading&lt;/h3>
+&lt;ul>
+&lt;li>&lt;a href="/docs/install/upgrade/">Upgrading Anchore Engine&lt;/a>&lt;/li>
+&lt;/ul></description></item></channel></rss>
