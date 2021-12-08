@@ -1,23 +1,40 @@
-# Developing
+# Developing Engine Documentation
 
-## Developer Setup
-[Documented here ...](dev-tools/README.md)
+Anchore Engine documentation is managed in the `docs` branch only. All changes and updates should be
+branched from and merged into the `docs` branch.
 
-## Running Functional Tests
+Publication of the documentation is triggered via a GitHub Action on pushes to the `publish-docs` branch.
+The regular process for publishing changes is to merge (via PR) drain changes into `docs` branch, then
+merge (via PR) the `docs` branch into the `publish-docs` branch to make the change live.
 
-There are a couple ways to run functional tests:
+Engine documentation is not multi-version, it only applies to the most recent release of the project.
 
-1. A docker-compose setup (the same as used in CI)
-2. Locally against your own installation
+## Setup
 
-### ...Against docker compose
+The documentation uses the Hugo system, specifically [hugo-extended](https://github.com/gohugoio/hugo/releases/). So you'll need to install hugo locally to dev/test.
 
-1. Modify the `tests/functional/local.env` file to meet your needs
-1. `source tests/functional/local.env`
-1. `make setup-and-test-functional-grype` or `make setup-and-test-functional-legacy` to standup engine and run the functional tests.
+## Workflow
 
-### ...Run locally
+1. Create new branch for your changes, starting from "docs" branch.
 
-1. Modify the `tests/functional/local.env` file to meet your needs
-2. `source tests/functional/local.env`
-3. `tox tests/functional`
+```
+git checkout docs
+git pull
+git checkout -b my_docs_updates
+```
+
+2. Make your docs changes
+3. Test using Hugo
+```
+hugo server --watch
+```
+Point your browser at http://localhost:1313 to see them rendered and updated as you make changes.
+
+4. Commit your changes into your branch.
+5. Open a PR for your branch to merge to the `docs` branch
+6. Get approval and once approval is granted, merge the PR.
+7. A docs owner will PR the `docs` branch into `publish-docs` when the team is ready to publish changes. This may be per-update or batched as needed.
+
+
+
+
