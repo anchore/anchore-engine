@@ -1022,7 +1022,7 @@ class RestoreArchivedImageTask(object):
                 os.remove(tf.name)
 
         else:
-            raise Exception(
+            raise ArchiveRestorationError(
                 "No archive manifest found in archive record. Cannot restore"
             )
 
@@ -1035,7 +1035,7 @@ class RestoreArchivedImageTask(object):
         with session_scope() as session:
             img_record_str = manifest.metadata.get("image_record")
             if not img_record_str:
-                raise Exception("Cannot restore missing image record")
+                raise ArchiveRestorationError("Cannot restore missing image record")
             else:
                 img_record = json.loads(img_record_str)
 
@@ -1088,7 +1088,7 @@ class RestoreArchivedImageTask(object):
 
                 if not data:
                     logger.error("Could not get data for {}".format(artifact.name))
-                    raise Exception(
+                    raise ArchiveRestorationError(
                         "Archive data unavailable for {}".format(artifact.name)
                     )
 
@@ -1177,7 +1177,7 @@ class RestoreArchivedImageTaskFromArchiveTarfile(RestoreArchivedImageTask):
                 os.remove(tf.name)
 
         else:
-            raise Exception(
+            raise ArchiveRestorationError(
                 "No archive manifest found in archive record. Cannot restore"
             )
 
@@ -1259,7 +1259,7 @@ class ArchiveImageTask(object):
                 )
 
                 if not catalog_img_dict:
-                    raise Exception(
+                    raise ArchiveError(
                         "Could not locate an image with digest {} in account {}".format(
                             self.image_digest, self.account
                         )
@@ -1271,7 +1271,7 @@ class ArchiveImageTask(object):
                     catalog_img_dict.get("image_status") != "active"
                     or catalog_img_dict.get("analysis_status") != "analyzed"
                 ):
-                    raise Exception(
+                    raise ArchiveError(
                         'Invalid image record state. Image must have "analysis_status"="analyzed" and "image_status"="active". Found {} and {}'.format(
                             catalog_img_dict.get("analysis_status"),
                             catalog_img_dict.get("image_status"),
@@ -1315,7 +1315,7 @@ class ArchiveImageTask(object):
             record = db_archived_images.get(session, self.account, self.image_digest)
 
             if not record:
-                raise Exception("No analysis archive record found to track state")
+                raise ArchiveError("No analysis archive record found to track state")
 
             try:
                 with tempfile.TemporaryDirectory(
@@ -1380,7 +1380,7 @@ class ArchiveImageTask(object):
                         archiveId=archive_key,
                         data=tarball_data,
                     ):
-                        raise Exception("Could not write archive manifest")
+                        raise ArchiveError("Could not write archive manifest")
 
                     data_written = True
                     record.archive_size_bytes = size
