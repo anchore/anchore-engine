@@ -63,6 +63,7 @@
 version: 2.1
 orbs:
   anchore: anchore/anchore-engine@1
+  slack: circleci/slack@4.5
 
 commands:
   run_tests:
@@ -261,6 +262,68 @@ jobs:
       - run:
           name: Push to Dockerhub
           command: make << parameters.make_job >>
+      - slack/notify:
+          event: pass
+          tag_pattern: ^v[0-9]+(\.[0-9]+)*$
+          mentions: '@platform-one-team'
+          custom: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "An image has shipped! :anchore::rocket:",
+                    "emoji": true
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Project*:\n$CIRCLE_PROJECT_REPONAME"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*When*:\n$(date +'%m/%d/%Y %T')"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Tag*:\n$CIRCLE_TAG"
+                    }
+                  ],
+                  "accessory": {
+                    "type": "image",
+                    "image_url": "https://assets.brandfolder.com/otz5mn-bw4j2w-6jzqo8/original/circle-logo-badge-black.png",
+                    "alt_text": "CircleCI logo"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Source"
+                      },
+                      "url": "https://github.com/anchore/${CIRCLE_PROJECT_REPONAME}/tree/${CIRCLE_TAG}"
+                    }
+                  ]
+                },
+                {
+                  "type": "divider"
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Image:*\n```docker pull docker.io/${PROD_IMAGE_REPO}:${CIRCLE_TAG}```"
+                  }
+                }
+              ]
+            }
 
   ironbank-artifacts:
     description: Use make script to create ironbank artifacts & push up to s3
@@ -475,6 +538,13 @@ workflows:
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
+      - slack/on-hold:
+          context: slack-bot
+          channel: 'C01NA1QMYCF'
+          mentions: '@engineeringops-team'
+          filters: *filter_semver_tags
+          requires:
+            - prod_cli_smoke_tests_38
       - hold_for_approval:
           type: approval
           filters: *filter_semver_tags
@@ -483,7 +553,9 @@ workflows:
       - push_image:
           name: push_prod_image
           make_job: push-prod
-          context: dockerhub-prod
+          context: 
+            - dockerhub-prod
+            - slack-bot
           filters: *filter_semver_tags
           requires:
             - hold_for_approval
