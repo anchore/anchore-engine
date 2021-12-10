@@ -3,10 +3,9 @@ Module for adapters that convert syft to other formats
 """
 import collections
 
+from anchore_engine.analyzers.syft.handlers import modules_by_artifact_type
 from anchore_engine.analyzers.utils import defaultdict_to_dict, dig
 from anchore_engine.subsys import logger
-
-from .handlers import modules_by_artifact_type
 
 
 class IdentityAdapter:

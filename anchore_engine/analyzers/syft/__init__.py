@@ -1,12 +1,11 @@
 import typing
 
+from anchore_engine.analyzers.syft.adapters import FilteringEngineAdapter
 from anchore_engine.analyzers.syft.handlers import (
     modules_by_artifact_type,
     modules_by_engine_type,
 )
 from anchore_engine.clients.syft_wrapper import run_syft
-
-from .adapters import FilteringEngineAdapter
 
 
 def catalog_image(
