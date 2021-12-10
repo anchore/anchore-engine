@@ -1,9 +1,11 @@
 import datetime
+import gzip
 import io
 import json
 import re
 import tarfile
 
+import flask
 from connexion import request
 
 import anchore_engine.apis
@@ -33,6 +35,7 @@ from anchore_engine.services.apiext.api.controllers.utils import (  # make_respo
 from anchore_engine.subsys import logger, taskstate
 from anchore_engine.subsys.metrics import flask_metrics
 from anchore_engine.util.docker import parse_dockerimage_string
+from anchore_engine.utils import ensure_bytes
 
 authorizer = get_authorizer()
 
@@ -1570,3 +1573,47 @@ def list_secret_search_results(imageDigest):
         raise
     except Exception as err:
         raise api_exceptions.InternalError(str(err), detail={})
+
+
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def get_image_sbom_native(imageDigest: str):
+    """
+    GET /images/{digest}/sboms/native
+
+    :param imageDigest:
+    :return: A native anchore (syft) formatted sbom for the image
+    """
+
+    account = ApiRequestContextProxy.namespace()
+    try:
+        _get_image_ok(account, imageDigest)
+
+        client = internal_client_for(CatalogClient, account)
+        resp = client.get_document("syft_sbom", imageDigest)
+
+        # Do
+        compressed_bytes = json_content_gzipper(resp)
+        resp = flask.Response(
+            content_type="application/gzip", status=200, response=compressed_bytes
+        )
+        resp.headers.set(
+            "Content-Disposition",
+            "attachment",
+            filename="%s_%s.json.gzip" % (imageDigest, "native"),
+        )
+        return resp
+    except api_exceptions.AnchoreApiError:
+        raise
+    except Exception as err:
+        raise api_exceptions.InternalError(str(err), detail={})
+
+
+def json_content_gzipper(content_json):
+    """
+    Returns gzipped bytes of content json
+
+    :param content_json:
+    :return:
+    """
+    compressed_json = gzip.compress(ensure_bytes(json.dumps(content_json, indent=0)))
+    return compressed_json

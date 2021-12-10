@@ -21,6 +21,7 @@ import anchore_engine.common.images
 import anchore_engine.configuration
 from anchore_engine import utils
 from anchore_engine.analyzers import manager as analyzer_manager
+from anchore_engine.analyzers.manager import AnalysisResult
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
     DockerV2ManifestMetadata,
@@ -889,7 +890,7 @@ def run_anchore_analyzers(
     imageId,
     localconfig,
     owned_package_filtering_enabled: bool = True,
-):
+) -> AnalysisResult:
     outputdir = staging_dirs["outputdir"]
     unpackdir = staging_dirs["unpackdir"]
     copydir = staging_dirs["copydir"]
@@ -904,7 +905,7 @@ def run_anchore_analyzers(
     else:
         logger.info("image content hints status: enabled")
 
-    analyzer_report = analyzer_manager.run(
+    result = analyzer_manager.run(
         configdir,
         imageId,
         unpackdir,
@@ -913,7 +914,7 @@ def run_anchore_analyzers(
         owned_package_filtering_enabled,
     )
 
-    return dict(analyzer_report)
+    return result
 
 
 def generate_image_export(
@@ -994,7 +995,7 @@ def analyze_image(
     image_source_meta=None,
     parent_manifest=None,
     owned_package_filtering_enabled: bool = True,
-):
+) -> AnalysisResult:
     # need all this
 
     imageId = None
@@ -1118,7 +1119,7 @@ def analyze_image(
             familytree = layers
 
             timer = time.time()
-            analyzer_report = run_anchore_analyzers(
+            analysis_result = run_anchore_analyzers(
                 staging_dirs,
                 imageDigest,
                 imageId,
@@ -1132,9 +1133,9 @@ def analyze_image(
                 )
             )
 
-            image_report = generate_image_export(
+            image_export = generate_image_export(
                 imageId,
-                analyzer_report,
+                analysis_result.analysis_report,
                 imageSize,
                 fulltag,
                 docker_history,
@@ -1146,8 +1147,10 @@ def analyze_image(
                 pullstring,
                 analyzer_manifest,
             )
+            analysis_result.image_export = image_export
+            analysis_result.manifest = manifest
+            return analysis_result
 
-            return image_report, manifest
         except Exception as err:
             analysis_error = err
             logger.warn(

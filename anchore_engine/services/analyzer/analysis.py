@@ -5,6 +5,7 @@ import typing
 
 import anchore_engine.clients
 import anchore_engine.subsys
+from anchore_engine.analyzers.manager import AnalysisResult
 from anchore_engine.clients import localanchore_standalone
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
@@ -111,7 +112,7 @@ def perform_analyze(
     layer_cache_enable=False,
     parent_manifest=None,
     owned_package_filtering_enabled: bool = True,
-):
+) -> AnalysisResult:
     ret_analyze = {}
 
     loaded_config = get_config()
@@ -164,7 +165,7 @@ def perform_analyze(
     ):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
         logger.info("analyzing image: %s", pullstring)
-        analyzed_image_report, manifest_raw = localanchore_standalone.analyze_image(
+        result = localanchore_standalone.analyze_image(
             account,
             registry_manifest,
             image_record,
@@ -175,11 +176,10 @@ def perform_analyze(
             parent_manifest=registry_parent_manifest,
             owned_package_filtering_enabled=owned_package_filtering_enabled,
         )
-        ret_analyze = analyzed_image_report
 
-    logger.info("performing analysis on image complete: " + str(pullstring))
+    logger.info("performing analysis on image complete: %s", pullstring)
 
-    return ret_analyze
+    return result
 
 
 def build_catalog_url(account: str, image_digest: str) -> str:
@@ -308,7 +308,7 @@ def process_analyzer_job(
             # actually do analysis
             registry_creds = catalog_client.get_registry()
             try:
-                image_data = perform_analyze(
+                analysis_result = perform_analyze(
                     account,
                     manifest,
                     image_record,
@@ -324,6 +324,9 @@ def process_analyzer_job(
                 analysis_events.append(event)
                 raise
 
+            image_data = analysis_result.image_export
+            syft_analysis = analysis_result.syft_output
+
             # Save the results to the upstream components and data stores
             store_analysis_results(
                 account,
@@ -333,6 +336,7 @@ def process_analyzer_job(
                 manifest,
                 analysis_events,
                 all_content_types,
+                syft_report=syft_analysis,
             )
 
             logger.debug("updating image catalog record analysis_status")
@@ -458,6 +462,7 @@ def store_analysis_results(
     image_manifest: dict,
     analysis_events: list,
     image_content_types: list,
+    syft_report: dict = None,
 ):
     """
 
@@ -468,6 +473,7 @@ def store_analysis_results(
     :param image_manifest:
     :param analysis_events: list of events that any new events may be added to
     :param image_content_types:
+    :param syft_report:
     :return:
     """
 
@@ -491,6 +497,27 @@ def store_analysis_results(
             account, imageId, image_digest
         )
     )
+
+    if syft_report:
+        try:
+            logger.info("Saving raw syft output data to catalog object store")
+            rc = catalog_client.put_document("syft_sbom", image_digest, syft_report)
+            if not rc:
+                # Ugh this ia big ugly, but need to be sure. Should review CatalogClient and ensure this cannot happen, but for now just handle it.
+                raise CatalogClientError(
+                    msg="Catalog client returned failure",
+                    cause="Invalid response from catalog API - {}".format(str(rc)),
+                )
+        except Exception as e:
+            err = CatalogClientError(
+                msg="Failed to upload analysis data to catalog", cause=e
+            )
+            event = events.SaveAnalysisFailed(
+                user_id=account, image_digest=image_digest, error=err.to_dict()
+            )
+            analysis_events.append(event)
+            raise err
+
     try:
         logger.info("Saving raw analysis data to catalog object store")
         rc = catalog_client.put_document("analysis_data", image_digest, analysis_result)

@@ -1116,6 +1116,32 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/sboms/native:
+    get:
+      tags:
+        - Images
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_sbom_native
+      x-anchore-authz-action: getImage
+      summary: Get image sbom in the native Anchore format
+      produces:
+        - application/gzip
+      parameters:
+        - name: imageDigest
+          in: path
+          type: string
+          required: true
+        - $ref: "#/parameters/AsAccountParameter"
+      responses:
+        200:
+          description: Image lookup success
+          schema:
+            type: file
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+
   /images/{imageDigest}/metadata/{mtype}:
     get:
       tags:
@@ -3551,6 +3577,9 @@ definitions:
           - analyzing
           - analyzed
           - analysis_failed
+      record_version:
+        type: string
+        description: The version of the record, used for internal schema updates and data migrations.
   AnchoreImageList:
     description: A list of Anchore Images
     type: array
@@ -4937,6 +4966,11 @@ definitions:
   ImageImportManifest:
     x-nullable: True
     type: object
+    required:
+      - tags
+      - contents
+      - digest
+      - operation_uuid
     properties:
       contents:
         $ref: "#/definitions/ImportContentDigests"
@@ -5132,4 +5166,6 @@ definitions:
         additionalProperties: true
         type: object
     additionalProperties: true
+    type: object
+  NativeSbom:
     type: object
