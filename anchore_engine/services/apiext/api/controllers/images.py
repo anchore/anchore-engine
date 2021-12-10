@@ -1596,6 +1596,11 @@ def get_image_sbom_native(imageDigest: str):
         resp = flask.Response(
             content_type="application/gzip", status=200, response=compressed_bytes
         )
+        resp.headers.set(
+            "Content-Disposition",
+            "attachment",
+            filename="%s_%s.json.gzip" % (imageDigest, "native"),
+        )
         return resp
     except api_exceptions.AnchoreApiError:
         raise

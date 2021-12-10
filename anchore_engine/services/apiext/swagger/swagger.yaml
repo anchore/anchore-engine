@@ -1135,6 +1135,8 @@ paths:
       responses:
         200:
           description: Image lookup success
+          schema:
+            type: file
         500:
           description: Internal error
           schema:
