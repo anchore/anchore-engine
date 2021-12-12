@@ -80,7 +80,7 @@ def test_distro_from(anchore_db):
         logger.info("Distros for rocky 8 (rhel) = {}".format(distros))
         assert distros is not None
         assert len(distros) == 1
-        
+
         distros = DistroMapping.distros_for("almalinux", "8", "rhel")
         logger.info("Distros for almalinux 8 (rhel) = {}".format(distros))
         assert distros is not None

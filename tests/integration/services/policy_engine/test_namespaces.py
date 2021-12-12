@@ -241,7 +241,7 @@ def test_distromappings(initialized_mappings):
     almalinux7 = DistroNamespace(name="almalinux", version="7", like_distro="rhel")
     assert almalinux7.mapped_names() == []
     assert almalinux7.like_namespace_names == ["rhel:7"]
-    
+
     assert sorted(DistroMapping.distros_mapped_to("rhel", "7")) == sorted(
         [
             DistroTuple("redhat", "7", "RHEL"),
@@ -266,4 +266,4 @@ def test_mapped_distros(initialized_mappings):
     ]
     assert DistroMapping.distros_for("almalinux", "8", "rhel") == [
         DistroTuple("rhel", "8", "RHEL")
-    ]    
+    ]
