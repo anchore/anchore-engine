@@ -13,7 +13,7 @@ ENV LC_ALL=C.UTF-8
 
 # environment variables for dependent binary versions
 ENV SYFT_VERSION=v0.32.0
-ENV GRYPE_VERSION=v0.27.0
+ENV GRYPE_VERSION=v0.27.2
 ENV PIP_VERSION=21.0.1
 
 # setup build artifact directory
