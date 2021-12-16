@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 import anchore_engine.clients.services.common
 import anchore_engine.common
+from anchore_engine.decorators import profile
 
 # anchore modules
 import anchore_engine.common.helpers
@@ -145,6 +146,7 @@ def do_account_resources_delete(account_name: str):
     return return_object, httpcode
 
 
+@profile
 def handle_account_resource_cleanup(*args, **kwargs):
     watcher = str(kwargs["mythread"]["taskType"])
     handler_success = True
@@ -226,6 +228,7 @@ def handle_account_resource_cleanup(*args, **kwargs):
     return True
 
 
+@profile
 def handle_vulnerability_scan(*args, **kwargs):
     global feed_sync_updated
 
@@ -896,6 +899,7 @@ def handle_repo_watcher(*args, **kwargs):
     return True
 
 
+@profile
 def handle_image_watcher(*args, **kwargs):
     global system_user_auth
 
@@ -1260,6 +1264,7 @@ def check_policybundle_update(userId, dbsession):
     return is_updated
 
 
+@profile
 def handle_policyeval(*args, **kwargs):
     global system_user_auth, bundle_user_is_updated, feed_sync_updated
 
@@ -1952,6 +1957,7 @@ def handle_metrics(*args, **kwargs):
         time.sleep(cycle_timer)
 
 
+@profile
 def handle_archive_tasks(*args, **kwargs):
     """
 
@@ -2005,6 +2011,7 @@ def handle_archive_tasks(*args, **kwargs):
     return True
 
 
+@profile
 def handle_image_gc(*args, **kwargs) -> bool:
     """
     Periodic handler for cleaning up images that are marked for deletion, can be extended to cover other states in the future
@@ -2634,6 +2641,7 @@ def expire_imports():
             operation.status = ImportState.expired
 
 
+@profile
 def handle_import_gc(*args, **kwargs):
     """
     Cleanup import operations that are expired or complete and reclaim resources

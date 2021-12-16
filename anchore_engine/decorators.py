@@ -1,3 +1,6 @@
+import cProfile
+import pstats
+
 """
 Generic decorators for use in all parts of the system
 """
@@ -57,3 +60,17 @@ def delegate_to_callable(fn, err_msg=None):
         return inner_wrapper
 
     return outer_wrapper
+
+
+def profile(func):
+    def _f(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+        print("\n<<<---")
+        res = func(*args, **kwargs)
+        p = pstats.Stats(pr)
+        p.strip_dirs().sort_stats("cumtime").print_stats(20)
+        print("\n--->>>")
+        return res
+
+    return _f

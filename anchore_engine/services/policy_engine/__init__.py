@@ -39,6 +39,8 @@ from anchore_engine.services.policy_engine.engine.vulns.providers import (
 )
 from anchore_engine.subsys import logger
 
+from anchore_engine.decorators import profile
+
 # from anchore_engine.subsys.logger import enable_bootstrap_logging
 # enable_bootstrap_logging()
 
@@ -272,6 +274,7 @@ def handle_feed_sync(*args, **kwargs):
     wait_incrementing_start=FEED_SYNC_RETRY_BACKOFF * 1000,
     wait_incrementing_increment=FEED_SYNC_RETRY_BACKOFF * 1000,
 )
+@profile
 def run_feed_sync(system_user):
     all_ready = anchore_engine.clients.services.common.check_services_ready(
         ["simplequeue"]
