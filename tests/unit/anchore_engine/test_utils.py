@@ -7,6 +7,7 @@ from anchore_engine.utils import (
     run_check,
     run_command_list_with_piped_input,
     run_sanitize,
+    CPE,
 )
 
 images = [
@@ -329,3 +330,154 @@ class TestRunCheck:
             stdout, stderr = run_check(["ls"])
 
         assert len(error_log.calls) == 1
+
+
+class TestCPE:
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "element": "*",
+                    "expected": "",
+                },
+                id="star",
+            ),
+            pytest.param(
+                {
+                    "element": "-",
+                    "expected": "-",
+                },
+                id="hyphen",
+            ),
+            pytest.param(
+                {
+                    "element": "",
+                    "expected": "",
+                },
+                id="empty-string",
+            ),
+            pytest.param(
+                {
+                    "element": "\\!",
+                    "expected": "%21",
+                },
+                id="found-encoding",
+            ),
+            pytest.param(
+                {
+                    "element": "\\.abc",
+                    "expected": "\\.abc",
+                },
+                id="unfound-encoding",
+            ),
+            pytest.param(
+                {
+                    "element": "\\.",
+                    "expected": "\\.",
+                },
+                id="unfound-encoding-endofelement",
+            ),
+            pytest.param(
+                {
+                    "element": "?",
+                    "expected": "%01",
+                },
+                id="unescaped-question-mark",
+            ),
+            pytest.param(
+                {
+                    "element": "abc*",
+                    "expected": "abc%02",
+                },
+                id="unescaped-star",
+            ),
+        ],
+    )
+    def test_bind_for_cpe22_uri(self, param):
+        actual_result = CPE.bind_for_cpe22_uri(param["element"])
+        assert actual_result == param["expected"]
+
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "input": "cpe23:a:part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other",
+                    "expected": CPE(
+                        part="part",
+                        vendor="vendor",
+                        product="product",
+                        version="version",
+                        update="update",
+                        edition="edition",
+                        language="language",
+                        sw_edition="sw_edition",
+                        target_sw="target_sw",
+                        target_hw="target_hw",
+                        other="other",
+                    ),
+                    "expectedError": None,
+                },
+                id="13-elements",
+            ),
+            pytest.param(
+                {
+                    "input": "part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other",
+                    "expected": None,
+                    "expectedError": Exception(
+                        "Invalid cpe 2.3 formatted string part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other Splitting with : delimiter resulted in less than 13 elements"
+                    ),
+                },
+                id="11-elements",
+            ),
+            pytest.param(
+                {
+                    "input": "cpe23:a:part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other\\:other",
+                    "expected": CPE(
+                        part="part",
+                        vendor="vendor",
+                        product="product",
+                        version="version",
+                        update="update",
+                        edition="edition",
+                        language="language",
+                        sw_edition="sw_edition",
+                        target_sw="target_sw",
+                        target_hw="target_hw",
+                        other="other\\:other",
+                    ),
+                    "expectedError": None,
+                },
+                id="14-elements-valid",
+            ),
+            pytest.param(
+                {
+                    "input": "cpe23:a:part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other:other2",
+                    "expected": None,
+                    "expectedError": Exception(
+                        "Cannot convert cpe 2.3 formatted string cpe23:a:part:vendor:product:version:update:edition:language:sw_edition:target_sw:target_hw:other:other2 into wfn"
+                    ),
+                },
+                id="14-elements-invalid",
+            ),
+        ],
+    )
+    def test_from_cpe23_fs(self, param):
+        if param["expectedError"] is None:
+            actual_cpe = CPE.from_cpe23_fs(param["input"])
+            assert actual_cpe.part == param["expected"].part
+            assert actual_cpe.vendor == param["expected"].vendor
+            assert actual_cpe.product == param["expected"].product
+            assert actual_cpe.version == param["expected"].version
+            assert actual_cpe.update == param["expected"].update
+            assert actual_cpe.edition == param["expected"].edition
+            assert actual_cpe.language == param["expected"].language
+            assert actual_cpe.sw_edition == param["expected"].sw_edition
+            assert actual_cpe.target_sw == param["expected"].target_sw
+            assert actual_cpe.target_hw == param["expected"].target_hw
+            assert actual_cpe.other == param["expected"].other
+        else:
+            with pytest.raises(Exception) as e:
+                CPE.from_cpe23_fs(param["input"])
+                assert e == param["expectedError"]
