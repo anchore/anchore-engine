@@ -1,3 +1,5 @@
+import base64
+
 import pytest
 
 from anchore_engine.subsys.object_store import DbDriver
@@ -51,6 +53,67 @@ class TestLegacyDbDriver:
             LegacyDbDriver({}).uri_for(param["userId"], param["bucket"], param["key"])
             == param["expected"]
         )
+
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "input": bytes("dakaneye", "utf-8"),
+                    "expected_encoding": "dakaneye",
+                    "expected_b64": False,
+                },
+                id="success-unicode",
+            ),
+            pytest.param(
+                {
+                    "input": b"\x80abc",
+                    "expected_encoding": str(base64.encodebytes(b"\x80abc"), "utf-8"),
+                    "expected_b64": True,
+                },
+                id="non-unicode-success",
+            ),
+        ],
+    )
+    def test_encode(self, param):
+        driver = LegacyDbDriver({})
+        actual_encoding, is_b64 = driver._encode(param["input"])
+        assert is_b64 is param["expected_b64"]
+        assert actual_encoding == param["expected_encoding"]
+
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "input": {"b64_encoded": False, "jsondata": "dakaneye"},
+                    "expected_decoding": "dakaneye",
+                },
+                id="success-unicode",
+            ),
+            pytest.param(
+                {
+                    "input": {
+                        "b64_encoded": True,
+                        "jsondata": str(base64.encodebytes(b"\x80abc"), "utf-8"),
+                    },
+                    "expected_decoding": b"\x80abc",
+                },
+                id="non-unicode-success",
+            ),
+            pytest.param(
+                {
+                    "input": {"b64_encoded": False, "jsondata": None},
+                    "expected_decoding": b"",
+                },
+                id="nodata",
+            ),
+        ],
+    )
+    def test_decode(self, param):
+        driver = LegacyDbDriver({})
+        actual_decoding = driver._decode(param["input"])
+        assert actual_decoding == param["expected_decoding"]
 
 
 class TestDbDriver:
