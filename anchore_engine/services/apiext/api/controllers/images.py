@@ -787,13 +787,25 @@ def get_image_content_by_type(imageDigest, ctype):
             request, default_params={"imageDigest": imageDigest}
         )
 
-        return_object, httpcode = get_content(request_inputs, ctype)
-        if httpcode == 200:
+        if ctype == "packages":
             return_object = {
                 "imageDigest": imageDigest,
                 "content_type": ctype,
-                "content": list(return_object.values())[0],
+                "content": [],
             }
+            for package_type in ["os", "npm", "python", "go", "java", "gem"]:
+                req_object, httpcode = get_content(request_inputs, package_type)
+                if httpcode == 200:
+                    return_object["content"].append(list(req_object.values())[0])
+        else:
+            return_object, httpcode = get_content(request_inputs, ctype)
+            if httpcode == 200:
+                return_object = {
+                    "imageDigest": imageDigest,
+                    "content_type": ctype,
+                    "content": list(return_object.values())[0],
+                }
+
 
     except Exception as err:
         httpcode = 500
