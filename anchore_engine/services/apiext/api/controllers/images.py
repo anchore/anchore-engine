@@ -278,7 +278,7 @@ def get_content(request_inputs, content_type):
         if content_type not in all_content_types:
             raise Exception("content type (" + str(content_type) + ") not available")
 
-        image_digest = params.pop("imageDigest", None)
+        image_digest = params.get("imageDigest", None)
         client = internal_client_for(CatalogClient, request_inputs["userId"])
         return_object[image_digest] = client.get_image_content(
             image_digest, content_type
@@ -796,7 +796,7 @@ def get_image_content_by_type(imageDigest, ctype):
             for package_type in ["os", "npm", "python", "go", "java", "gem"]:
                 req_object, httpcode = get_content(request_inputs, package_type)
                 if httpcode == 200:
-                    return_object["content"].append(list(req_object.values())[0])
+                    return_object["content"].extend(list(req_object.values())[0])
         else:
             return_object, httpcode = get_content(request_inputs, ctype)
             if httpcode == 200:
