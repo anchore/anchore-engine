@@ -123,6 +123,7 @@ services:
       repo_watcher: 60
       archive_tasks: 43200 # 12 hours between archive task run
       image_gc: 60
+      events_gc: 43200 # 12 hours
     image_gc:
       max_worker_threads: 1
     event_log:
@@ -131,6 +132,8 @@ services:
         # (optional) notify events that match these levels. If this section is commented, notifications for all events are sent
         level:
         - error
+      # Events older than this number of days are automatically deleted from the system to keep db usage predictable. Set to 0 to disable cleanup (default).
+      max_retention_age_days: 0
   simplequeue:
     enabled: true
     require_auth: true

@@ -30,6 +30,7 @@ from anchore_engine.db import (
     AccountTypes,
     db_anchore,
     db_catalog_image,
+    db_events,
     db_policybundle,
     db_queues,
     db_registries,
@@ -63,6 +64,8 @@ from anchore_engine.subsys.object_store.config import (
 from anchore_engine.utils import AnchoreException, bytes_to_mb
 
 MAX_DELETION_WORKERS = 1
+DEFAULT_EVENT_MAX_AGE_DAYS = 0  # Disabled
+
 ##########################################################
 
 # monitor section
@@ -2115,6 +2118,92 @@ def _handle_single_image_gc(to_be_deleted: Dict[str, Any]) -> None:
         dbsession.flush()
 
 
+def handle_events_gc(*args, **kwargs) -> bool:
+    """
+    Periodic handler for cleaning up old events based on timestamp
+    Emits a single delete query for all matching records in the system.
+
+    :param args: (unused)
+    :param kwargs: cycle timer configuration
+    :return: True on success
+    :rtype: bool
+    """
+    watcher = str(kwargs["mythread"]["taskType"])
+    handler_success = True
+
+    timer = time.time()
+    logger.debug("FIRING: " + str(watcher))
+    localconfig = anchore_engine.configuration.localconfig.get_config()
+
+    oldest_allowed_timestamp = None
+    configured_max_days = 0
+
+    try:
+        configured_max_days = int(
+            localconfig.get("services", {})
+            .get("catalog", {})
+            .get("event_log", {})
+            .get("max_retention_age_days", DEFAULT_EVENT_MAX_AGE_DAYS)
+        )
+    except (ValueError, TypeError):
+        logger.error(
+            "Invalid value found in services.catalog.max_event_age_days: %s",
+            oldest_allowed_timestamp,
+        )
+        return False
+
+    if configured_max_days > 0:
+        oldest_allowed_timestamp = datetime.datetime.utcnow() - datetime.timedelta(
+            days=configured_max_days
+        )
+
+    if oldest_allowed_timestamp is None:
+        logger.info("No events cleanup to perform. No configured max age found")
+        return True
+
+    try:
+        # iterate over all images marked for deletion
+        with db.session_scope() as dbsession:
+            deleted_count = db_events.delete_batch_before(
+                before=oldest_allowed_timestamp, session=dbsession
+            )
+        logger.info(
+            "Trimmed %i events older than %i days (date=%s)",
+            deleted_count,
+            configured_max_days,
+            oldest_allowed_timestamp,
+        )
+        anchore_engine.subsys.metrics.gauge_set(
+            "event_gc", deleted_count, "Number of events deleted in last event GC round"
+        )
+
+    except Exception as err:
+        logger.warn("failure in handler - exception: " + str(err))
+
+    logger.debug("FIRING DONE: " + str(watcher))
+    try:
+        kwargs["mythread"]["last_return"] = handler_success
+    except:
+        pass
+
+    if anchore_engine.subsys.metrics.is_enabled() and handler_success:
+        anchore_engine.subsys.metrics.summary_observe(
+            "anchore_monitor_runtime_seconds",
+            time.time() - timer,
+            function=watcher,
+            status="success",
+        )
+    else:
+        anchore_engine.subsys.metrics.summary_observe(
+            "anchore_monitor_runtime_seconds",
+            time.time() - timer,
+            function=watcher,
+            status="fail",
+        )
+
+    return True
+
+
 click = 0
 running = False
 last_run = 0
@@ -2817,6 +2906,18 @@ watchers = {
         "taskType": "handle_import_gc",
         "args": [],
         "cycle_timer": 60,
+        "min_cycle_timer": 60,
+        "max_cycle_timer": 86400,
+        "last_queued": 0,
+        "last_return": False,
+        "initialized": False,
+    },
+    "events_gc": {
+        "handler": handle_events_gc,
+        "task_lease_id": False,
+        "taskType": "handle_events_gc",
+        "args": [],
+        "cycle_timer": 3600,
         "min_cycle_timer": 60,
         "max_cycle_timer": 86400,
         "last_queued": 0,

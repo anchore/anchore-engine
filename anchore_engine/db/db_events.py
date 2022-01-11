@@ -151,6 +151,30 @@ def delete_byfilter(userId, session=None, since=None, before=None, **dbfilter):
     return ret
 
 
+def delete_batch_before(before: datetime.datetime, session) -> int:
+    """
+    Batch deletion for large sets, only returns the count deleted, not the uuids.
+
+    If you need the uuid list use delete_byfilter()
+
+    NOTE: this does not synchronize the session, so this should be used in isolation rather than as part of a broader
+    db session where the deletions need to update in-mem state. This is unlikely to be needed for callers of this function, but
+    should be noted.
+
+    :param before: datetime to filter events by, only deleting events created before this datetime
+    :param session: db session to use
+    :return: count of deleted entries
+    """
+
+    # Explicitly do not sync the session.
+    deleted_count = (
+        session.query(Event)
+        .filter(Event.timestamp < before)
+        .delete(synchronize_session=False)
+    )
+    return deleted_count
+
+
 def delete_byevent_id(userId, eventId, session=None):
     if not session:
         session = db.Session
