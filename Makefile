@@ -74,7 +74,7 @@ GIT_TAG := $(shell echo $${CIRCLE_TAG:=null})
 ci: lint build test ## Run full CI pipeline, locally
 
 .PHONY: build
-build: CLI_REPO ?= git://github.com/anchore/anchore-cli.git
+build: CLI_REPO ?= https://github.com/anchore/anchore-cli.git
 build: Dockerfile setup-test-infra ## Build dev image
 	@$(CI_CMD) build "$(COMMIT_SHA)" "$(GIT_TAG)" "$(TEST_IMAGE_NAME)" "$(CLI_REPO)"
 
