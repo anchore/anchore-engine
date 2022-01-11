@@ -1,5 +1,12 @@
 import cProfile
+import linecache
+import os
 import pstats
+import tracemalloc
+
+import pyinstrument
+
+# from pyinstrument.renderers import JSONRenderer, HTMLRenderer
 
 """
 Generic decorators for use in all parts of the system
@@ -66,11 +73,70 @@ def profile(func):
     def _f(*args, **kwargs):
         pr = cProfile.Profile()
         pr.enable()
-        print("\n<<<---")
+        print("\n<<<---*********")
         res = func(*args, **kwargs)
         p = pstats.Stats(pr)
         p.strip_dirs().sort_stats("cumtime").print_stats(20)
-        print("\n--->>>")
+        print("\n--->>>*********")
+        return res
+
+    return _f
+
+
+def profile_instrument(func):
+    def _f(*args, **kwargs):
+        profiler = pyinstrument.Profiler(interval=0.01)  ## Profiler
+        print("\n<<<---pyinstrument!")
+        profiler.start()
+        res = func(*args, **kwargs)
+        profiler.stop()
+        print(profiler.output_text(color=True))
+        print("\n--->>>pyinstrument!")
+
+        # json_output = profiler.output(JSONRenderer(show_all=False, timeline=False))
+        # print(json_output)
+        return res
+
+    return _f
+
+
+def tracemalloc_profile(func):
+    def _f(*args, **kwargs):
+        tracemalloc.start()
+        res = func(*args, **kwargs)
+        mem_snapshot = tracemalloc.take_snapshot()
+
+        def display_top(snapshot, key_type="traceback", limit=10):
+            snapshot = snapshot.filter_traces(
+                (
+                    tracemalloc.Filter(False, "<frozen importlib._bootstrap>"),
+                    tracemalloc.Filter(False, "<unknown>"),
+                    tracemalloc.Filter(False, linecache.__file__),
+                    tracemalloc.Filter(False, tracemalloc.__file__),
+                )
+            )
+            top_stats = snapshot.statistics(key_type)
+
+            print("Top %s lines" % limit)
+            for index, stat in enumerate(top_stats[:limit], 1):
+                frame = stat.traceback[0]
+                print(
+                    "#%s: %s:%s: %.1f KiB"
+                    % (index, frame.filename, frame.lineno, stat.size / 1024)
+                )
+                line = linecache.getline(frame.filename, frame.lineno).strip()
+                if line:
+                    print("    %s" % line)
+
+            other = top_stats[limit:]
+            if other:
+                size = sum(stat.size for stat in other)
+                print("%s other: %.1f KiB" % (len(other), size / 1024))
+            total = sum(stat.size for stat in top_stats)
+            print("Total allocated size: %.1f KiB" % (total / 1024))
+
+        print(display_top(mem_snapshot))
+
         return res
 
     return _f

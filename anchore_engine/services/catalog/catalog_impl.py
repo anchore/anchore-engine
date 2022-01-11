@@ -1,12 +1,13 @@
 import base64
 import collections
 import hashlib
-import json
+import orjson as json
 import re
 import time
 from collections import namedtuple
 
 from dateutil import parser as dateparser
+from memory_profiler import profile
 
 import anchore_engine.apis.authorization
 import anchore_engine.common
@@ -1898,6 +1899,7 @@ def add_or_update_image_by_key(account_id: str, image_key: ImageKey, dbsession):
     )
 
 
+# @profile
 def add_or_update_image(
     dbsession,
     userId,

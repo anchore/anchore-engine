@@ -1,6 +1,7 @@
 import enum
 
 import retrying
+from memory_profiler import profile
 
 from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.clients.services import internal_client_for
@@ -13,6 +14,7 @@ from anchore_engine.common.models.schemas import (
 )
 from anchore_engine.db import ImageImportContent, ImageImportOperation, db_catalog_image
 from anchore_engine.db.entities.catalog import ImportState
+from anchore_engine.decorators import tracemalloc_profile
 from anchore_engine.services.catalog.catalog_impl import add_or_update_image
 from anchore_engine.subsys import logger, taskstate
 from anchore_engine.subsys.object_store import get_manager
@@ -182,6 +184,7 @@ def check_required_content(import_manifest: ImportManifest):
             )
 
 
+# @profile
 def finalize_import_operation(
     db_session,
     account: str,
@@ -273,6 +276,7 @@ def internal_manifest_from_external(
     return internal_manifest
 
 
+@profile
 def import_image(
     dbsession,
     account: str,
@@ -310,6 +314,7 @@ def import_image(
         raise RequiredFieldError("tags")
 
     for t in import_manifest.tags:
+        # TODO(dustins) Look at the performance of this from_string() method
         r = DockerImageReference.from_string(t)
         r.digest = import_manifest.digest
 

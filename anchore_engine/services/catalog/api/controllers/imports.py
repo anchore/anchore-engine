@@ -18,6 +18,9 @@ from anchore_engine.subsys.object_store import manager
 from anchore_engine.util.time import datetime_to_rfc3339
 from anchore_engine.utils import ensure_str
 
+from anchore_engine.decorators import profile_instrument
+from memory_profiler import profile
+
 authorizer = get_authorizer()
 
 IMPORT_BUCKET = "image_content_imports"
@@ -195,7 +198,6 @@ def import_image_packages(operation_id):
     :param sbom:
     :return:
     """
-
     return content_upload(operation_id, "packages", request)
 
 

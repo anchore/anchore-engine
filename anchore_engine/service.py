@@ -4,7 +4,7 @@ Base types for all anchore engine services
 
 import copy
 import enum
-import json
+import orjson as json
 import os
 import threading
 import time

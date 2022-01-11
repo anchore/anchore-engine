@@ -15,6 +15,7 @@ from anchore_engine.db import (
 from anchore_engine.db.db_accounts import AccountNotFoundError
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.caching import TTLCache
+from anchore_engine.decorators import profile
 
 # Not currently used because upgrade...
 name_validator_regex = re.compile(

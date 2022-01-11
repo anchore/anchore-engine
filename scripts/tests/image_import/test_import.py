@@ -13,17 +13,17 @@ import time
 import requests
 
 JSON_HEADER = {"Content-Type": "application/json"}
-# endpoint = "http://localhost:8088"
+endpoint = "http://localhost:8228"
 
 # Defaults... don"t use these
 AUTHC = ("admin", "foobar")
 
-endpoint = sys.argv[1]
+# endpoint = sys.argv[1]
 
-tag_to_scan = sys.argv[2]
+tag_to_scan = "alpine:latest"
 
 # Always load from user input
-dockerfile = sys.argv[3] if len(sys.argv) > 3 else None
+dockerfile = None
 
 
 def run_syft(image):

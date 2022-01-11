@@ -15,6 +15,7 @@ from operator import itemgetter
 
 from ijson import common as ijcommon
 from ijson.backends import python as ijpython
+from memory_profiler import profile
 
 from anchore_engine.subsys import logger
 

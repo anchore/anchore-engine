@@ -1,5 +1,5 @@
 import hashlib
-import json
+import orjson as json
 
 import anchore_engine.clients.services.common
 import anchore_engine.common
@@ -80,6 +80,7 @@ class CatalogClient(InternalServiceClient):
             body=json.dumps(payload),
         )
 
+    @profile
     def import_image(self, import_manifest, annotations=None, force=False):
         if annotations is None:
             payload = {"import_manifest": import_manifest}

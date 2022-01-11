@@ -16,6 +16,8 @@ from anchore_engine.subsys import logger
 
 authorizer = get_authorizer()
 
+from anchore_engine.decorators import profile_instrument
+
 IMPORT_BUCKET = "image_content_imports"
 
 MAX_UPLOAD_SIZE = 100 * 1024 * 1024  # 100 MB
@@ -248,6 +250,7 @@ def import_image_packages(operation_id):
     :param sbom:
     :return:
     """
+    logger.debug("I'm in UR method, profiling your bits!")
 
     return content_upload(operation_id, "packages", request)
 
