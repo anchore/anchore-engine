@@ -313,11 +313,11 @@ def make_cvss_scores(metrics):
             base_metrics = cvss_dict.get("base_metrics", {}) if cvss_dict else {}
 
             tmp = base_metrics.get("base_score", -1.0)
-            base_score = float(tmp) if tmp else -1.0
+            base_score = round(float(tmp) if tmp else -1.0, 1)
             tmp = base_metrics.get("exploitability_score", -1.0)
-            exploitability_score = float(tmp) if tmp else -1.0
+            exploitability_score = round(float(tmp) if tmp else -1.0, 1)
             tmp = base_metrics.get("impact_score", -1.0)
-            impact_score = float(tmp) if tmp else -1.0
+            impact_score = round(float(tmp) if tmp else -1.0, 1)
 
             new_score_packet["cvss_v{}".format(i)] = {
                 "base_score": base_score,
