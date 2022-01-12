@@ -55,7 +55,7 @@ RUN set -ex && \
 
 RUN set -ex && \
     echo "downloading anchore-cli" && \
-    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+git://github.com/anchore/anchore-cli.git@"${CLI_COMMIT}"\#egg=anchorecli
+    pip3 wheel --wheel-dir=/build_output/cli_wheels/ git+https://github.com/anchore/anchore-cli.git@"${CLI_COMMIT}"\#egg=anchorecli
 
 RUN set -exo pipefail && \
     echo "downloading Syft" && \
