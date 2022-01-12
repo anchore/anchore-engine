@@ -806,7 +806,6 @@ def get_image_content_by_type(imageDigest, ctype):
                     "content": list(return_object.values())[0],
                 }
 
-
     except Exception as err:
         httpcode = 500
         return_object = str(err)
