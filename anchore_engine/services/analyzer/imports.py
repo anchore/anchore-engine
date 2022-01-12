@@ -135,6 +135,10 @@ def process_import(
         if distro == "redhat":
             distro = "rhel"
 
+        id_like = syft_packages.get("distro", {}).get("idLike")
+        if distro == "photon":
+            id_like = "rhel"
+
         # Move data from the syft sbom into the analyzer output
         analyzer_report = {
             "analyzer_meta": {
@@ -142,7 +146,7 @@ def process_import(
                     "base": {
                         "DISTRO": distro,
                         "DISTROVERS": syft_packages.get("distro", {}).get("version"),
-                        "LIKEDISTRO": syft_packages.get("distro", {}).get("idLike"),
+                        "LIKEDISTRO": id_like,
                     }
                 }
             }

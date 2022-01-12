@@ -263,7 +263,7 @@ class FeedServiceClient(IFeedSource):
         self.feed_url = feeds_endpoint
         self.group_url = self.feed_url + "/{feed}"
         self.group_data_url = self.group_url + "/{group}"
-        self.retry_count = 3
+        self.retry_count = 10
 
     def list_feeds(self) -> FeedList:
         more_data = True
