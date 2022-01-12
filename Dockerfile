@@ -6,7 +6,7 @@ ARG BASE_TAG=8.5
 #### Anchore wheels, binary dependencies, etc. are staged to /build_output for second stage
 FROM ${BASE_REGISTRY}/${BASE_IMAGE}:${BASE_TAG} as anchore-engine-builder
 
-ARG CLI_COMMIT
+ENV CLI_COMMIT=master
 
 ENV LANG=en_US.UTF-8 
 ENV LC_ALL=C.UTF-8
