@@ -1,5 +1,156 @@
 # Changelog
 
+## 1.1.0
+API version - 0.1.20
+
+DB Schema version - 0.0.16
+
+Engine v1.1.0 fixes some bugs that arose from 1.0.1
+
+### Changes
++ Added - Vulnerability scanning support for Rocky Linux in both legacy and Grype scanners
++ Fixed - Images with Go content and hints enabled failing analysis
++ Fixed - Missing NVD CVSS scores in query vulnerabilities API with "grype" vulnerabilities provider
+
+
+## 1.0.1
+API version - 0.1.20
+
+DB Schema version - 0.0.15
+
+Engine v1.0.1 fixes some bugs that arose from 1.0.0
+
+### Changes
++ Fixed - policy-engine feeds failing for GitHub group due to a constraint violation
++ Fixed - Upgrade to Syft v0.26.0 fixed issue in analysis caused by unexpected python package format 
++ Fixed - Content hints now correctly use '*' for vendor field instead of '-' in generated cpes. Fixes [#1279](https://github.com/anchore/anchore-engine/issues/1279).
++ Fixed - Syft invocation during image analysis uses analyzer unpack directory configured in engine as opposed to OS default temp directory
+
+
+## 1.0.0
+
+API version - 0.1.19
+
+DB Schema version - 0.0.15
+
+Engine 1.0.0 makes the Grype-based vulnerabilities provider, introduced in v0.10.0, the default for new deployments. This release
+also improves the scanning results and API consistency when using the "grype" provider. The "legacy" provider is deprecated 
+and will be removed in a future release. Current deployments and upgrades will not automatically convert to the new provider, so 
+please update your configurations and templates to use the new Grype provider.
+
+See the [documentation](https://engine.anchore.io/docs/releasenotes/) for more information on the transition process and upgrade options.
+
+### Deprecations
+
+The "legacy" vulnerability provider mode is deprecated. It will be removed in a future release.
+
+### Changes
+
++ Added - Sets default vulnerabilities provider to Grype for new deployments via Docker Compose or Helm. Note: the "legacy" provider is deprecated.
++ Added - Support for vuln scanning binary and go content types with Grype provider
++ Added - Updates Syft to 0.24.1 and Grype to 0.21.0
++ Added - Vulnerability scanning support for SLES/SUSE in both legacy and Grype scanners
++ Fixed - Add logic to the gate util providers for UnsupportedDistroTrigger to call, so the trigger works for both vuln providers. Fixes #1184
++ Fixed - Support for FeedOutOfDateTrigger in Vulnerabilities gate for Grype provider. Fixes #1179
++ Fixed - Content hints vulnerability scanning for Grype-mode provider including golang and binary-type hints
++ Fixed - Adds epoch to rpm metadata SBoM generation for Syft to fix version mismatch in Grype mode.
++ Fixed - Set will_not_fix in Vulnerability definition to Boolean type in the Swagger specification of external API 
++ Improved - Update Click dependency version to 8.0.1 and SQLAlchemy dependency version to 1.4.23.  Fixes #908, #1204 
++ Improved - When using the Grype provider, the ability to enable, disable, and delete groups within the "vulnerabilities" feed is not supported and returns a clear error message.
++ Improved - Make the Syft invocation only log the full output of the command at spew level instead of debug to ensure logs are not flooded with large Syft SBoMs.
++ Improved - Rename "grypedb" feed to be called "vulnerabilities" for clarity and consistency. Fixes #1192
++ Improved - Removes default config fallback for vulnerability provider, users must now explicitly specify this configuration value
+
+
+## 0.10.2
+
+API version - 0.1.19
+
+DB Schema version - 0.0.15
+
+### Changes
++ Improved - Updates Dockerfile to enable run compatibility on FIPs enabled hosts.
++ Improved - Updates calls to hashing library functions (hashlib.md5) to enable run compatibility on FIPs enabled hosts.
+
+## 0.10.1
+
+API version - 0.1.19
+
+DB Schema version - 0.0.15
+
+### Changes
++ Added - 'will_not_fix' field added to vulnerability report API response and vulnerability information query. Fixes #1160
++ Fixed - /tmp directory not cleaned up after an image analysis
++ Fixed - Updates syft version to 0.19.1
++ Fixed - Update certifi path in the docker entrypoint script to ensure cert updates are set properly. Fixes #1171 
++ Fixed - Incorrect handling of hints file input. Fixes #1165
++ Fixed - Ensures all tags attempted for image pull if multiple tags on image being analyzed. Fixes #1139
++ Fixed- Ensures events generated for images analyzed that have multiple tags. Fixes #1164
++ Fixed - Handles "release" rpm field for hints input correctly. Fixes #1149
++ Improved - Installs CLI into a virtual env for dependency isolation. Fixes #1076
++ Improved - Hints file entries can only add new data to analysis report, not modify any entries found by analyzers.
++ Updates dependencies to remove non-impacting vulnerabilities
+
+## 0.10.0
+
+API version - 0.1.18
+
+DB Schema version - 0.0.15
+
+This release contains a database schema update. There are no data migrations, only new tables added.
+
+### Configurable Vulnerability Providers
+
+0.10.0 is a significant release for Engine as it now has both [Syft](https://github.com/anchore/syft) and [Grype](https://github.com/anchore/grype) 
+integrations in place to move to a unified vulnerability scanning core across local tools as well as stateful Engine services. 
+This release adds [Grype](https://github.com/anchore/grype) integration as a new vulnerability scanning option in the policy 
+engine. There is now a configuration option for specifying a vulnerability scanning provider in the policy engine service 
+configuration. The legacy provider (non-Grype) is the default to ensure smooth upgrades and allow operators to choose when to make the switch.
+The new Grype provider syncs vulnerability data from the same upstream sources as Engine, but uses the Grype DB update mechanism 
+to achieve much faster feed updates, and no longer uses the https://ancho.re endpoint for retrieving data. See 
+[Release Notes](https://engine.anchore.io/docs/releasenotes/0100) for more information and links on Grype mode.
+
+Note:
+- Grype mode is a beta release and not recommended for production use, but we encourage feedback and use in dev environments.
+- The `vulnerability_data_unavailable` and `stale_feed_data` policy triggers in the `vulnerabilities` gate are not yet 
+  supported for the Grype provider. They will return incorrect results when used with the Grype provider.
+- The `GET /query/images_by_vulnerability` result set may be stale for some images after a feed sync due to differences 
+  in how vulnerabilities are scanned for images in the new provider. The system will rescan each image and updated results 
+  will become available then. Importantly, however, scan results for an individual image are always up-to-date whenever requested via `GET /imges/<digest>/vulnerabilities`
+
+The vulnerability provider is now configurable in the `policy_engine` service configuration of the config.yaml. See 
+[Default Config](./conf/default_config.yaml) for more info.
+
+### Deprecations
+- The `affected_package_version` query parameter in `GET /query/vulnerabilities` is not supported in Grype mode and has 
+  known correctness issues in the legacy mode. It is deprecated and will be removed in a future release.
+- The legacy feed service endpoint (https://ancho.re) used by the legacy vulnerability provider is now officially 
+  deprecated, and will be replaced by the Grype DB sync introduced in this release. We will be announcing an End-of-Life timeline 
+  for the service along with the upcoming 1.0 Engine release in the next few months. The timeline will include reasonable 
+  time to upgrade and migrate deployments to 1.0+ versions. This deprecation notice serves as an early notice ahead of 
+  the actual 1.0 release and formal timeline announcement. For 0.10.0, there are no changes to the service or user actions required.
+
+
+### Breaking Changes
+*Note: the policy engine feed sync configuration is now in the policy engine service configuration as part of the provider configuration. The provided helm charts, docker-compose.yaml and default configurations handle this change automatically.*
+
+### Changes
+
++ Added - Policy engine should leverage Grype. Fixes #706 and #707
++ Added - Improved alpine vulnerability scanning by using NVD matches for OS packages for CVEs that are not yet present in Alpine SecDB. Fixes #268
++ Added - Analyzer service configuration option to control package-ownership filtering. Allows exposing all packages regardless of ownership relationship. Fixes #1122
++ Fixed - Adds missing fields and fixes errors in the swagger spec for the API
++ Fixed - Restores file package verification data ingress during image load to fix a regression. Fixes #965
++ Fixed - Malware policy gate can fail causing policy eval error when malware not enabled and other rules precede malware rule in a policy. Fixes #992
++ Fixed - JSON serialization error in internal policy engine user image listing API. Fixes #1093
++ Fixed - "package_cpe23" field missing in vulnerabilities. Fixes #959
++ Fixed -  Ensure python38 used in the Dockerfile build, and set tox tests to only run py38. Fixes #1025
++ Improved - Performance of GET operations between services improved by better streaming memory management for large payload transfers. Fixes #1010
++ Improved - Use UBI 8.4 as base image in Docker build
++ Improved - Updates skopeo version used to 1.2.1, allowing removal of the 'lookuptag' field in the POST /repositories call for watching repositories that do not have a `latest` tag. Fixes #484.
++ Additional minor fixes and improvements
+
+
 ## 0.9.4
 
 + Fixed - Server-side connection timeout of 75 seconds if client holds connection open after bytes sent, caused image load errors in some resource constrained situations. Now defaults to 3 minutes and is configurable. Fixes #990

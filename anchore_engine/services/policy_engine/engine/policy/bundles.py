@@ -1,46 +1,38 @@
-from collections import OrderedDict, namedtuple
-import enum
 import copy
 import datetime
-import re
+import enum
 import itertools
+import re
+from collections import OrderedDict, namedtuple
 
 from anchore_engine.db.entities.common import anchore_now_datetime
-from anchore_engine.services.policy_engine.engine.policy.gate import Gate, TriggerMatch
-from anchore_engine.subsys import logger
-from anchore_engine.util.docker import parse_dockerimage_string
-from anchore_engine.util.matcher import regexify, is_match
-from anchore_engine.services.policy_engine.engine.policy.formatting import (
-    policy_json_to_txt,
-    whitelist_json_to_txt,
-)
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger
-
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
-    TriggerNotAvailableError,
+    BundleTargetTagMismatchError,
+    DeprecationWarning,
+    DuplicateIdentifierFoundError,
+    EndOfLifedError,
+    GateNotFoundError,
+    InitializationError,
+    InvalidGateAction,
+    InvalidParameterError,
+    ParameterValueInvalidError,
+    PolicyError,
+    PolicyEvaluationError,
+    PolicyRuleValidationErrorCollection,
+    ReferencedObjectNotFoundError,
     TriggerEvaluationError,
     TriggerNotFoundError,
-    GateEvaluationError,
-    EndOfLifedError,
-    DeprecationWarning,
-    GateNotFoundError,
-    ParameterValueInvalidError,
-    InvalidParameterError,
-    InvalidGateAction,
-    PolicyEvaluationError,
     UnsupportedVersionError,
-    PolicyError,
-    InitializationError,
     ValidationError,
-    BundleTargetTagMismatchError,
-    PolicyRuleValidationErrorCollection,
-    DuplicateIdentifierFoundError,
-    ReferencedObjectNotFoundError,
 )
+from anchore_engine.services.policy_engine.engine.policy.gate import TriggerMatch
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
-from anchore_engine.utils import rfc3339str_to_datetime
+from anchore_engine.subsys import logger
+from anchore_engine.util.docker import parse_dockerimage_string
+from anchore_engine.util.matcher import is_match, regexify
+from anchore_engine.util.time import rfc3339str_to_datetime
 
 
 class VersionedEntityMixin(object):

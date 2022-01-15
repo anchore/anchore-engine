@@ -1,16 +1,15 @@
 import enum
+
+from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
 from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
-    NameVersionStringListParameter,
     CommaDelimitedStringListParameter,
-    EnumCommaDelimStringListParameter,
     EnumStringParameter,
-    TypeValidator,
     TriggerParameter,
+    TypeValidator,
 )
-from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
-from anchore_engine.util.packages import compare_package_versions
 from anchore_engine.subsys import logger
+from anchore_engine.util.packages import compare_package_versions
 
 
 class VerifyTrigger(BaseTrigger):

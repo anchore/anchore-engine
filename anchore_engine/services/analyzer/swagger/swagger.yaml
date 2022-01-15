@@ -62,28 +62,6 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.analyzer.api.controllers.default_controller"
-  /analyze:
-    get:
-      tags:
-      - "analyzer"
-      summary: "Perform DB side-effect free interactive analysis"
-      description: ""
-      operationId: "interactive_analyze"
-      parameters:
-      - name: 'bodycontent'
-        in: body
-        schema:
-          type: object
-        description: "object describing image to analyze"
-        required: true
-      produces:
-      - "application/json"
-      responses:
-        200:
-          description: "success"
-          schema:
-            type: object
-      x-swagger-router-controller: "anchore_engine.services.analyzer.api.controllers.default_controller"
 definitions:
   ServiceVersion:
     type: object

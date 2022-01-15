@@ -1,11 +1,12 @@
 import inspect
-import sys
-import threading
-from twisted.python import log
-from functools import wraps
 
 # Configure a standard python logger for stdout use during bootstrap
 import logging
+import sys
+import threading
+from functools import wraps
+
+from twisted.python import log
 
 bootstrap_logger = None
 bootstrap_logger_enabled = False
@@ -107,10 +108,14 @@ def bootstrap_logger_intercept(level):
         def wrapper(*args, **kwds):
             global bootstrap_logger_enabled
             if bootstrap_logger_enabled:
-                if level == "EXCEPTION":
-                    bootstrap_logger.exception(msg=args[0])
+                if len(args) > 1:
+                    msg = safe_formatter(args[0], args[1::])
                 else:
-                    bootstrap_logger.log(level=level, msg=args[0])
+                    msg = args[0]
+                if level == "EXCEPTION":
+                    bootstrap_logger.exception(msg=msg)
+                else:
+                    bootstrap_logger.log(level=level, msg=msg)
             return f(*args, **kwds)
 
         return wrapper
@@ -179,8 +184,9 @@ def safe_formatter(message, args):
     return message
 
 
-def spew(msg_string):
-    return _msg(msg_string, msg_log_level="SPEW")
+def spew(msg_string, *args):
+    formatted_msg_string = safe_formatter(msg_string, args)
+    return _msg(formatted_msg_string, msg_log_level="SPEW")
 
 
 @bootstrap_logger_intercept(logging.DEBUG)

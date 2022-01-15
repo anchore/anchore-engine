@@ -4,6 +4,7 @@ Unit tests for anchore_engine.services.policy_engine.engine.util.packages
 """
 
 import json
+
 from anchore_engine.db import DistroNamespace
 
 DISTRO_VERSIONS = """alpine,3.0.0

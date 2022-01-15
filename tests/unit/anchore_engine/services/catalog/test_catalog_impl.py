@@ -5,7 +5,168 @@ from datetime import datetime
 import pytest
 
 from anchore_engine.services.catalog import catalog_impl
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.services.catalog.catalog_impl import is_new_tag
+from anchore_engine.util.time import datetime_to_rfc3339
+
+
+@pytest.mark.parametrize(
+    "image_record, registry, repo, tag, expected_output",
+    [
+        # Missing an image_detail block, returns true
+        ({}, "myRegistry", "myRepo", "myTag", True),
+        # Missing an image_detail.registry field, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "repo": "myRepo",
+                        "tag": "myTag",
+                    },
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # Missing an image_detail.repo field, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "myRegistry",
+                        "tag": "myTag",
+                    },
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # Missing an image_detail.tag field, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "myRegistry",
+                        "repo": "myRepo",
+                    },
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # registry doesn't match, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "docker.io",
+                        "repo": "myRepo",
+                        "tag": "myTag",
+                    }
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # repo doesn't match, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "myRegistry",
+                        "repo": "centos",
+                        "tag": "myTag",
+                    }
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # tag doesn't match, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "myRegistry",
+                        "repo": "myRepo",
+                        "tag": "7",
+                    }
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # No fields match, returns true
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "docker.io",
+                        "repo": "centos",
+                        "tag": "7",
+                    }
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            True,
+        ),
+        # Exact match, returns false
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "myRegistry",
+                        "repo": "myRepo",
+                        "tag": "myTag",
+                    },
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            False,
+        ),
+        # Exact match, returns false
+        (
+            {
+                "image_detail": [
+                    {
+                        "registry": "docker.io",
+                        "repo": "centos",
+                        "tag": "7",
+                    },
+                    {
+                        "registry": "myRegistry",
+                        "repo": "myRepo",
+                        "tag": "myTag",
+                    },
+                ]
+            },
+            "myRegistry",
+            "myRepo",
+            "myTag",
+            False,
+        ),
+    ],
+)
+def test_is_new_tag(image_record, registry, repo, tag, expected_output):
+    # Function under test
+    result = is_new_tag(image_record, registry, repo, tag)
+
+    assert result == expected_output
 
 
 class TestImageAddWorkflow:
@@ -227,6 +388,16 @@ class TestImageAddWorkflow:
                     "expected": "docker.io/anchore/test_images@sha256:1234abcd",
                 },
                 id="valid-digest-valid-tag",
+            ),
+            pytest.param(
+                {
+                    "image_key": catalog_impl.ImageKey(
+                        tag="nexus.aveng.me:5000/beats/filebeat:3.9.8",
+                        digest="sha256:1b5677e1cc3ad16dd700a1d61e488ffdc5",
+                    ),
+                    "expected": "nexus.aveng.me:5000/beats/filebeat@sha256:1b5677e1cc3ad16dd700a1d61e488ffdc5",
+                },
+                id="registry-with-port-number",
             ),
         ],
     )

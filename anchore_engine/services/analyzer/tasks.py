@@ -3,10 +3,9 @@ Async tasks that the worker component uses
 """
 import datetime
 import enum
-from uuid import uuid4
-from abc import ABC
-from abc import abstractmethod
 import threading
+from abc import abstractmethod
+from uuid import uuid4
 
 
 class Status(enum.Enum):

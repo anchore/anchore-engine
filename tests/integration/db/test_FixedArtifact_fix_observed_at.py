@@ -1,9 +1,6 @@
-import pytest
-
-from tests.utils import init_test_logging
-from anchore_engine.db import session_scope, FixedArtifact, Vulnerability
+from anchore_engine.db import FixedArtifact, Vulnerability, session_scope
 from anchore_engine.subsys import logger
-from tests.fixtures import anchore_db
+from tests.utils import init_test_logging
 
 init_test_logging(level="info")
 
@@ -210,6 +207,6 @@ def test_FixedArtifact_fix_observed_at_behavior(anchore_db):
 
     except Exception as err:
         logger.error("FAIL: exception - {}".format(err))
-        raise (err)
+        raise err
     finally:
         tearDown()

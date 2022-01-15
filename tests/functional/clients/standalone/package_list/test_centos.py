@@ -1,6 +1,7 @@
-from .fixtures import centos
-from . import path_params
 import pytest
+
+from . import path_params
+from .fixtures import centos
 
 
 class TestRpm:
@@ -32,5 +33,10 @@ class TestRpm:
         pkgs = result["image"]["imagedata"]["analysis_report"]["package_list"][
             "pkgs.allinfo"
         ]["base"]
-        loaded = pkgs.get(pkg, {})
+        loaded = dict(pkgs.get(pkg, {}))
+
+        # cpe ordering keeps changing, so sort both lists.
+        loaded["cpes"] = sorted(loaded["cpes"])
+        metadata["cpes"] = sorted(metadata["cpes"])
+
         assert loaded == metadata

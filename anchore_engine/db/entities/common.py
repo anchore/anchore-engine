@@ -1,34 +1,40 @@
 """
 Common functions and variables for all entity types including some bootstrap and init functions
 """
-import decimal
+import datetime
+import hashlib
 import json
-import uuid
 import time
 import traceback
+import uuid
 from contextlib import contextmanager
+from typing import Generator, Optional
 
 import sqlalchemy
 from sqlalchemy import types
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session
-import datetime
-from anchore_engine.utils import datetime_to_rfc3339
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm.session import Session as SessionObject
+
+from anchore_engine.utils import AnchoreException
 
 try:
-    from anchore_engine.subsys import logger
-
     # Separate logger for use during bootstrap when logging may not be fully configured
     from twisted.python import log
+
+    from anchore_engine.subsys import logger  # pylint: disable=C0412
 except:
     import logging
 
     logger = logging.getLogger(__name__)
     log = logger
 
-Session = None  # Standard session maker
-ThreadLocalSession = None  # Separate thread-local session maker
-engine = None
+Session: Optional[SessionObject] = None  # Standard session maker
+ThreadLocalSession: Optional[
+    scoped_session
+] = None  # Separate thread-local session maker
+engine: Optional[Engine] = None
 Base = declarative_base()
 
 
@@ -303,16 +309,23 @@ def initialize(localconfig=None, versions=None):
     return ret
 
 
-def get_session():
+class ScopedSessionNotInitializedError(AnchoreException):
+    def __init__(self):
+        super().__init__(
+            "Invoked get_thread_scoped_session without first calling init_thread_session to initialize "
+            "the engine and session factory"
+        )
+
+
+def get_session() -> SessionObject:
     global Session
     return Session()
 
 
 @contextmanager
-def session_scope():
+def session_scope() -> Generator[SessionObject, None, None]:
     """Provide a transactional scope around a series of operations."""
-    global Session
-    session = Session()
+    session = get_session()
 
     # session.connection(execution_options={'isolation_level': 'SERIALIZABLE'})
 
@@ -331,7 +344,7 @@ def session_scope():
         session.close()
 
 
-def get_thread_scoped_session():
+def get_thread_scoped_session() -> SessionObject:
     """
     Return a thread scoped session for use. Caller must remove it when complete to ensure no leaks
 
@@ -339,10 +352,7 @@ def get_thread_scoped_session():
     """
     global ThreadLocalSession
     if not ThreadLocalSession:
-        raise Exception(
-            "Invoked get_session without first calling init_db to initialize the engine and session factory"
-        )
-
+        raise ScopedSessionNotInitializedError
     # Will re-use a session if already in this thread-local context, otherwise will create a new one
     sess = ThreadLocalSession()
     return sess
@@ -403,3 +413,25 @@ class StringJSON(types.TypeDecorator):
         if value is not None:
             value = json.loads(value)
         return value
+
+
+def truncate_index_name(index_name: str) -> str:
+    """
+    This method should be used any time a sqlalchemy Index is created.
+    It uses md5 in a FIPs-compliant manner (usedforsecurity=false) to replicate sqlalchemy's auto-generated name truncation.
+    See: https://docs.sqlalchemy.org/en/14/core/constraints.html#the-default-naming-convention
+    See: https://docs.sqlalchemy.org/en/14/core/metadata.html#sqlalchemy.schema.MetaData.params.naming_convention
+
+    :param index_name: full index name (before truncation)
+    :type index_name: str
+    :return: truncated name
+    :rtype: str
+    """
+    if len(index_name) > 63:
+        trailer = hashlib.new(
+            "md5",
+            index_name.encode("utf-8"),
+            usedforsecurity=False,
+        ).hexdigest()[-4:]
+        return f"{index_name[:55]}_{trailer}"
+    return index_name

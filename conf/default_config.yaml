@@ -61,39 +61,6 @@ webhooks:
   policy_eval: {}
   event_log: {}
 
-# A feeds section is available for override, but shouldn't be
-# needed. By default, the 'admin' credentials are used if present,
-# otherwise anonymous access for feed sync is used
-#
-feeds:
-  # If set to false, instruct anchore-engine to skip (all) feed sync operations
-  sync_enabled: ${ANCHORE_FEEDS_ENABLED}
-  ssl_verify: ${ANCHORE_FEEDS_SSL_VERIFY}
-  selective_sync:
-    # If enabled only sync specific feeds instead of all.
-    enabled: ${ANCHORE_FEEDS_SELECTIVE_ENABLED}
-    feeds:
-      github: true
-      vulnerabilities: true
-      # Warning: enabling the packages and nvd sync causes the service to require much
-      #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
-      packages: false
-      nvdv2: true
-      # Enabling snyk syncs snyk vulnerability data from an on-premise anchore enterprise feeds service. Please contact
-      # anchore support for finding out more about this service
-      snyk: false
-      # Enabling vulndb syncs vulndb vulnerability data from an on-premise anchore enterprise feeds service. Please contact
-      # anchore support for finding out more about this service
-      vulndb: false
-  anonymous_user_username: anon@ancho.re
-  anonymous_user_password: pbiU2RYZ2XrmYQ
-  url: ${ANCHORE_FEEDS_URL}
-  client_url: ${ANCHORE_FEEDS_CLIENT_URL}
-  token_url: ${ANCHORE_FEEDS_TOKEN_URL}
-  connection_timeout_seconds: 3
-  read_timeout_seconds: 60
-
-
 # As of 0.3.0 this section is used instead of the credentials.users section
 # Can be omitted and will default to 'foobar' on db initialization
 default_admin_password: ${ANCHORE_ADMIN_PASSWORD}
@@ -109,6 +76,12 @@ credentials:
       ssl: false
     db_pool_size: 30
     db_pool_max_overflow: 100
+
+# Defines a maximum compressed image size (MB) to be added for analysis
+# Value < 0 disables feature
+# Disabled by default
+max_compressed_image_size_mb: ${ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB}
+
 services:
   apiext:
     enabled: true
@@ -150,6 +123,8 @@ services:
       repo_watcher: 60
       archive_tasks: 43200 # 12 hours between archive task run
       image_gc: 60
+    image_gc:
+      max_worker_threads: 1
     event_log:
       notification:
         enabled: ${ANCHORE_EVENTS_NOTIFICATIONS_ENABLED}
@@ -176,6 +151,7 @@ services:
     external_port: ${ANCHORE_EXTERNAL_PORT}
     external_tls: ${ANCHORE_EXTERNAL_TLS}
     enable_hints: ${ANCHORE_HINTS_ENABLED}
+    enable_owned_package_filtering: ${ANCHORE_ENABLE_PACKAGE_FILTERING}
   policy_engine:
     enabled: true
     require_auth: true
@@ -188,9 +164,38 @@ services:
     cycle_timers:
       feed_sync: ${ANCHORE_FEED_SYNC_INTERVAL_SEC} # 6 hours between feed syncs
       feed_sync_checker: 3600 # 1 hour between checks to see if there needs to be a task queued
-
-
-# Defines a maximum compressed image size (MB) to be added for analysis
-# Value < 0 disables feature
-# Disabled by default
-max_compressed_image_size_mb: ${ANCHORE_MAX_COMPRESSED_IMAGE_SIZE_MB}
+      grypedb_sync: 60 # 1 minute between checks to verify local grype-db is up to date
+    vulnerabilities:
+      # Available providers are legacy and grype. Legacy provider offers the same matching logic as previous versions of anchore-engine (<= 0.9.4)
+      # grype is a new provider that was introduced in 1.0.0, it uses the grype tool for all things vulnerabilities
+      provider: ${ANCHORE_VULNERABILITIES_PROVIDER}
+      sync:
+        enabled: ${ANCHORE_FEEDS_ENABLED}
+        ssl_verify: ${ANCHORE_FEEDS_SSL_VERIFY}
+        connection_timeout_seconds: 3
+        read_timeout_seconds: 60
+        data:
+          # grypedb feed is synced if the provider is set to grype. All the remaining feeds except for packages are ignored even if they are enabled
+          grypedb:
+            enabled: true
+            url: ${ANCHORE_GRYPE_DB_URL}
+          # The following feeds are synced if provider is set to legacy
+          vulnerabilities:
+            enabled: true
+            url: ${ANCHORE_FEEDS_URL}
+          nvdv2:
+            enabled: true
+            url: ${ANCHORE_FEEDS_URL}
+          github:
+            enabled: true
+            url: ${ANCHORE_FEEDS_URL}
+          # VulnDB feed is available only in anchore-enterprise
+          #vulndb:
+          #  enabled: true
+          #  url: ${ANCHORE_FEEDS_URL}
+          # Warning: enabling the packages and nvd sync causes the service to require much
+          #   more memory to do process the significant data volume. We recommend at least 4GB available for the container
+          # packages feed is synced if it is enabled regardless of the provider
+          #packages:
+          #  enabled: true
+          #  url: ${ANCHORE_FEEDS_URL}

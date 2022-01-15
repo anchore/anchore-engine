@@ -1,7 +1,7 @@
-import sys
-from .fixtures import alpine
-from . import path_params
 import pytest
+
+from . import path_params
+from .fixtures import alpine
 
 
 class TestAlpinePaths:
@@ -40,6 +40,10 @@ class TestAlpinePaths:
         loaded.pop("files")
         metadata = dict(metadata)
         metadata.pop("files")
+
+        # cpe ordering keeps changing, so sort both lists.
+        loaded["cpes"] = sorted(loaded["cpes"])
+        metadata["cpes"] = sorted(metadata["cpes"])
 
         assert loaded == metadata
 

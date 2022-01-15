@@ -1,5 +1,8 @@
 # Developing
 
+## Developer Setup
+[Documented here ...](dev-tools/README.md)
+
 ## Running Functional Tests
 
 There are a couple ways to run functional tests:
@@ -11,7 +14,7 @@ There are a couple ways to run functional tests:
 
 1. Modify the `tests/functional/local.env` file to meet your needs
 1. `source tests/functional/local.env`
-1. `make setup-and-test-functional` to standup engine and run the functional tests.
+1. `make setup-and-test-functional-grype` or `make setup-and-test-functional-legacy` to standup engine and run the functional tests.
 
 ### ...Run locally
 

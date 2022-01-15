@@ -1,6 +1,12 @@
+import json
+import os
+
 import pytest
 
-from anchore_engine.analyzers.syft import filter_artifacts
+from anchore_engine.analyzers.syft.adapters import (
+    _convert_syft_to_engine,
+    _filter_artifacts,
+)
 
 
 class TestFilterArtifacts:
@@ -38,7 +44,7 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(artifacts, relationships)
+        actual = _filter_artifacts(artifacts, relationships)
         assert actual == artifacts
 
     @pytest.mark.parametrize(
@@ -86,7 +92,7 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(artifacts, relationships)
+        actual = _filter_artifacts(artifacts, relationships)
         assert [a["name"] for a in actual] == ["parent-pkg"]
 
     def test_filter_artifact_missing_id(self):
@@ -102,27 +108,8 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(initial_artifacts, [])
+        actual = _filter_artifacts(initial_artifacts, [])
         assert actual == initial_artifacts
-
-    @pytest.mark.parametrize(
-        "pkg_type",
-        [
-            "bogus",
-            "",
-        ],
-    )
-    def test_filter_artifact_by_type(self, pkg_type):
-        artifacts = [
-            {
-                "id": "pkg-id",
-                "name": "pkg-name",
-                "type": pkg_type,
-            },
-        ]
-
-        actual = filter_artifacts(artifacts, [])
-        assert not [a["name"] for a in actual]
 
     @pytest.mark.parametrize(
         "pkg_type",
@@ -143,5 +130,36 @@ class TestFilterArtifacts:
             },
         ]
 
-        actual = filter_artifacts(artifacts, [])
+        actual = _filter_artifacts(artifacts, [])
         assert [a["name"] for a in actual] == ["pkg-name"]
+
+
+@pytest.fixture
+def test_sbom(request):
+    module_path = os.path.dirname(request.module.__file__)
+    test_name = os.path.splitext(os.path.basename(request.module.__file__))[0]
+    with open(
+        os.path.join(
+            module_path, test_name, "{}.json".format(request.node.originalname)
+        )
+    ) as file:
+        return json.load(file)
+
+
+class TestConvertSyftToEngine:
+    @pytest.mark.parametrize(
+        "enable_package_filtering",
+        [False, True],
+    )
+    def test_filter_artifact_by_type(self, test_sbom, enable_package_filtering):
+        findings = _convert_syft_to_engine(test_sbom, enable_package_filtering)
+        for pkg_list in findings["package_list"]:
+            if pkg_list == "pkgfiles.all":
+                continue
+            assert (
+                "UNSUPPORTED-PACKAGE"
+                not in findings["package_list"][pkg_list]["base"].keys()
+            )
+            assert (
+                "SUPPORTED-PACKAGE" in findings["package_list"][pkg_list]["base"].keys()
+            )

@@ -1,35 +1,25 @@
 import calendar
-import time
 import re
+import time
 from collections import OrderedDict
 
-from anchore_engine.services.policy_engine.engine.feeds.db import (
-    get_feed_group_detached,
-)
-from anchore_engine.services.policy_engine.engine.policy.gate import Gate, BaseTrigger
-from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-    have_vulnerabilities_for,
-)
-from anchore_engine.db import (
-    DistroNamespace,
-)
-from anchore_engine.subsys import logger
+from anchore_engine.common import nonos_package_types
+from anchore_engine.db import DistroNamespace
+from anchore_engine.db.entities.common import get_thread_scoped_session
+from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
-    IntegerStringParameter,
-    EnumCommaDelimStringListParameter,
+    CommaDelimitedStringListParameter,
     EnumStringParameter,
     FloatStringParameter,
+    IntegerStringParameter,
     SimpleStringParameter,
-    CommaDelimitedStringListParameter,
 )
-from anchore_engine.common import nonos_package_types
-from anchore_engine.services.policy_engine.engine.feeds.feeds import feed_registry
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
     get_vulnerabilities_provider,
 )
-from anchore_engine.db.entities.common import get_thread_scoped_session
-
+from anchore_engine.subsys import logger
+from anchore_engine.util.time import datetime_to_epoch, days_to_seconds
 
 SEVERITY_ORDERING = ["unknown", "negligible", "low", "medium", "high", "critical"]
 
@@ -281,8 +271,10 @@ class VulnerabilityMatchTrigger(BaseTrigger):
             for vuln_match in vuln_matches:
                 vulnerability_obj = vuln_match.vulnerability
                 artifact_obj = vuln_match.artifact
-                fix_obj_list = vuln_match.fixes
+                fix_obj = vuln_match.fix
                 match_obj = vuln_match.match
+                nvd_cvss_objects = vuln_match.get_cvss_scores_nvd()
+                vendor_cvss_objects = vuln_match.get_cvss_scores_vendor()
 
                 new_vuln_pkg_class = (
                     "non-os"
@@ -309,11 +301,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 parameter_data["pkg_class"] = new_vuln_pkg_class
 
                 # setting fixed_version here regardless of gate parameter,
-                fix_versions = [
-                    item.version
-                    for item in fix_obj_list
-                    if item.version and item.version != "None"
-                ]
+                fix_versions = [version for version in fix_obj.versions if version]
                 fix_available_in = ", ".join(fix_versions) if fix_versions else None
 
                 if fix_available_in:
@@ -328,12 +316,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                 if comparison_fn(found_severity_idx, comparison_idx):
                     # package path excludes logic for non-os packages only
                     if new_vuln_pkg_class == "non-os" and package_path_re:
-                        match_found = package_path_re.match(artifact_obj.pkg_path)
+                        match_found = package_path_re.match(artifact_obj.location)
                         if match_found is not None:
                             logger.debug(
                                 "Non-OS vulnerability {} package path {} matches package path exclude {}, skipping".format(
                                     artifact_obj.name,
-                                    artifact_obj.pkg_path,
+                                    artifact_obj.location,
                                     path_exclude_re_value,
                                 )
                             )
@@ -341,7 +329,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
 
                     # Check vendor_only flag specified by the user in policy
                     if is_vendor_only:
-                        if any(item.wont_fix for item in fix_obj_list):
+                        if fix_obj.will_not_fix:
                             logger.debug(
                                 "{} vulnerability {} for package {} is marked by vendor as won't fix, skipping".format(
                                     new_vuln_pkg_class,
@@ -363,40 +351,32 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         ] = match_obj.detected_at.date()
 
                     if is_fix_available and fix_timeallowed is not None:
-                        observed_at_list = [
-                            item.observed_at
-                            for item in fix_obj_list
-                            if item.version
-                            and item.version != "None"
-                            and item.observed_at
-                        ]
-
                         fix_observed_at = (
-                            max(observed_at_list) if observed_at_list else None
+                            fix_obj.observed_at if fix_available_in else None
                         )
 
-                        if (
-                            fix_observed_at
-                            and calendar.timegm(fix_observed_at.timetuple())
-                            > fix_timeallowed
-                        ):
-                            continue
-                        else:
-                            parameter_data[
-                                "max_days_since_fix"
-                            ] = fix_observed_at.date()
+                        if fix_observed_at:
+                            if (
+                                calendar.timegm(fix_observed_at.timetuple())
+                                > fix_timeallowed
+                            ):
+                                continue
+                            else:
+                                parameter_data[
+                                    "max_days_since_fix"
+                                ] = fix_observed_at.date()
 
                     vuln_cvss_base_score = -1.0
                     vuln_cvss_exploitability_score = -1.0
                     vuln_cvss_impact_score = -1.0
 
                     # Gather cvss scores before operating with max
-                    nvd_cvss_v3_scores = [
-                        item.cvss_v3
-                        for item in vulnerability_obj.cvss_scores_nvd
-                        if item.cvss_v3
-                    ]
+                    nvd_cvss_v3_scores = []
+                    for cvss_obj in nvd_cvss_objects:
+                        if cvss_obj.version.startswith("3"):
+                            nvd_cvss_v3_scores.append(cvss_obj)
 
+                    # Compute max score for each type
                     if nvd_cvss_v3_scores:
                         vuln_cvss_base_score = max(
                             item.base_score for item in nvd_cvss_v3_scores
@@ -506,11 +486,10 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                     vuln_vendor_cvss_impact_score = -1.0
 
                     # Gather cvss scores before operating with max
-                    vendor_cvss_v3_scores = [
-                        item.cvss_v3
-                        for item in vulnerability_obj.cvss_scores_vendor
-                        if item.cvss_v3
-                    ]
+                    vendor_cvss_v3_scores = []
+                    for score_obj in vendor_cvss_objects:
+                        if score_obj.version.startswith("3"):
+                            vendor_cvss_v3_scores.append(score_obj)
 
                     if vendor_cvss_v3_scores:
                         vuln_vendor_cvss_base_score = max(
@@ -567,13 +546,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                             vuln_vendor_cvss_impact_score, vendor_cvss_v3_impact_score
                         ):
                             logger.debug(
-                                "{}} vulnerability {} vendor cvss V3 impact sub score {} is not {} than policy vendor cvss V3 impact score {}, skipping".format(
-                                    new_vuln_pkg_class,
-                                    vulnerability_obj.vulnerability_id,
-                                    vuln_vendor_cvss_impact_score,
-                                    self.vendor_cvss_v3_impact_score_comparison.value(),
-                                    vendor_cvss_v3_impact_score,
-                                )
+                                "%s vulnerability %s vendor cvss V3 impact sub score %d is not %s than policy vendor cvss V3 impact score %d, skipping",
+                                new_vuln_pkg_class,
+                                vulnerability_obj.vulnerability_id,
+                                vuln_vendor_cvss_impact_score,
+                                self.vendor_cvss_v3_impact_score_comparison.value(),
+                                vendor_cvss_v3_impact_score,
                             )
                             continue
                         else:
@@ -607,12 +585,12 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                         trigger_fname = None
                         if artifact_obj.pkg_type in ["java", "gem"]:
                             try:
-                                trigger_fname = artifact_obj.pkg_path.split("/")[-1]
+                                trigger_fname = artifact_obj.location.split("/")[-1]
                             except:
                                 trigger_fname = None
                         elif artifact_obj.pkg_type in ["npm"]:
                             try:
-                                trigger_fname = artifact_obj.pkg_path.split("/")[-2]
+                                trigger_fname = artifact_obj.location.split("/")[-2]
                             except:
                                 trigger_fname = None
 
@@ -621,7 +599,7 @@ class VulnerabilityMatchTrigger(BaseTrigger):
                                 [artifact_obj.name, artifact_obj.version]
                             )
 
-                        pkgname = artifact_obj.pkg_path
+                        pkgname = artifact_obj.location
                     else:
                         trigger_fname = artifact_obj.name
                         pkgname = artifact_obj.name
@@ -659,32 +637,21 @@ class FeedOutOfDateTrigger(BaseTrigger):
     )
 
     def evaluate(self, image_obj, context):
-        # Map to a namespace
-        ns = DistroNamespace.for_obj(image_obj)
-
-        oldest_update = None
-        if ns:
-            for namespace_name in ns.like_namespace_names:
-                # Check feed names
-                for feed in feed_registry.registered_vulnerability_feed_names():
-                    # First match, assume only one matches for the namespace
-                    group = get_feed_group_detached(feed, namespace_name)
-                    if group:
-                        # No records yet, but we have the feed, so may just not have any data yet
-                        oldest_update = group.last_sync
-                        logger.debug(
-                            "Found date for oldest update in feed %s group %s date = %s",
-                            feed,
-                            group.name,
-                            oldest_update,
-                        )
-                        break
-
         if self.max_age.value() is not None:
+            # Map to a namespace
+            ns = DistroNamespace.for_obj(image_obj)
+
+            oldest_update = (
+                get_vulnerabilities_provider()
+                .get_gate_util_provider()
+                .oldest_namespace_feed_sync(ns)
+            )
+
             try:
                 if oldest_update is not None:
-                    oldest_update = calendar.timegm(oldest_update.timetuple())
-                    mintime = time.time() - int(int(self.max_age.value()) * 86400)
+                    oldest_update = datetime_to_epoch(oldest_update)
+                    mintime = time.time() - days_to_seconds(int(self.max_age.value()))
+
                     if oldest_update < mintime:
                         self._fire(
                             msg="The vulnerability feed for this image distro is older than MAXAGE ("
@@ -709,7 +676,11 @@ class UnsupportedDistroTrigger(BaseTrigger):
     __description__ = "Triggers if vulnerability data is unavailable for the image's distro packages such as rpms or dpkg. Non-OS packages like npms and java are not considered in this evaluation"
 
     def evaluate(self, image_obj, context):
-        if not have_vulnerabilities_for(DistroNamespace.for_obj(image_obj)):
+        if (
+            not get_vulnerabilities_provider()
+            .get_gate_util_provider()
+            .have_vulnerabilities_for(DistroNamespace.for_obj(image_obj))
+        ):
             self._fire(
                 msg="Distro-specific feed data not found for distro namespace: %s. Cannot perform CVE scan OS/distro packages"
                 % image_obj.distro_namespace
@@ -744,10 +715,10 @@ class VulnerabilityBlacklistTrigger(BaseTrigger):
         for vid in vids:
             found = False
 
-            matches = context.data.get("loaded_vulnerabilities_new")
+            matches = context.data.get("loaded_vulnerabilities")
             for match in matches:
                 if is_vendor_only:
-                    if match.fixes and any(item.wont_fix for item in match.fixes):
+                    if match.fix.will_not_fix:
                         continue
                 # search for vid in all vulns
                 if vid == match.vulnerability.vulnerability_id:

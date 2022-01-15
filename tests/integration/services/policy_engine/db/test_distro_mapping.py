@@ -1,11 +1,11 @@
-from tests.integration.services.policy_engine.utils import init_distro_mappings
-from anchore_engine.subsys import logger
 from anchore_engine.db.entities.policy_engine import (
     DistroMapping,
     DistroTuple,
     VersionPreservingDistroMapper,
     get_thread_scoped_session,
 )
+from anchore_engine.subsys import logger
+from tests.integration.services.policy_engine.utils import init_distro_mappings
 
 logger.enable_test_logging()
 
@@ -73,6 +73,11 @@ def test_distro_from(anchore_db):
 
         distros = DistroMapping.distros_for("magaiea", "5", "fedora,mandriva")
         logger.info("Distros for magaiea 5 (fedora, mandriva) = {}".format(distros))
+        assert distros is not None
+        assert len(distros) == 1
+
+        distros = DistroMapping.distros_for("rocky", "8", "rhel")
+        logger.info("Distros for rocky 8 (rhel) = {}".format(distros))
         assert distros is not None
         assert len(distros) == 1
     finally:

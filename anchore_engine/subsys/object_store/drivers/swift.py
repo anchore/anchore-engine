@@ -1,23 +1,21 @@
 import copy
-import json
-import urllib.parse
 import io
-from swiftclient.service import SwiftService, SwiftUploadObject, SwiftError
-
-from anchore_engine import utils
-from anchore_engine.subsys.object_store.drivers.interface import ObjectStorageDriver
-from anchore_engine.subsys.object_store.exc import (
-    DriverBackendError,
-    DriverConfigurationError,
-    ObjectKeyNotFoundError,
-    ObjectStorageDriverError,
-    BadCredentialsError,
-)
-from anchore_engine.subsys import logger
-
 
 # Deal with the verbose logging verbosity of swiftclient
 import logging
+import urllib.parse
+
+from swiftclient.service import SwiftError, SwiftService, SwiftUploadObject
+
+from anchore_engine import utils
+from anchore_engine.subsys import logger
+from anchore_engine.subsys.object_store.drivers.interface import ObjectStorageDriver
+from anchore_engine.subsys.object_store.exc import (
+    BadCredentialsError,
+    DriverConfigurationError,
+    ObjectKeyNotFoundError,
+    ObjectStorageDriverError,
+)
 
 l = logging.getLogger("swiftclient")
 l.setLevel(logging.WARN)
@@ -72,12 +70,13 @@ class SwiftObjectStorageDriver(ObjectStorageDriver):
             resp = self.client.stat()
             if resp["success"]:
                 return True
-            elif resp.get("error") and resp.get("error").http_status in [401, 403]:
-                raise BadCredentialsError(
-                    self.auth_options, endpoint=None, cause=resp.get("error")
-                )
             elif resp.get("error"):
-                raise DriverConfigurationError(cause=resp.get("error"))
+                error = resp.get("error")
+                if getattr(error, "http_status", None) in [401, 403]:
+                    raise BadCredentialsError(
+                        self.auth_options, endpoint=None, cause=error
+                    )
+                raise DriverConfigurationError(cause=error)
             else:
                 raise DriverConfigurationError(
                     Exception(

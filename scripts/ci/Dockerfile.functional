@@ -5,9 +5,9 @@ USER root
 
 RUN set -ex && \
     echo "installing OS dependencies" && \
-    yum update -y && \
-    yum install -y gcc make git python3-wheel python36-devel python38-devel
+    yum install -y gcc make git python38-wheel python38-devel python38-psycopg2
 
+# Install Docker-in-Docker into the image for testing
 ENV DOCKERVERSION=18.03.1-ce
 RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKERVERSION}.tgz \
   && tar xzvf docker-${DOCKERVERSION}.tgz --strip 1 \

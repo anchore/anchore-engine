@@ -1,6 +1,9 @@
+import io
 import json
-import urllib3
+
 import requests
+import urllib3
+
 from anchore_engine.subsys import logger
 
 http = urllib3.PoolManager()
@@ -167,12 +170,15 @@ def fget_req(url, **kwargs):
     httpcode = 500
     rawdata = b""
     jsondata = {}
+    chunk_size = int(1024.0 * 1000.0 * 1)
+
     try:
         r = requests.get(url, stream=True, **kwargs)
         httpcode = r.status_code
-        rawdata = b""
-        for rchunk in r.iter_content(8192 * 100):
-            rawdata = rawdata + rchunk
+        with io.BytesIO() as iobuf:
+            for rchunk in r.iter_content(chunk_size):
+                iobuf.write(rchunk)
+            rawdata = iobuf.getvalue()
 
         try:
             jsondata = json.loads(str(rawdata, "utf-8"))

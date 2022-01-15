@@ -1,6 +1,9 @@
 include LICENSE
 include requirements.txt
-include README.rst
+include README.md
 include CONTRIBUTING.rst
 include anchore_engine/conf/*
-recursive-include anchore_engine/twisted *
+include anchore_engine/conf/bundles/*
+include anchore_engine/conf/clamav/*
+include anchore_engine/analyzers/modules/*
+global-include swagger.yaml

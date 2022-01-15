@@ -1,28 +1,25 @@
 """
 Generic utilities
 """
-import datetime
 import decimal
-import hashlib
-import json
-import platform
-import subprocess
-import uuid
-import threading
-from collections import OrderedDict
-from contextlib import contextmanager
-from operator import itemgetter
-import time
 import os
+import platform
 import re
 import shlex
+import subprocess
+import threading
+import time
+import uuid
+from contextlib import contextmanager
+from operator import itemgetter
+
 from ijson import common as ijcommon
 from ijson.backends import python as ijpython
 
-
 from anchore_engine.subsys import logger
-from anchore_engine.util.docker import parse_dockerimage_string
 
+SANITIZE_CMD_ERROR_MESSAGE = "bad character in shell input"
+PIPED_CMD_VALUE_ERROR_MESSAGE = "Piped command cannot be None or empty"
 
 K_BYTES = 1024
 M_BYTES = 1024 * K_BYTES
@@ -213,16 +210,49 @@ def run_sanitize(cmd_list):
         if not re.search("[;&<>]", x):
             return x
         else:
-            raise Exception("bad character in shell input")
+            raise Exception(SANITIZE_CMD_ERROR_MESSAGE)
 
     return [x for x in cmd_list if shellcheck(x)]
+
+
+def run_command_list_with_piped_input(
+    cmd_list,
+    input_data,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.PIPE,
+    stdin=subprocess.PIPE,
+    **kwargs
+):
+    """
+    Pipe the input data to the command list and run it with optional environment and return a tuple (rc, stdout_str, stderr_str)
+
+    :param cmd_list: list of command e.g. ['ls', '/tmp']
+    :param input_data: string or bytes to be piped to cmd_list
+    :param stdin:
+    :param stdout:
+    :param stderr:
+    :return: tuple (rc_int, stdout_str, stderr_str)
+    """
+    try:
+        input_data = input_data.encode("utf-8")
+    except AttributeError:
+        # it is a str already, no need to encode
+        pass
+
+    cmd_list = run_sanitize(cmd_list)
+    pipes = subprocess.Popen(
+        cmd_list, **dict(stdout=stdout, stderr=stderr, stdin=stdin, **kwargs)
+    )
+    stdout_result, stderr_result = pipes.communicate(input=input_data)
+
+    return pipes.returncode, stdout_result, stderr_result
 
 
 def run_command_list(
     cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE, **kwargs
 ):
     """
-    Run a command from a list with optional environemnt and return a tuple (rc, stdout_str, stderr_str)
+    Run a command from a list with optional environment and return a tuple (rc, stdout_str, stderr_str)
     :param cmd_list: list of command e.g. ['ls', '/tmp']
     :param env: dict of env vars for the environment if desired. will replace normal env, not augment
     :return: tuple (rc_int, stdout_str, stderr_str)
@@ -235,15 +265,22 @@ def run_command_list(
     return pipes.returncode, stdout_result, stderr_result
 
 
-def run_check(cmd, **kwargs):
+def run_check(cmd, input_data=None, log_level="debug", **kwargs):
     """
     Run a command (input required to be a list), log the output, and raise an
     exception if a non-zero exit status code is returned.
     """
     cmd = run_sanitize(cmd)
-    logger.debug("running cmd: %s", " ".join(cmd))
+
     try:
-        code, stdout, stderr = run_command_list(cmd, **kwargs)
+        if input_data is not None:
+            logger.debug("running cmd: %s with piped input", " ".join(cmd))
+            code, stdout, stderr = run_command_list_with_piped_input(
+                cmd, input_data, **kwargs
+            )
+        else:
+            logger.debug("running cmd: %s", " ".join(cmd))
+            code, stdout, stderr = run_command_list(cmd, **kwargs)
     except FileNotFoundError:
         msg = "unable to run command. Executable does not exist or not availabe in path"
         raise CommandException(cmd, 1, "", "", msg=msg)
@@ -258,12 +295,18 @@ def run_check(cmd, **kwargs):
     stdout_stream = stdout.splitlines()
     stderr_stream = stderr.splitlines()
 
-    # Always log stdout and stderr as debug
-    for line in stdout_stream:
-        logger.debug("stdout: %s", line)
-
-    for line in stderr_stream:
-        logger.debug("stderr: %s", line)
+    if log_level == "spew":
+        # Some commands (like grype scanning) will generate enough output here that we
+        # need to try to limit the impact of debug logging on system performance
+        for line in stdout_stream:
+            logger.spew("stdout: %s" % line)  # safe formatting not available for spew
+        for line in stderr_stream:
+            logger.spew("stderr: %s" % line)
+    else:  # Always log stdout and stderr as debug, unless spew is specified
+        for line in stdout_stream:
+            logger.debug("stdout: %s", line)
+        for line in stderr_stream:
+            logger.debug("stderr: %s", line)
 
     if code != 0:
         # When non-zero exit status returns, log stderr as error, but only when
@@ -281,20 +324,6 @@ def run_check(cmd, **kwargs):
 
 def run_command(cmdstr, **kwargs):
     return run_command_list(shlex.split(cmdstr), **kwargs)
-
-
-def manifest_to_digest(rawmanifest):
-    from anchore_engine.clients.skopeo_wrapper import manifest_to_digest_shellout
-
-    ret = None
-    d = json.loads(rawmanifest, object_pairs_hook=OrderedDict)
-    if d["schemaVersion"] != 1:
-        ret = "sha256:" + str(hashlib.sha256(rawmanifest.encode("utf-8")).hexdigest())
-    else:
-        ret = manifest_to_digest_shellout(rawmanifest)
-
-    ret = ensure_str(ret)
-    return ret
 
 
 def get_threadbased_id(guarantee_uniq=False):
@@ -350,68 +379,6 @@ def ensure_bytes(obj):
 
 def ensure_str(obj):
     return str(obj, "utf-8") if type(obj) != str else obj
-
-
-rfc3339_date_fmt = "%Y-%m-%dT%H:%M:%SZ"
-rfc3339_date_input_fmts = [
-    "%Y-%m-%dT%H:%M:%SZ",
-    "%Y-%m-%dT%H:%M:%S.%fZ",
-    "%Y-%m-%dT%H:%M:%S:%fZ",
-]
-
-
-def rfc3339str_to_epoch(rfc3339_str):
-    return int(rfc3339str_to_datetime(rfc3339_str).timestamp())
-
-
-def rfc3339str_to_datetime(rfc3339_str):
-    """
-    Convert the rfc3339 formatted string (UTC only) to a datatime object with tzinfo explicitly set to utc. Raises an exception if the parsing fails.
-
-    :param rfc3339_str:
-    :return:
-    """
-
-    ret = None
-    for fmt in rfc3339_date_input_fmts:
-        try:
-            ret = datetime.datetime.strptime(rfc3339_str, fmt)
-            # Force this since the formats we support are all utc formats, to support non-utc
-            if ret.tzinfo is None:
-                ret = ret.replace(tzinfo=datetime.timezone.utc)
-            continue
-        except:
-            pass
-
-    if ret is None:
-        raise Exception(
-            "could not convert input value ({}) into datetime using formats in {}".format(
-                rfc3339_str, rfc3339_date_input_fmts
-            )
-        )
-
-    return ret
-
-
-def datetime_to_rfc3339(dt_obj):
-    """
-    Simple utility function. Expects a UTC input, does no tz conversion
-
-    :param dt_obj:
-    :return:
-    """
-
-    return dt_obj.strftime(rfc3339_date_fmt)
-
-
-def epoch_to_rfc3339(epoch_int):
-    """
-    Convert an epoch int value to a RFC3339 datetime string
-
-    :param epoch_int:
-    :return:
-    """
-    return datetime_to_rfc3339(datetime.datetime.utcfromtimestamp(epoch_int))
 
 
 def convert_bytes_size(size_str):

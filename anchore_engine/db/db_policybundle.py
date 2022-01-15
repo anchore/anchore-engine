@@ -1,7 +1,6 @@
 from anchore_engine import db
-from anchore_engine.db.entities.common import anchore_now
 from anchore_engine.db import PolicyBundle
-
+from anchore_engine.db.entities.common import anchore_now
 
 # specific DB interface helpers for the 'policybundle' table
 

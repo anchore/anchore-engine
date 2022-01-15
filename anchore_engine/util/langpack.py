@@ -1,7 +1,7 @@
 import re
-import semantic_version
-
 from distutils.version import LooseVersion, StrictVersion
+
+import semantic_version
 from pkg_resources import parse_version
 
 from anchore_engine.subsys import logger
@@ -21,7 +21,7 @@ def language_compare(a, op, b, language="python"):
     if language in ["java", "maven"]:
         aoptions = [MavenVersion(a)]
         boptions = [MavenVersion(b)]
-    elif language in ["js", "npm", "ruby", "gem", "nuget"]:
+    elif language in ["js", "npm", "ruby", "gem", "nuget", "go", "binary"]:
         try:
             aoptions = [semantic_version.Version.coerce(a)]
             boptions = [semantic_version.Version.coerce(b)]
@@ -46,7 +46,7 @@ def language_compare(a, op, b, language="python"):
             aoptions = [LooseVersion(a), parse_version(a)]
             boptions = [LooseVersion(b), parse_version(b)]
     else:
-        raise Exception(
+        raise ValueError(
             "language {} not supported for version comparison".format(language)
         )
 
@@ -124,14 +124,17 @@ def normalized_version_match(rawsemver, rawpkgver, language="python"):
         # and check
         violation = False
         if not rangechecks:
-            raise Exception("invalid range detected - {}".format(vrange))
+            raise ValueError("invalid range detected - {}".format(vrange))
 
         for rangecheck in rangechecks:
             rangecheck = re.sub(r"\s+", "", rangecheck)
             patt = re.match("([!|<|>|=|~|^]+)(.*)", rangecheck)
             if patt:
                 op, verraw = (patt.group(1), patt.group(2))
-                inrange = language_compare(rawpkgver, op, verraw, language=language)
+                try:
+                    inrange = language_compare(rawpkgver, op, verraw, language=language)
+                except ValueError as v_err:
+                    logger.debug(v_err)
 
                 if not inrange:
                     violation = True

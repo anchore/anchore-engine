@@ -1,6 +1,5 @@
 import copy
 import os
-from . import logging
 
 DEFAULT_CONFIG = {"jsonmode": False, "debug": False, "configdir": "/config"}
 
@@ -39,9 +38,3 @@ def setup_config(cli_opts):
         ret["configdir"] = settings["ANCHORE_CONFIG_DIR"]
 
     return ret
-
-
-def init_all(cli_opts):
-    conf = setup_config(cli_opts)
-    logging.log_config(conf)
-    return conf

@@ -1,9 +1,11 @@
 import datetime
+import gzip
 import io
 import json
 import re
 import tarfile
 
+import flask
 from connexion import request
 
 import anchore_engine.apis
@@ -11,12 +13,13 @@ import anchore_engine.common
 import anchore_engine.common.images
 import anchore_engine.configuration.localconfig
 import anchore_engine.subsys.metrics
+import anchore_engine.util.time
 from anchore_engine import utils
 from anchore_engine.apis import exceptions as api_exceptions
 from anchore_engine.apis.authorization import (
-    get_authorizer,
-    RequestingAccountValue,
     ActionBoundPermission,
+    RequestingAccountValue,
+    get_authorizer,
 )
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services import internal_client_for
@@ -24,15 +27,15 @@ from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db.entities.common import anchore_now
-from anchore_engine.services.apiext.api.controllers.utils import (
+from anchore_engine.services.apiext.api.controllers.utils import (  # make_response_vulnerability,
+    make_response_vulnerability_report,
     normalize_image_add_source,
     validate_image_add_source,
-    # make_response_vulnerability,
-    make_response_vulnerability_report,
 )
-from anchore_engine.subsys import taskstate, logger
+from anchore_engine.subsys import logger, taskstate
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.utils import parse_dockerimage_string
+from anchore_engine.util.docker import parse_dockerimage_string
+from anchore_engine.utils import ensure_bytes
 
 authorizer = get_authorizer()
 
@@ -934,47 +937,6 @@ def get_image_vulnerabilities_by_type_imageId(imageId, vtype):
     return return_object, httpcode
 
 
-# @flask_metrics.do_not_track()
-# @authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
-# def import_image(analysis_report):
-#    try:
-#        request_inputs = anchore_engine.apis.do_request_prep(request, default_params={})
-#        return_object, httpcode = do_import_image(request_inputs, analysis_report)
-#
-#    except Exception as err:
-#        httpcode = 500
-#        return_object = str(err)
-#
-#    return return_object, httpcode
-
-
-# def do_import_image(request_inputs, importRequest):
-#    user_auth = request_inputs['auth']
-#    method = request_inputs['method']
-#    bodycontent = request_inputs['bodycontent']
-#    params = request_inputs['params']
-#
-#    return_object = {}
-#    httpcode = 500
-#
-#    userId, pw = user_auth
-#
-#    try:
-#        client = internal_client_for(CatalogClient, request_inputs['userId'])
-#        return_object = []
-#        image_records = client.import_image(json.loads(bodycontent))
-#        for image_record in image_records:
-#            return_object.append(make_response_image(image_record))
-#        httpcode = 200
-#
-#    except Exception as err:
-#        logger.debug("operation exception: " + str(err))
-#        return_object = make_response_error(err, in_httpcode=httpcode)
-#        httpcode = return_object['httpcode']
-#
-#    return(return_object, httpcode)
-
-
 def do_list_images(
     account,
     filter_tag=None,
@@ -1081,7 +1043,7 @@ def analyze_image(
                 img_source = source.get("digest")
 
                 tag = img_source["tag"]
-                digest_info = anchore_engine.utils.parse_dockerimage_string(
+                digest_info = anchore_engine.util.docker.parse_dockerimage_string(
                     img_source["pullstring"]
                 )
                 digest = digest_info["digest"]
@@ -1090,7 +1052,7 @@ def analyze_image(
                 ts = img_source.get("creation_timestamp_override")
                 if ts:
                     try:
-                        ts = utils.rfc3339str_to_epoch(ts)
+                        ts = anchore_engine.util.time.rfc3339str_to_epoch(ts)
                     except Exception as err:
                         raise api_exceptions.InvalidDateFormat(
                             "source.creation_timestamp_override", ts
@@ -1611,3 +1573,47 @@ def list_secret_search_results(imageDigest):
         raise
     except Exception as err:
         raise api_exceptions.InternalError(str(err), detail={})
+
+
+@authorizer.requires([ActionBoundPermission(domain=RequestingAccountValue())])
+def get_image_sbom_native(imageDigest: str):
+    """
+    GET /images/{digest}/sboms/native
+
+    :param imageDigest:
+    :return: A native anchore (syft) formatted sbom for the image
+    """
+
+    account = ApiRequestContextProxy.namespace()
+    try:
+        _get_image_ok(account, imageDigest)
+
+        client = internal_client_for(CatalogClient, account)
+        resp = client.get_document("syft_sbom", imageDigest)
+
+        # Do
+        compressed_bytes = json_content_gzipper(resp)
+        resp = flask.Response(
+            content_type="application/gzip", status=200, response=compressed_bytes
+        )
+        resp.headers.set(
+            "Content-Disposition",
+            "attachment",
+            filename="%s_%s.json.gzip" % (imageDigest, "native"),
+        )
+        return resp
+    except api_exceptions.AnchoreApiError:
+        raise
+    except Exception as err:
+        raise api_exceptions.InternalError(str(err), detail={})
+
+
+def json_content_gzipper(content_json):
+    """
+    Returns gzipped bytes of content json
+
+    :param content_json:
+    :return:
+    """
+    compressed_json = gzip.compress(ensure_bytes(json.dumps(content_json, indent=0)))
+    return compressed_json

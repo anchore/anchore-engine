@@ -1,10 +1,12 @@
-import requests
 import copy
-import json
 import datetime
-from anchore_engine.subsys import logger
+import json
 from urllib import parse as urlparse
-from anchore_engine.utils import datetime_to_rfc3339
+
+import requests
+
+from anchore_engine.subsys import logger
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 class BasicApiClient(object):

@@ -2,16 +2,17 @@
 Tests Feed mapping objects
 """
 import json
+
 import pytest
+
 from anchore_engine.services.policy_engine.engine.feeds.mappers import (
+    GemMetadata,
+    GemPackageDataMapper,
+    NpmMetadata,
+    NpmPackageDataMapper,
     Vulnerability,
     VulnerabilityFeedDataMapper,
-    GemPackageDataMapper,
-    NpmPackageDataMapper,
-    GemMetadata,
-    NpmMetadata,
 )
-from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
 
 test_cve = {
     "Vulnerability": {
@@ -92,13 +93,13 @@ vuln_invalid_1 = {"NotAVulnerability": {}}
 vuln_invalid_2 = {"Vulnerability": {"Nameer": "SomeCVE"}}
 
 vuln_mapper = VulnerabilityFeedDataMapper(
-    feed_name="vulnerabilities", group_name="debian:9", keyname="Name"
+    feed_name="vulnerabilities", group_name="debian:9", key_name="Name"
 )
 npm_mapper = NpmPackageDataMapper(
-    feed_name="packages", group_name="npm", keyname="name"
+    feed_name="packages", group_name="npm", key_name="name"
 )
 gem_mapper = GemPackageDataMapper(
-    feed_name="packages", group_name="gem", keyname="name"
+    feed_name="packages", group_name="gem", key_name="name"
 )
 
 

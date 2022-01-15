@@ -1,8 +1,7 @@
-import sys
-from .fixtures import debian
-from . import path_params
-import json
 import pytest
+
+from . import path_params
+from .fixtures import debian
 
 
 class TestDebianPaths:
@@ -41,6 +40,10 @@ class TestDebianPaths:
         loaded.pop("license")
         metadata = dict(metadata)
         metadata.pop("license")
+
+        # cpe ordering keeps changing, so sort both lists.
+        loaded["cpes"] = sorted(loaded["cpes"])
+        metadata["cpes"] = sorted(metadata["cpes"])
 
         assert loaded == metadata
 

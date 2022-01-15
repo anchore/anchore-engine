@@ -1,7 +1,7 @@
 swagger: "2.0"
 info:
   description: "This is the Anchore Engine API. Provides the primary external API for users of the service."
-  version: "0.1.17"
+  version: "0.1.20"
   title: "Anchore Engine API Server"
   contact:
     email: "nurmi@anchore.com"
@@ -745,6 +745,7 @@ paths:
           in: query
           type: boolean
           required: false
+          description: Filter results to include only vulnerabilities that are not marked as invalid by upstream OS vendor data. When set to true, it will filter out all vulnerabilities where `will_not_fix` is False. If false all vulnerabilities are returned regardless of `will_not_fix`
         - $ref: "#/parameters/AsAccountParameter"
       responses:
         200:
@@ -1115,6 +1116,32 @@ paths:
           description: Internal Error
           schema:
             $ref: "#/definitions/ApiErrorResponse"
+  /images/{imageDigest}/sboms/native:
+    get:
+      tags:
+        - Images
+      x-swagger-router-controller: anchore_engine.services.apiext.api.controllers.images
+      operationId: get_image_sbom_native
+      x-anchore-authz-action: getImage
+      summary: Get image sbom in the native Anchore format
+      produces:
+        - application/gzip
+      parameters:
+        - name: imageDigest
+          in: path
+          type: string
+          required: true
+        - $ref: "#/parameters/AsAccountParameter"
+      responses:
+        200:
+          description: Image lookup success
+          schema:
+            type: file
+        500:
+          description: Internal error
+          schema:
+            $ref: "#/definitions/ApiErrorResponse"
+
   /images/{imageDigest}/metadata/{mtype}:
     get:
       tags:
@@ -2950,6 +2977,9 @@ definitions:
       type:
         type: string
         description: Package type (e.g. package, rpm, deb, apk, jar, npm, gem, ...)
+      will_not_fix:
+        type: boolean
+        description: Whether a vendor will or will not fix a vulnerabitlity
     description: A record of a software item which is vulnerable or carries a fix for a vulnerability
   VulnerablePackageReference:
     type: object
@@ -3547,6 +3577,9 @@ definitions:
           - analyzing
           - analyzed
           - analysis_failed
+      record_version:
+        type: string
+        description: The version of the record, used for internal schema updates and data migrations.
   AnchoreImageList:
     description: A list of Anchore Images
     type: array
@@ -3936,6 +3969,9 @@ definitions:
       package_path:
         type: string
         description: The location (if applicable) of the vulnerable package in the container filesystem
+      will_not_fix:
+        type: boolean
+        description: Whether a vendor will fix or not fix the vulnerability
       nvd_data:
         $ref: "#/definitions/NvdDataList"
       vendor_data:
@@ -4930,6 +4966,11 @@ definitions:
   ImageImportManifest:
     x-nullable: True
     type: object
+    required:
+      - tags
+      - contents
+      - digest
+      - operation_uuid
     properties:
       contents:
         $ref: "#/definitions/ImportContentDigests"
@@ -5125,4 +5166,6 @@ definitions:
         additionalProperties: true
         type: object
     additionalProperties: true
+    type: object
+  NativeSbom:
     type: object

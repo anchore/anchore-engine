@@ -1,34 +1,32 @@
 import base64
+import copy
 import filecmp
+import json
 import os
 import re
-import json
-import threading
-import uuid
 import shutil
 import tarfile
-import copy
+import threading
 import time
+import uuid
+
+import retrying
 import treelib
-import collections
-
 import yaml
-from pkg_resources import resource_filename
 
-import anchore_engine.configuration
-import anchore_engine.common
 import anchore_engine.auth.common
 import anchore_engine.clients.skopeo_wrapper
+import anchore_engine.common
 import anchore_engine.common.images
+import anchore_engine.configuration
+from anchore_engine import utils
 from anchore_engine.analyzers import manager as analyzer_manager
-from anchore_engine.utils import AnchoreException
+from anchore_engine.analyzers.manager import AnalysisResult
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
     DockerV2ManifestMetadata,
 )
-import retrying
-
-from anchore_engine import utils
+from anchore_engine.utils import AnchoreException
 
 anchorelock = threading.Lock()
 anchorelocks = {}
@@ -39,10 +37,8 @@ IMAGE_PULL_RETRY_WAIT_INCREMENT_MS = 1000
 
 
 try:
-    from anchore_engine.subsys import logger
-
     # Separate logger for use during bootstrap when logging may not be fully configured
-    from twisted.python import log
+    from anchore_engine.subsys import logger  # pylint: disable=C0412
 except:
     import logging
 
@@ -888,7 +884,13 @@ def list_analyzers():
     return analyzer_manager.list_modules()
 
 
-def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
+def run_anchore_analyzers(
+    staging_dirs,
+    imageDigest,
+    imageId,
+    localconfig,
+    owned_package_filtering_enabled: bool = True,
+) -> AnalysisResult:
     outputdir = staging_dirs["outputdir"]
     unpackdir = staging_dirs["unpackdir"]
     copydir = staging_dirs["copydir"]
@@ -896,15 +898,23 @@ def run_anchore_analyzers(staging_dirs, imageDigest, imageId, localconfig):
 
     myconfig = localconfig.get("services", {}).get("analyzer", {})
     if not myconfig.get("enable_hints", False):
+        logger.info("image content hints status: disabled")
         # install an empty hints file to ensure that any discovered hints overrides is ignored during analysis
         with open(os.path.join(unpackdir, "anchore_hints.json"), "w") as OFH:
             OFH.write(json.dumps({}))
+    else:
+        logger.info("image content hints status: enabled")
 
-    analyzer_report = analyzer_manager.run(
-        configdir, imageId, unpackdir, outputdir, copydir
+    result = analyzer_manager.run(
+        configdir,
+        imageId,
+        unpackdir,
+        outputdir,
+        copydir,
+        owned_package_filtering_enabled,
     )
 
-    return dict(analyzer_report)
+    return result
 
 
 def generate_image_export(
@@ -984,7 +994,8 @@ def analyze_image(
     image_source="registry",
     image_source_meta=None,
     parent_manifest=None,
-):
+    owned_package_filtering_enabled: bool = True,
+) -> AnalysisResult:
     # need all this
 
     imageId = None
@@ -1004,139 +1015,162 @@ def analyze_image(
     event = None
     pullstring = None
     fulltag = None
+    analysis_error = None
 
-    try:
-        imageDigest = image_record["imageDigest"]
+    imageDigest = image_record["imageDigest"]
 
-        dockerfile_mode = image_record.get("dockerfile_mode", "")
+    dockerfile_mode = image_record.get("dockerfile_mode", "")
 
-        image_detail = image_record["image_detail"][0]
-        pullstring = (
-            image_detail["registry"]
-            + "/"
-            + image_detail["repo"]
-            + "@"
-            + image_detail["imageDigest"]
+    image_details = image_record.get("image_detail", [])
+    if not image_details or not isinstance(image_details, list):
+        raise Exception(
+            "Tag details for image digest %s missing. Cannot pull image for analysis"
         )
-        fulltag = (
-            image_detail["registry"]
-            + "/"
-            + image_detail["repo"]
-            + ":"
-            + image_detail["tag"]
-        )
-        imageId = image_detail["imageId"]
-        if image_detail["dockerfile"]:
-            dockerfile_contents = str(
-                base64.decodebytes(image_detail["dockerfile"].encode("utf-8")), "utf-8"
+
+    for image_detail in image_details:
+        try:
+            # image_detail = image_record["image_detail"][0]
+            pullstring = (
+                image_detail["registry"]
+                + "/"
+                + image_detail["repo"]
+                + "@"
+                + image_detail["imageDigest"]
             )
-        else:
-            dockerfile_contents = None
+            fulltag = (
+                image_detail["registry"]
+                + "/"
+                + image_detail["repo"]
+                + ":"
+                + image_detail["tag"]
+            )
+            imageId = image_detail["imageId"]
+            if image_detail["dockerfile"]:
+                dockerfile_contents = str(
+                    base64.decodebytes(image_detail["dockerfile"].encode("utf-8")),
+                    "utf-8",
+                )
+            else:
+                dockerfile_contents = None
 
-        staging_dirs = make_staging_dirs(tmprootdir, use_cache_dir=use_cache_dir)
-        unpackdir = staging_dirs["unpackdir"]
+            staging_dirs = make_staging_dirs(tmprootdir, use_cache_dir=use_cache_dir)
+            unpackdir = staging_dirs["unpackdir"]
 
-        if image_source == "docker-archive":
-            rc = anchore_engine.clients.skopeo_wrapper.copy_image_from_docker_archive(
-                image_source_meta, staging_dirs["copydir"]
+            if image_source == "docker-archive":
+                rc = anchore_engine.clients.skopeo_wrapper.copy_image_from_docker_archive(
+                    image_source_meta, staging_dirs["copydir"]
+                )
+
+                manifest = get_manifest_from_staging(staging_dirs)
+
+            manifest_data = json.loads(manifest)
+
+            if image_source != "docker-archive":
+                rc = retrying_pull_image(
+                    staging_dirs,
+                    pullstring,
+                    registry_creds=registry_creds,
+                    manifest=manifest,
+                    parent_manifest=parent_manifest,
+                )
+
+            if manifest_data["schemaVersion"] == 1:
+                (
+                    docker_history,
+                    layers,
+                    dockerfile_contents,
+                    dockerfile_mode,
+                    imageArch,
+                ) = get_image_metadata_v1(
+                    staging_dirs,
+                    manifest_data,
+                    dockerfile_contents=dockerfile_contents,
+                )
+            elif manifest_data["schemaVersion"] == 2:
+                (
+                    docker_history,
+                    layers,
+                    dockerfile_contents,
+                    dockerfile_mode,
+                    imageArch,
+                ) = get_image_metadata_v2(
+                    staging_dirs,
+                    imageId,
+                    manifest_data,
+                    dockerfile_contents=dockerfile_contents,
+                )
+            else:
+                raise ManifestSchemaVersionError(
+                    schema_version=manifest_data["schemaVersion"],
+                    pull_string=pullstring,
+                    tag=fulltag,
+                )
+
+            familytree = layers
+
+            timer = time.time()
+            imageSize = unpack(staging_dirs, layers)
+            logger.debug(
+                "timing: total unpack time: {} - {}".format(
+                    pullstring, time.time() - timer
+                )
             )
 
-            manifest = get_manifest_from_staging(staging_dirs)
+            familytree = layers
 
-        manifest_data = json.loads(manifest)
-
-        if image_source != "docker-archive":
-            rc = retrying_pull_image(
+            timer = time.time()
+            analysis_result = run_anchore_analyzers(
                 staging_dirs,
-                pullstring,
-                registry_creds=registry_creds,
-                manifest=manifest,
-                parent_manifest=parent_manifest,
-            )
-
-        if manifest_data["schemaVersion"] == 1:
-            (
-                docker_history,
-                layers,
-                dockerfile_contents,
-                dockerfile_mode,
-                imageArch,
-            ) = get_image_metadata_v1(
-                staging_dirs,
-                manifest_data,
-                dockerfile_contents=dockerfile_contents,
-            )
-        elif manifest_data["schemaVersion"] == 2:
-            (
-                docker_history,
-                layers,
-                dockerfile_contents,
-                dockerfile_mode,
-                imageArch,
-            ) = get_image_metadata_v2(
-                staging_dirs,
+                imageDigest,
                 imageId,
-                manifest_data,
-                dockerfile_contents=dockerfile_contents,
+                localconfig,
+                owned_package_filtering_enabled,
             )
-        else:
-            raise ManifestSchemaVersionError(
-                schema_version=manifest_data["schemaVersion"],
+
+            logger.debug(
+                "timing: total analyzer time: {} - {}".format(
+                    pullstring, time.time() - timer
+                )
+            )
+
+            image_export = generate_image_export(
+                imageId,
+                analysis_result.analysis_report,
+                imageSize,
+                fulltag,
+                docker_history,
+                dockerfile_mode,
+                dockerfile_contents,
+                layers,
+                familytree,
+                imageArch,
+                pullstring,
+                analyzer_manifest,
+            )
+            analysis_result.image_export = image_export
+            analysis_result.manifest = manifest
+            return analysis_result
+
+        except Exception as err:
+            analysis_error = err
+            logger.warn(
+                "failed to analyze image %s, may retry analyzing the image with another tag",
+                pullstring,
+            )
+        finally:
+            if staging_dirs:
+                delete_staging_dirs(staging_dirs)
+    else:
+        # looped through all tags and failed analysis for every single one of them or the list of tags is empty
+        if analysis_error:
+            raise AnalysisError(
+                cause=analysis_error,
                 pull_string=pullstring,
                 tag=fulltag,
+                msg="failed to download, unpack, analyze, and generate image export",
             )
-
-        familytree = layers
-
-        timer = time.time()
-        imageSize = unpack(staging_dirs, layers)
-        logger.debug(
-            "timing: total unpack time: {} - {}".format(pullstring, time.time() - timer)
-        )
-
-        familytree = layers
-
-        timer = time.time()
-        analyzer_report = run_anchore_analyzers(
-            staging_dirs, imageDigest, imageId, localconfig
-        )
-
-        logger.debug(
-            "timing: total analyzer time: {} - {}".format(
-                pullstring, time.time() - timer
-            )
-        )
-
-        image_report = generate_image_export(
-            imageId,
-            analyzer_report,
-            imageSize,
-            fulltag,
-            docker_history,
-            dockerfile_mode,
-            dockerfile_contents,
-            layers,
-            familytree,
-            imageArch,
-            pullstring,
-            analyzer_manifest,
-        )
-    except Exception as err:
-        raise AnalysisError(
-            cause=err,
-            pull_string=pullstring,
-            tag=fulltag,
-            msg="failed to download, unpack, analyze, and generate image export",
-        )
-    finally:
-        if staging_dirs:
-            delete_staging_dirs(staging_dirs)
-
-    # if not imageDigest or not imageId or not manifest or not image_report:
-    if not image_report:
-        raise Exception("failed to analyze")
-
-    return image_report, manifest
+        else:
+            raise Exception("failed to analyze")
 
 
 class AnalysisError(AnchoreException):

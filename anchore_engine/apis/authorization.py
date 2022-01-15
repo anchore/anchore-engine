@@ -3,26 +3,29 @@ API Authorization handlers and functions for use in API processing
 
 """
 import enum
+import functools
 import json
-from abc import abstractmethod, ABC
-import anchore_engine
+from abc import ABC, abstractmethod
 from collections import namedtuple
-from anchore_engine.subsys import logger
+from threading import RLock
+
+import pkg_resources
 from connexion import request as request_proxy
 from flask import Response
-from anchore_engine.apis.context import ApiRequestContextProxy
-from yosai.core import Yosai, exceptions as auth_exceptions, UsernamePasswordToken
-from yosai.core.authc.authc import token_info
+from yosai.core import UsernamePasswordToken, Yosai
+from yosai.core import exceptions as auth_exceptions
 from yosai.core.authc.abcs import AuthenticationToken
-from anchore_engine.db import session_scope, AccountTypes, AccountStates
-import pkg_resources
-import functools
-from anchore_engine.common.helpers import make_response_error
-from anchore_engine.apis.authentication import idp_factory, IdentityContext
+from yosai.core.authc.authc import token_info
+
+import anchore_engine
+from anchore_engine.apis.authentication import IdentityContext, idp_factory
+from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.apis.exceptions import AnchoreApiError
-from threading import RLock
-from anchore_engine.subsys.auth.realms import UsernamePasswordRealm, ExternalAuthorizer
+from anchore_engine.common.helpers import make_response_error
 from anchore_engine.configuration import localconfig
+from anchore_engine.db import AccountStates, AccountTypes, session_scope
+from anchore_engine.subsys import logger
+from anchore_engine.subsys.auth.realms import ExternalAuthorizer, UsernamePasswordRealm
 from anchore_engine.subsys.auth.stores.verifier import JwtToken
 
 # Global authorizer configured

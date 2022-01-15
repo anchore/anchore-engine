@@ -13,13 +13,13 @@ from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.common.helpers import make_response_error
 from anchore_engine.db import (
-    session_scope,
     ArchivedImage,
     ArchivedImageDocker,
-    db_archived_images,
-    ArchiveTransitionRule,
     ArchiveTransitionHistoryEntry,
+    ArchiveTransitionRule,
     ArchiveTransitions,
+    db_archived_images,
+    session_scope,
 )
 from anchore_engine.services.catalog.archiver import (
     ArchiveImageTask,
@@ -27,7 +27,7 @@ from anchore_engine.services.catalog.archiver import (
 )
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.metrics import flask_metrics
-from anchore_engine.utils import epoch_to_rfc3339
+from anchore_engine.util.time import epoch_to_rfc3339
 
 authorizer = get_authorizer()
 

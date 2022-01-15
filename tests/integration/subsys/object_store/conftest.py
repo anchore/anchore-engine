@@ -1,6 +1,7 @@
-import pytest
 import os
-import sys
+
+import pytest
+
 from anchore_engine.subsys import logger
 
 test_s3_key = os.getenv("ANCHORE_TEST_S3_ACCESS_KEY")
@@ -86,7 +87,7 @@ def s3_bucket():
 
 @pytest.fixture(scope="module")
 def swift_container():
-    from swiftclient.service import SwiftService, SwiftError
+    from swiftclient.service import SwiftService
 
     container_name = test_swift_container
 

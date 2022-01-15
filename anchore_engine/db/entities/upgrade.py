@@ -1,20 +1,72 @@
 import json
 import time
-from sqlalchemy import Column, Integer, String, BigInteger, DateTime, Enum, Text
+from contextlib import contextmanager
+from distutils.version import StrictVersion
 
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Integer,
+    String,
+    Text,
+)
+
+import anchore_engine.common
+import anchore_engine.common.helpers
 import anchore_engine.db.entities.common
 import anchore_engine.subsys.object_store.manager
-from anchore_engine.db.entities.common import StringJSON
-import anchore_engine.common.helpers
+from anchore_engine import version
+from anchore_engine.configuration import localconfig
+from anchore_engine.configuration.localconfig import (
+    ADMIN_ACCOUNT_NAME,
+    SYSTEM_ACCOUNT_NAME,
+)
+from anchore_engine.db import (
+    FeedGroupMetadata,
+    Image,
+    ImageGem,
+    ImageNpm,
+    ImagePackage,
+    ImagePackageVulnerability,
+    LegacyArchiveDocument,
+    ObjectStorageMetadata,
+    Vulnerability,
+    db_anchore,
+    db_archivedocument,
+    db_catalog_image,
+    db_policybundle,
+    db_registries,
+    legacy_db_users,
+    session_scope,
+)
+from anchore_engine.db.db_locks import application_lock_ids, db_application_lock
+from anchore_engine.db.entities.common import Base, StringJSON, do_create
 from anchore_engine.db.entities.exceptions import is_table_not_found
-from distutils.version import StrictVersion
-from contextlib import contextmanager
+from anchore_engine.db.entities.identity import UserTypes, anchore_uuid
+from anchore_engine.services.policy_engine import process_preflight
+from anchore_engine.services.policy_engine.engine.feeds import sync
+from anchore_engine.services.policy_engine.engine.feeds.feeds import (
+    have_vulnerabilities_for,
+)
+from anchore_engine.services.policy_engine.engine.vulnerabilities import (
+    DistroNamespace,
+    rescan_namespace,
+)
+from anchore_engine.subsys import object_store
+from anchore_engine.subsys.identities import AccountStates, manager_factory
+from anchore_engine.subsys.object_store.config import (
+    ALT_OBJECT_STORE_CONFIG_KEY,
+    DEFAULT_OBJECT_STORE_MANAGER_ID,
+)
 
 try:
-    from anchore_engine.subsys import logger, identities
-
     # Separate logger for use during bootstrap when logging may not be fully configured
     from twisted.python import log
+
+    from anchore_engine.subsys import identities, logger  # pylint: disable=C0412
 except:
     import logging
 
@@ -54,14 +106,10 @@ def get_versions():
     code_versions = {}
     db_versions = {}
 
-    from anchore_engine import version
-
     code_versions["service_version"] = version.version
     code_versions["db_version"] = version.db_version
 
     try:
-        from anchore_engine.db import db_anchore, session_scope
-
         with session_scope() as dbsession:
             db_versions = db_anchore.get(session=dbsession)
     except Exception as err:
@@ -78,8 +126,6 @@ def get_versions():
 
 
 def do_version_update(db_versions, code_versions):
-    from anchore_engine.db import db_anchore, session_scope
-
     with session_scope() as dbsession:
         db_anchore.add(
             code_versions["service_version"],
@@ -102,8 +148,6 @@ def upgrade_context(lock_id):
     """
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db.db_locks import db_application_lock, application_lock_ids
-
     with db_application_lock(
         engine, (application_lock_ids["upgrade"]["namespace"], lock_id)
     ):
@@ -113,7 +157,6 @@ def upgrade_context(lock_id):
 
 def do_create_tables(specific_tables=None):
     print("Creating DB Tables")
-    from anchore_engine.db.entities.common import Base, do_create
 
     try:
         with upgrade_context(my_module_upgrade_id) as ctx:
@@ -125,7 +168,6 @@ def do_create_tables(specific_tables=None):
 
 
 def do_db_bootstrap(localconfig=None, db_versions=None, code_versions=None):
-    from anchore_engine.db import session_scope
 
     with upgrade_context(my_module_upgrade_id) as ctx:
         with session_scope() as session:
@@ -281,8 +323,6 @@ def do_upgrade(inplace, incode):
 def db_upgrade_001_002():
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db import db_registries, db_policybundle, session_scope
-
     try:
         table_name = "registries"
         column = Column("registry_type", String, primary_key=False)
@@ -368,9 +408,6 @@ def db_upgrade_002_003():
 def db_upgrade_003_004():
     engine = anchore_engine.db.entities.common.get_engine()
 
-    from anchore_engine.db import db_catalog_image, db_archivedocument, session_scope
-    import anchore_engine.common
-
     newcolumns = [
         Column("arch", String, primary_key=False),
         Column("distro", String, primary_key=False),
@@ -443,7 +480,6 @@ def db_upgrade_003_004():
 
 def db_upgrade_004_005():
     engine = anchore_engine.db.entities.common.get_engine()
-    from sqlalchemy import Column, String
 
     newcolumns = [
         Column("annotations", String, primary_key=False),
@@ -521,18 +557,6 @@ def archive_data_upgrade_005_006():
     :return:
     """
 
-    from anchore_engine.db import (
-        LegacyArchiveDocument,
-        session_scope,
-        ObjectStorageMetadata,
-    )
-    from anchore_engine.subsys import object_store
-    from anchore_engine.subsys.object_store.config import (
-        DEFAULT_OBJECT_STORE_MANAGER_ID,
-        ALT_OBJECT_STORE_CONFIG_KEY,
-    )
-    from anchore_engine.configuration import localconfig
-
     config = localconfig.get_config()
     object_store.initialize(
         config.get("services", {}).get("catalog", {}),
@@ -584,9 +608,6 @@ def fixed_artifact_upgrade_005_006():
     Upgrade the feed_data_vulnerabilities_fixed_artifacts schema with new columns and fill in the defaults
 
     """
-    from anchore_engine.db import session_scope
-    from sqlalchemy import Column, Text, Boolean
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     table_name = "feed_data_vulnerabilities_fixed_artifacts"
@@ -689,13 +710,6 @@ def catalog_image_upgrades_006_007():
 def user_account_upgrades_007_008():
     logger.info("Upgrading user accounts for multi-user support")
 
-    from anchore_engine.db import session_scope, legacy_db_users
-    from anchore_engine.subsys.identities import manager_factory, AccountStates
-    from anchore_engine.configuration.localconfig import (
-        SYSTEM_ACCOUNT_NAME,
-        ADMIN_ACCOUNT_NAME,
-    )
-
     with session_scope() as session:
         mgr = manager_factory.for_session(session)
         for user in legacy_db_users.get_all():
@@ -748,8 +762,6 @@ def db_upgrade_007_008():
 
 
 def catalog_upgrade_007_008():
-    from anchore_engine.db import session_scope
-
     log.err("performing catalog table upgrades")
     engine = anchore_engine.db.entities.common.get_engine()
     new_columns = [
@@ -790,7 +802,6 @@ def catalog_upgrade_007_008():
 
 
 def policy_engine_packages_upgrade_007_008():
-    from anchore_engine.db import session_scope, ImagePackage, ImageNpm, ImageGem, Image
 
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
@@ -1106,8 +1117,6 @@ def db_upgrade_008_009():
     :return:
     """
 
-    from anchore_engine.db import session_scope
-
     if True:
         engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1143,7 +1152,6 @@ def cpe_vulnerability_upgrade_009_010():
 
     :return:
     """
-    from anchore_engine.db import session_scope
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1173,8 +1181,6 @@ def archive_document_upgrade_009_010():
     :return:
     """
 
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     exec_commands = [
@@ -1203,8 +1209,6 @@ def registry_name_upgrade_010_011():
 
     :return:
     """
-
-    from anchore_engine.db import session_scope
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1257,8 +1261,6 @@ def fixed_artifacts_upgrade_010_011():
     :return:
     """
 
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     new_columns = [
@@ -1308,9 +1310,6 @@ def update_users_010_011():
     Upgrade to add column to users table
     :return:
     """
-    from anchore_engine.db import session_scope
-    from anchore_engine.db.entities.identity import UserTypes, anchore_uuid
-    from anchore_engine.configuration import localconfig
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1403,8 +1402,6 @@ def db_upgrade_package_size_011_012():
     Update the column type for image package size from int to bigint
     :return:
     """
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     # Add constraints and index
@@ -1419,8 +1416,6 @@ def event_type_index_upgrade_011_012():
     :return:
     """
 
-    from anchore_engine.db import session_scope
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     log.err("creating new column index")
@@ -1434,8 +1429,6 @@ def db_upgrade_011_012():
 
 def upgrade_feed_groups_013():
     log.err("Upgrading feed and feed group schemas to add enabled flags")
-
-    from anchore_engine.services.policy_engine.engine.feeds import sync
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1489,13 +1482,6 @@ def upgrade_flush_centos_vulns_013():
 
     :return:
     """
-    from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-        DistroNamespace,
-    )
-    from anchore_engine.services.policy_engine.engine.feeds.feeds import (
-        have_vulnerabilities_for,
-    )
-    from anchore_engine.services.policy_engine.engine.feeds import sync
 
     engine = anchore_engine.db.entities.common.get_engine()
 
@@ -1540,10 +1526,6 @@ def upgrade_centos_rhel_synced_013():
 
     :return:
     """
-    from anchore_engine.services.policy_engine.engine.vulnerabilities import (
-        rescan_namespace,
-    )
-    from anchore_engine.db import session_scope
 
     log.err(
         "Scanning all images applicable for the rhel data feed to create matches based on new CVE data in rhel:* groups in addition to RHSA-based data from old centos:* groups. This may take a while"
@@ -1575,7 +1557,6 @@ def db_upgrade_012_013():
     :return:
     """
     # Setup some policy engine stuff to support feed ops
-    from anchore_engine.services.policy_engine import process_preflight
 
     process_preflight()
 
@@ -1585,9 +1566,6 @@ def db_upgrade_012_013():
 
 
 def upgrade_014_archive_rules():
-    from anchore_engine.db import session_scope
-    from anchore_engine.db.entities.identity import UserTypes
-
     engine = anchore_engine.db.entities.common.get_engine()
 
     new_columns = [
@@ -1980,6 +1958,51 @@ def db_upgrade_013_014():
     upgrade_oauth_client_014()
 
 
+def remove_incorrect_github_vuln_data():
+    """
+    Github feed data was being processed under incorrect types 'github:os' and 'github:unknown'. This function removes
+    those vulnerability records synced by the policy engine because they are incorrect data
+    """
+    engine = anchore_engine.db.entities.common.get_engine()
+
+    namespace_names = ["github:os", "github:unknown"]
+
+    to_delete = (
+        (
+            ImagePackageVulnerability,
+            ImagePackageVulnerability.vulnerability_namespace_name,
+        ),
+        (Vulnerability, Vulnerability.namespace_name),
+        (FeedGroupMetadata, FeedGroupMetadata.name),
+    )
+
+    for type, column in to_delete:
+        log.err(
+            "Removing records from table {} where {} is {}".format(
+                type, column, namespace_names
+            ),
+        )
+
+        try:
+            with session_scope() as session:
+                results = session.query(type).filter(column.in_(namespace_names)).all()
+                log.err(f"Deleting {len(results)} records from {type.__tablename__}")
+                for result in results:
+                    session.delete(result)
+        except Exception as e:
+            err_string = f"Failed to perform deletion on {type} - exception: {str(e)}"
+            log.err(err_string)
+            raise Exception(err_string)
+
+
+def db_upgrade_015_016():
+    """
+    Run upgrade tasks for version 14 to 15 of the db. This includes the folowing:
+        - Remove 'github:os' and 'github:unknown' vulnerability entries from policy engine
+    """
+    remove_incorrect_github_vuln_data()
+
+
 # Global upgrade definitions. For a given version these will be executed in order of definition here
 # If multiple functions are defined for a version pair, they will be executed in order.
 # If any function raises and exception, the upgrade is failed and halted.
@@ -1997,4 +2020,5 @@ upgrade_functions = (
     (("0.0.11", "0.0.12"), [db_upgrade_011_012]),
     (("0.0.12", "0.0.13"), [db_upgrade_012_013]),
     (("0.0.13", "0.0.14"), [db_upgrade_013_014]),
+    (("0.0.15", "0.0.16"), [db_upgrade_015_016]),
 )

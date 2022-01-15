@@ -1,6 +1,10 @@
-from anchore_engine.db import FeedMetadata, FeedGroupMetadata, get_session
-from anchore_engine.subsys.caching import local_named_cache
+from typing import Optional
+
+from sqlalchemy.orm.exc import MultipleResultsFound
+
+from anchore_engine.db import FeedGroupMetadata, FeedMetadata, get_session
 from anchore_engine.subsys import logger
+from anchore_engine.subsys.caching import local_named_cache
 
 cache_name = "feed_group_metadata"
 
@@ -87,6 +91,32 @@ def get_feed_group_json(db_session, feed_name, group_name):
         if found:
             found = found[0]
     return found
+
+
+def get_feed_detached(feed_name: str) -> Optional[FeedMetadata]:
+    """
+    Returns a FeedMetadata object or none based upon provided feed name. Detached from the session
+
+    :return: FeedMetadata object or none
+    :rtype FeedMetadata or None
+    """
+    db_session = get_session()
+    try:
+        feed = FeedMetadata.get_by_name(db_session, feed_name)
+
+        if not feed:
+            return None
+
+        return feed.to_detached()
+
+    except MultipleResultsFound as e:
+        logger.error(
+            "Failed to retrieve %s feed in detached state because more than one exists",
+            feed_name,
+        )
+        raise e
+    finally:
+        db_session.rollback()
 
 
 def get_all_feeds_detached():

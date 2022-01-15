@@ -1,20 +1,20 @@
 import datetime
-from anchore_engine.services.policy_engine.api.models import (
-    FeedMetadata,
-    FeedGroupMetadata,
-    Image,
-    ImageIngressResponse,
-    ImageIngressRequest,
-    ImageVulnerabilityListing,
-    CpeVulnerability,
-    CvssScore,
-    CvssCombined,
-    LegacyVulnerabilityReport,
-    LegacyTableReport,
-    LegacyMultiReport,
-)
 
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.common.models.policy_engine import (
+    CpeVulnerability,
+    CvssCombined,
+    CvssScore,
+    FeedGroupMetadata,
+    FeedMetadata,
+    Image,
+    ImageIngressRequest,
+    ImageIngressResponse,
+    ImageVulnerabilityListing,
+    LegacyMultiReport,
+    LegacyTableReport,
+    LegacyVulnerabilityReport,
+)
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 def test_feeds():
@@ -28,6 +28,7 @@ def test_feeds():
         "groups": None,
         "enabled": None,
         "last_full_sync": None,
+        "created_at": None,
     }
 
     f.groups = []
@@ -42,6 +43,7 @@ def test_feeds():
         "updated_at": datetime_to_rfc3339(d1),
         "enabled": None,
         "last_full_sync": None,
+        "created_at": None,
         "groups": [
             {
                 "name": "group1",

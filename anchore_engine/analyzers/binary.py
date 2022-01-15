@@ -1,12 +1,12 @@
-import sys
+import collections
+import json
 import os
 import re
-import json
 import tarfile
-import collections
 
 import anchore_engine.utils
 from anchore_engine.subsys import logger
+
 from . import utils
 
 binary_package_el = {
@@ -136,8 +136,8 @@ def _get_python_evidence(tfl, member, memberhash, evidence):
     el = {}
     el.update(binary_package_el)
 
-    patt_bin = re.match("^python([0-9]+\.[0-9]+)$", filename)
-    patt_lib = re.match("^libpython([0-9]+\.[0-9]+).so.*$", filename)
+    patt_bin = re.match(r"^python([0-9]+\.[0-9]+)$", filename)
+    patt_lib = re.match(r"^libpython([0-9]+\.[0-9]+).so.*$", filename)
     if (patt_bin or patt_lib) and member.isreg():
         f_vers = ""
         if patt_bin:
@@ -148,7 +148,7 @@ def _get_python_evidence(tfl, member, memberhash, evidence):
             for line in FH.readlines():
                 subline = line
                 try:
-                    the_re = ".*{}\.([0-9]+[-_a-zA-Z0-9]*).*".format(f_vers)
+                    the_re = r".*{}\.([0-9]+[-_a-zA-Z0-9]*).*".format(f_vers)
                     patt = re.match(anchore_engine.utils.ensure_bytes(the_re), subline)
                     if patt and f_vers:
                         b_vers = "{}.{}".format(
@@ -167,7 +167,9 @@ def _get_python_evidence(tfl, member, memberhash, evidence):
         with tfl.extractfile(member) as FH:
             for line in FH.readlines():
                 line = line.strip()
-                patt = re.match(b'.*#define +PY_VERSION +"*([0-9\.\-_a-zA-Z]+)"*', line)
+                patt = re.match(
+                    b'.*#define +PY_VERSION +r"*([0-9\.\-_a-zA-Z]+)"*', line
+                )
                 if patt:
                     h_vers = anchore_engine.utils.ensure_str(patt.group(1))
                     el["name"] = "python"
@@ -191,7 +193,7 @@ def _get_golang_evidence(tfl, member, memberhash, evidence):
             for line in FH.readlines():
                 subline = line
                 try:
-                    the_re = ".*go([0-9]+\.[0-9]+(\.[0-9]+|beta[0-9]+|alpha[0-9]+|rc[0-9]+)*).*"
+                    the_re = r".*go([0-9]+\.[0-9]+(\.[0-9]+|beta[0-9]+|alpha[0-9]+|rc[0-9]+)*).*"
                     patt = re.match(anchore_engine.utils.ensure_bytes(the_re), subline)
                     if patt:
                         vers = anchore_engine.utils.ensure_str(patt.group(1))
@@ -241,7 +243,7 @@ def _get_busybox_evidence(tfl, member, memberhash, evidence):
                 try:
                     patt = re.match(
                         anchore_engine.utils.ensure_bytes(
-                            ".*BusyBox\s+v([0-9]+\.[0-9]+\.[0-9]+).*"
+                            r".*BusyBox\s+v([0-9]+\.[0-9]+\.[0-9]+).*"
                         ),
                         subline,
                     )

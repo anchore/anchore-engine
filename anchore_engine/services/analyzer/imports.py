@@ -1,42 +1,39 @@
-import base64
 import json
 import time
 
-from .tasks import WorkerTask
-from anchore_engine.subsys import logger
-from anchore_engine.common.schemas import (
-    InternalImportManifest,
-    ImportQueueMessage,
-    ValidationError,
-    InternalImportManifest,
-    ImportContentReference,
-)
-
-from anchore_engine.utils import timer, AnchoreException
+import anchore_engine.clients.localanchore_standalone
+from anchore_engine.analyzers.syft.adapters import FilteringEngineAdapter
+from anchore_engine.analyzers.utils import merge_nested_dict
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.analyzers.utils import merge_nested_dict
-from anchore_engine.analyzers.syft import convert_syft_to_engine
+from anchore_engine.common.models.schemas import (
+    ImportQueueMessage,
+    InternalImportManifest,
+    ValidationError,
+)
+from anchore_engine.configuration import localconfig
+from anchore_engine.services.analyzer.analysis import (
+    ANALYSIS_TIME_SECONDS_BUCKETS as IMPORT_TIME_SECONDS_BUCKETS,
+)
+from anchore_engine.services.analyzer.analysis import (
+    analysis_failed_metrics,
+    notify_analysis_complete,
+    store_analysis_results,
+)
 from anchore_engine.services.analyzer.utils import (
+    emit_events,
     update_analysis_complete,
     update_analysis_failed,
     update_analysis_started,
-    emit_events,
 )
-from anchore_engine.services.analyzer.analysis import (
-    notify_analysis_complete,
-    analysis_failed_metrics,
-    store_analysis_results,
-    ANALYSIS_TIME_SECONDS_BUCKETS as IMPORT_TIME_SECONDS_BUCKETS,
-)
-from anchore_engine.configuration import localconfig
-from anchore_engine.subsys import metrics, events, taskstate
+from anchore_engine.subsys import events, logger, metrics, taskstate
 from anchore_engine.util.docker import (
-    DockerV2ManifestMetadata,
     DockerV1ManifestMetadata,
+    DockerV2ManifestMetadata,
 )
+from anchore_engine.utils import AnchoreException
 
-import anchore_engine.clients.localanchore_standalone
+from .tasks import WorkerTask
 
 
 class InvalidImageStateException(Exception):
@@ -71,6 +68,7 @@ def process_import(
     image_record: dict,
     sbom: dict,
     import_manifest: InternalImportManifest,
+    enable_package_filtering=True,
 ):
     """
 
@@ -151,7 +149,14 @@ def process_import(
         }
 
         try:
-            syft_results = convert_syft_to_engine(syft_packages)
+            adapter = FilteringEngineAdapter(
+                syft_output=syft_packages,
+                enable_package_filtering=enable_package_filtering,
+            )
+            syft_results = adapter.convert()
+            # syft_results = convert_syft_to_engine(
+            #     syft_packages, enable_package_filtering=enable_package_filtering
+            # )
             merge_nested_dict(analyzer_report, syft_results)
         except Exception as err:
             raise anchore_engine.clients.localanchore_standalone.AnalysisError(
@@ -232,7 +237,12 @@ def check_required_content(sbom_map: dict):
             )
 
 
-def import_image(operation_id, account, import_manifest: InternalImportManifest):
+def import_image(
+    operation_id,
+    account,
+    import_manifest: InternalImportManifest,
+    enable_package_filtering=True,
+):
     """
     The main thread of exec for importing an image
 
@@ -289,7 +299,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
             try:
                 logger.info("processing image import data")
                 image_data, analysis_manifest = process_import(
-                    image_record, sbom_map, import_manifest
+                    image_record, sbom_map, import_manifest, enable_package_filtering
                 )
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(
@@ -304,8 +314,12 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
                 bucket="manifest_data", name=image_digest, inobj=json.dumps(manifest)
             )
 
+            syft_analysis = sbom_map["packages"]
+
             # Save the results to the upstream components and data stores
             logger.info("storing import result")
+
+            # Save the results to the upstream components and data stores
             store_analysis_results(
                 account,
                 image_digest,
@@ -314,6 +328,7 @@ def import_image(operation_id, account, import_manifest: InternalImportManifest)
                 manifest,
                 analysis_events,
                 all_content_types,
+                syft_report=syft_analysis,
             )
 
             logger.info("updating image catalog record analysis_status")
@@ -405,17 +420,24 @@ class ImportTask(WorkerTask):
     The task to import an analysis performed externally
     """
 
-    def __init__(self, message: ImportQueueMessage):
+    def __init__(
+        self, message: ImportQueueMessage, owned_package_filtering_enabled: bool
+    ):
         super().__init__()
         self.message = message
         self.account = message.account
+        self.owned_package_filtering_enabled = owned_package_filtering_enabled
 
     def execute(self):
         logger.info(
             "Executing import task. Account = %s, Id = %s", self.account, self.task_id
         )
+
         import_image(
-            self.message.manifest.operation_uuid, self.account, self.message.manifest
+            self.message.manifest.operation_uuid,
+            self.account,
+            self.message.manifest,
+            enable_package_filtering=self.owned_package_filtering_enabled,
         )
         logger.info("Import task %s complete", self.task_id)
 

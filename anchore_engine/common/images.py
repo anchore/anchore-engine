@@ -4,10 +4,9 @@ from anchore_engine.common.helpers import make_anchore_exception
 
 from anchore_engine.util.docker import DockerImageReference
 
-import anchore_engine.services
-import anchore_engine.utils
-from anchore_engine import db
+from anchore_engine import db, util
 from anchore_engine.clients import docker_registry
+from anchore_engine.common import helpers
 from anchore_engine.subsys import logger
 
 
@@ -28,7 +27,7 @@ def lookup_registry_image(userId, image_info, registry_creds):
             parentmanifest,
         ) = docker_registry.get_image_manifest(userId, image_info, registry_creds)
     except Exception as err:
-        raise anchore_engine.common.helpers.make_anchore_exception(
+        raise helpers.make_anchore_exception(
             err,
             input_message="cannot fetch image digest/manifest from registry",
             input_httpcode=400,
@@ -45,7 +44,7 @@ def get_image_info(
         try:
             image_info = DockerImageReference().parse(input_string)
         except ValueError as ve:
-            raise make_anchore_exception(
+            raise helpers.make_anchore_exception(
                 ve,
                 input_message="cannot handle image input string",
                 input_httpcode=400,
@@ -72,7 +71,7 @@ def get_image_info(
                 )
 
             except Exception as err:
-                raise anchore_engine.common.helpers.make_anchore_exception(
+                raise helpers.make_anchore_exception(
                     err,
                     input_message="cannot fetch image digest/manifest from registry",
                     input_httpcode=400,

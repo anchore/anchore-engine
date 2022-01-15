@@ -1,34 +1,35 @@
 import enum
-import json
+
 import retrying
 
 from anchore_engine.apis import exceptions as api_exceptions
-from anchore_engine.apis.exceptions import BadRequest
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.simplequeue import SimpleQueueClient
-from anchore_engine.common.schemas import (
+from anchore_engine.common.models.schemas import (
+    ImportContentReference,
     ImportManifest,
     ImportQueueMessage,
     InternalImportManifest,
-    ImportContentReference,
 )
-from anchore_engine.db import (
-    ImageImportContent,
-    ImageImportOperation,
-    db_catalog_image,
-)
+from anchore_engine.db import ImageImportContent, ImageImportOperation, db_catalog_image
 from anchore_engine.db.entities.catalog import ImportState
 from anchore_engine.services.catalog.catalog_impl import add_or_update_image
-from anchore_engine.subsys import logger
-from anchore_engine.util.docker import DockerImageReference
+from anchore_engine.subsys import logger, taskstate
 from anchore_engine.subsys.object_store import get_manager
-from anchore_engine.subsys import taskstate
+from anchore_engine.util.docker import DockerImageReference
 
 IMPORT_QUEUE = "images_to_analyze"
 ANCHORE_SYSTEM_ANNOTATION_KEY_PREFIX = "anchore.system/"
 IMPORT_OPERATION_ANNOTATION_KEY = (
     ANCHORE_SYSTEM_ANNOTATION_KEY_PREFIX + "import_operation_id"
 )
+
+
+class RequiredFieldError(Exception):
+    def __init__(self, required_field):
+        super().__init__(
+            "Field %s is required in imports but not found", required_field
+        )
 
 
 class ImportTypes(enum.Enum):
@@ -304,6 +305,10 @@ def import_image(
     # Import analysis for a new digest, or re-load analysis for existing image
     logger.debug("Loading image info using import operation id %s", operation_id)
     image_references = []
+    if not import_manifest.tags:
+        # Handle missing tags
+        raise RequiredFieldError("tags")
+
     for t in import_manifest.tags:
         r = DockerImageReference.from_string(t)
         r.digest = import_manifest.digest
@@ -349,7 +354,7 @@ def import_image(
             account,
             operation_id,
             import_manifest,
-            final_state=ImportState.complete,
+            final_state=ImportState.processing,
         )
 
         # raise BadRequest(

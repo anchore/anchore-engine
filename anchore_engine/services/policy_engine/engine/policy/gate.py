@@ -3,24 +3,21 @@ Base types for gate implementations and triggers.
 
 """
 import copy
+import enum
 import hashlib
 import inspect
-import enum
 
 import anchore_engine
-from anchore_engine.utils import ensure_str, ensure_bytes
-from anchore_engine.subsys import logger
-from anchore_engine.services.policy_engine.engine.policy.params import (
-    TriggerParameter,
-    LinkedValidator,
-)
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
-    ParameterValueInvalidError,
     InvalidParameterError,
-    TriggerEvaluationError,
+    ParameterValueInvalidError,
     PolicyRuleValidationErrorCollection,
+    TriggerEvaluationError,
     ValidationError,
 )
+from anchore_engine.services.policy_engine.engine.policy.params import LinkedValidator
+from anchore_engine.subsys import logger
+from anchore_engine.utils import ensure_bytes
 
 
 class LifecycleStates(enum.Enum):
@@ -103,7 +100,8 @@ class TriggerMatch(object):
         # Compute a hash-based trigger_id for matching purposes (this is legacy from Anchore CLI)
         if not self.id:
             gate_id = self.trigger.gate_cls.__gate_name__
-            self.id = hashlib.md5(
+            self.id = hashlib.new(
+                "md5",
                 ensure_bytes(
                     "".join(
                         [
@@ -112,7 +110,8 @@ class TriggerMatch(object):
                             self.msg if self.msg else "",
                         ]
                     )
-                )
+                ),
+                usedforsecurity=False,
             ).hexdigest()
 
     def json(self):

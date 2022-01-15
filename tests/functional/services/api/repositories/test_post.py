@@ -1,7 +1,7 @@
 import pytest
 
 from tests.functional.services.api.conftest import USER_API_CONFS
-from tests.functional.services.utils.http_utils import http_post, APIResponse
+from tests.functional.services.utils.http_utils import APIResponse, http_post
 
 
 @pytest.mark.parametrize("api_conf", USER_API_CONFS)
@@ -10,7 +10,7 @@ class TestRepositoriesAPIGetReturns200:
         resp = http_post(
             ["repositories"],
             None,
-            query={"repository": "docker.io/alpine"},
+            query={"repository": "docker.io/anchore/repo-watcher-testing"},
             config=api_conf,
         )
         assert resp == APIResponse(200)

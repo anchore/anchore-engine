@@ -4,32 +4,33 @@ Entities for the catalog service including services, users, images, etc. Pretty 
 """
 import datetime
 import enum
-import uuid
+
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    BigInteger,
-    DateTime,
-    LargeBinary,
-    Index,
     JSON,
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
     Enum,
     ForeignKey,
+    Index,
+    Integer,
+    LargeBinary,
+    String,
+    inspect,
 )
-from sqlalchemy import inspect
 from sqlalchemy.orm import relationship
 
-from .common import (
+from anchore_engine.db.entities.common import (
     Base,
-    anchore_now,
-    anchore_uuid,
-    UtilMixin,
     StringJSON,
+    UtilMixin,
+    anchore_now,
     anchore_now_datetime,
+    anchore_uuid,
+    truncate_index_name,
 )
-from anchore_engine.utils import datetime_to_rfc3339
+from anchore_engine.util.time import datetime_to_rfc3339
 
 
 class Anchore(Base, UtilMixin):
@@ -147,14 +148,14 @@ class Event(Base, UtilMixin):
     timestamp = Column(DateTime)
 
     __table_args__ = (
-        Index("ix_timestamp", timestamp.desc()),
-        Index("ix_resource_user_id", resource_user_id),
-        Index("ix_resource_type", resource_type),
-        Index("ix_resource_id", resource_id),
-        Index("ix_source_servicename", source_servicename),
-        Index("ix_source_hostid", source_hostid),
-        Index("ix_level", level),
-        Index("ix_type", type),
+        Index(truncate_index_name("ix_timestamp"), timestamp.desc()),
+        Index(truncate_index_name("ix_resource_user_id"), resource_user_id),
+        Index(truncate_index_name("ix_resource_type"), resource_type),
+        Index(truncate_index_name("ix_resource_id"), resource_id),
+        Index(truncate_index_name("ix_source_servicename"), source_servicename),
+        Index(truncate_index_name("ix_source_hostid"), source_hostid),
+        Index(truncate_index_name("ix_level"), level),
+        Index(truncate_index_name("ix_type"), type),
     )
 
     def __repr__(self):
@@ -757,7 +758,7 @@ class ImageImportOperation(Base, UtilMixin):
     __tablename__ = "image_imports"
 
     uuid = Column(String, primary_key=True, default=anchore_uuid)
-    account = Column(String, index=True)
+    account = Column(String)
     expires_at = Column(DateTime)
     status = Column(Enum(ImportState))
     created_at = Column(DateTime, default=anchore_now_datetime)
@@ -765,6 +766,11 @@ class ImageImportOperation(Base, UtilMixin):
         DateTime, default=anchore_now_datetime, onupdate=anchore_now_datetime
     )
     contents = relationship("ImageImportContent", back_populates="operation")
+
+    __table_args__ = (
+        Index(truncate_index_name("ix_image_imports_account"), account),
+        {},
+    )
 
     def to_json(self):
         j = super().to_json()

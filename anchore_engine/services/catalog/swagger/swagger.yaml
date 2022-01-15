@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   description: "Catalog service for anchore-engine"
-  version: "0.9.2"
+  version: "0.10.1"
   title: "Catalog"
   contact:
     email: "dev@anchore.com"
@@ -352,6 +352,41 @@ paths:
           schema:
             type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
+  /images/{image_digest}/content:
+    get:
+      tags:
+        - "catalog"
+      summary: "Get image content for one or more content types"
+      description: ""
+      operationId: "get_image_content_multiple_types"
+      parameters:
+        - name: 'image_digest'
+          in: path
+          type: string
+          description: "Digest of image to retrieve content"
+          required: true
+        - name: 'content_types'
+          in: query
+          type: array
+          items:
+            type: string
+          collectionFormat: csv
+          required: false
+          description: "Image content types to retrieve. If left blank, all content types will be returned"
+        - name: 'allow_analyzing_state'
+          in: query
+          type: boolean
+          description: "Flag to retrieve content for images in analyzing state. Default is set to false, the API error out for images in analyzing state"
+          required: false
+          default: false
+      produces:
+        - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.default_controller"
   /registry_lookup:
     get:
       tags:
@@ -648,6 +683,10 @@ paths:
           description: "success"
           schema:
             type: object
+        400:
+          description: "Failed to find object"
+          schema:
+            type: object
       x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.objects"
     post:
       tags:
@@ -696,6 +735,72 @@ paths:
         in: path
         type: string
         description: "archiveid"
+        required: true
+      produces:
+      - "application/json"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.objects"
+  /objects/raw/{bucket}/{archiveid}:
+    get:
+      tags:
+      - "catalog"
+      summary: "Get a raw document from object store"
+      description: ""
+      operationId: "get_raw_object"
+      parameters:
+      - name: 'bucket'
+        in: path
+        type: string
+        description: "bucket"
+        required: true
+      - name: 'archiveid'
+        in: path
+        type: string
+        format: path
+        description: "archiveid"
+        required: true
+      produces:
+      - "application/octet-stream"
+      responses:
+        200:
+          description: "success"
+          schema:
+            type: string
+            format: binary
+        400:
+          description: "Failed to find object"
+          schema:
+            type: object
+      x-swagger-router-controller: "anchore_engine.services.catalog.api.controllers.objects"
+    post:
+      tags:
+      - "catalog"
+      summary: "Add raw document to object store"
+      description: ""
+      operationId: "create_raw_object"
+      consumes:
+        - application/octet-stream
+      parameters:
+      - name: 'bucket'
+        in: path
+        type: string
+        description: "bucket"
+        required: true
+      - name: 'archiveid'
+        in: path
+        type: string
+        description: "archiveid"
+        required: true
+      - name: 'bodycontent'
+        in: body
+        schema:
+          type: string
+          format: binary
+        description: "document to object store"
         required: true
       produces:
       - "application/json"

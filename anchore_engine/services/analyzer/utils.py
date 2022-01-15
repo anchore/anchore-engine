@@ -2,8 +2,8 @@ import time
 
 import anchore_engine.subsys
 from anchore_engine.clients.services.catalog import CatalogClient
-from anchore_engine.subsys import logger
 from anchore_engine.configuration.localconfig import get_config
+from anchore_engine.subsys import logger
 
 
 def get_tempdir(config=None):
@@ -17,22 +17,6 @@ def get_tempdir(config=None):
     except Exception as err:
         logger.warn("could not get tmp_dir from localconfig - exception: " + str(err))
         return "/tmp"
-
-
-def fulltag_from_detail(image_detail: dict) -> str:
-    """
-    Return a fulltag string from the detail record
-
-    :param image_detail:
-    :return:
-    """
-    return (
-        image_detail["registry"]
-        + "/"
-        + image_detail["repo"]
-        + ":"
-        + image_detail["tag"]
-    )
 
 
 def emit_events(client: CatalogClient, analysis_events: list):

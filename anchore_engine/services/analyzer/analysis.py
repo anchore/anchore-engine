@@ -1,32 +1,36 @@
 import json
 import os
 import time
+import typing
 
 import anchore_engine.clients
-from anchore_engine.common import helpers
-from anchore_engine.configuration.localconfig import get_config
 import anchore_engine.subsys
+from anchore_engine.analyzers.manager import AnalysisResult
 from anchore_engine.clients import localanchore_standalone
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.services.analyzer.utils import (
-    fulltag_from_detail,
-    emit_events,
-    update_analysis_started,
-    update_analysis_complete,
-    update_analysis_failed,
-    get_tempdir,
-)
-from anchore_engine.subsys import logger, events as events, metrics, taskstate
-from anchore_engine.common.schemas import AnalysisQueueMessage, ValidationError
-from anchore_engine.utils import AnchoreException
+from anchore_engine.common import helpers
+from anchore_engine.common.models.schemas import AnalysisQueueMessage, ValidationError
+from anchore_engine.configuration.localconfig import get_config
 from anchore_engine.services.analyzer.errors import (
-    PolicyEngineClientError,
     CatalogClientError,
+    PolicyEngineClientError,
 )
 from anchore_engine.services.analyzer.tasks import WorkerTask
-import typing
+from anchore_engine.services.analyzer.utils import (
+    emit_events,
+    get_tempdir,
+    update_analysis_complete,
+    update_analysis_failed,
+    update_analysis_started,
+)
+from anchore_engine.subsys import events, logger
+from anchore_engine.subsys.events.util import (
+    analysis_complete_notification_factory,
+    fulltag_from_detail,
+)
+from anchore_engine.utils import AnchoreException
 
 ANALYSIS_TIME_SECONDS_BUCKETS = [
     1.0,
@@ -40,48 +44,6 @@ ANALYSIS_TIME_SECONDS_BUCKETS = [
     1800.0,
     3600.0,
 ]
-
-
-def analysis_complete_notification_factory(
-    account,
-    image_digest: str,
-    last_analysis_status: str,
-    analysis_status: str,
-    image_detail: dict,
-    annotations: dict,
-) -> events.UserAnalyzeImageCompleted:
-    """
-    Return a constructed UserAnalysImageCompleted event from the input data
-
-    :param account:
-    :param image_digest:
-    :param last_analysis_status:
-    :param analysis_status:
-    :param image_detail:
-    :param annotations:
-    :return:
-    """
-
-    payload = {
-        "last_eval": {
-            "imageDigest": image_digest,
-            "analysis_status": last_analysis_status,
-            "annotations": annotations,
-        },
-        "curr_eval": {
-            "imageDigest": image_digest,
-            "analysis_status": analysis_status,
-            "annotations": annotations,
-        },
-        "subscription_type": "analysis_update",
-        "annotations": annotations or {},
-    }
-
-    fulltag = fulltag_from_detail(image_detail)
-
-    return events.UserAnalyzeImageCompleted(
-        user_id=account, full_tag=fulltag, data=payload
-    )
 
 
 def notify_analysis_complete(
@@ -104,13 +66,25 @@ def notify_analysis_complete(
     except Exception as err:
         logger.warn("could not marshal annotations from json - exception: " + str(err))
 
+    # Re-pull the image record before sending notifications
+    # For the case where new tags for the image were added
+    catalog_client = internal_client_for(CatalogClient, account)
+    try:
+        image_record = get_image_record(catalog_client, image_digest)
+    except Exception as err:
+        logger.warn(
+            "Cannot re-get image from catalog for image digest %s, generating notifications for already-known tags",
+            image_digest,
+        )
+
     for image_detail in image_record["image_detail"]:
+        fulltag = fulltag_from_detail(image_detail)
         event = analysis_complete_notification_factory(
             account,
             image_digest,
             last_analysis_status,
             image_record["analysis_status"],
-            image_detail,
+            fulltag,
             annotations,
         )
         events.append(event)
@@ -137,7 +111,8 @@ def perform_analyze(
     registry_creds,
     layer_cache_enable=False,
     parent_manifest=None,
-):
+    owned_package_filtering_enabled: bool = True,
+) -> AnalysisResult:
     ret_analyze = {}
 
     loaded_config = get_config()
@@ -190,7 +165,7 @@ def perform_analyze(
     ):
         logger.debug("obtaining anchorelock successful: " + str(pullstring))
         logger.info("analyzing image: %s", pullstring)
-        analyzed_image_report, manifest_raw = localanchore_standalone.analyze_image(
+        result = localanchore_standalone.analyze_image(
             account,
             registry_manifest,
             image_record,
@@ -199,12 +174,12 @@ def perform_analyze(
             registry_creds=registry_creds,
             use_cache_dir=use_cache_dir,
             parent_manifest=registry_parent_manifest,
+            owned_package_filtering_enabled=owned_package_filtering_enabled,
         )
-        ret_analyze = analyzed_image_report
 
-    logger.info("performing analysis on image complete: " + str(pullstring))
+    logger.info("performing analysis on image complete: %s", pullstring)
 
-    return ret_analyze
+    return result
 
 
 def build_catalog_url(account: str, image_digest: str) -> str:
@@ -272,12 +247,17 @@ def import_to_policy_engine(account: str, image_id: str, image_digest: str):
     return True
 
 
-def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
+def process_analyzer_job(
+    request: AnalysisQueueMessage,
+    layer_cache_enable,
+    owned_package_filtering_enabled: bool = True,
+):
     """
     Core logic of the analysis process
 
     :param request:
     :param layer_cache_enable:
+    :param owned_package_filtering_enabled: feature flag for whether or not the analyzer will perform owned package filtering
     :return:
     """
 
@@ -298,9 +278,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
         # check to make sure image is still in DB
         catalog_client = internal_client_for(CatalogClient, account)
         try:
-            image_record = catalog_client.get_image(image_digest)
-            if not image_record:
-                raise Exception("empty image record from catalog")
+            image_record = get_image_record(catalog_client, image_digest)
         except Exception as err:
             logger.warn(
                 "dequeued image cannot be fetched from catalog - skipping analysis ("
@@ -330,13 +308,14 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
             # actually do analysis
             registry_creds = catalog_client.get_registry()
             try:
-                image_data = perform_analyze(
+                analysis_result = perform_analyze(
                     account,
                     manifest,
                     image_record,
                     registry_creds,
                     layer_cache_enable=layer_cache_enable,
                     parent_manifest=parent_manifest,
+                    owned_package_filtering_enabled=owned_package_filtering_enabled,
                 )
             except AnchoreException as e:
                 event = events.ImageAnalysisFailed(
@@ -344,6 +323,9 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                 )
                 analysis_events.append(event)
                 raise
+
+            image_data = analysis_result.image_export
+            syft_analysis = analysis_result.syft_output
 
             # Save the results to the upstream components and data stores
             store_analysis_results(
@@ -354,6 +336,7 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
                 manifest,
                 analysis_events,
                 all_content_types,
+                syft_report=syft_analysis,
             )
 
             logger.debug("updating image catalog record analysis_status")
@@ -428,6 +411,13 @@ def process_analyzer_job(request: AnalysisQueueMessage, layer_cache_enable):
     return True
 
 
+def get_image_record(catalog_client, image_digest):
+    image_record = catalog_client.get_image(image_digest)
+    if not image_record:
+        raise Exception("empty image record from catalog")
+    return image_record
+
+
 def analysis_sucess_metrics(analysis_time: float, allow_exception=False):
     try:
         anchore_engine.subsys.metrics.counter_inc(name="anchore_analysis_success")
@@ -472,6 +462,7 @@ def store_analysis_results(
     image_manifest: dict,
     analysis_events: list,
     image_content_types: list,
+    syft_report: dict = None,
 ):
     """
 
@@ -482,6 +473,7 @@ def store_analysis_results(
     :param image_manifest:
     :param analysis_events: list of events that any new events may be added to
     :param image_content_types:
+    :param syft_report:
     :return:
     """
 
@@ -505,6 +497,27 @@ def store_analysis_results(
             account, imageId, image_digest
         )
     )
+
+    if syft_report:
+        try:
+            logger.info("Saving raw syft output data to catalog object store")
+            rc = catalog_client.put_document("syft_sbom", image_digest, syft_report)
+            if not rc:
+                # Ugh this ia big ugly, but need to be sure. Should review CatalogClient and ensure this cannot happen, but for now just handle it.
+                raise CatalogClientError(
+                    msg="Catalog client returned failure",
+                    cause="Invalid response from catalog API - {}".format(str(rc)),
+                )
+        except Exception as e:
+            err = CatalogClientError(
+                msg="Failed to upload analysis data to catalog", cause=e
+            )
+            event = events.SaveAnalysisFailed(
+                user_id=account, image_digest=image_digest, error=err.to_dict()
+            )
+            analysis_events.append(event)
+            raise err
+
     try:
         logger.info("Saving raw analysis data to catalog object store")
         rc = catalog_client.put_document("analysis_data", image_digest, analysis_result)
@@ -582,11 +595,17 @@ class ImageAnalysisTask(WorkerTask):
     """
 
     def __init__(
-        self, message: AnalysisQueueMessage, layer_cache_enabled: bool = False
+        self,
+        message: AnalysisQueueMessage,
+        layer_cache_enabled: bool = False,
+        owned_package_filtering_enabled: bool = True,
     ):
         super().__init__()
         self.layer_cache_enabled = layer_cache_enabled
         self.message = message
+        self.owned_package_filtering_enabled = owned_package_filtering_enabled
 
     def execute(self):
-        return process_analyzer_job(self.message, self.layer_cache_enabled)
+        return process_analyzer_job(
+            self.message, self.layer_cache_enabled, self.owned_package_filtering_enabled
+        )

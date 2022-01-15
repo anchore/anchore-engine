@@ -1,8 +1,8 @@
 from tests.functional.services.api.conftest import FT_ACCOUNT
 from tests.functional.services.utils.http_utils import (
-    http_post,
     RequestFailedError,
     http_del,
+    http_post,
 )
 
 

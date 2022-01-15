@@ -2,12 +2,12 @@ import json
 import threading
 import time
 
-from anchore_engine.clients.services import http
+import retrying
+
+from anchore_engine.clients.services import http, internal_client_for
+from anchore_engine.clients.services.internal import InternalServiceClient
 from anchore_engine.subsys import logger
 from anchore_engine.utils import get_threadbased_id
-from anchore_engine.clients.services.internal import InternalServiceClient
-from anchore_engine.clients.services import internal_client_for
-import retrying
 
 
 class LeaseUnavailableError(Exception):
@@ -313,7 +313,7 @@ def run_target_with_lease(
 
         if autorefresh:
             # Run the task thread and monitor it, refreshing the task lease as needed
-            while handler_thread.isAlive():
+            while handler_thread.is_alive():
                 # If we're halfway to the timeout, refresh to have a safe buffer
                 if time.time() - t > (ttl / 2):
                     # refresh the lease

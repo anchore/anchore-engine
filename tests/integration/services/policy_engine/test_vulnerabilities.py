@@ -1,22 +1,16 @@
-import pytest
 import datetime
 import json
-from anchore_engine.subsys import logger
+
+from anchore_engine.db import Image, end_session, get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine import vulnerabilities
-from anchore_engine.db import get_thread_scoped_session, end_session, Image
-from anchore_engine.services.policy_engine.engine.tasks import (
-    ImageLoadTask,
-)
+from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
 from anchore_engine.services.policy_engine.engine.vulns.providers import (
+    LegacyScanner,
     get_vulnerabilities_provider,
 )
-from anchore_engine.services.policy_engine.engine.feeds.sync import DataFeeds
+from anchore_engine.subsys import logger
+from tests.integration.services.policy_engine.conftest import run_legacy_sync
 from tests.integration.services.policy_engine.utils import reset_feed_sync_time
-from anchore_engine.services.policy_engine import (
-    _init_distro_mappings,
-    init_feed_registry,
-)
-
 
 logger.enable_test_logging()
 
@@ -65,8 +59,7 @@ def sync_feeds(test_env, up_to=None):
         test_env.set_max_feed_time(up_to)
 
     logger.info("Syncing vuln and packages")
-    DataFeeds.__scratch_dir__ = "/tmp"
-    DataFeeds.sync(["vulnerabilities", "packages"], feed_client=test_env.feed_client)
+    run_legacy_sync(test_env, ["vulnerabilities", "packages"])
     logger.info("Sync complete")
 
 
@@ -109,7 +102,7 @@ def _img_vulns(id):
         img = db.query(Image).filter_by(id=id, user_id="0").one_or_none()
         assert img, "Image not found {}".format(id)
         total_vulns = [str(x) for x in img.vulnerabilities()] + [
-            str(y) for y in img.cpe_vulnerabilities(None, None)
+            str(y) for y in LegacyScanner().get_cpe_vulnerabilities(img)
         ]
         return total_vulns
     finally:

@@ -1,14 +1,14 @@
-import json
 import hashlib
+import json
 
-import anchore_engine.common.helpers
-from anchore_engine.clients.services import http
-import anchore_engine.configuration.localconfig
-import anchore_engine.common
 import anchore_engine.clients.services.common
+import anchore_engine.common
+import anchore_engine.common.helpers
+import anchore_engine.configuration.localconfig
+from anchore_engine.clients.services import http
+from anchore_engine.clients.services.internal import InternalServiceClient
 from anchore_engine.subsys import logger
 from anchore_engine.subsys.events import EventBase
-from anchore_engine.clients.services.internal import InternalServiceClient
 
 
 class CatalogClient(InternalServiceClient):
@@ -116,6 +116,21 @@ class CatalogClient(InternalServiceClient):
             http.anchy_get,
             "images/{image_digest}/content/{content_type}",
             path_params={"image_digest": image_digest, "content_type": content_type},
+        )
+
+    def get_image_content_multiple_types(
+        self, image_digest, content_types=None, allow_analyzing_state=False
+    ):
+        return self.call_api(
+            http.anchy_get,
+            "images/{image_digest}/content",
+            path_params={"image_digest": image_digest},
+            query_params={
+                "content_types": ",".join(content_types)
+                if content_types and isinstance(content_types, list)
+                else None,
+                "allow_analyzing_state": allow_analyzing_state,
+            },
         )
 
     def get_image_by_id(self, imageId):
@@ -305,10 +320,12 @@ class CatalogClient(InternalServiceClient):
         self, subscription_key=None, subscription_type=None, subscription_id=None
     ):
         if subscription_key and subscription_type:
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [self.request_namespace, subscription_key, subscription_type]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
 
         return self.call_api(
@@ -325,22 +342,26 @@ class CatalogClient(InternalServiceClient):
         if subscription_id:
             pass
         elif subscription_key and subscription_type:
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [self.request_namespace, subscription_key, subscription_type]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
         elif subscriptiondata.get("subscription_key", None) and subscriptiondata.get(
             "subscription_type", None
         ):
-            subscription_id = hashlib.md5(
+            subscription_id = hashlib.new(
+                "md5",
                 "+".join(
                     [
                         self.request_namespace,
                         subscriptiondata.get("subscription_key"),
                         subscriptiondata.get("subscription_type"),
                     ]
-                ).encode("utf8")
+                ).encode("utf8"),
+                usedforsecurity=False,
             ).hexdigest()
         else:
             raise Exception(
@@ -656,4 +677,20 @@ class CatalogClient(InternalServiceClient):
             "imports/images/{operation}",
             path_params={"operation": operation_id},
             body=json.dumps({"status": status}),
+        )
+
+    def get_raw_object(self, bucket, name):
+        return self.call_api(
+            lambda **kwargs: http.anchy_get(raw=True, **kwargs),
+            "objects/raw/{bucket}/{name}",
+            path_params={"bucket": bucket, "name": name},
+        )
+
+    def create_raw_object(self, bucket, name, inobj):
+        return self.call_api(
+            http.anchy_post,
+            "objects/raw/{bucket}/{name}",
+            path_params={"bucket": bucket, "name": name},
+            body=inobj,
+            extra_headers={"Content-Type": "application/octet-stream"},
         )

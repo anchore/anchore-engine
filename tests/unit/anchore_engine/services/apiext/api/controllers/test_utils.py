@@ -3,9 +3,12 @@ Unit tests for the api controller utils of external API service
 """
 import base64
 import json
-import yaml
+
 import pytest
+import yaml
+
 from anchore_engine.apis.exceptions import BadRequest
+from anchore_engine.common.models.policy_engine import CVSS, NVDReference, Vulnerability
 from anchore_engine.services.apiext.api.controllers import utils as api_utils
 from anchore_engine.subsys import logger
 
@@ -627,3 +630,323 @@ class TestMakeVulnerabilityResponse:
         assert result
         for key, value in expected.items():
             assert result.get(key) == value
+
+
+class TestMakeVulnerabilityReport:
+    @pytest.mark.parametrize(
+        "test_input, expected",
+        [
+            pytest.param(CVSS(version="2"), "cvss_v2", id="v2"),
+            pytest.param(CVSS(version="2.0"), "cvss_v2", id="v2.0"),
+            pytest.param(CVSS(version="2.1"), "cvss_v2", id="v2.1"),
+            pytest.param(CVSS(version="2.x"), "cvss_v2", id="v2.x"),
+            pytest.param(CVSS(version="3"), "cvss_v3", id="v3"),
+            pytest.param(CVSS(version="3.0"), "cvss_v3", id="v3.0"),
+            pytest.param(CVSS(version="3.3"), "cvss_v3", id="v3.3"),
+            pytest.param(CVSS(version="3.y"), "cvss_v3", id="v3.y"),
+        ],
+    )
+    def test_to_cvss_score_valid(self, test_input, expected):
+        test_input.base_score = 5.7
+        test_input.exploitability_score = 6.8
+        test_input.impact_score = 4.3
+
+        expected_output = {
+            expected: {
+                "base_score": test_input.base_score,
+                "exploitability_score": test_input.exploitability_score,
+                "impact_score": test_input.impact_score,
+            }
+        }
+
+        assert api_utils.to_cvss_score(test_input) == expected_output
+
+    @pytest.mark.parametrize(
+        "test_input",
+        [
+            pytest.param(CVSS(version="1"), id="v1"),
+            pytest.param(CVSS(version="4"), id="v1"),
+            pytest.param(CVSS(version="foo"), id="vfoo"),
+            pytest.param(CVSS(version=""), id="blank"),
+            pytest.param(CVSS(), id="none"),
+        ],
+    )
+    def test_to_cvss_score_invalid_version(self, test_input):
+        assert api_utils.to_cvss_score(test_input) is None
+
+    @pytest.mark.parametrize(
+        "test_input",
+        [
+            pytest.param(
+                [NVDReference(vulnerability_id="CVE-x", cvss=[])], id="empty-list"
+            ),
+            pytest.param(
+                [NVDReference(vulnerability_id="CVE-x", cvss=None)], id="none"
+            ),
+            pytest.param(
+                [
+                    NVDReference(vulnerability_id="CVE-x", cvss=[]),
+                    NVDReference(vulnerability_id="CVE-x", cvss=None),
+                ],
+                id="combo",
+            ),
+        ],
+    )
+    def test_get_nvd_data_from_nvd_references_no_cvss(self, test_input):
+        actual_output = api_utils.get_nvd_data_from_nvd_references(test_input)
+        assert len(test_input) == len(actual_output)
+        for input_item, output_item in zip(test_input, actual_output):
+            assert output_item == {
+                "id": input_item.vulnerability_id,
+                "cvss_v2": {
+                    "base_score": -1.0,
+                    "exploitability_score": -1.0,
+                    "impact_score": -1.0,
+                },
+                "cvss_v3": {
+                    "base_score": -1.0,
+                    "exploitability_score": -1.0,
+                    "impact_score": -1.0,
+                },
+            }
+
+    def test_get_nvd_data_from_nvd_references_multiple_cvss(self):
+        test_input = NVDReference(
+            vulnerability_id="CVE-x",
+            cvss=[
+                CVSS(
+                    version="2.0",
+                    base_score=1.1,
+                    exploitability_score=1.2,
+                    impact_score=1.3,
+                ),
+                CVSS(
+                    version="3.0",
+                    base_score=2.1,
+                    exploitability_score=2.2,
+                    impact_score=2.3,
+                ),
+                CVSS(
+                    version="3.1",
+                    base_score=3.1,
+                    exploitability_score=3.2,
+                    impact_score=3.3,
+                ),
+            ],
+        )
+
+        expected_output = {
+            "id": test_input.vulnerability_id,
+            "cvss_v2": {
+                "base_score": 1.1,
+                "exploitability_score": 1.2,
+                "impact_score": 1.3,
+            },
+            "cvss_v3": {
+                "base_score": 3.1,
+                "exploitability_score": 3.2,
+                "impact_score": 3.3,
+            },
+        }
+
+        actual_output = api_utils.get_nvd_data_from_nvd_references([test_input])
+
+        assert len(actual_output) == 1
+        assert actual_output[0] == expected_output
+
+    @pytest.mark.parametrize(
+        "test_input",
+        [
+            pytest.param(Vulnerability(cvss=[]), id="empty-list"),
+            pytest.param(Vulnerability(cvss=None), id="none"),
+        ],
+    )
+    def test_get_vendor_data_from_vulnerability_no_cvss(self, test_input):
+        assert api_utils.get_vendor_data_from_vulnerability(test_input) == []
+
+    @pytest.mark.parametrize(
+        "test_input, expected_output",
+        [
+            pytest.param(
+                Vulnerability(
+                    vulnerability_id="CVE-x",
+                    cvss=[
+                        CVSS(
+                            version="2.3",
+                            base_score=1.1,
+                            exploitability_score=1.2,
+                            impact_score=1.3,
+                        )
+                    ],
+                ),
+                [
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": 1.1,
+                            "exploitability_score": 1.2,
+                            "impact_score": 1.3,
+                        },
+                        "cvss_v3": {
+                            "base_score": -1.0,
+                            "exploitability_score": -1.0,
+                            "impact_score": -1.0,
+                        },
+                    }
+                ],
+                id="single_cvss",
+            ),
+            pytest.param(
+                Vulnerability(
+                    vulnerability_id="CVE-x",
+                    cvss=[
+                        CVSS(
+                            version="2.3",
+                            base_score=1.1,
+                            exploitability_score=1.2,
+                            impact_score=1.3,
+                        ),
+                        CVSS(
+                            version="3.1",
+                            base_score=2.1,
+                            exploitability_score=2.2,
+                            impact_score=2.3,
+                        ),
+                    ],
+                ),
+                [
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": 1.1,
+                            "exploitability_score": 1.2,
+                            "impact_score": 1.3,
+                        },
+                        "cvss_v3": {
+                            "base_score": -1.0,
+                            "exploitability_score": -1.0,
+                            "impact_score": -1.0,
+                        },
+                    },
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": -1.0,
+                            "exploitability_score": -1.0,
+                            "impact_score": -1.0,
+                        },
+                        "cvss_v3": {
+                            "base_score": 2.1,
+                            "exploitability_score": 2.2,
+                            "impact_score": 2.3,
+                        },
+                    },
+                ],
+                id="multiple_cvss",
+            ),
+        ],
+    )
+    def test_get_vendor_data_from_vulnerability(self, test_input, expected_output):
+        actual_output = api_utils.get_vendor_data_from_vulnerability(test_input)
+        assert len(actual_output) == len(expected_output)
+        for actual_item, expected_item in zip(actual_output, expected_output):
+            assert actual_item == expected_item
+
+    @pytest.mark.parametrize(
+        "test_input",
+        [
+            pytest.param(Vulnerability(cvss=[]), id="empty-list"),
+            pytest.param(Vulnerability(cvss=None), id="none"),
+        ],
+    )
+    def test_get_nvd_data_from_vulnerability_no_cvss(self, test_input):
+        assert api_utils.get_nvd_data_from_vulnerability(test_input) == []
+
+    @pytest.mark.parametrize(
+        "test_input, expected_output",
+        [
+            pytest.param(
+                Vulnerability(
+                    vulnerability_id="CVE-x",
+                    cvss=[
+                        CVSS(
+                            version="2.3",
+                            base_score=1.1,
+                            exploitability_score=1.2,
+                            impact_score=1.3,
+                        )
+                    ],
+                ),
+                [
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": 1.1,
+                            "exploitability_score": 1.2,
+                            "impact_score": 1.3,
+                        },
+                        "cvss_v3": {
+                            "base_score": -1.0,
+                            "exploitability_score": -1.0,
+                            "impact_score": -1.0,
+                        },
+                    }
+                ],
+                id="single_cvss",
+            ),
+            pytest.param(
+                Vulnerability(
+                    vulnerability_id="CVE-x",
+                    cvss=[
+                        CVSS(
+                            version="2.3",
+                            base_score=1.1,
+                            exploitability_score=1.2,
+                            impact_score=1.3,
+                        ),
+                        CVSS(
+                            version="3.1",
+                            base_score=2.1,
+                            exploitability_score=2.2,
+                            impact_score=2.3,
+                        ),
+                    ],
+                ),
+                [
+                    {
+                        "id": "CVE-x",
+                        "cvss_v2": {
+                            "base_score": 1.1,
+                            "exploitability_score": 1.2,
+                            "impact_score": 1.3,
+                        },
+                        "cvss_v3": {
+                            "base_score": 2.1,
+                            "exploitability_score": 2.2,
+                            "impact_score": 2.3,
+                        },
+                    },
+                ],
+                id="multiple_cvss",
+            ),
+        ],
+    )
+    def test_get_nvd_data_from_vulnerability(self, test_input, expected_output):
+        actual_output = api_utils.get_nvd_data_from_vulnerability(test_input)
+        assert len(actual_output) == len(expected_output)
+        for actual_item, expected_item in zip(actual_output, expected_output):
+            assert actual_item == expected_item
+
+    @pytest.mark.parametrize(
+        "report_type, package_type, expected",
+        [
+            pytest.param("all", "apkg", True, id="all-apkg"),
+            pytest.param("all", "gem", True, id="all-gem"),
+            pytest.param("os", "python", False, id="os-python"),
+            pytest.param("non-os", "dpkg", False, id="nonos-dpkg"),
+            pytest.param("foo", "bar", True, id="foo-bar"),
+            pytest.param("os", "bar", True, id="os-bar"),
+        ],
+    )
+    def test_is_type_match(self, report_type, package_type, expected):
+        assert api_utils.is_type_match(report_type, package_type) == expected

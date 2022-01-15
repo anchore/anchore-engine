@@ -6,15 +6,15 @@ from connexion import request
 import anchore_engine.apis
 import anchore_engine.common
 import anchore_engine.common.helpers
-from anchore_engine.configuration import localconfig
 import anchore_engine.subsys.servicestatus
 from anchore_engine import db
-from anchore_engine.apis.authorization import get_authorizer, ActionBoundPermission
+from anchore_engine.apis.authorization import ActionBoundPermission, get_authorizer
 from anchore_engine.apis.context import ApiRequestContextProxy
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.catalog import CatalogClient
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
 from anchore_engine.common.errors import AnchoreError
+from anchore_engine.configuration import localconfig
 from anchore_engine.configuration.localconfig import GLOBAL_RESOURCE_DOMAIN
 from anchore_engine.subsys import logger, notifications
 from anchore_engine.subsys.identities import manager_factory

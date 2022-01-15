@@ -2,10 +2,12 @@ import base64
 import json
 import stat
 
+from cpe import CPE
+
 import anchore_engine.configuration.localconfig
 from anchore_engine import utils
-from anchore_engine.subsys import logger
 from anchore_engine.common import os_package_types
+from anchore_engine.subsys import logger
 
 
 def make_image_content_response(content_type, content_data):
@@ -38,7 +40,15 @@ def _build_os_response(content_data):
         el = {}
         try:
             el["package"] = package_name
-            for field in ["license", "origin", "size", "type", "version", "cpes"]:
+            for field in [
+                "license",
+                "origin",
+                "size",
+                "type",
+                "version",
+                "cpes",
+                "sourcepkg",
+            ]:
                 if field in package_info:
                     el[field] = package_info[field]
                 else:
@@ -134,6 +144,17 @@ def _build_java_response(content_data):
             el["maven-version"] = content_data[package]["maven-version"]
             el["origin"] = content_data[package]["origin"] or "Unknown"
             el["cpes"] = content_data[package].get("cpes", [])
+            el["metadata"] = content_data[package]["metadata"]
+            version = content_data[package]["maven-version"]
+            if version and version.lower() not in ["none", "n/a"]:
+                el["version"] = version
+            elif el["cpes"] and el["cpes"][0]:
+                try:
+                    el["version"] = CPE(cpe_str=el["cpes"][0]).get_version()[0]
+                except (ValueError, AttributeError, NotImplementedError):
+                    el["version"] = "N/A"
+            else:
+                el["version"] = "N/A"
         except:
             continue
         response.append(el)

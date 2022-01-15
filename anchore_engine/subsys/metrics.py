@@ -1,13 +1,13 @@
 import functools
+
 from flask import request
+from prometheus_client import Counter, Gauge, Histogram, Summary
+from prometheus_flask_exporter import PrometheusMetrics
 
 import anchore_engine.configuration.localconfig
+from anchore_engine.apis.authorization import auth_function_factory
 from anchore_engine.subsys import logger
 from anchore_engine.version import version
-from anchore_engine.apis.authorization import auth_function_factory
-
-from prometheus_client import Histogram, Summary, Gauge, Counter
-from prometheus_flask_exporter import PrometheusMetrics
 
 enabled = False
 flask_metrics = None

@@ -1,5 +1,4 @@
-import re
-
+from anchore_engine.analyzers.syft.handlers.common import save_entry_to_findings
 from anchore_engine.analyzers.utils import dig
 
 
@@ -7,7 +6,7 @@ def save_entry(findings, engine_entry, pkg_key=None):
     if not pkg_key:
         pkg_key = engine_entry.get("name", "")
 
-    findings["package_list"]["pkgs.allinfo"]["base"][pkg_key] = engine_entry
+    save_entry_to_findings(findings, engine_entry, "pkgs.allinfo", pkg_key)
 
 
 def translate_and_save_entry(findings, artifact):
@@ -39,17 +38,6 @@ def _all_package_info(findings, artifact):
     else:
         size = "N/A"
 
-    source = dig(artifact, "metadata", "source")
-    source_version = dig(artifact, "metadata", "sourceVersion")
-
-    # Normalize this for downstream consumption etc. Eventually we want to leave it split out, but for now needs a join
-    if source and source_version:
-        source = source + "-" + source_version
-    elif source:
-        source = source + "-" + version
-    else:
-        source = "N/A"
-
     license = dig(artifact, "licenses")
     if license:
         license = " ".join(license)
@@ -58,7 +46,7 @@ def _all_package_info(findings, artifact):
 
     pkg_value = {
         "version": version,
-        "sourcepkg": source,
+        "sourcepkg": dig(artifact, "metadata", "source", force_default="N/A"),
         "arch": dig(artifact, "metadata", "architecture", force_default="N/A"),
         "origin": maintainer or "N/A",
         "release": "N/A",

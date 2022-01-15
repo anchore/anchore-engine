@@ -1,42 +1,41 @@
-import collections
-import json
-import hashlib
-import time
 import base64
+import collections
+import hashlib
+import json
 import re
+import time
+from collections import namedtuple
 
 from dateutil import parser as dateparser
 
 import anchore_engine.apis.authorization
 import anchore_engine.common
-import anchore_engine.configuration.localconfig
 import anchore_engine.common.helpers
 import anchore_engine.common.images
-import anchore_engine.subsys.object_store.manager
-from anchore_engine.auth import aws_ecr
-import anchore_engine.services.catalog
-import anchore_engine.utils
-
-from anchore_engine import utils as anchore_utils
-from anchore_engine.subsys import taskstate, logger, notifications, object_store
+import anchore_engine.configuration.localconfig
+import anchore_engine.subsys.events
 import anchore_engine.subsys.metrics
+import anchore_engine.subsys.object_store.manager
+from anchore_engine import utils as anchore_utils
+from anchore_engine.apis.exceptions import AnchoreApiError, BadRequest
+from anchore_engine.auth import aws_ecr
 from anchore_engine.clients import docker_registry
-from anchore_engine.db import (
-    db_subscriptions,
-    db_catalog_image,
-    db_policybundle,
-    db_policyeval,
-    db_events,
-    db_registries,
-    db_services,
-)
 from anchore_engine.clients.services import internal_client_for
 from anchore_engine.clients.services.policy_engine import PolicyEngineClient
-from anchore_engine.apis.exceptions import BadRequest, AnchoreApiError
-import anchore_engine.subsys.events
-from anchore_engine.db import session_scope
-from collections import namedtuple
-from anchore_engine.util.docker import DockerImageReference
+from anchore_engine.db import (
+    db_catalog_image,
+    db_events,
+    db_policybundle,
+    db_policyeval,
+    db_registries,
+    db_services,
+    db_subscriptions,
+    session_scope,
+)
+from anchore_engine.services.catalog import utils
+from anchore_engine.subsys import logger, notifications, object_store, taskstate
+from anchore_engine.subsys.events.util import analysis_complete_notification_factory
+from anchore_engine.util.docker import parse_dockerimage_string
 
 DeleteImageResponse = namedtuple("DeleteImageResponse", ["digest", "status", "detail"])
 
@@ -291,7 +290,9 @@ def repo(dbsession, request_inputs, bodycontent={}):
 
             # check and kick a repo watcher task if necessary
             try:
-                rc = anchore_engine.services.catalog.schedule_watcher("repo_watcher")
+                rc = anchore_engine.services.catalog.service.schedule_watcher(
+                    "repo_watcher"
+                )
                 logger.debug("scheduled repo_watcher task")
             except Exception as err:
                 logger.warn("failed to schedule repo_watcher task: " + str(err))
@@ -1602,12 +1603,11 @@ def perform_vulnerability_scan(
         doqueue = False
 
         vdiff = {}
-        # TODO implement the differ correctly for the new format
-        # if last_vuln_result and curr_vuln_result:
-        #     vdiff = anchore_utils.process_cve_status(
-        #         old_cves_result=last_vuln_result["legacy_report"],
-        #         new_cves_result=curr_vuln_result["legacy_report"],
-        #     )
+        if last_vuln_result and curr_vuln_result:
+            vdiff = utils.diff_image_vulnerabilities(
+                old_result=last_vuln_result,
+                new_result=curr_vuln_result,
+            )
 
         obj_store.put_document(
             userId, "vulnerability_scan", archiveId, curr_vuln_result
@@ -1754,10 +1754,12 @@ def perform_policy_evaluation(
                 curr_evaluation_result["status"] = "fail"
 
         # set up the newest evaluation
-        evalId = hashlib.md5(
+        evalId = hashlib.new(
+            "md5",
             ":".join(
-                [policyId, userId, imageDigest, fulltag, str(curr_final_action)]
-            ).encode("utf8")
+                [policyId, userId, imageDigest, fulltag, str(curr_final_action)],
+            ).encode("utf8"),
+            usedforsecurity=False,
         ).hexdigest()
         curr_evaluation_record = anchore_engine.common.helpers.make_eval_record(
             userId,
@@ -1868,7 +1870,9 @@ def get_input_string(image_key: ImageKey) -> str:
         if image_key.digest == "unknown":
             return image_key.tag
         else:
-            return "{}@{}".format(image_key.tag.split(":")[0], image_key.digest)
+            return "{}@{}".format(
+                image_key.tag.rsplit(":", maxsplit=1)[0], image_key.digest
+            )
     else:
         return image_key.tag
 
@@ -1922,7 +1926,7 @@ def add_or_update_image(
 
     image_ids = {}
     for d in digests:
-        image_info = anchore_engine.utils.parse_dockerimage_string(d)
+        image_info = parse_dockerimage_string(d)
         registry = image_info["registry"]
         repo = image_info["repo"]
         digest = image_info["digest"]
@@ -1937,7 +1941,7 @@ def add_or_update_image(
             image_ids[registry][repo]["digests"].append(digest)
 
     for d in tags:
-        image_info = anchore_engine.utils.parse_dockerimage_string(d)
+        image_info = parse_dockerimage_string(d)
         registry = image_info["registry"]
         repo = image_info["repo"]
         digest = image_info["tag"]
@@ -1965,7 +1969,6 @@ def add_or_update_image(
             dockerfile = None
             dockerfile_mode = None
 
-    # logger.debug("rationalized input for imageId ("+str(imageId)+"): " + json.dumps(image_ids, indent=4))
     addlist = {}
     for registry in list(image_ids.keys()):
         for repo in list(image_ids[registry].keys()):
@@ -2084,6 +2087,9 @@ def add_or_update_image(
                             )
 
                     else:
+                        # Only generate an event if this is a new tag
+                        generate_event = is_new_tag(image_record, registry, repo, t)
+
                         # Update existing image record
                         new_image_detail = anchore_engine.common.images.clean_docker_image_details_for_update(
                             new_image_record["image_detail"]
@@ -2163,6 +2169,25 @@ def add_or_update_image(
                                 manifest = json.dumps({})
                             if not parent_manifest:
                                 parent_manifest = json.dumps({})
+
+                            # If image status is already analyzed, and this is a new tag, generate a UserAnalyzeImageCompleted event
+                            if (
+                                image_record["analysis_status"]
+                                == anchore_engine.subsys.taskstate.complete_state(
+                                    "analyze"
+                                )
+                                and generate_event
+                            ):
+                                event = analysis_complete_notification_factory(
+                                    userId,
+                                    image_record["imageDigest"],
+                                    image_record["analysis_status"],
+                                    image_record["analysis_status"],
+                                    fulltag,
+                                    annotations,
+                                )
+                                add_event(event, dbsession)
+
                         except Exception as err:
                             raise anchore_engine.common.helpers.make_anchore_exception(
                                 err,
@@ -2176,6 +2201,32 @@ def add_or_update_image(
         ret.append(addlist[imageDigest])
 
     return ret
+
+
+def is_new_tag(image_record: dict, registry: str, repo: str, tag: str):
+    """
+    Returns false if the provided registry, repo, tag tuple exactly match those fields in one of the image_detail objects in
+    image_record. If no such match is possible, return true.
+    """
+
+    # If we are missing an image_details block entirely or it is None, assume this is a new tag
+    if image_record and not image_record.get("image_detail"):
+        return True
+    else:
+        # Iterate through each existing image_detail objects and look for an exact match
+        for image_detail in image_record.get("image_detail", []):
+            existing_registry = image_detail.get("registry")
+            existing_repo = image_detail.get("repo")
+            existing_tag = image_detail.get("tag")
+
+            if (
+                existing_registry == registry
+                and existing_repo == repo
+                and existing_tag == tag
+            ):
+                return False
+        else:
+            return True
 
 
 def _image_deletion_checks_and_prep(userId, image_record, dbsession, force=False):
@@ -2259,6 +2310,7 @@ def _delete_image_artifacts(account_id, image_digest, image_ids, full_tags, db_s
         "image_summary_data",
         "manifest_data",
         "parent_manifest_data",
+        "syft_sbom",
     ]:
         # try-except block ensures an attempt to delete every artifact despite errors
         try:
