@@ -7,7 +7,7 @@ import pytest
 from anchore_engine.util.docker import (
     DockerV1ManifestMetadata,
     DockerImageTag,
-    DockerV2ManifestMetadata
+    DockerV2ManifestMetadata,
 )
 
 cloudfleet_nginx_v1_manifest = {

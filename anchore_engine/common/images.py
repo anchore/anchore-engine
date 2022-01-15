@@ -4,7 +4,7 @@ from anchore_engine.common.helpers import make_anchore_exception
 
 from anchore_engine.util.docker import DockerImageReference
 
-from anchore_engine import db, util
+from anchore_engine import db
 from anchore_engine.clients import docker_registry
 from anchore_engine.common import helpers
 from anchore_engine.subsys import logger
