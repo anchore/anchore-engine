@@ -305,6 +305,7 @@ def make_cvss_scores(metrics):
     for metric in metrics:
         new_score_packet = {
             "id": metric.get("id"),
+            "description": metric.get("description", ""),
         }
         score_list.append(new_score_packet)
 
