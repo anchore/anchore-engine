@@ -456,12 +456,15 @@ class LegacyProvider(VulnerabilitiesProvider):
                             )
 
                 fixed_in = vuln.fixed_in(fixed_in=fixed_artifact)
+                descriptions = [
+                    record.description for record in nvd_records if record.description
+                ]
 
                 results.append(
                     VulnerabilityMatch(
                         vulnerability=VulnerabilityModel(
                             vulnerability_id=vuln.vulnerability_id,
-                            description=None,
+                            description=descriptions[0] if descriptions else "",
                             severity=vuln.vulnerability.severity,
                             link=vuln.vulnerability.link,
                             feed="vulnerabilities",
@@ -525,7 +528,7 @@ class LegacyProvider(VulnerabilitiesProvider):
                         VulnerabilityMatch(
                             vulnerability=VulnerabilityModel(
                                 vulnerability_id=vulnerability_cpe.parent.normalized_id,
-                                description=None,
+                                description=vulnerability_cpe.parent.description,
                                 severity=vulnerability_cpe.parent.severity,
                                 link=link,
                                 feed=vulnerability_cpe.feed_name,
