@@ -349,6 +349,7 @@ def to_cvss_score(cvss: CVSS):
             "base_score": cvss.base_score,
             "exploitability_score": cvss.exploitability_score,
             "impact_score": cvss.impact_score,
+            "vector_string": cvss.vector,
         }
     }
 
