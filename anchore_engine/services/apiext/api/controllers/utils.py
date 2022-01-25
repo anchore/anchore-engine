@@ -349,6 +349,7 @@ def to_cvss_score(cvss: CVSS):
             "base_score": cvss.base_score,
             "exploitability_score": cvss.exploitability_score,
             "impact_score": cvss.impact_score,
+            "vector_string": cvss.vector,
         }
     }
 
@@ -366,6 +367,7 @@ def get_nvd_data_from_nvd_references(nvd_refs: List[NVDReference]) -> List[Dict]
         # generate nvd data item for each nvd reference
         nvd_dict = {
             "id": nvd_ref.vulnerability_id,
+            "description": nvd_ref.description,
             # set defaults first for backwards compatibility, argh!
             "cvss_v2": {
                 "base_score": -1.0,
@@ -404,6 +406,7 @@ def get_nvd_data_from_vulnerability(vulnerability: Vulnerability) -> List[Dict]:
     # generate nvd data item for each nvd reference
     nvd_dict = {
         "id": vulnerability.vulnerability_id,
+        "description": vulnerability.description,
         # set defaults first for backwards compatibility, argh!
         "cvss_v2": {
             "base_score": -1.0,
@@ -445,6 +448,7 @@ def get_vendor_data_from_vulnerability(vulnerability: Vulnerability) -> List:
         if cvss_dict:
             vendor_dict = {
                 "id": vulnerability.vulnerability_id,
+                "description": vulnerability.description,
                 # set defaults first for backwards compatibility, argh!
                 "cvss_v2": {
                     "base_score": -1.0,

@@ -812,6 +812,7 @@ class NvdMetadata(Base):
             severity=self.severity,
             link=self.link,
             cvss=self.get_all_cvss(),
+            description=self.description,
         )
 
     def get_all_cvss(self) -> List[CVSS]:
@@ -1036,6 +1037,7 @@ class NvdV2Metadata(Base):
             severity=self.severity,
             link=self.link,
             cvss=self.get_all_cvss(),
+            description=self.description,
         )
 
         return nvd_ref
@@ -1664,7 +1666,11 @@ class VulnDBMetadata(Base):
         """
         results = []
         for nvd_cvss_item in self.get_cvss_data_nvd():
-            nvd_ref = NVDReference(vulnerability_id=nvd_cvss_item.get("id"), cvss=[])
+            nvd_ref = NVDReference(
+                vulnerability_id=nvd_cvss_item.get("id"),
+                cvss=[],
+                description=self.description,
+            )
             v2_metric = nvd_cvss_item.get(cvss_v2_key, None)
             if v2_metric:
                 nvd_ref.cvss.append(
