@@ -461,8 +461,13 @@ class GithubFeedDataMapper(FeedDataMapper):
         advisory = record_json["Advisory"]
 
         db_rec = Vulnerability()
-        db_rec.id = advisory["ghsaId"]
-        db_rec.name = advisory["ghsaId"]
+        cves = advisory["CVE"]
+        if len(cves) > 0:
+            db_rec.id = cves[0]
+            db_rec.name = cves[0]
+        else:
+            db_rec.id = advisory["ghsaId"]
+            db_rec.name = advisory["ghsaId"]
         db_rec.namespace_name = advisory["namespace"]
         db_rec.description = advisory["Summary"]
         db_rec.severity = advisory.get("Severity", "Unknown") or "Unknown"
