@@ -5,7 +5,7 @@ USER root
 
 RUN set -ex && \
     echo "installing OS dependencies" && \
-    yum install -y gcc make git python38-wheel python38-devel python38-psycopg2
+    yum install -y gcc make git python38-wheel python38-devel python38-psycopg2 libpq-devel
 
 # Install Docker-in-Docker into the image for testing
 ENV DOCKERVERSION=18.03.1-ce
