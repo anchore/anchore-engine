@@ -57,6 +57,14 @@ pre_baked_images = {
         "image_source": "registry",
         "schema_version": "v2",
     },
+    "go": {
+        "registry": "docker.io",
+        "repo": "anchore/test_images",
+        "tag": "engine-analyzer-golang-a8b30f2",
+        "digest": "sha256:d7efe8ef45def7a7aa6571de3cc5857281b1d7dc5477e7e0cbff6ccb2d5f5f8c",
+        "image_source": "registry",
+        "schema_version": "v2",
+    },
     "stretch-slim": {
         "registry": "docker.io",
         "repo": "anchore/test_images",

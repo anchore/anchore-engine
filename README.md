@@ -40,6 +40,7 @@ Anchore Engine is also the OSS foundation for [Anchore Enterprise](https://ancho
 - Java Archive (jar, war, ear)
 - NPM
 - Python (PIP)
+- Go Modules
 
 ## Installation
 
