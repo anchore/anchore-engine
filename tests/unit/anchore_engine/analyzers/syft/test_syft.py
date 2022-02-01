@@ -119,6 +119,9 @@ class TestFilterArtifacts:
             "deb",
             "jenkins-plugin",
             "java-archive",
+            "gem",
+            "python",
+            "go-module",
         ],
     )
     def test_does_not_filter_artifact_by_type(self, pkg_type):
