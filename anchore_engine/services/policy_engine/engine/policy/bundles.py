@@ -136,7 +136,7 @@ class ErrorMatch(TriggerMatch):
         __gate_name__ = "gate_not_found"
         __description__ = "Placeholder for executions where policy includes a gate not found in the server"
 
-    class EmptyTrigger(BaseTrigger):
+    class EmptyTrigger(BaseImageTrigger):
         __trigger_name__ = "empty"
         __description__ = (
             "Empty trigger definition for handling errors like trigger-not-found"
@@ -450,12 +450,12 @@ class ExecutablePolicyRule(PolicyRule):
 
         # Configure the trigger instance
         try:
-            self.gate_cls = Gate.get_gate_by_name(self.gate_name)
+            self.gate_cls = BaseImageGate.get_gate_by_name(self.gate_name)
         except KeyError:
             # Gate not found
             self.error_exc = GateNotFoundError(
                 gate=self.gate_name,
-                valid_gates=Gate.registered_gate_names(),
+                valid_gates=BaseImageGate.registered_gate_names(),
                 rule_id=self.rule_id,
             )
             self.configured_trigger = None
@@ -657,7 +657,7 @@ class ExecutablePolicy(VersionedEntityMixin):
     Execution is the process of invoking each trigger with the proper image context and collecting the results.
     Policy executions only depend on the image analysis context, not the tag mapping.
 
-    Gate objects are used only to construct the triggers and to prepare the execution context for each trigger.
+    BaseImageGate objects are used only to construct the triggers and to prepare the execution context for each trigger.
 
     """
 

@@ -1,6 +1,9 @@
 import re
 
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     CommaDelimitedNumberListParameter,
@@ -35,7 +38,7 @@ DIRECTIVES = [
 CONDITIONS = ["=", "!=", "exists", "not_exists", "like", "not_like", "in", "not_in"]
 
 
-class DockerfileModeCheckedBaseTrigger(BaseTrigger):
+class DockerfileModeCheckedBaseTrigger(BaseImageTrigger):
     """
     Base class for any trigger that hard-codes selection of dockerfile mode
     """
@@ -57,7 +60,7 @@ class DockerfileModeCheckedBaseTrigger(BaseTrigger):
         raise NotImplementedError()
 
 
-class ParameterizedDockerfileModeBaseTrigger(BaseTrigger):
+class ParameterizedDockerfileModeBaseTrigger(BaseImageTrigger):
     """
     Base class for any trigger that lets the user decide if it applies to only actual dockerfiles or not
     """
@@ -336,7 +339,7 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
         return
 
 
-class NoDockerfile(BaseTrigger):
+class NoDockerfile(BaseImageTrigger):
     __trigger_name__ = "no_dockerfile_provided"
     __description__ = "Triggers if anchore analysis was performed without supplying the actual image Dockerfile."
     __msg__ = "Image was not analyzed with an actual Dockerfile"
@@ -352,7 +355,7 @@ class NoDockerfile(BaseTrigger):
             self._fire()
 
 
-class DockerfileGate(Gate):
+class DockerfileGate(BaseImageGate):
     __gate_name__ = "dockerfile"
     __description__ = "Checks against the content of a dockerfile if provided, or a guessed dockerfile based on docker layer history if the dockerfile is not provided."
     __triggers__ = [

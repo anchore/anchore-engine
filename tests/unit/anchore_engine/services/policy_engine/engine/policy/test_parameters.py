@@ -306,7 +306,7 @@ class TestRegexRelatedValidators(unittest.TestCase, ValidatorTestMixin):
         self.run_matrix_test(matrix, v)
 
 
-class FakeTrigger(gate.BaseTrigger):
+class FakeTrigger(gate.BaseImageTrigger):
     __trigger_name__ = "TestingTrigger"
     __description__ = "Not real"
     __trigger_id__ = "Blah123"
@@ -323,7 +323,7 @@ class FakeTrigger(gate.BaseTrigger):
         print((type(self.param1)))
 
 
-class FakeGate(gate.Gate):
+class FakeGate(gate.BaseImageGate):
     __gate_name__ = "Somegate"
     __triggers__ = [FakeTrigger]
 

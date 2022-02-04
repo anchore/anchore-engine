@@ -6,8 +6,10 @@ import copy
 import enum
 import hashlib
 import inspect
+from abc import ABC, abstractmethod
 
 import anchore_engine
+from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     InvalidParameterError,
     ParameterValueInvalidError,
@@ -134,7 +136,7 @@ class TriggerMatch(object):
         )
 
 
-class BaseTrigger(LifecycleMixin):
+class BaseTrigger(ABC, LifecycleMixin):
     """
     An evaluation trigger, representing something found image analysis specifically requested. Contained
     by a single gate, with execution context defined by the parent gate object.
@@ -307,41 +309,6 @@ class BaseTrigger(LifecycleMixin):
         """
         return self.__trigger_name__ + " " + self.msg
 
-    def execute(self, image_obj, context):
-        """
-        Main entry point for the trigger execution. Will clear any previously saved exec state and call the evaluate() function.
-        :param image_obj:
-        :param context:
-        :return:
-        """
-        self.reset()
-
-        if (
-            self.gate_cls.__lifecycle_state__ != LifecycleStates.eol
-            and self.__lifecycle_state__ != LifecycleStates.eol
-        ):
-            if image_obj is None:
-                raise TriggerEvaluationError(
-                    trigger=self, message="No image provided to evaluate against"
-                )
-            try:
-                self.evaluate(image_obj, context)
-            except Exception as e:
-                logger.exception("Error evaluating trigger. Aborting trigger execution")
-                raise TriggerEvaluationError(trigger=self, message=str(e))
-
-        return True
-
-    def evaluate(self, image_obj, context):
-        """
-        Evaluate against the image update the state of the trigger based on result.
-        If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
-        match.
-
-        Result is the population of self._fired_instances, which can be accessed via the 'fired' property
-        """
-        raise NotImplementedError()
-
     def _fire(self, instance_id=None, msg=None):
         """
         Internal function used by evaluation code to indicate a match found. May be called many times and results in
@@ -402,7 +369,45 @@ class BaseTrigger(LifecycleMixin):
         )
 
 
-class Gate(LifecycleMixin, metaclass=GateMeta):
+class BaseImageTrigger(BaseTrigger, LifecycleMixin):
+    def execute(self, image_obj, context):
+        """
+        Main entry point for the trigger execution. Will clear any previously saved exec state and call the evaluate() function.
+        :param image_obj:
+        :param context:
+        :return:
+        """
+        self.reset()
+
+        if (
+            self.gate_cls.__lifecycle_state__ != LifecycleStates.eol
+            and self.__lifecycle_state__ != LifecycleStates.eol
+        ):
+            if image_obj is None:
+                raise TriggerEvaluationError(
+                    trigger=self, message="No image provided to evaluate against"
+                )
+            try:
+                self.evaluate(image_obj, context)
+            except Exception as e:
+                logger.exception("Error evaluating trigger. Aborting trigger execution")
+                raise TriggerEvaluationError(trigger=self, message=str(e))
+
+        return True
+
+    @abstractmethod
+    def evaluate(self, image_obj, context):
+        """
+        Evaluate against the image update the state of the trigger based on result.
+        If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
+        match.
+
+        Result is the population of self._fired_instances, which can be accessed via the 'fired' property
+        """
+        ...
+
+
+class BaseGate(LifecycleMixin, metaclass=GateMeta):
     """
     Base type for a gate module.
 
@@ -470,15 +475,6 @@ class Gate(LifecycleMixin, metaclass=GateMeta):
         self.image = None
         self.selected_triggers = None
 
-    def prepare_context(self, image_obj, context):
-        """
-        Called immediately prior to gate execution, a hook to allow optimizations or prep of the context or image
-        data prior to execution of the gate/triggers.
-        :rtype:
-        :return:
-        """
-        return context
-
     def json(self):
         """
         Return a json-dict of the gate definition
@@ -502,3 +498,18 @@ class Gate(LifecycleMixin, metaclass=GateMeta):
 
     def __repr__(self):
         return "<Gate {}>".format(self.__gate_name__)
+
+
+class BaseImageGate(BaseGate, LifecycleMixin, metaclass=GateMeta):
+    def prepare_context(
+        self,
+        image_obj: Image,
+        context: ExecutionContext,
+    ):
+        """
+        Called immediately prior to gate execution, a hook to allow optimizations or prep of the context or image
+        data prior to execution of the gate/triggers.
+        :rtype:
+        :return:
+        """
+        return context

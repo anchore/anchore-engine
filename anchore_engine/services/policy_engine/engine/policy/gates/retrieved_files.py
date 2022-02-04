@@ -1,7 +1,10 @@
 import re
 
 from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     EnumStringParameter,
     SimpleStringParameter,
@@ -41,7 +44,7 @@ class RetrievedFileMixin(object):
         return None
 
 
-class FileNotStoredTrigger(BaseTrigger, RetrievedFileMixin):
+class FileNotStoredTrigger(BaseImageTrigger, RetrievedFileMixin):
     __trigger_name__ = "content_not_available"
     __description__ = (
         "Triggers if the specified file is not present/stored in the evaluated image."
@@ -56,7 +59,7 @@ class FileNotStoredTrigger(BaseTrigger, RetrievedFileMixin):
             self._fire()
 
 
-class FileContentRegexMatchTrigger(BaseTrigger, RetrievedFileMixin):
+class FileContentRegexMatchTrigger(BaseImageTrigger, RetrievedFileMixin):
     __trigger_name__ = "content_regex"
     __description__ = "Evaluation of regex on retrieved file content"
 
@@ -125,7 +128,7 @@ class FileContentRegexMatchTrigger(BaseTrigger, RetrievedFileMixin):
             )
 
 
-class RetrievedFileChecksGate(Gate):
+class RetrievedFileChecksGate(BaseImageGate):
     __gate_name__ = "retrieved_files"
     __description__ = "Checks against content and/or presence of files retrieved at analysis time from an image"
     __triggers__ = [

@@ -1,8 +1,8 @@
 import pytest
 
 from anchore_engine.services.policy_engine.engine.policy.gates import (
+    BaseImageTrigger,
     PackageCheckGate,
-    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import (
     EffectiveUserTrigger,
@@ -64,7 +64,7 @@ class TestBaseTrigger:
             assert parameters.get(key).__class__ == value
 
     def test_reset(self):
-        trigger = BaseTrigger(PackageCheckGate)
+        trigger = BaseImageTrigger(PackageCheckGate)
         trigger._fired_instances = [1, 2, 3]
         trigger.reset()
         assert trigger._fired_instances == []

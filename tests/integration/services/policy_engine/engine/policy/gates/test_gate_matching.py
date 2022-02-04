@@ -1,18 +1,21 @@
 import unittest
 
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.subsys import logger
 
 logger.enable_test_logging()
 
 
-class TriggerForTest(BaseTrigger):
+class TriggerForTest(BaseImageTrigger):
     __description__ = "Testing trigger"
     __trigger_name__ = "testtrigger"
     __msg__ = "Some msg"
 
 
-class GateForTesting(Gate):
+class GateForTesting(BaseImageGate):
     __description__ = "Testing gate"
     __gate_name__ = "testgate"
     __triggers__ = [TriggerForTest]
@@ -30,14 +33,14 @@ class TestGateTriggerNameMatches(unittest.TestCase):
         failz = ["test gate", "TEST GATE"]
 
         for name in names:
-            self.assertIsNotNone(Gate.get_gate_by_name(name))
+            self.assertIsNotNone(BaseImageGate.get_gate_by_name(name))
 
         for name in failz:
             with self.assertRaises(Exception) as e:
-                Gate.get_gate_by_name(name)
+                BaseImageGate.get_gate_by_name(name)
 
     def test_trigger_name_match(self):
-        g = Gate.registry["testgate"]
+        g = BaseImageGate.registry["testgate"]
 
         names = ["testtrigger", "testTrigger", "TESTTRIGGER"]
 

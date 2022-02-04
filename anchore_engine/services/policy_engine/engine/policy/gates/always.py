@@ -1,7 +1,10 @@
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 
 
-class AlwaysFireTrigger(BaseTrigger):
+class AlwaysFireTrigger(BaseImageTrigger):
     """
     Trigger always fires if invoked. This is intended for implementing things like short-circuits or blacklist/whitelist of images
     """
@@ -17,7 +20,7 @@ class AlwaysFireTrigger(BaseTrigger):
         self._fire()
 
 
-class AlwaysGate(Gate):
+class AlwaysGate(BaseImageGate):
     __gate_name__ = "always"
     __description__ = "Triggers that fire unconditionally if present in policy, useful for things like testing and blacklisting."
     __triggers__ = [AlwaysFireTrigger]

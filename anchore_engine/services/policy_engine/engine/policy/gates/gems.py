@@ -2,7 +2,10 @@ from anchore_engine.db import GemMetadata
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     TriggerParameter,
     TypeValidator,
@@ -16,7 +19,7 @@ GEM_MATCH_KEY = "matched_feed_gems"
 GEM_LIST_KEY = "gems"
 
 
-class NotLatestTrigger(BaseTrigger):
+class NotLatestTrigger(BaseImageTrigger):
     __trigger_name__ = "newer_version_found_in_feed"
     __description__ = "Triggers if an installed GEM is not the latest version according to GEM data feed."
 
@@ -47,7 +50,7 @@ class NotLatestTrigger(BaseTrigger):
                     )
 
 
-class NotOfficialTrigger(BaseTrigger):
+class NotOfficialTrigger(BaseImageTrigger):
     __trigger_name__ = "not_found_in_feed"
     __description__ = "Triggers if an installed GEM is not in the official GEM database, according to GEM data feed."
 
@@ -79,7 +82,7 @@ class NotOfficialTrigger(BaseTrigger):
                 )
 
 
-class BadVersionTrigger(BaseTrigger):
+class BadVersionTrigger(BaseImageTrigger):
     __trigger_name__ = "version_not_found_in_feed"
     __description__ = "Triggers if an installed GEM version is not listed in the official GEM feed as a valid version."
 
@@ -120,7 +123,7 @@ class BadVersionTrigger(BaseTrigger):
                 )
 
 
-class BlacklistedGemTrigger(BaseTrigger):
+class BlacklistedGemTrigger(BaseImageTrigger):
     __trigger_name__ = "blacklist"
     __description__ = "Triggers if the evaluated image has a GEM package installed that matches the specified name and version."
 
@@ -166,7 +169,7 @@ class BlacklistedGemTrigger(BaseTrigger):
                 self._fire(msg="Gem Package is blacklisted: " + name)
 
 
-class NoFeedTrigger(BaseTrigger):
+class NoFeedTrigger(BaseImageTrigger):
     __trigger_name__ = "feed_data_unavailable"
     __description__ = "Triggers if anchore does not have access to the GEM data feed."
     __msg__ = "Gem packages are present but the anchore gem feed is not available - will be unable to perform checks that require feed data"
@@ -185,7 +188,7 @@ class NoFeedTrigger(BaseTrigger):
         return
 
 
-class GemCheckGate(Gate):
+class GemCheckGate(BaseImageGate):
     __gate_name__ = "ruby_gems"
     __description__ = "Ruby Gem Checks"
     __triggers__ = [

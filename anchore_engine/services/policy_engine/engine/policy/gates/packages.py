@@ -1,7 +1,10 @@
 import enum
 
 from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
     EnumStringParameter,
@@ -12,7 +15,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.util.packages import compare_package_versions
 
 
-class VerifyTrigger(BaseTrigger):
+class VerifyTrigger(BaseImageTrigger):
     __trigger_name__ = "verify"
     __description__ = 'Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected "dirs" parameter if provided, and can filter type of check with the "check_only" parameter.'
 
@@ -167,7 +170,7 @@ class VerifyTrigger(BaseTrigger):
         return False
 
 
-class RequiredPackageTrigger(BaseTrigger):
+class RequiredPackageTrigger(BaseImageTrigger):
     __trigger_name__ = "required_package"
     __description__ = "Triggers if the specified package and optionally a specific version is not found in the image."
 
@@ -264,7 +267,7 @@ class RequiredPackageTrigger(BaseTrigger):
                 )
 
 
-class BlackListTrigger(BaseTrigger):
+class BlackListTrigger(BaseImageTrigger):
     __trigger_name__ = "blacklist"
     __description__ = "Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well."
 
@@ -307,7 +310,7 @@ class BlackListTrigger(BaseTrigger):
             pass
 
 
-class PackagesCheckGate(Gate):
+class PackagesCheckGate(BaseImageGate):
     __gate_name__ = "packages"
     __description__ = "Distro package checks"
     __triggers__ = [

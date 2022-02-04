@@ -1,5 +1,8 @@
 from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedNumberListParameter,
     CommaDelimitedStringListParameter,
@@ -9,7 +12,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.utils import ensure_str
 
 
-class FileNotStoredTrigger(BaseTrigger):
+class FileNotStoredTrigger(BaseImageTrigger):
     __trigger_name__ = "content_not_available"
     __description__ = (
         "Triggers if the /etc/passwd file is not present/stored in the evaluated image."
@@ -45,7 +48,7 @@ class PentryBlacklistMixin(object):
         return matches
 
 
-class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class UsernameMatchTrigger(BaseImageTrigger, PentryBlacklistMixin):
     __trigger_name__ = "blacklist_usernames"
     __description__ = "Triggers if specified username is found in the /etc/passwd file"
 
@@ -76,7 +79,7 @@ class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             )
 
 
-class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class UserIdMatchTrigger(BaseImageTrigger, PentryBlacklistMixin):
     __trigger_name__ = "blacklist_userids"
     __description__ = "Triggers if specified user id is found in the /etc/passwd file"
 
@@ -107,7 +110,7 @@ class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             )
 
 
-class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class GroupIdMatchTrigger(BaseImageTrigger, PentryBlacklistMixin):
     __trigger_name__ = "blacklist_groupids"
     __description__ = "Triggers if specified group id is found in the /etc/passwd file"
 
@@ -137,7 +140,7 @@ class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             )
 
 
-class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class ShellMatchTrigger(BaseImageTrigger, PentryBlacklistMixin):
     __trigger_name__ = "blacklist_shells"
     __aliases__ = ["shellmatch"]
     __description__ = "Triggers if specified login shell for any user is found in the /etc/passwd file"
@@ -168,7 +171,7 @@ class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         return
 
 
-class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class PEntryMatchTrigger(BaseImageTrigger, PentryBlacklistMixin):
     __trigger_name__ = "blacklist_full_entry"
     __description__ = (
         "Triggers if entire specified passwd entry is found in the /etc/passwd file."
@@ -199,7 +202,7 @@ class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         return
 
 
-class FileparsePasswordGate(Gate):
+class FileparsePasswordGate(BaseImageGate):
     __gate_name__ = "passwd_file"
     __description__ = "Content checks for /etc/passwd for things like usernames, group ids, shells, or full entries."
     __triggers__ = [

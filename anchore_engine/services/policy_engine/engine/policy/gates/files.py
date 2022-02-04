@@ -3,7 +3,10 @@ import re
 import stat
 
 from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseImageGate,
+    BaseImageTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     EnumStringParameter,
@@ -13,7 +16,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.utils import ensure_bytes, ensure_str
 
 
-class ContentMatchTrigger(BaseTrigger):
+class ContentMatchTrigger(BaseImageTrigger):
     __trigger_name__ = "content_regex_match"
     __description__ = 'Triggers for each file where the content search analyzer has found a match using configured regexes in the analyzer_config.yaml "content_search" section. If the parameter is set, the trigger will only fire for files that matched the named regex. Refer to your analyzer_config.yaml for the regex values.'
 
@@ -59,7 +62,7 @@ class ContentMatchTrigger(BaseTrigger):
                     )
 
 
-class FilenameMatchTrigger(BaseTrigger):
+class FilenameMatchTrigger(BaseImageTrigger):
     __trigger_name__ = "name_match"
     __description__ = "Triggers if a file exists in the container that has a filename that matches the provided regex. This does have a performance impact on policy evaluation."
 
@@ -89,7 +92,7 @@ class FilenameMatchTrigger(BaseTrigger):
                 )
 
 
-class FileAttributeMatchTrigger(BaseTrigger):
+class FileAttributeMatchTrigger(BaseImageTrigger):
     __trigger_name__ = "attribute_match"
     __description__ = "Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation."
 
@@ -228,7 +231,7 @@ class FileAttributeMatchTrigger(BaseTrigger):
             self._fire(msg=msg)
 
 
-class SuidCheckTrigger(BaseTrigger):
+class SuidCheckTrigger(BaseImageTrigger):
     __trigger_name__ = "suid_or_guid_set"
     __description__ = "Fires for each file found to have suid or sgid bit set."
 
@@ -253,7 +256,7 @@ class SuidCheckTrigger(BaseTrigger):
             )
 
 
-class FileCheckGate(Gate):
+class FileCheckGate(BaseImageGate):
     __gate_name__ = "files"
     __description__ = "Checks against files in the analyzed image including file content, file names, and filesystem attributes."
     __triggers__ = [
