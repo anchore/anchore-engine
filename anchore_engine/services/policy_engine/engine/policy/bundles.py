@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import copy
 import datetime
 import enum
 import itertools
 import re
+from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
+from typing import Callable, Dict, List, Optional, Type, Union
 
 from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
@@ -480,7 +484,7 @@ class ExecutablePolicyRule(PolicyRule):
                 self.configured_trigger = selected_trigger_cls(
                     parent_gate_cls=self.gate_cls,
                     rule_id=self.rule_id,
-                    **self.trigger_params
+                    **self.trigger_params,
                 )
             except (
                 TriggerNotFoundError,
@@ -661,7 +665,12 @@ class ExecutablePolicy(VersionedEntityMixin):
 
     """
 
-    def __init__(self, raw_json=None, strict_validation=True):
+    def __init__(
+        self,
+        raw_json=None,
+        strict_validation=True,
+        rule_factory: Callable = policy_rule_factory,
+    ):
         self.raw = raw_json
         if not raw_json:
             raise ValueError("Empty whitelist json")
@@ -677,7 +686,7 @@ class ExecutablePolicy(VersionedEntityMixin):
         for x in raw_json.get("rules"):
             try:
                 self.rules.append(
-                    policy_rule_factory(self, x, strict_validation=strict_validation)
+                    rule_factory(self, x, strict_validation=strict_validation)
                 )
             except PolicyRuleValidationErrorCollection as e:
                 for err in e.validation_errors:
@@ -741,12 +750,26 @@ class ExecutablePolicy(VersionedEntityMixin):
             }
 
 
-class MappingRule(object):
+class BaseMapping(ABC):
+    def __init__(self, rule_json: Optional[Dict] = None):
+        self._raw = rule_json
+
+    @property
+    def raw(self):
+        return self._raw
+
+    @abstractmethod
+    def json(self):
+        pass
+
+
+class MappingRule(BaseMapping):
     """
     A mapping rule that selects targets
     """
 
     def __init__(self, rule_json=None):
+        super().__init__(rule_json)
         self.registry = rule_json.get("registry")
         self.repository = rule_json.get("repository")
         self.image_match_type = rule_json.get("image").get("type")
@@ -765,8 +788,6 @@ class MappingRule(object):
             self.image_digest = rule_json.get("image").get("value")
         else:
             self.image_digest = None
-
-        self.raw = rule_json
 
     def json(self):
         if self.raw:
@@ -857,39 +878,47 @@ class MappingRule(object):
                 return self._tag_match(match_target.get("tag"))
 
 
-class PolicyMappingRule(MappingRule):
+class PolicyMappingMixin:
+    def set_policy_attribs(self: Union[BaseMapping, PolicyMappingMixin]):
+        if self.raw.get("policy_id") and self.raw.get("policy_ids"):
+            raise ValidationError(
+                "Cannot specify both policy_id and policy_ids properties in mapping rule, must use one or the other"
+            )
+        if self.raw.get("policy_id"):
+            self.policy_ids = [self.raw.get("policy_id")]
+        elif self.raw.get("policy_ids"):
+            self.policy_ids = self.raw.get("policy_ids")
+        else:
+            raise ValidationError(
+                "No policy_id or policy_ids property found for mapping rule: {}".format(
+                    self.raw
+                )
+            )
+        self.whitelist_ids = self.raw.get("whitelist_ids")
+
+    def to_json(self: Union[BaseMapping, PolicyMappingMixin]):
+        if self.raw:
+            return self.raw
+        else:
+            r = self.json()
+            r["policy_ids"] = (self.policy_ids,)
+            r["whitelist_ids"] = self.whitelist_ids
+            return r
+
+
+class PolicyMappingRule(MappingRule, PolicyMappingMixin):
     """
     A single mapping rule that can be evaluated against a tag and image
     """
 
     def __init__(self, rule_json=None):
         super(PolicyMappingRule, self).__init__(rule_json)
-
-        if rule_json.get("policy_id") and rule_json.get("policy_ids"):
-            raise ValidationError(
-                "Cannot specify both policy_id and policy_ids properties in mapping rule, must use one or the other"
-            )
-        if rule_json.get("policy_id"):
-            self.policy_ids = [rule_json.get("policy_id")]
-        elif rule_json.get("policy_ids"):
-            self.policy_ids = rule_json.get("policy_ids")
-        else:
-            raise ValidationError(
-                "No policy_id or policy_ids property found for mapping rule: {}".format(
-                    rule_json
-                )
-            )
-
-        self.whitelist_ids = rule_json.get("whitelist_ids")
+        self.policy_ids = []
+        self.whitelist_ids = []
+        self.set_policy_attribs()
 
     def json(self):
-        if self.raw:
-            return self.raw
-        else:
-            r = super(PolicyMappingRule, self).json()
-            r["policy_ids"] = (self.policy_ids,)
-            r["whitelist_ids"] = self.whitelist_ids
-            return r
+        return self.to_json()
 
 
 class ExecutableMapping(object):
