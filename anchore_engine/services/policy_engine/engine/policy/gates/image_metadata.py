@@ -1,6 +1,10 @@
 import re
 
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import Image
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.gates.util import (
     CheckOperation,
 )
@@ -15,7 +19,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.utils import BYTES_REGEX, convert_bytes_size
 
 
-class ImageMetadataAttributeCheckTrigger(BaseTrigger):
+class ImageMetadataAttributeCheckTrigger(BaseTrigger[Image]):
     __trigger_name__ = "attribute"
     __description__ = (
         "Triggers if a named image metadata value matches the given condition."
@@ -104,7 +108,7 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
         sort_order=3,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         attr = self.attribute.value()
         check = self.check.value()
         rval = self.check_value.value()
@@ -117,7 +121,7 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
             # Raise exception or fall thru
             return
 
-        img_val = self.__valid_attributes__[attr][0](image_obj)
+        img_val = self.__valid_attributes__[attr][0](artifact)
         # Make consistent types (specifically for int/float/str)
         if type(img_val) in [int, float, str]:
             if attr == "size":
@@ -133,7 +137,7 @@ class ImageMetadataAttributeCheckTrigger(BaseTrigger):
             )
 
 
-class ImageMetadataGate(Gate):
+class ImageMetadataGate(BaseGate[Image]):
     __gate_name__ = "metadata"
     __description__ = (
         "Checks against image metadata, such as size, OS, distro, architecture, etc."
@@ -143,7 +147,7 @@ class ImageMetadataGate(Gate):
         ImageMetadataAttributeCheckTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Pre-processes the image's dockerfile.
         Leaves the context with a dictionary of dockerfile lines by directive.

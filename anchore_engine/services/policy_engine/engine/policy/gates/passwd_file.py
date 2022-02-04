@@ -1,5 +1,8 @@
-from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import AnalysisArtifact, Image
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedNumberListParameter,
     CommaDelimitedStringListParameter,
@@ -9,7 +12,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.utils import ensure_str
 
 
-class FileNotStoredTrigger(BaseTrigger):
+class FileNotStoredTrigger(BaseTrigger[Image]):
     __trigger_name__ = "content_not_available"
     __description__ = (
         "Triggers if the /etc/passwd file is not present/stored in the evaluated image."
@@ -17,7 +20,7 @@ class FileNotStoredTrigger(BaseTrigger):
     __params__ = None
     __msg__ = "Cannot locate /etc/passwd in image stored files archive: check analyzer settings."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             self._fire()
         return
@@ -45,7 +48,7 @@ class PentryBlacklistMixin(object):
         return matches
 
 
-class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class UsernameMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
     __trigger_name__ = "blacklist_usernames"
     __description__ = "Triggers if specified username is found in the /etc/passwd file"
 
@@ -57,7 +60,7 @@ class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -76,7 +79,7 @@ class UsernameMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             )
 
 
-class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class UserIdMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
     __trigger_name__ = "blacklist_userids"
     __description__ = "Triggers if specified user id is found in the /etc/passwd file"
 
@@ -88,7 +91,7 @@ class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -107,7 +110,7 @@ class UserIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             )
 
 
-class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class GroupIdMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
     __trigger_name__ = "blacklist_groupids"
     __description__ = "Triggers if specified group id is found in the /etc/passwd file"
 
@@ -118,7 +121,7 @@ class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -137,7 +140,7 @@ class GroupIdMatchTrigger(BaseTrigger, PentryBlacklistMixin):
             )
 
 
-class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class ShellMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
     __trigger_name__ = "blacklist_shells"
     __aliases__ = ["shellmatch"]
     __description__ = "Triggers if specified login shell for any user is found in the /etc/passwd file"
@@ -149,7 +152,7 @@ class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -168,7 +171,7 @@ class ShellMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         return
 
 
-class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
+class PEntryMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
     __trigger_name__ = "blacklist_full_entry"
     __description__ = (
         "Triggers if entire specified passwd entry is found in the /etc/passwd file."
@@ -182,7 +185,7 @@ class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -199,7 +202,7 @@ class PEntryMatchTrigger(BaseTrigger, PentryBlacklistMixin):
         return
 
 
-class FileparsePasswordGate(Gate):
+class FileparsePasswordGate(BaseGate[Image]):
     __gate_name__ = "passwd_file"
     __description__ = "Content checks for /etc/passwd for things like usernames, group ids, shells, or full entries."
     __triggers__ = [
@@ -211,7 +214,7 @@ class FileparsePasswordGate(Gate):
         PEntryMatchTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the /etc/passwd content for the image from the analysis artifacts list if it is found.
         loads from the db.
@@ -219,12 +222,12 @@ class FileparsePasswordGate(Gate):
         This is an optimization and could removed, but if removed the triggers should be updated to do the queries directly.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        content_matches = image_obj.analysis_artifacts.filter(
+        content_matches = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "retrieve_files",
             AnalysisArtifact.analyzer_artifact == "file_content.all",
             AnalysisArtifact.analyzer_type == "base",

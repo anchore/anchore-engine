@@ -2,8 +2,11 @@ import base64
 import re
 import stat
 
-from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import AnalysisArtifact, Image
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     EnumStringParameter,
@@ -13,7 +16,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.utils import ensure_bytes, ensure_str
 
 
-class ContentMatchTrigger(BaseTrigger):
+class ContentMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "content_regex_match"
     __description__ = 'Triggers for each file where the content search analyzer has found a match using configured regexes in the analyzer_config.yaml "content_search" section. If the parameter is set, the trigger will only fire for files that matched the named regex. Refer to your analyzer_config.yaml for the regex values.'
 
@@ -25,7 +28,7 @@ class ContentMatchTrigger(BaseTrigger):
         is_required=False,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         match_decoded = self.regex_name.value()
 
         if match_decoded:
@@ -59,7 +62,7 @@ class ContentMatchTrigger(BaseTrigger):
                     )
 
 
-class FilenameMatchTrigger(BaseTrigger):
+class FilenameMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "name_match"
     __description__ = "Triggers if a file exists in the container that has a filename that matches the provided regex. This does have a performance impact on policy evaluation."
 
@@ -71,7 +74,7 @@ class FilenameMatchTrigger(BaseTrigger):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         # decode the param regexes from b64
         regex_param = self.regex.value()
 
@@ -89,7 +92,7 @@ class FilenameMatchTrigger(BaseTrigger):
                 )
 
 
-class FileAttributeMatchTrigger(BaseTrigger):
+class FileAttributeMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "attribute_match"
     __description__ = "Triggers if a filename exists in the container that has attributes that match those which are provided . This check has a performance impact on policy evaluation."
 
@@ -153,7 +156,7 @@ class FileAttributeMatchTrigger(BaseTrigger):
         sort_order=7,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         filename = self.filename.value()
 
         checksum_algo = self.checksum_algo.value(default_if_none="sha256")
@@ -228,15 +231,15 @@ class FileAttributeMatchTrigger(BaseTrigger):
             self._fire(msg=msg)
 
 
-class SuidCheckTrigger(BaseTrigger):
+class SuidCheckTrigger(BaseTrigger[Image]):
     __trigger_name__ = "suid_or_guid_set"
     __description__ = "Fires for each file found to have suid or sgid bit set."
 
-    def evaluate(self, image_obj, context):
-        if not image_obj.fs:
+    def evaluate(self, artifact, context):
+        if not artifact.fs:
             return
 
-        files = image_obj.fs.files
+        files = artifact.fs.files
         if not files:
             return
 
@@ -253,7 +256,7 @@ class SuidCheckTrigger(BaseTrigger):
             )
 
 
-class FileCheckGate(Gate):
+class FileCheckGate(BaseGate[Image]):
     __gate_name__ = "files"
     __description__ = "Checks against files in the analyzed image including file content, file names, and filesystem attributes."
     __triggers__ = [
@@ -263,27 +266,27 @@ class FileCheckGate(Gate):
         SuidCheckTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the file name list once and placing it in the eval context to avoid repeated
         loads from the db. this is an optimization and could removed.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
         context.data["filenames"] = []
         context.data["filedetail"] = {}
 
-        if image_obj.fs:
-            extracted_files_json = image_obj.fs.files
+        if artifact.fs:
+            extracted_files_json = artifact.fs.files
 
             if extracted_files_json:
                 context.data["filenames"] = list(extracted_files_json.keys())
                 context.data["filedetail"] = extracted_files_json
 
-        content_matches = image_obj.analysis_artifacts.filter(
+        content_matches = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "content_search",
             AnalysisArtifact.analyzer_artifact == "regexp_matches.all",
             AnalysisArtifact.analyzer_type == "base",

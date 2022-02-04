@@ -1,6 +1,10 @@
 import re
 
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import Image
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
     CommaDelimitedNumberListParameter,
@@ -35,29 +39,29 @@ DIRECTIVES = [
 CONDITIONS = ["=", "!=", "exists", "not_exists", "like", "not_like", "in", "not_in"]
 
 
-class DockerfileModeCheckedBaseTrigger(BaseTrigger):
+class DockerfileModeCheckedBaseTrigger(BaseTrigger[Image]):
     """
     Base class for any trigger that hard-codes selection of dockerfile mode
     """
 
     __actual_dockerfile_only__ = False
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not hasattr(context, "data") or not context.data.get("prepared_dockerfile"):
             return
         elif self.__actual_dockerfile_only__ and (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() != "actual"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() != "actual"
         ):
             return
         else:
-            return self._evaluate(image_obj, context)
+            return self._evaluate(artifact, context)
 
     def _evaluate(self, image_obj, context):
         raise NotImplementedError()
 
 
-class ParameterizedDockerfileModeBaseTrigger(BaseTrigger):
+class ParameterizedDockerfileModeBaseTrigger(BaseTrigger[Image]):
     """
     Base class for any trigger that lets the user decide if it applies to only actual dockerfiles or not
     """
@@ -69,16 +73,16 @@ class ParameterizedDockerfileModeBaseTrigger(BaseTrigger):
         is_required=False,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not hasattr(context, "data") or not context.data.get("prepared_dockerfile"):
             return
         elif self.actual_dockerfile_only.value() and (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() != "actual"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() != "actual"
         ):
             return
         else:
-            return self._evaluate(image_obj, context)
+            return self._evaluate(artifact, context)
 
     def _evaluate(self, image_obj, context):
         raise NotImplementedError()
@@ -336,23 +340,23 @@ class ExposedPortsTrigger(ParameterizedDockerfileModeBaseTrigger):
         return
 
 
-class NoDockerfile(BaseTrigger):
+class NoDockerfile(BaseTrigger[Image]):
     __trigger_name__ = "no_dockerfile_provided"
     __description__ = "Triggers if anchore analysis was performed without supplying the actual image Dockerfile."
     __msg__ = "Image was not analyzed with an actual Dockerfile"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Evaluate using the initialized values for this object:
         """
         if (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() != "actual"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() != "actual"
         ):
             self._fire()
 
 
-class DockerfileGate(Gate):
+class DockerfileGate(BaseGate[Image]):
     __gate_name__ = "dockerfile"
     __description__ = "Checks against the content of a dockerfile if provided, or a guessed dockerfile based on docker layer history if the dockerfile is not provided."
     __triggers__ = [
@@ -362,7 +366,7 @@ class DockerfileGate(Gate):
         NoDockerfile,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Pre-processes the image's dockerfile.
         Leaves the context with a dictionary of dockerfile lines by directive.
@@ -378,16 +382,16 @@ class DockerfileGate(Gate):
         # unknown/known is up to each trigger
 
         if (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() == "unknown"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() == "unknown"
         ):
             return
 
         context.data["prepared_dockerfile"] = {}
 
-        if image_obj.dockerfile_contents:
+        if artifact.dockerfile_contents:
             linebuf = ""
-            for line in image_obj.dockerfile_contents.splitlines():
+            for line in artifact.dockerfile_contents.splitlines():
                 line = line.strip()
                 if line and not line.startswith("#"):
                     patt = re.match(r".*\\\$", line)

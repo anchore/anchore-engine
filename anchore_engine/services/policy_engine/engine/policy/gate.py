@@ -2,10 +2,14 @@
 Base types for gate implementations and triggers.
 
 """
+from __future__ import annotations
+
 import copy
 import enum
 import hashlib
 import inspect
+from abc import ABC, abstractmethod
+from typing import Generic, TypeVar
 
 import anchore_engine
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
@@ -37,6 +41,40 @@ class LifecycleMixin(object):
     __aliases__ = []
 
 
+class GateRegistry:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(GateRegistry, cls).__new__(cls)
+            cls._registry = {}
+        return cls._instance
+
+    def add_gate(self, gate: GateMeta):
+        if hasattr(gate, "__gate_name__"):
+            gate_id = getattr(gate, "__gate_name__").lower()
+            self._registry[gate_id] = gate
+
+    def get_gate_by_name(self, name: str):
+        found = self._registry.get(name.lower())
+
+        if found is not None:
+            return found
+        else:
+            found = [
+                x
+                for x in list(self._registry.values())
+                if name.lower() in x.__aliases__
+            ]
+            if found:
+                return found[0]
+            else:
+                raise KeyError(name)
+
+    def registered_gate_names(self):
+        return list(self._registry.keys())
+
+
 class GateMeta(type):
     """
     Metaclass to create a registry for all subclasses of Gate for finding, building, and documenting the gates.
@@ -44,32 +82,17 @@ class GateMeta(type):
     """
 
     def __init__(cls, name, bases, dct):
-        if not hasattr(cls, "registry"):
-            cls.registry = {}
+        if not hasattr(cls, "_registry"):
+            cls._registry = GateRegistry()
         else:
-            if "__gate_name__" in dct:
-                gate_id = dct["__gate_name__"].lower()
-                cls.registry[gate_id] = cls
-
+            cls._registry.add_gate(gate=cls)
         super(GateMeta, cls).__init__(name, bases, dct)
 
     def get_gate_by_name(cls, name):
-        # Try direct name
-        found = cls.registry.get(name.lower())
-
-        if found is not None:
-            return found
-        else:
-            found = [
-                x for x in list(cls.registry.values()) if name.lower() in x.__aliases__
-            ]
-            if found:
-                return found[0]
-            else:
-                raise KeyError(name)
+        return cls._registry.get_gate_by_name(name)
 
     def registered_gate_names(cls):
-        return list(cls.registry.keys())
+        return cls._registry.registered_gate_names()
 
 
 class ExecutionContext(object):
@@ -134,7 +157,11 @@ class TriggerMatch(object):
         )
 
 
-class BaseTrigger(LifecycleMixin):
+# bound this type later
+T = TypeVar("T")
+
+
+class BaseTrigger(Generic[T], ABC, LifecycleMixin):
     """
     An evaluation trigger, representing something found image analysis specifically requested. Contained
     by a single gate, with execution context defined by the parent gate object.
@@ -307,41 +334,6 @@ class BaseTrigger(LifecycleMixin):
         """
         return self.__trigger_name__ + " " + self.msg
 
-    def execute(self, image_obj, context):
-        """
-        Main entry point for the trigger execution. Will clear any previously saved exec state and call the evaluate() function.
-        :param image_obj:
-        :param context:
-        :return:
-        """
-        self.reset()
-
-        if (
-            self.gate_cls.__lifecycle_state__ != LifecycleStates.eol
-            and self.__lifecycle_state__ != LifecycleStates.eol
-        ):
-            if image_obj is None:
-                raise TriggerEvaluationError(
-                    trigger=self, message="No image provided to evaluate against"
-                )
-            try:
-                self.evaluate(image_obj, context)
-            except Exception as e:
-                logger.exception("Error evaluating trigger. Aborting trigger execution")
-                raise TriggerEvaluationError(trigger=self, message=str(e))
-
-        return True
-
-    def evaluate(self, image_obj, context):
-        """
-        Evaluate against the image update the state of the trigger based on result.
-        If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
-        match.
-
-        Result is the population of self._fired_instances, which can be accessed via the 'fired' property
-        """
-        raise NotImplementedError()
-
     def _fire(self, instance_id=None, msg=None):
         """
         Internal function used by evaluation code to indicate a match found. May be called many times and results in
@@ -401,8 +393,44 @@ class BaseTrigger(LifecycleMixin):
             self.parameters() if self.parameters() else [],
         )
 
+    def execute(self, artifact: T, context):
+        """
+        Main entry point for the trigger execution. Will clear any previously saved exec state and call the evaluate() function.
+        :param artifact:
+        :param context:
+        :return:
+        """
+        self.reset()
 
-class Gate(LifecycleMixin, metaclass=GateMeta):
+        if (
+            self.gate_cls.__lifecycle_state__ != LifecycleStates.eol
+            and self.__lifecycle_state__ != LifecycleStates.eol
+        ):
+            if artifact is None:
+                raise TriggerEvaluationError(
+                    trigger=self, message="No image provided to evaluate against"
+                )
+            try:
+                self.evaluate(artifact, context)
+            except Exception as e:
+                logger.exception("Error evaluating trigger. Aborting trigger execution")
+                raise TriggerEvaluationError(trigger=self, message=str(e))
+
+        return True
+
+    @abstractmethod
+    def evaluate(self, artifact: T, context):
+        """
+        Evaluate against the image update the state of the trigger based on result.
+        If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
+        match.
+
+        Result is the population of self._fired_instances, which can be accessed via the 'fired' property
+        """
+        ...
+
+
+class BaseGate(Generic[T], LifecycleMixin, metaclass=GateMeta):
     """
     Base type for a gate module.
 
@@ -467,17 +495,7 @@ class Gate(LifecycleMixin, metaclass=GateMeta):
 
         :param context: a context providing db connections, etc
         """
-        self.image = None
-        self.selected_triggers = None
-
-    def prepare_context(self, image_obj, context):
-        """
-        Called immediately prior to gate execution, a hook to allow optimizations or prep of the context or image
-        data prior to execution of the gate/triggers.
-        :rtype:
-        :return:
-        """
-        return context
+        pass
 
     def json(self):
         """
@@ -502,3 +520,12 @@ class Gate(LifecycleMixin, metaclass=GateMeta):
 
     def __repr__(self):
         return "<Gate {}>".format(self.__gate_name__)
+
+    def prepare_context(self, artifact: T, context: ExecutionContext):
+        """
+        Called immediately prior to gate execution, a hook to allow optimizations or prep of the context or image
+        data prior to execution of the gate/triggers.
+        :rtype:
+        :return:
+        """
+        return context

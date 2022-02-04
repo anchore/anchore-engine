@@ -1,12 +1,16 @@
 import re
 
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import Image
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
 )
 
 
-class FullMatchTrigger(BaseTrigger):
+class FullMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklist_exact_match"
     __description__ = "Triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s)."
 
@@ -17,7 +21,7 @@ class FullMatchTrigger(BaseTrigger):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         fullmatchpkgs = []
         blacklist = (
             [x.strip() for x in self.license_blacklist.value()]
@@ -36,7 +40,7 @@ class FullMatchTrigger(BaseTrigger):
             )
 
 
-class SubstringMatchTrigger(BaseTrigger):
+class SubstringMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklist_partial_match"
     __description__ = "triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)"
 
@@ -47,7 +51,7 @@ class SubstringMatchTrigger(BaseTrigger):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         matchpkgs = []
 
         match_vals = (
@@ -68,19 +72,19 @@ class SubstringMatchTrigger(BaseTrigger):
             )
 
 
-class LicensesGate(Gate):
+class LicensesGate(BaseGate[Image]):
     __gate_name__ = "licenses"
     __description__ = (
         "License checks against found software licenses in the container image"
     )
     __triggers__ = [FullMatchTrigger, SubstringMatchTrigger]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Load all of the various package types and their licenses into a list for easy checks.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -96,7 +100,7 @@ class LicensesGate(Gate):
         #    for license in pkg_meta.licenses_json if pkg_meta.licenses_json else []:
         #        licenses.append((pkg_meta.name + "(gem)", license))
 
-        for pkg in image_obj.packages:
+        for pkg in artifact.packages:
             for lic in pkg.license.split():
                 licenses.append((pkg.name, lic))
 

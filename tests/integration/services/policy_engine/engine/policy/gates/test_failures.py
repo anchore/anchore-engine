@@ -10,7 +10,10 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     TriggerEvaluationError,
     ValidationError,
 )
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import (
     DockerfileGate,
     ExposedPortsTrigger,
@@ -29,18 +32,18 @@ test_bundle = {
 }
 
 
-class FailTrigger(BaseTrigger):
+class FailTrigger(BaseTrigger[Image]):
     __description__ = "Testing Trigger for ensuring failure"
     __trigger_name__ = "FAILALWAYS"
     __msg__ = "FAILALWAYS triggered"
 
     __params__ = {"PARAM1": str, "PARAM2": int}
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         raise Exception("Failing as intended")
 
 
-class FailGate(Gate):
+class FailGate(BaseGate[Image]):
     __gate_name__ = "FAILGATE"
     __triggers__ = [FailTrigger]
 
@@ -59,7 +62,7 @@ class GateFailureTest(unittest.TestCase):
         clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)
         trigger = clazz(self.gate_clazz, ports="8088", type="whitelist")
         with self.assertRaises(TriggerEvaluationError) as f:
-            trigger.execute(image_obj=None, context=None)
+            trigger.execute(artifact=None, context=None)
 
     def test_trigger_parameter_invalid(self):
         clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)

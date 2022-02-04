@@ -1,8 +1,11 @@
-from anchore_engine.db import NpmMetadata
+from anchore_engine.db import Image, NpmMetadata
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     TriggerParameter,
     TypeValidator,
@@ -16,11 +19,11 @@ NPM_LISTING_KEY = "npms"
 NPM_MATCH_KEY = "matched_feed_npms"
 
 
-class NotLatestTrigger(BaseTrigger):
+class NotLatestTrigger(BaseTrigger[Image]):
     __trigger_name__ = "newer_version_in_feed"
     __description__ = "Triggers if an installed NPM is not the latest version according to NPM data feed."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any npm in the image that is in the official npm feed but is not the latest version.
         Mutually exclusive to NPMNOTOFFICIAL and NPMBADVERSION
@@ -47,17 +50,17 @@ class NotLatestTrigger(BaseTrigger):
                     )
 
 
-class NotOfficialTrigger(BaseTrigger):
+class NotOfficialTrigger(BaseTrigger[Image]):
     __trigger_name__ = "unknown_in_feeds"
     __description__ = "Triggers if an installed NPM is not in the official NPM database, according to NPM data feed."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any npm that is not in the official npm feed data set.
 
         Mutually exclusive to NPMNOTLATEST and NPMBADVERSION
 
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -79,17 +82,17 @@ class NotOfficialTrigger(BaseTrigger):
                 )
 
 
-class BadVersionTrigger(BaseTrigger):
+class BadVersionTrigger(BaseTrigger[Image]):
     __trigger_name__ = "version_not_in_feeds"
     __description__ = "Triggers if an installed NPM version is not listed in the official NPM feed as a valid version."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any npm that is in the official npm set but is not one of the official versions.
 
         Mutually exclusive to NPMNOTOFFICIAL and NPMNOTLATEST
 
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -120,7 +123,7 @@ class BadVersionTrigger(BaseTrigger):
                 )
 
 
-class PkgMatchTrigger(BaseTrigger):
+class PkgMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklisted_name_version"
     __description__ = "Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters."
 
@@ -141,14 +144,14 @@ class PkgMatchTrigger(BaseTrigger):
         sort_order=2,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any npm that is on the blacklist with a full name + version match
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
-        npms = image_obj.get_packages_by_type("npm")
+        npms = artifact.get_packages_by_type("npm")
         if not npms:
             return
 
@@ -169,14 +172,14 @@ class PkgMatchTrigger(BaseTrigger):
                 self._fire(msg="NPM Package is blacklisted: " + name)
 
 
-class NoFeedTrigger(BaseTrigger):
+class NoFeedTrigger(BaseTrigger[Image]):
     __trigger_name__ = "feed_data_unavailable"
     __description__ = (
         "Triggers if the engine does not have access to the NPM data feed."
     )
     __msg__ = "NPM packages are present but the anchore npm feed is not available - will be unable to perform checks that require feed data"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         try:
             feed_meta = feed_instance_by_name("packages").group_by_name(FEED_KEY)
             if feed_meta and feed_meta.last_sync:
@@ -190,7 +193,7 @@ class NoFeedTrigger(BaseTrigger):
         return
 
 
-class NpmCheckGate(Gate):
+class NpmCheckGate(BaseGate[Image]):
     __gate_name__ = "npms"
     __description__ = "NPM Checks"
     __triggers__ = [
@@ -201,16 +204,16 @@ class NpmCheckGate(Gate):
         NoFeedTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Prep the npm names and versions
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        db_npms = image_obj.get_packages_by_type("npm")
+        db_npms = artifact.get_packages_by_type("npm")
         if not db_npms:
             return context
 

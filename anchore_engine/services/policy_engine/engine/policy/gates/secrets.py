@@ -1,8 +1,11 @@
 import base64
 import re
 
-from anchore_engine.db import AnalysisArtifact
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import AnalysisArtifact, Image
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     EnumStringParameter,
     TriggerParameter,
@@ -19,7 +22,7 @@ default_included_regex_names = [
 ]
 
 
-class SecretContentChecksTrigger(BaseTrigger):
+class SecretContentChecksTrigger(BaseTrigger[Image]):
     __trigger_name__ = "content_regex_checks"
     __description__ = 'Triggers if the secret content search analyzer has found any matches with the configured and named regexes. Checks can be configured to trigger if a match is found or is not found (selected using match_type parameter).  Matches are filtered by the content_regex_name and filename_regex if they are set. The content_regex_name shoud be a value from the "secret_search" section of the analyzer_config.yaml.'
 
@@ -48,7 +51,7 @@ class SecretContentChecksTrigger(BaseTrigger):
         sort_order=3,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         match_filter = self.secret_contentregexp.value(default_if_none=[])
         name_filter = self.name_regexps.value()
         name_re = re.compile(name_filter) if self.name_regexps.value() else None
@@ -110,29 +113,29 @@ class SecretContentChecksTrigger(BaseTrigger):
             )
 
 
-class SecretCheckGate(Gate):
+class SecretCheckGate(BaseGate[Image]):
     __gate_name__ = "secret_scans"
     __description__ = 'Checks for secrets and content found in the image using configured regexes found in the "secret_search" section of analyzer_config.yaml.'
     __triggers__ = [SecretContentChecksTrigger]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the file name list once and placing it in the eval context to avoid repeated
         loads from the db. this is an optimization and could removed.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        if image_obj.fs:
-            extracted_files_json = image_obj.fs.files
+        if artifact.fs:
+            extracted_files_json = artifact.fs.files
 
             if extracted_files_json:
                 context.data["filenames"] = list(extracted_files_json.keys())
 
-        content_matches = image_obj.analysis_artifacts.filter(
+        content_matches = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "secret_search",
             AnalysisArtifact.analyzer_artifact == "regexp_matches.all",
             AnalysisArtifact.analyzer_type == "base",

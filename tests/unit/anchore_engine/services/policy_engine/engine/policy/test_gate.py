@@ -1,8 +1,9 @@
 import pytest
 
+from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.gates import (
-    PackageCheckGate,
     BaseTrigger,
+    PackageCheckGate,
 )
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import (
     EffectiveUserTrigger,
@@ -15,6 +16,11 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
     EnumStringParameter,
     TriggerParameter,
 )
+
+
+class DummyTrigger(BaseTrigger[Image]):
+    def evaluate(self, artifact, context):
+        raise NotImplementedError
 
 
 class TestBaseTrigger:
@@ -64,7 +70,7 @@ class TestBaseTrigger:
             assert parameters.get(key).__class__ == value
 
     def test_reset(self):
-        trigger = BaseTrigger(PackageCheckGate)
+        trigger = DummyTrigger(PackageCheckGate)
         trigger._fired_instances = [1, 2, 3]
         trigger.reset()
         assert trigger._fired_instances == []

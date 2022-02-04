@@ -1,7 +1,10 @@
 import enum
 
-from anchore_engine.db import ImagePackage, ImagePackageManifestEntry
-from anchore_engine.services.policy_engine.engine.policy.gate import BaseTrigger, Gate
+from anchore_engine.db import Image, ImagePackage, ImagePackageManifestEntry
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+)
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
     EnumStringParameter,
@@ -12,7 +15,7 @@ from anchore_engine.subsys import logger
 from anchore_engine.util.packages import compare_package_versions
 
 
-class VerifyTrigger(BaseTrigger):
+class VerifyTrigger(BaseTrigger[Image]):
     __trigger_name__ = "verify"
     __description__ = 'Check package integrity against package db in the image. Triggers for changes or removal or content in all or the selected "dirs" parameter if provided, and can filter type of check with the "check_only" parameter.'
 
@@ -47,7 +50,7 @@ class VerifyTrigger(BaseTrigger):
         changed = "changed"
         missing = "missing"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         pkg_names = self.pkgs.value(default_if_none=[])
         pkg_dirs = self.directories.value(default_if_none=[])
         check = self.check_only.value()
@@ -55,15 +58,15 @@ class VerifyTrigger(BaseTrigger):
         if check:
             check = getattr(self.VerificationStates, check)
 
-        if image_obj.fs:
-            extracted_files_json = image_obj.fs.files
+        if artifact.fs:
+            extracted_files_json = artifact.fs.files
         else:
             extracted_files_json = []
 
         if pkg_names:
-            pkgs = image_obj.packages.filter(ImagePackage.name.in_(pkg_names)).all()
+            pkgs = artifact.packages.filter(ImagePackage.name.in_(pkg_names)).all()
         else:
-            pkgs = image_obj.packages.all()
+            pkgs = artifact.packages.all()
 
         for pkg in pkgs:
             pkg_name = pkg.name
@@ -167,7 +170,7 @@ class VerifyTrigger(BaseTrigger):
         return False
 
 
-class RequiredPackageTrigger(BaseTrigger):
+class RequiredPackageTrigger(BaseTrigger[Image]):
     __trigger_name__ = "required_package"
     __description__ = "Triggers if the specified package and optionally a specific version is not found in the image."
 
@@ -196,7 +199,7 @@ class RequiredPackageTrigger(BaseTrigger):
         sort_order=3,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         name = self.pkg_name.value()
         version = self.pkg_version.value()
         comparison = self.version_comparison.value(default_if_none="exact")
@@ -204,7 +207,7 @@ class RequiredPackageTrigger(BaseTrigger):
         found = False
 
         # Filter is possible since the lazy='dynamic' is set on the packages relationship in Image.
-        for img_pkg in image_obj.packages.filter(ImagePackage.name == name).all():
+        for img_pkg in artifact.packages.filter(ImagePackage.name == name).all():
             if version is None:
                 found = True
                 break
@@ -264,7 +267,7 @@ class RequiredPackageTrigger(BaseTrigger):
                 )
 
 
-class BlackListTrigger(BaseTrigger):
+class BlackListTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklist"
     __description__ = "Triggers if the evaluated image has a package installed that matches the named package optionally with a specific version as well."
 
@@ -285,13 +288,13 @@ class BlackListTrigger(BaseTrigger):
         is_required=False,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         pkg = self.pkg_name.value()
         vers = self.pkg_version.value()
 
         try:
             if vers:
-                matches = image_obj.packages.filter(
+                matches = artifact.packages.filter(
                     ImagePackage.name == pkg, ImagePackage.version == vers
                 )
                 for m in matches:
@@ -299,7 +302,7 @@ class BlackListTrigger(BaseTrigger):
                         msg="Package is blacklisted: " + m.name + "-" + m.version
                     )
             else:
-                matches = image_obj.packages.filter(ImagePackage.name == pkg)
+                matches = artifact.packages.filter(ImagePackage.name == pkg)
                 for m in matches:
                     self._fire(msg="Package is blacklisted: " + m.name)
         except Exception as e:
@@ -307,7 +310,7 @@ class BlackListTrigger(BaseTrigger):
             pass
 
 
-class PackagesCheckGate(Gate):
+class PackagesCheckGate(BaseGate[Image]):
     __gate_name__ = "packages"
     __description__ = "Distro package checks"
     __triggers__ = [
