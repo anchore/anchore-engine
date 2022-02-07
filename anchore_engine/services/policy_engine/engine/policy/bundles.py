@@ -887,14 +887,14 @@ class PolicyMappingMixin:
         if self.raw.get("policy_id"):
             self.policy_ids = [self.raw.get("policy_id")]
         elif self.raw.get("policy_ids"):
-            self.policy_ids = self.raw.get("policy_ids")
+            self.policy_ids = self.raw.get("policy_ids", [])
         else:
             raise ValidationError(
                 "No policy_id or policy_ids property found for mapping rule: {}".format(
                     self.raw
                 )
             )
-        self.whitelist_ids = self.raw.get("whitelist_ids")
+        self.whitelist_ids = self.raw.get("whitelist_ids", [])
 
     def to_json(self: Union[BaseMapping, PolicyMappingMixin]):
         if self.raw:
