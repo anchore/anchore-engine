@@ -369,7 +369,7 @@ class BaseTrigger(ABC, LifecycleMixin):
         )
 
 
-class BaseImageTrigger(BaseTrigger, LifecycleMixin):
+class BaseImageTrigger(BaseTrigger):
     def execute(self, image_obj, context):
         """
         Main entry point for the trigger execution. Will clear any previously saved exec state and call the evaluate() function.
@@ -407,7 +407,7 @@ class BaseImageTrigger(BaseTrigger, LifecycleMixin):
         ...
 
 
-class BaseGate(LifecycleMixin, metaclass=GateMeta):
+class BaseGate(LifecycleMixin):
     """
     Base type for a gate module.
 
@@ -500,7 +500,7 @@ class BaseGate(LifecycleMixin, metaclass=GateMeta):
         return "<Gate {}>".format(self.__gate_name__)
 
 
-class BaseImageGate(BaseGate, LifecycleMixin, metaclass=GateMeta):
+class BaseImageGate(BaseGate, metaclass=GateMeta):
     def prepare_context(
         self,
         image_obj: Image,
