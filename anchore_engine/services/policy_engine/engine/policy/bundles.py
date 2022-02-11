@@ -7,9 +7,7 @@ import itertools
 import re
 from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
-from typing import Callable, Dict, List, MutableMapping, Optional
-from typing import OrderedDict as OrderedDictType
-from typing import Type, Union
+from typing import Callable, Dict, Optional, Type, Union
 
 from anchore_engine.db import Image
 from anchore_engine.db.entities.common import anchore_now_datetime
@@ -572,14 +570,24 @@ class Evaluatable:
         ...
 
     @abstractmethod
-    def instantiate_bundle_execution(self) -> BundleExecution:
+    def instantiate_bundle_execution(
+        self, executable_bundle: ExecutableBundle
+    ) -> BundleExecution:
+        ...
+
+    @abstractmethod
+    def check_bundle_target_mismatch(self, bundle_target: Evaluatable) -> None:
         ...
 
 
 class ImageEvaluatable(Evaluatable):
     _mapping_rule_class = ImageMappingRule
 
-    def __init__(self, image_obj: Image, tag: Optional[str] = None):
+    def __init__(self, image_obj: Optional[Image], tag: Optional[str] = None):
+        if image_obj is None and tag is None:
+            raise ValueError(
+                "Must provide either image_obj or tag when instantiating ImageEvaluatable"
+            )
         self.image_obj = image_obj
         self.tag = tag
 
@@ -601,9 +609,14 @@ class ImageEvaluatable(Evaluatable):
     def prepare_gate_context(self, gate_obj: BaseGate, context: ExecutionContext):
         return gate_obj.prepare_context(artifact=self.image_obj, context=context)
 
-    @abstractmethod
-    def instantiate_bundle_execution(self) -> BundleExecution:
-        return BundleExecution(self.image_obj.id, self.tag)
+    def instantiate_bundle_execution(
+        self, executable_bundle: ExecutableBundle
+    ) -> BundleExecution:
+        return BundleExecution(executable_bundle, self.image_obj.id, self.tag)
+
+    def check_bundle_target_mismatch(self, bundle_target: Evaluatable):
+        if bundle_target.tag and self.tag != bundle_target.tag:
+            raise BundleTargetTagMismatchError(bundle_target.tag, self.tag)
 
 
 class PolicyRule(object):
@@ -639,8 +652,10 @@ class PolicyRule(object):
         pass
 
 
-def policy_rule_factory(policy_obj, policy_json, strict_validation=True):
-    rule = ExecutablePolicyRule(policy_obj, policy_json)
+def policy_rule_factory(
+    policy_obj, policy_json, gate_registry: Type[GateRegistry], strict_validation=True
+):
+    rule = ExecutablePolicyRule(policy_obj, policy_json, gate_registry)
     if strict_validation:
         if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
             raise EndOfLifedError(
@@ -882,8 +897,8 @@ class ExecutablePolicy(VersionedEntityMixin):
     def __init__(
         self,
         raw_json=None,
+        gate_registry: Type[GateRegistry] = GateRegistry,
         strict_validation=True,
-        rule_factory: Callable = policy_rule_factory,
     ):
         self.raw = raw_json
         if not raw_json:
@@ -900,7 +915,12 @@ class ExecutablePolicy(VersionedEntityMixin):
         for x in raw_json.get("rules"):
             try:
                 self.rules.append(
-                    rule_factory(self, x, strict_validation=strict_validation)
+                    policy_rule_factory(
+                        self,
+                        x,
+                        gate_registry=gate_registry,
+                        strict_validation=strict_validation,
+                    )
                 )
             except PolicyRuleValidationErrorCollection as e:
                 for err in e.validation_errors:
@@ -1339,6 +1359,85 @@ class ExecutableWhitelist(VersionedEntityMixin):
         }
 
 
+class BundleProvider(ABC):
+    @abstractmethod
+    def init_artifact_mapping(self, raw_bundle_json: Dict):
+        ...
+
+    @abstractmethod
+    def init_whitelist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        ...
+
+    @abstractmethod
+    def init_blacklist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        ...
+
+    @abstractmethod
+    def optimize_mapping(self, mapping: ExecutableMapping):
+        ...
+
+    @abstractmethod
+    def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
+        ...
+
+    @abstractmethod
+    @property
+    def gate_registry(self) -> Type[GateRegistry]:
+        ...
+
+
+class ImageBundleProvider(BundleProvider):
+    _artifact_mapping_key = "mappings"
+    _wl_artifact_mapping_key = "whitelisted_images"
+    _bl_artifact_mapping_key = "blacklisted_images"
+
+    def __init__(self, tag: Optional[str] = None):
+        self.target_tag = tag
+        self.evaluatable = ImageEvaluatable(image_obj=None, tag=self.target_tag)
+
+    def init_artifact_mapping(self, raw_bundle_json: Dict):
+        return ExecutableMapping(
+            raw_bundle_json.get(self._artifact_mapping_key, []),
+            rule_cls=ImagePolicyMappingRule,
+        )
+
+    def init_whitelist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        return ExecutableMapping(
+            raw_bundle_json.get(self._wl_artifact_mapping_key, []),
+            rule_cls=ImageMappingRule,
+        )
+
+    def init_blacklist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        return ExecutableMapping(
+            raw_bundle_json.get(self._bl_artifact_mapping_key, []),
+            rule_cls=ImageMappingRule,
+        )
+
+    def optimize_mapping(self, mapping: ExecutableMapping) -> None:
+        # If building for a specific tag target, only build the mapped rules, else build all rules
+        if self.target_tag:
+            rule = self.evaluatable.execute_mapping(mapping)
+            if rule is not None:
+                mapping.mapping_rules = [rule]
+            else:
+                mapping.mapping_rules = []
+
+    def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
+        evaluatable.check_bundle_target_mismatch(bundle_target=self.evaluatable)
+
+    @property
+    def gate_registry(self) -> Type[GateRegistry]:
+        return GateRegistry
+
+
 class ExecutableBundle(VersionedEntityMixin):
     """
     An executable representation of a policy bundle. Usage is to configure the bundle and then
@@ -1348,7 +1447,9 @@ class ExecutableBundle(VersionedEntityMixin):
     each time for efficiency.
     """
 
-    def __init__(self, bundle_json, tag=None, strict_validation=True):
+    def __init__(
+        self, bundle_json, bundle_provider: BundleProvider, strict_validation=True
+    ):
         """
         Build and initialize the bundle. If errors are encountered they are buffered until the end and all returned
         at once in an aggregated InitializationError to ensure that all errors can be presented back to the user, not
@@ -1372,34 +1473,23 @@ class ExecutableBundle(VersionedEntityMixin):
         self.policies = {}
         self.whitelists = {}
         self.mapping = None
-        self.trusted_image_mappings = []
-        self.blacklisted_image_mappings = []
+        self.whitelisted_artifact_mapping = None
+        self.blacklisted_artifact_mapping = None
+        self.bundle_provider = bundle_provider
 
         self.init_errors = []
-        if tag:
-            self.target_tag = tag
-        else:
-            self.target_tag = None
 
         try:
             # Build the mapping first, then build reachable policies and whitelists
-            self.mapping = ExecutableMapping(
-                self.raw.get("mappings", []), rule_cls=ImagePolicyMappingRule
+            self.mapping = bundle_provider.init_artifact_mapping(self.raw)
+            self.whitelisted_artifact_mapping = (
+                self.bundle_provider.init_whitelist_artifact_mapping(self.raw)
             )
-            self.whitelisted_artifact_mapping = ExecutableMapping(
-                self.raw.get("whitelisted_images", [])
-            )
-            self.blacklisted_artifact_mapping = ExecutableMapping(
-                self.raw.get("blacklisted_images", [])
+            self.blacklisted_artifact_mapping = (
+                self.bundle_provider.init_blacklist_artifact_mapping(self.raw)
             )
 
-            # If building for a specific tag target, only build the mapped rules, else build all rules
-            if self.target_tag:
-                rule = self.mapping.execute(image_obj=None, tag=self.target_tag)
-                if rule is not None:
-                    self.mapping.mapping_rules = [rule]
-                else:
-                    self.mapping.mapping_rules = []
+            self.bundle_provider.optimize_mapping(self.mapping)
 
             for rule in self.mapping.mapping_rules:
                 try:
@@ -1424,7 +1514,9 @@ class ExecutableBundle(VersionedEntityMixin):
                             )
 
                         self.policies[policy_id] = ExecutablePolicy(
-                            policies[policy_id][0], strict_validation=strict_validation
+                            policies[policy_id][0],
+                            gate_registry=self.bundle_provider.gate_registry,
+                            strict_validation=strict_validation,
                         )
 
                 except Exception as e:
@@ -1555,23 +1647,23 @@ class ExecutableBundle(VersionedEntityMixin):
                 errors = None
 
             # Send thru the whitelist mapping
-            whitelisted_image_match = None
+            whitelisted_artifact_match = None
             if self.whitelisted_artifact_mapping:
-                whitelisted_image_match = self.whitelisted_artifact_mapping.execute(
-                    image_obj=image_object, tag=tag
+                whitelisted_artifact_match = evaluatable.execute_mapping(
+                    self.whitelisted_artifact_mapping
                 )
 
             # Send thru the blacklist mapping
-            blacklist_image_match = None
+            blacklisted_artifact_match = None
             if self.blacklisted_artifact_mapping:
-                blacklist_image_match = self.blacklisted_artifact_mapping.execute(
-                    image_obj=image_object, tag=tag
+                blacklisted_artifact_match = evaluatable.execute_mapping(
+                    self.blacklisted_artifact_mapping
                 )
 
             bundle_exec.bundle_decision = BundleDecision(
                 policy_decisions=policy_decisions,
-                whitelist_match=whitelisted_image_match,
-                blacklist_match=blacklist_image_match,
+                whitelist_match=whitelisted_artifact_match,
+                blacklist_match=blacklisted_artifact_match,
             )
 
         except PolicyEvaluationError as e:
@@ -1588,10 +1680,9 @@ class ExecutableBundle(VersionedEntityMixin):
         :return:
         """
 
-        if self.target_tag and tag != self.target_tag:
-            raise BundleTargetTagMismatchError(self.target_tag, tag)
+        self.bundle_provider.check_bundle_target_mismatch(evaluatable)
 
-        bundle_exec = evaluatable.instantiate_bundle_execution()
+        bundle_exec = evaluatable.instantiate_bundle_execution(self)
 
         if self.init_errors:
             raise InitializationError(
@@ -1653,7 +1744,9 @@ def build_bundle(bundle_json, for_tag=None, allow_deprecated=False):
     if bundle_json:
         try:
             bundle = ExecutableBundle(
-                bundle_json, tag=for_tag, strict_validation=(not allow_deprecated)
+                bundle_json,
+                bundle_provider=ImageBundleProvider(tag=for_tag),
+                strict_validation=(not allow_deprecated),
             )
         except KeyError:
             if for_tag:
