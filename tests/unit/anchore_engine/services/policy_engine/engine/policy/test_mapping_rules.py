@@ -2,7 +2,7 @@ import unittest
 
 from anchore_engine.db.entities.policy_engine import Image
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
-    PolicyMappingRule,
+    ImagePolicyMappingRule,
 )
 
 
@@ -133,7 +133,7 @@ class TestPolicyMappingRules(unittest.TestCase):
         ]
 
         for test in test_rules:
-            rule = PolicyMappingRule(test["rule"])
+            rule = ImagePolicyMappingRule(test["rule"])
             test_img = Image()
             test_img.id = test["id"]
             test_img.digest = test["digest"]
@@ -213,7 +213,7 @@ class TestPolicyMappingRules(unittest.TestCase):
         ]
 
         for test in test_rules:
-            rule = PolicyMappingRule(test["rule"])
+            rule = ImagePolicyMappingRule(test["rule"])
             test_img = Image()
             test_img.id = test["id"]
             test_img.digest = test["digest"]
@@ -293,7 +293,7 @@ class TestPolicyMappingRules(unittest.TestCase):
         ]
 
         for test in test_rules:
-            rule = PolicyMappingRule(test["rule"])
+            rule = ImagePolicyMappingRule(test["rule"])
             test_img = Image()
             test_img.id = test["id"]
             test_img.digest = test["digest"]

@@ -7,7 +7,9 @@ import itertools
 import re
 from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
-from typing import Callable, Dict, List, Optional, Type, Union
+from typing import Callable, Dict, List, MutableMapping, Optional
+from typing import OrderedDict as OrderedDictType
+from typing import Type, Union
 
 from anchore_engine.db import Image
 from anchore_engine.db.entities.common import anchore_now_datetime
@@ -30,7 +32,14 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     UnsupportedVersionError,
     ValidationError,
 )
-from anchore_engine.services.policy_engine.engine.policy.gate import TriggerMatch
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
+    ExecutionContext,
+    GateRegistry,
+    T,
+    TriggerMatch,
+)
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
@@ -141,7 +150,7 @@ class ErrorMatch(TriggerMatch):
         __gate_name__ = "gate_not_found"
         __description__ = "Placeholder for executions where policy includes a gate not found in the server"
 
-    class EmptyTrigger(BaseTrigger[Image]):
+    class EmptyTrigger(BaseTrigger[T]):
         __trigger_name__ = "empty"
         __description__ = (
             "Empty trigger definition for handling errors like trigger-not-found"
@@ -154,6 +163,16 @@ class ErrorMatch(TriggerMatch):
                 if not msg
                 else msg
             )
+
+        def evaluate(self, artifact: T, context):
+            """
+            Evaluate against the image update the state of the trigger based on result.
+            If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
+            match.
+
+            Result is the population of self._fired_instances, which can be accessed via the 'fired' property
+            """
+            raise NotImplementedError
 
     def __init__(self, trigger, match_instance_id=None, msg=None):
         self.trigger = (
@@ -393,364 +412,6 @@ class BundleExecution(object):
         return table
 
 
-class PolicyRule(object):
-    def __init__(self, parent, policy_json=None):
-        self.gate_name = policy_json.get("gate")
-        self.trigger_name = policy_json.get("trigger")
-        self.rule_id = policy_json.get("id")
-        self.parent_policy = parent
-
-        # Convert to lower-case for case-insensitive matches
-        self.trigger_params = {
-            p.get("name").lower(): p.get("value") for p in policy_json.get("params")
-        }
-
-        action = policy_json.get("action", "").lower()
-        try:
-            self.action = getattr(GateAction, action)
-        except KeyError:
-            raise InvalidGateAction(
-                gate=self.gate_name,
-                trigger=self.trigger_name,
-                rule_id=self.rule_id,
-                action=action,
-                valid_actions=[
-                    x for x in list(GateAction.__dict__.keys()) if not x.startswith("_")
-                ],
-            )
-
-        self.error_exc = None
-        self.errors = []
-
-    def execute(self, image_obj, exec_context):
-        pass
-
-
-def policy_rule_factory(policy_obj, policy_json, strict_validation=True):
-    rule = ExecutablePolicyRule(policy_obj, policy_json)
-    if strict_validation:
-        if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
-            raise EndOfLifedError(
-                rule.gate_name, superceded=rule.gate_cls.__superceded_by__
-            )
-        elif rule.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
-            raise EndOfLifedError(
-                rule.gate_name,
-                trigger_name=rule.trigger_name,
-                superceded=rule.configured_trigger.__superceded_by__,
-            )
-    return rule
-
-
-class ExecutablePolicyRule(PolicyRule):
-    """
-    A single rule to be compiled and executable.
-
-    A rule is a single gate, trigger tuple with associated parameters for the trigger. The execution output
-    is the set of fired trigger instances resulting from execution against a specific image.
-    """
-
-    def __init__(self, parent, policy_json=None):
-        super(ExecutablePolicyRule, self).__init__(parent, policy_json)
-
-        # Configure the trigger instance
-        try:
-            self.gate_cls = BaseGate.get_gate_by_name(self.gate_name)
-        except KeyError:
-            # Gate not found
-            self.error_exc = GateNotFoundError(
-                gate=self.gate_name,
-                valid_gates=BaseGate.registered_gate_names(),
-                rule_id=self.rule_id,
-            )
-            self.configured_trigger = None
-            raise self.error_exc
-
-        try:
-            selected_trigger_cls = self.gate_cls.get_trigger_named(
-                self.trigger_name.lower()
-            )
-        except KeyError:
-            self.error_exc = TriggerNotFoundError(
-                valid_triggers=self.gate_cls.trigger_names(),
-                trigger=self.trigger_name,
-                gate=self.gate_name,
-                rule_id=self.rule_id,
-            )
-            self.configured_trigger = None
-            raise self.error_exc
-
-        try:
-            try:
-                self.configured_trigger = selected_trigger_cls(
-                    parent_gate_cls=self.gate_cls,
-                    rule_id=self.rule_id,
-                    **self.trigger_params,
-                )
-            except (
-                TriggerNotFoundError,
-                InvalidParameterError,
-                ParameterValueInvalidError,
-            ) as e:
-                # Error finding or initializing the trigger
-                self.error_exc = e
-                self.configured_trigger = None
-
-                if hasattr(e, "gate") and e.gate is None:
-                    e.gate = self.gate_name
-                if hasattr(e, "trigger") and e.trigger is None:
-                    e.trigger = self.trigger_name
-                if hasattr(e, "rule_id") and e.rule_id is None:
-                    e.rule_id = self.rule_id
-                raise e
-        except PolicyError:
-            raise  # To filter out already-handled errors
-        except Exception as e:
-            raise ValidationError.caused_by(e)
-
-    def execute(self, image_obj, exec_context):
-        """
-        Execute the trigger specified in the rule with the image and gate (for prepared context) and exec_context)
-
-        :param image_obj: The image to execute against
-        :param exec_context: The prepared execution context from the gate init
-        :return: a tuple of a list of errors and a list of PolicyRuleDecisions, one for each fired trigger match produced by the trigger execution
-        """
-
-        matches = None
-
-        try:
-            if not self.configured_trigger:
-                logger.error(
-                    "No configured trigger to execute for gate {} and trigger: {}. Returning".format(
-                        self.gate_name, self.trigger_name
-                    )
-                )
-                raise TriggerNotFoundError(
-                    trigger_name=self.trigger_name, gate_name=self.gate_name
-                )
-
-            if self.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
-                self.errors.append(
-                    EndOfLifedError(
-                        gate_name=self.gate_name,
-                        superceded=self.gate_cls.__superceded_by__,
-                    )
-                )
-            elif self.gate_cls.__lifecycle_state__ == LifecycleStates.deprecated:
-                self.errors.append(
-                    DeprecationWarning(
-                        gate_name=self.gate_name,
-                        superceded=self.gate_cls.__superceded_by__,
-                    )
-                )
-            elif self.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
-                self.errors.append(
-                    EndOfLifedError(
-                        gate_name=self.gate_name,
-                        trigger_name=self.trigger_name,
-                        superceded=self.configured_trigger.__superceded_by__,
-                    )
-                )
-            elif (
-                self.configured_trigger.__lifecycle_state__
-                == LifecycleStates.deprecated
-            ):
-                self.errors.append(
-                    DeprecationWarning(
-                        gate_name=self.gate_name,
-                        trigger_name=self.trigger_name,
-                        superceded=self.configured_trigger.__superceded_by__,
-                    )
-                )
-
-            try:
-                self.configured_trigger.execute(image_obj, exec_context)
-            except TriggerEvaluationError:
-                raise
-            except Exception as e:
-                logger.exception("Unmapped exception caught during trigger evaluation")
-                raise TriggerEvaluationError(
-                    trigger=self.configured_trigger,
-                    message="Could not evaluate trigger",
-                )
-
-            matches = self.configured_trigger.fired
-            decisions = []
-
-            # Try all rules and record all decisions and errors so multiple errors can be reported if present, not just the first encountered
-            for match in matches:
-                try:
-                    decisions.append(
-                        PolicyRuleDecision(trigger_match=match, policy_rule=self)
-                    )
-                except TriggerEvaluationError as e:
-                    logger.exception(
-                        "Policy rule decision mapping exception: {}".format(e)
-                    )
-                    self.errors.append(str(e))
-
-            return self.errors, decisions
-        except Exception as e:
-            logger.exception(
-                "Error executing trigger {} on image {}".format(
-                    self.trigger_name, image_obj.id
-                )
-            )
-            raise
-
-    def _safe_execute(self, image_obj, exec_context):
-        """
-        An alternate execution path that treats failures like specific triggers so they can be handled with
-        whitelists etc. NOT CURRENTLY USED!
-
-        :param image_obj:
-        :param exec_context:
-        :return:
-        """
-        pass
-        # matches = None
-        # try:
-        #     if not self.configured_trigger:
-        #         if self.gate_cls:
-        #             err_trigger = ErrorMatch.EmptyTrigger(parent_gate_cls=self.gate_cls,
-        #                                                   msg='Trigger not found: {}'.format(self.trigger_name))
-        #             err_trigger._fire(instance_id='invalid_trigger',
-        #                               msg='Trigger {} not found in gate'.format(self.trigger_name))
-        #             self.configured_trigger = err_trigger
-        #         else:
-        #             match = None
-        #             return [PolicyRuleFailure(trigger_match=match, policy_rule=self,
-        #                                   failure_msg='No implementation found for gate/trigger: {}/{}'.format(
-        #                                       self.gate_name, self.trigger_name), failure_cause=self.error_exc)]
-        #     else:
-        #         # Normal execution
-        #         try:
-        #             self.configured_trigger.execute(image_obj, exec_context)
-        #         except Exception as e:
-        #             log.exception('Error executing trigger on image {}'.format(image_obj.id))
-        #             if self.configured_trigger.fired:
-        #
-        #
-        #
-        #     matches = self.configured_trigger.fired
-        #     raise Exception('Always fail!!')
-        #     decisions = [PolicyRuleDecision(trigger_match=match, policy_rule=self) for match in matches]
-        #     return decisions
-        # except Exception as e:
-        #     if matches:
-        #         return [PolicyRuleFailure(trigger_match=matches, policy_rule=self, failure_msg='Error evaluating rule', failure_cause=e)]
-        #     else:
-        #         return [PolicyRuleFailure(trigger_match=ErrorMatch(trigger=self.configured_trigger), policy_rule=self, failure_msg='Error evaluating rule', failure_cause=e)]
-
-    def json(self):
-        return {
-            "gate": self.gate_name,
-            "action": self.action.name,
-            "trigger": self.trigger_name,
-            "params": self.trigger_params,
-        }
-
-
-class ExecutablePolicy(VersionedEntityMixin):
-    """
-    A sequence of gate triggers to be executed with specific parameters.
-
-    The build process establishes the set of gates and triggers and the order based on the policy and configures
-    each with the parameters defined in the policy document.
-
-    Execution is the process of invoking each trigger with the proper image context and collecting the results.
-    Policy executions only depend on the image analysis context, not the tag mapping.
-
-    BaseGate objects are used only to construct the triggers and to prepare the execution context for each trigger.
-
-    """
-
-    def __init__(
-        self,
-        raw_json=None,
-        strict_validation=True,
-        rule_factory: Callable = policy_rule_factory,
-    ):
-        self.raw = raw_json
-        if not raw_json:
-            raise ValueError("Empty whitelist json")
-        self.verify_version(raw_json)
-        self.version = raw_json.get("version")
-
-        self.id = raw_json.get("id")
-        self.name = raw_json.get("name")
-        self.comment = raw_json.get("comment")
-        self.rules = []
-        errors = []
-
-        for x in raw_json.get("rules"):
-            try:
-                self.rules.append(
-                    rule_factory(self, x, strict_validation=strict_validation)
-                )
-            except PolicyRuleValidationErrorCollection as e:
-                for err in e.validation_errors:
-                    errors.append(err)
-            except PolicyError as e:
-                errors.append(e)
-            except Exception as e:
-                errors.append(ValidationError.caused_by(e))
-
-        if errors:
-            raise InitializationError(
-                message="Policy initialization failed due to validation errors",
-                init_errors=errors,
-            )
-
-        self.gates = OrderedDict()
-
-        # Map the rule set into a minimal set of gates to execute linked to the list of rules for each gate
-        for r in self.rules:
-            if r.gate_cls not in self.gates:
-                self.gates[r.gate_cls] = [r]
-            else:
-                self.gates[r.gate_cls].append(r)
-
-    def execute(self, image_obj, context):
-        """
-        Execute the policy and return the result as a list of PolicyRuleDecisions
-
-        :param image_obj: the image object to evaluate
-        :param context: an ExecutionContext object
-        :return: a PolicyDecision object
-        """
-
-        results = []
-        errors = []
-        for gate, policy_rules in list(self.gates.items()):
-            # Initialize the gate object
-            gate_obj = gate()
-            exec_context = gate_obj.prepare_context(image_obj, context)
-            for rule in policy_rules:
-                errs, matches = rule.execute(
-                    image_obj=image_obj, exec_context=exec_context
-                )
-                if errs:
-                    errors += errs
-                if matches:
-                    results += matches
-
-        return errors, PolicyDecision(self, results)
-
-    def json(self):
-        if self.raw:
-            return self.raw
-        else:
-            return {
-                "id": self.id,
-                "name": self.name,
-                "version": self.version,
-                "comment": self.comment,
-                "rules": [r.json() for r in self.rules],
-            }
-
-
 class BaseMapping(ABC):
     def __init__(self, rule_json: Optional[Dict] = None):
         self._raw = rule_json
@@ -764,7 +425,7 @@ class BaseMapping(ABC):
         pass
 
 
-class MappingRule(BaseMapping):
+class ImageMappingRule(BaseMapping):
     """
     A mapping rule that selects targets
     """
@@ -884,6 +545,425 @@ class MappingRule(BaseMapping):
                 return self._tag_match(match_target.get("tag"))
 
 
+class Evaluatable:
+    @classmethod
+    @abstractmethod
+    def get_mapping_rule_class(cls) -> Type[BaseMapping]:
+        ...
+
+    @abstractmethod
+    def matches_mapping(self, mapping: Union[ImageMappingRule]):
+        ...
+
+    @abstractmethod
+    def execute_trigger(
+        self,
+        trigger: BaseTrigger,
+        execution_context: ExecutionContext,
+    ):
+        ...
+
+    @abstractmethod
+    def prepare_gate_context(self, gate_obj: BaseTrigger, context: ExecutionContext):
+        ...
+
+    @abstractmethod
+    def execute_mapping(self, mapping: ExecutableMapping):
+        ...
+
+    @abstractmethod
+    def instantiate_bundle_execution(self) -> BundleExecution:
+        ...
+
+
+class ImageEvaluatable(Evaluatable):
+    _mapping_rule_class = ImageMappingRule
+
+    def __init__(self, image_obj: Image, tag: Optional[str] = None):
+        self.image_obj = image_obj
+        self.tag = tag
+
+    def __str__(self):
+        return f"image {self.image_obj.digest}"
+
+    @classmethod
+    def get_mapping_rule_class(cls) -> Type[BaseMapping]:
+        return cls._mapping_rule_class
+
+    def matches_mapping(self, mapping: ImageMappingRule) -> bool:
+        return mapping.matches(self.image_obj, self.tag)
+
+    def execute_trigger(
+        self, trigger: BaseTrigger, execution_context: ExecutionContext
+    ) -> None:
+        trigger.execute(self.image_obj, execution_context)
+
+    def prepare_gate_context(self, gate_obj: BaseGate, context: ExecutionContext):
+        return gate_obj.prepare_context(artifact=self.image_obj, context=context)
+
+    @abstractmethod
+    def instantiate_bundle_execution(self) -> BundleExecution:
+        return BundleExecution(self.image_obj.id, self.tag)
+
+
+class PolicyRule(object):
+    def __init__(self, parent, policy_json=None):
+        self.gate_name = policy_json.get("gate")
+        self.trigger_name = policy_json.get("trigger")
+        self.rule_id = policy_json.get("id")
+        self.parent_policy = parent
+
+        # Convert to lower-case for case-insensitive matches
+        self.trigger_params = {
+            p.get("name").lower(): p.get("value") for p in policy_json.get("params")
+        }
+
+        action = policy_json.get("action", "").lower()
+        try:
+            self.action = getattr(GateAction, action)
+        except KeyError:
+            raise InvalidGateAction(
+                gate=self.gate_name,
+                trigger=self.trigger_name,
+                rule_id=self.rule_id,
+                action=action,
+                valid_actions=[
+                    x for x in list(GateAction.__dict__.keys()) if not x.startswith("_")
+                ],
+            )
+
+        self.error_exc = None
+        self.errors = []
+
+    def execute(self, image_obj, exec_context):
+        pass
+
+
+def policy_rule_factory(policy_obj, policy_json, strict_validation=True):
+    rule = ExecutablePolicyRule(policy_obj, policy_json)
+    if strict_validation:
+        if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
+            raise EndOfLifedError(
+                rule.gate_name, superceded=rule.gate_cls.__superceded_by__
+            )
+        elif rule.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
+            raise EndOfLifedError(
+                rule.gate_name,
+                trigger_name=rule.trigger_name,
+                superceded=rule.configured_trigger.__superceded_by__,
+            )
+    return rule
+
+
+class ExecutablePolicyRule(PolicyRule):
+    """
+    A single rule to be compiled and executable.
+
+    A rule is a single gate, trigger tuple with associated parameters for the trigger. The execution output
+    is the set of fired trigger instances resulting from execution against a specific image.
+    """
+
+    def __init__(
+        self, parent, policy_json=None, gate_registry: Type[GateRegistry] = GateRegistry
+    ):
+        super(ExecutablePolicyRule, self).__init__(parent, policy_json)
+
+        # Configure the trigger instance
+        try:
+            self.gate_cls = gate_registry.get_gate_by_name(self.gate_name)
+        except KeyError:
+            # Gate not found
+            self.error_exc = GateNotFoundError(
+                gate=self.gate_name,
+                valid_gates=gate_registry.registered_gate_names(),
+                rule_id=self.rule_id,
+            )
+            self.configured_trigger = None
+            raise self.error_exc
+
+        try:
+            selected_trigger_cls = self.gate_cls.get_trigger_named(
+                self.trigger_name.lower()
+            )
+        except KeyError:
+            self.error_exc = TriggerNotFoundError(
+                valid_triggers=self.gate_cls.trigger_names(),
+                trigger=self.trigger_name,
+                gate=self.gate_name,
+                rule_id=self.rule_id,
+            )
+            self.configured_trigger = None
+            raise self.error_exc
+
+        try:
+            try:
+                self.configured_trigger = selected_trigger_cls(
+                    parent_gate_cls=self.gate_cls,
+                    rule_id=self.rule_id,
+                    **self.trigger_params,
+                )
+            except (
+                TriggerNotFoundError,
+                InvalidParameterError,
+                ParameterValueInvalidError,
+            ) as e:
+                # Error finding or initializing the trigger
+                self.error_exc = e
+                self.configured_trigger = None
+
+                if hasattr(e, "gate") and e.gate is None:
+                    e.gate = self.gate_name
+                if hasattr(e, "trigger") and e.trigger is None:
+                    e.trigger = self.trigger_name
+                if hasattr(e, "rule_id") and e.rule_id is None:
+                    e.rule_id = self.rule_id
+                raise e
+        except PolicyError:
+            raise  # To filter out already-handled errors
+        except Exception as e:
+            raise ValidationError.caused_by(e)
+
+    def execute(self, evaluatable: Evaluatable, exec_context: ExecutionContext):
+        """
+        Execute the trigger specified in the rule with the image and gate (for prepared context) and exec_context)
+
+        :param evaluatable: The source to execute against
+        :param exec_context: The prepared execution context from the gate init
+        :return: a tuple of a list of errors and a list of PolicyRuleDecisions, one for each fired trigger match produced by the trigger execution
+        """
+
+        try:
+            if not self.configured_trigger:
+                logger.error(
+                    "No configured trigger to execute for gate {} and trigger: {}. Returning".format(
+                        self.gate_name, self.trigger_name
+                    )
+                )
+                raise TriggerNotFoundError(
+                    trigger_name=self.trigger_name, gate_name=self.gate_name
+                )
+
+            if self.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
+                self.errors.append(
+                    EndOfLifedError(
+                        gate_name=self.gate_name,
+                        superceded=self.gate_cls.__superceded_by__,
+                    )
+                )
+            elif self.gate_cls.__lifecycle_state__ == LifecycleStates.deprecated:
+                self.errors.append(
+                    DeprecationWarning(
+                        gate_name=self.gate_name,
+                        superceded=self.gate_cls.__superceded_by__,
+                    )
+                )
+            elif self.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
+                self.errors.append(
+                    EndOfLifedError(
+                        gate_name=self.gate_name,
+                        trigger_name=self.trigger_name,
+                        superceded=self.configured_trigger.__superceded_by__,
+                    )
+                )
+            elif (
+                self.configured_trigger.__lifecycle_state__
+                == LifecycleStates.deprecated
+            ):
+                self.errors.append(
+                    DeprecationWarning(
+                        gate_name=self.gate_name,
+                        trigger_name=self.trigger_name,
+                        superceded=self.configured_trigger.__superceded_by__,
+                    )
+                )
+
+            try:
+                evaluatable.execute_trigger(self.configured_trigger, exec_context)
+            except TriggerEvaluationError:
+                raise
+            except Exception as e:
+                logger.exception("Unmapped exception caught during trigger evaluation")
+                raise TriggerEvaluationError(
+                    trigger=self.configured_trigger,
+                    message="Could not evaluate trigger",
+                )
+
+            matches = self.configured_trigger.fired
+            decisions = []
+
+            # Try all rules and record all decisions and errors so multiple errors can be reported if present, not just the first encountered
+            for match in matches:
+                try:
+                    decisions.append(
+                        PolicyRuleDecision(trigger_match=match, policy_rule=self)
+                    )
+                except TriggerEvaluationError as e:
+                    logger.exception(
+                        "Policy rule decision mapping exception: {}".format(e)
+                    )
+                    self.errors.append(str(e))
+
+            return self.errors, decisions
+        except Exception as e:
+            logger.exception(
+                "Error executing trigger {} on {}".format(
+                    self.trigger_name, evaluatable
+                )
+            )
+            raise
+
+    def _safe_execute(self, image_obj, exec_context):
+        """
+        An alternate execution path that treats failures like specific triggers so they can be handled with
+        whitelists etc. NOT CURRENTLY USED!
+
+        :param image_obj:
+        :param exec_context:
+        :return:
+        """
+        pass
+        # matches = None
+        # try:
+        #     if not self.configured_trigger:
+        #         if self.gate_cls:
+        #             err_trigger = ErrorMatch.EmptyTrigger(parent_gate_cls=self.gate_cls,
+        #                                                   msg='Trigger not found: {}'.format(self.trigger_name))
+        #             err_trigger._fire(instance_id='invalid_trigger',
+        #                               msg='Trigger {} not found in gate'.format(self.trigger_name))
+        #             self.configured_trigger = err_trigger
+        #         else:
+        #             match = None
+        #             return [PolicyRuleFailure(trigger_match=match, policy_rule=self,
+        #                                   failure_msg='No implementation found for gate/trigger: {}/{}'.format(
+        #                                       self.gate_name, self.trigger_name), failure_cause=self.error_exc)]
+        #     else:
+        #         # Normal execution
+        #         try:
+        #             self.configured_trigger.execute(image_obj, exec_context)
+        #         except Exception as e:
+        #             log.exception('Error executing trigger on image {}'.format(image_obj.id))
+        #             if self.configured_trigger.fired:
+        #
+        #
+        #
+        #     matches = self.configured_trigger.fired
+        #     raise Exception('Always fail!!')
+        #     decisions = [PolicyRuleDecision(trigger_match=match, policy_rule=self) for match in matches]
+        #     return decisions
+        # except Exception as e:
+        #     if matches:
+        #         return [PolicyRuleFailure(trigger_match=matches, policy_rule=self, failure_msg='Error evaluating rule', failure_cause=e)]
+        #     else:
+        #         return [PolicyRuleFailure(trigger_match=ErrorMatch(trigger=self.configured_trigger), policy_rule=self, failure_msg='Error evaluating rule', failure_cause=e)]
+
+    def json(self):
+        return {
+            "gate": self.gate_name,
+            "action": self.action.name,
+            "trigger": self.trigger_name,
+            "params": self.trigger_params,
+        }
+
+
+class ExecutablePolicy(VersionedEntityMixin):
+    """
+    A sequence of gate triggers to be executed with specific parameters.
+
+    The build process establishes the set of gates and triggers and the order based on the policy and configures
+    each with the parameters defined in the policy document.
+
+    Execution is the process of invoking each trigger with the proper image context and collecting the results.
+    Policy executions only depend on the image analysis context, not the tag mapping.
+
+    BaseGate objects are used only to construct the triggers and to prepare the execution context for each trigger.
+
+    """
+
+    def __init__(
+        self,
+        raw_json=None,
+        strict_validation=True,
+        rule_factory: Callable = policy_rule_factory,
+    ):
+        self.raw = raw_json
+        if not raw_json:
+            raise ValueError("Empty whitelist json")
+        self.verify_version(raw_json)
+        self.version = raw_json.get("version")
+
+        self.id = raw_json.get("id")
+        self.name = raw_json.get("name")
+        self.comment = raw_json.get("comment")
+        self.rules = []
+        errors = []
+
+        for x in raw_json.get("rules"):
+            try:
+                self.rules.append(
+                    rule_factory(self, x, strict_validation=strict_validation)
+                )
+            except PolicyRuleValidationErrorCollection as e:
+                for err in e.validation_errors:
+                    errors.append(err)
+            except PolicyError as e:
+                errors.append(e)
+            except Exception as e:
+                errors.append(ValidationError.caused_by(e))
+
+        if errors:
+            raise InitializationError(
+                message="Policy initialization failed due to validation errors",
+                init_errors=errors,
+            )
+
+        self.gates = OrderedDict()
+
+        # Map the rule set into a minimal set of gates to execute linked to the list of rules for each gate
+        for r in self.rules:
+            if r.gate_cls not in self.gates:
+                self.gates[r.gate_cls] = [r]
+            else:
+                self.gates[r.gate_cls].append(r)
+
+    def execute(self, evaluatable: Evaluatable, context):
+        """
+        Execute the policy and return the result as a list of PolicyRuleDecisions
+
+        :param evaluatable: the image object to evaluate
+        :param context: an ExecutionContext object
+        :return: a PolicyDecision object
+        """
+
+        results = []
+        errors = []
+        for gate, policy_rules in list(self.gates.items()):
+            # Initialize the gate object
+            gate_obj = gate()
+            exec_context = evaluatable.prepare_gate_context(gate_obj, context)
+            for rule in policy_rules:
+                errs, matches = rule.execute(
+                    evaluatable=evaluatable, exec_context=exec_context
+                )
+                if errs:
+                    errors += errs
+                if matches:
+                    results += matches
+
+        return errors, PolicyDecision(self, results)
+
+    def json(self):
+        if self.raw:
+            return self.raw
+        else:
+            return {
+                "id": self.id,
+                "name": self.name,
+                "version": self.version,
+                "comment": self.comment,
+                "rules": [r.json() for r in self.rules],
+            }
+
+
 class PolicyMappingMixin:
     def set_policy_attribs(self: Union[BaseMapping, PolicyMappingMixin]):
         if self.raw.get("policy_id") and self.raw.get("policy_ids"):
@@ -912,13 +992,13 @@ class PolicyMappingMixin:
             return r
 
 
-class PolicyMappingRule(MappingRule, PolicyMappingMixin):
+class ImagePolicyMappingRule(ImageMappingRule, PolicyMappingMixin):
     """
     A single mapping rule that can be evaluated against a tag and image
     """
 
     def __init__(self, rule_json=None):
-        super(PolicyMappingRule, self).__init__(rule_json)
+        super(ImagePolicyMappingRule, self).__init__(rule_json)
         self.policy_ids = []
         self.whitelist_ids = []
         self.set_policy_attribs()
@@ -934,19 +1014,18 @@ class ExecutableMapping(object):
     Evaluates the bundle mappings in order. Order is very important and must be preserved.
     """
 
-    def __init__(self, mapping_json=None, rule_cls=MappingRule):
+    def __init__(self, mapping_json=None, rule_cls=ImageMappingRule):
         self.raw = mapping_json
         self.mapping_rules = [rule_cls(rule) for rule in mapping_json]
 
-    def execute(self, image_obj, tag):
+    def execute(self, evaluatable: Evaluatable):
         """
         Execute the mapping by performing a match and returning the policy and whitelists referenced.
 
-        :param image_obj: loaded image object from db
-        :param tag: tag string
+        :param evaluatable: loaded image object from db
         :return: ExecutableMappingRule that is the first match in the ruleset
         """
-        result = [y for y in self.mapping_rules if y.matches(image_obj, tag)]
+        result = [y for y in self.mapping_rules if evaluatable.matches_mapping(y)]
 
         # Could have more than one match, in which case return the first
         if result and len(result) >= 1:
@@ -1305,12 +1384,12 @@ class ExecutableBundle(VersionedEntityMixin):
         try:
             # Build the mapping first, then build reachable policies and whitelists
             self.mapping = ExecutableMapping(
-                self.raw.get("mappings", []), rule_cls=PolicyMappingRule
+                self.raw.get("mappings", []), rule_cls=ImagePolicyMappingRule
             )
-            self.whitelisted_image_mapping = ExecutableMapping(
+            self.whitelisted_artifact_mapping = ExecutableMapping(
                 self.raw.get("whitelisted_images", [])
             )
-            self.blacklisted_image_mapping = ExecutableMapping(
+            self.blacklisted_artifact_mapping = ExecutableMapping(
                 self.raw.get("blacklisted_images", [])
             )
 
@@ -1404,12 +1483,12 @@ class ExecutableBundle(VersionedEntityMixin):
 
         return self.init_errors
 
-    def _process_mapping(self, bundle_exec, image_object, tag):
+    def _process_mapping(self, bundle_exec, evaluatable: Evaluatable):
         # Execute the mapping to find the policy and whitelists to execute next
 
         try:
             if self.mapping:
-                bundle_exec.executed_mapping = self.mapping.execute(image_object, tag)
+                bundle_exec.executed_mapping = self.mapping.execute(evaluatable)
             else:
                 bundle_exec.executed_mapping = None
                 bundle_exec.bundle_decision = BundleDecision(
@@ -1426,7 +1505,12 @@ class ExecutableBundle(VersionedEntityMixin):
             bundle_exec.abort_with_failure(PolicyError.caused_by(e))
             return bundle_exec
 
-    def _process_mapping_result(self, bundle_exec, image_object, tag, context):
+    def _process_mapping_result(
+        self,
+        bundle_exec: BundleExecution,
+        evaluatable: Evaluatable,
+        context: ExecutionContext,
+    ):
         # Evaluate the selected policy or set none if none found
 
         try:
@@ -1452,7 +1536,7 @@ class ExecutableBundle(VersionedEntityMixin):
             if evaluated_policies:
                 for evaluated_policy in evaluated_policies:
                     errors, policy_decision = evaluated_policy.execute(
-                        image_obj=image_object, context=context
+                        evaluatable=evaluatable, context=context
                     )
                     if errors:
                         logger.warn(
@@ -1472,15 +1556,15 @@ class ExecutableBundle(VersionedEntityMixin):
 
             # Send thru the whitelist mapping
             whitelisted_image_match = None
-            if self.whitelisted_image_mapping:
-                whitelisted_image_match = self.whitelisted_image_mapping.execute(
+            if self.whitelisted_artifact_mapping:
+                whitelisted_image_match = self.whitelisted_artifact_mapping.execute(
                     image_obj=image_object, tag=tag
                 )
 
             # Send thru the blacklist mapping
             blacklist_image_match = None
-            if self.blacklisted_image_mapping:
-                blacklist_image_match = self.blacklisted_image_mapping.execute(
+            if self.blacklisted_artifact_mapping:
+                blacklist_image_match = self.blacklisted_artifact_mapping.execute(
                     image_obj=image_object, tag=tag
                 )
 
@@ -1495,7 +1579,7 @@ class ExecutableBundle(VersionedEntityMixin):
 
         return bundle_exec
 
-    def execute(self, image_object, tag, context):
+    def execute(self, evaluatable: Evaluatable, context: ExecutionContext):
         """
         Execute the bundle evaluation in isolated context (includes db session if necessary)
 
@@ -1507,7 +1591,7 @@ class ExecutableBundle(VersionedEntityMixin):
         if self.target_tag and tag != self.target_tag:
             raise BundleTargetTagMismatchError(self.target_tag, tag)
 
-        bundle_exec = BundleExecution(self, image_id=image_object.id, tag=tag)
+        bundle_exec = evaluatable.instantiate_bundle_execution()
 
         if self.init_errors:
             raise InitializationError(
@@ -1515,11 +1599,9 @@ class ExecutableBundle(VersionedEntityMixin):
                 init_errors=self.init_errors,
             )
 
-        bundle_exec = self._process_mapping(bundle_exec, image_object, tag)
+        bundle_exec = self._process_mapping(bundle_exec, evaluatable)
 
-        bundle_exec = self._process_mapping_result(
-            bundle_exec, image_object, tag, context
-        )
+        bundle_exec = self._process_mapping_result(bundle_exec, evaluatable, context)
 
         return bundle_exec
 
@@ -1569,16 +1651,15 @@ def build_bundle(bundle_json, for_tag=None, allow_deprecated=False):
     :return: ExecutableBundle object
     """
     if bundle_json:
-
-        if for_tag:
-            try:
-                bundle = ExecutableBundle(
-                    bundle_json, tag=for_tag, strict_validation=(not allow_deprecated)
-                )
-            except KeyError:
+        try:
+            bundle = ExecutableBundle(
+                bundle_json, tag=for_tag, strict_validation=(not allow_deprecated)
+            )
+        except KeyError:
+            if for_tag:
                 bundle = None
-        else:
-            bundle = ExecutableBundle(bundle_json)
+            else:
+                raise
     else:
         raise ValueError("No bundle json found")
     return bundle
