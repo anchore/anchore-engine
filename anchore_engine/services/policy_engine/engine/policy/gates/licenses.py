@@ -21,7 +21,7 @@ class FullMatchTrigger(BaseTrigger[Image]):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         fullmatchpkgs = []
         blacklist = (
             [x.strip() for x in self.license_blacklist.value()]
@@ -51,7 +51,7 @@ class SubstringMatchTrigger(BaseTrigger[Image]):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         matchpkgs = []
 
         match_vals = (
@@ -79,12 +79,12 @@ class LicensesGate(BaseGate[Image]):
     )
     __triggers__ = [FullMatchTrigger, SubstringMatchTrigger]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Load all of the various package types and their licenses into a list for easy checks.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -100,7 +100,7 @@ class LicensesGate(BaseGate[Image]):
         #    for license in pkg_meta.licenses_json if pkg_meta.licenses_json else []:
         #        licenses.append((pkg_meta.name + "(gem)", license))
 
-        for pkg in image_obj.packages:
+        for pkg in artifact.packages:
             for lic in pkg.license.split():
                 licenses.append((pkg.name, lic))
 

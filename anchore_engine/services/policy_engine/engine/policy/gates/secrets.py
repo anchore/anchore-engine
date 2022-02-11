@@ -51,7 +51,7 @@ class SecretContentChecksTrigger(BaseTrigger[Image]):
         sort_order=3,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         match_filter = self.secret_contentregexp.value(default_if_none=[])
         name_filter = self.name_regexps.value()
         name_re = re.compile(name_filter) if self.name_regexps.value() else None
@@ -118,24 +118,24 @@ class SecretCheckGate(BaseGate[Image]):
     __description__ = 'Checks for secrets and content found in the image using configured regexes found in the "secret_search" section of analyzer_config.yaml.'
     __triggers__ = [SecretContentChecksTrigger]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the file name list once and placing it in the eval context to avoid repeated
         loads from the db. this is an optimization and could removed.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        if image_obj.fs:
-            extracted_files_json = image_obj.fs.files
+        if artifact.fs:
+            extracted_files_json = artifact.fs.files
 
             if extracted_files_json:
                 context.data["filenames"] = list(extracted_files_json.keys())
 
-        content_matches = image_obj.analysis_artifacts.filter(
+        content_matches = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "secret_search",
             AnalysisArtifact.analyzer_artifact == "regexp_matches.all",
             AnalysisArtifact.analyzer_type == "base",

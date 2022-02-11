@@ -23,7 +23,7 @@ class NotLatestTrigger(BaseTrigger[Image]):
     __trigger_name__ = "newer_version_found_in_feed"
     __description__ = "Triggers if an installed GEM is not the latest version according to GEM data feed."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any gem in the image that is in the official gem feed but is not the latest version.
         Mutually exclusive to GEMNOTOFFICIAL and GEMBADVERSION
@@ -54,13 +54,13 @@ class NotOfficialTrigger(BaseTrigger[Image]):
     __trigger_name__ = "not_found_in_feed"
     __description__ = "Triggers if an installed GEM is not in the official GEM database, according to GEM data feed."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any gem that is not in the official gem feed data set.
 
         Mutually exclusive to GEMNOTLATEST and GEMBADVERSION
 
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -86,13 +86,13 @@ class BadVersionTrigger(BaseTrigger[Image]):
     __trigger_name__ = "version_not_found_in_feed"
     __description__ = "Triggers if an installed GEM version is not listed in the official GEM feed as a valid version."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any gem that is in the official gem set but is not one of the official versions.
 
         Mutually exclusive to GEMNOTOFFICIAL and GEMNOTLATEST
 
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -144,14 +144,14 @@ class BlacklistedGemTrigger(BaseTrigger[Image]):
         sort_order=2,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Fire for any gem that is on the blacklist with a full name + version match
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
-        gems = image_obj.get_packages_by_type("gem")
+        gems = artifact.get_packages_by_type("gem")
         if not gems:
             return
 
@@ -174,7 +174,7 @@ class NoFeedTrigger(BaseTrigger[Image]):
     __description__ = "Triggers if anchore does not have access to the GEM data feed."
     __msg__ = "Gem packages are present but the anchore gem feed is not available - will be unable to perform checks that require feed data"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         try:
             feed_meta = feed_instance_by_name("packages").group_by_name(FEED_KEY)
             if feed_meta and feed_meta.last_sync:
@@ -199,16 +199,16 @@ class GemCheckGate(BaseGate[Image]):
         NoFeedTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Prep the gem names and versions
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        db_gems = image_obj.get_packages_by_type("gem")
+        db_gems = artifact.get_packages_by_type("gem")
         if not db_gems:
             return context
 

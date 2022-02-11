@@ -20,7 +20,7 @@ class FileNotStoredTrigger(BaseTrigger[Image]):
     __params__ = None
     __msg__ = "Cannot locate /etc/passwd in image stored files archive: check analyzer settings."
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             self._fire()
         return
@@ -60,7 +60,7 @@ class UsernameMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -91,7 +91,7 @@ class UserIdMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -121,7 +121,7 @@ class GroupIdMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -152,7 +152,7 @@ class ShellMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -185,7 +185,7 @@ class PEntryMatchTrigger(BaseTrigger[Image], PentryBlacklistMixin):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("passwd_entries"):
             return
 
@@ -214,7 +214,7 @@ class FileparsePasswordGate(BaseGate[Image]):
         PEntryMatchTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the /etc/passwd content for the image from the analysis artifacts list if it is found.
         loads from the db.
@@ -222,12 +222,12 @@ class FileparsePasswordGate(BaseGate[Image]):
         This is an optimization and could removed, but if removed the triggers should be updated to do the queries directly.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        content_matches = image_obj.analysis_artifacts.filter(
+        content_matches = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "retrieve_files",
             AnalysisArtifact.analyzer_artifact == "file_content.all",
             AnalysisArtifact.analyzer_type == "base",

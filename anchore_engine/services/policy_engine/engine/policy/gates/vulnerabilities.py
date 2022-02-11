@@ -201,7 +201,7 @@ class VulnerabilityMatchTrigger(BaseTrigger[Image]):
         sort_order=20,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         is_fix_available = self.fix_available.value()
         is_vendor_only = self.vendor_only.value(default_if_none=True)
         comparison_idx = SEVERITY_ORDERING.index(
@@ -639,10 +639,10 @@ class FeedOutOfDateTrigger(BaseTrigger[Image]):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if self.max_age.value() is not None:
             # Map to a namespace
-            ns = DistroNamespace.for_obj(image_obj)
+            ns = DistroNamespace.for_obj(artifact)
 
             oldest_update = (
                 get_vulnerabilities_provider()
@@ -678,15 +678,15 @@ class UnsupportedDistroTrigger(BaseTrigger[Image]):
     __trigger_name__ = "vulnerability_data_unavailable"
     __description__ = "Triggers if vulnerability data is unavailable for the image's distro packages such as rpms or dpkg. Non-OS packages like npms and java are not considered in this evaluation"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if (
             not get_vulnerabilities_provider()
             .get_gate_util_provider()
-            .have_vulnerabilities_for(DistroNamespace.for_obj(image_obj))
+            .have_vulnerabilities_for(DistroNamespace.for_obj(artifact))
         ):
             self._fire(
                 msg="Distro-specific feed data not found for distro namespace: %s. Cannot perform CVE scan OS/distro packages"
-                % image_obj.distro_namespace
+                % artifact.distro_namespace
             )
 
 
@@ -709,7 +709,7 @@ class VulnerabilityBlacklistTrigger(BaseTrigger[Image]):
         sort_order=2,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         vids = self.vulnerability_ids.value()
         is_vendor_only = self.vendor_only.value(default_if_none=True)
 
@@ -747,7 +747,7 @@ class VulnerabilitiesGate(BaseGate[Image]):
         VulnerabilityBlacklistTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
 
         :rtype:
@@ -755,7 +755,7 @@ class VulnerabilitiesGate(BaseGate[Image]):
 
         db_session = get_thread_scoped_session()
         vuln_report = get_vulnerabilities_provider().get_image_vulnerabilities(
-            image_obj, db_session
+            artifact, db_session
         )
         context.data["loaded_vulnerabilities"] = vuln_report.results
 

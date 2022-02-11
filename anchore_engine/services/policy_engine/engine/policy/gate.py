@@ -2,15 +2,16 @@
 Base types for gate implementations and triggers.
 
 """
+from __future__ import annotations
+
 import copy
 import enum
 import hashlib
 import inspect
 from abc import ABC, abstractmethod
-from typing import Generic, TypeVar
+from typing import Generic, Type, TypeVar
 
 import anchore_engine
-from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     InvalidParameterError,
     ParameterValueInvalidError,
@@ -40,6 +41,43 @@ class LifecycleMixin(object):
     __aliases__ = []
 
 
+class GateRegistry:
+    _instance = None
+    _registry = {}
+
+    def __new__(cls):
+        if cls._instance is None:
+            print("Creating the object")
+            cls._instance = super(GateRegistry, cls).__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def add_gate(cls, gate: Type):
+        if hasattr(gate, "__gate_name__"):
+            gate_id = getattr(gate, "__gate_name__").lower()
+            cls._registry[gate_id] = gate
+
+    @classmethod
+    def get_gate_by_name(cls, name: str):
+        # Try direct name
+        found = cls._registry.get(name.lower())
+
+        if found is not None:
+            return found
+        else:
+            found = [
+                x for x in list(cls._registry.values()) if name.lower() in x.__aliases__
+            ]
+            if found:
+                return found[0]
+            else:
+                raise KeyError(name)
+
+    @classmethod
+    def registered_gate_names(cls):
+        return list(cls._registry.keys())
+
+
 class GateMeta(type):
     """
     Metaclass to create a registry for all subclasses of Gate for finding, building, and documenting the gates.
@@ -48,31 +86,15 @@ class GateMeta(type):
 
     def __init__(cls, name, bases, dct):
         if not hasattr(cls, "registry"):
-            cls.registry = {}
-        else:
-            if "__gate_name__" in dct:
-                gate_id = dct["__gate_name__"].lower()
-                cls.registry[gate_id] = cls
-
+            cls.registry = GateRegistry()
+        cls.registry.add_gate(cls)
         super(GateMeta, cls).__init__(name, bases, dct)
 
     def get_gate_by_name(cls, name):
-        # Try direct name
-        found = cls.registry.get(name.lower())
-
-        if found is not None:
-            return found
-        else:
-            found = [
-                x for x in list(cls.registry.values()) if name.lower() in x.__aliases__
-            ]
-            if found:
-                return found[0]
-            else:
-                raise KeyError(name)
+        return cls.registry.get_gate_by_name(name)
 
     def registered_gate_names(cls):
-        return list(cls.registry.keys())
+        return cls.registry.registered_gate_names()
 
 
 class ExecutionContext(object):
@@ -475,8 +497,7 @@ class BaseGate(Generic[T], LifecycleMixin):
 
         :param context: a context providing db connections, etc
         """
-        self.image = None
-        self.selected_triggers = None
+        pass
 
     def json(self):
         """
@@ -502,11 +523,7 @@ class BaseGate(Generic[T], LifecycleMixin):
     def __repr__(self):
         return "<Gate {}>".format(self.__gate_name__)
 
-    def prepare_context(
-        self,
-        artifact: T,
-        context: ExecutionContext,
-    ):
+    def prepare_context(self, artifact: T, context: ExecutionContext):
         """
         Called immediately prior to gate execution, a hook to allow optimizations or prep of the context or image
         data prior to execution of the gate/triggers.

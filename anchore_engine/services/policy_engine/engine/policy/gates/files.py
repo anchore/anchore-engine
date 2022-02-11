@@ -28,7 +28,7 @@ class ContentMatchTrigger(BaseTrigger[Image]):
         is_required=False,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         match_decoded = self.regex_name.value()
 
         if match_decoded:
@@ -74,7 +74,7 @@ class FilenameMatchTrigger(BaseTrigger[Image]):
         is_required=True,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         # decode the param regexes from b64
         regex_param = self.regex.value()
 
@@ -156,7 +156,7 @@ class FileAttributeMatchTrigger(BaseTrigger[Image]):
         sort_order=7,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         filename = self.filename.value()
 
         checksum_algo = self.checksum_algo.value(default_if_none="sha256")
@@ -235,11 +235,11 @@ class SuidCheckTrigger(BaseTrigger[Image]):
     __trigger_name__ = "suid_or_guid_set"
     __description__ = "Fires for each file found to have suid or sgid bit set."
 
-    def evaluate(self, image_obj, context):
-        if not image_obj.fs:
+    def evaluate(self, artifact, context):
+        if not artifact.fs:
             return
 
-        files = image_obj.fs.files
+        files = artifact.fs.files
         if not files:
             return
 
@@ -266,27 +266,27 @@ class FileCheckGate(BaseGate[Image]):
         SuidCheckTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the file name list once and placing it in the eval context to avoid repeated
         loads from the db. this is an optimization and could removed.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
         context.data["filenames"] = []
         context.data["filedetail"] = {}
 
-        if image_obj.fs:
-            extracted_files_json = image_obj.fs.files
+        if artifact.fs:
+            extracted_files_json = artifact.fs.files
 
             if extracted_files_json:
                 context.data["filenames"] = list(extracted_files_json.keys())
                 context.data["filedetail"] = extracted_files_json
 
-        content_matches = image_obj.analysis_artifacts.filter(
+        content_matches = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "content_search",
             AnalysisArtifact.analyzer_artifact == "regexp_matches.all",
             AnalysisArtifact.analyzer_type == "base",

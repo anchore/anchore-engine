@@ -51,7 +51,7 @@ class FileNotStoredTrigger(BaseTrigger[Image], RetrievedFileMixin):
     )
     __msg__ = "Cannot locate file in the image analysis"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("retrieved_files"):
             self._fire()
 
@@ -80,7 +80,7 @@ class FileContentRegexMatchTrigger(BaseTrigger[Image], RetrievedFileMixin):
     def _construct_match_id(self):
         return "{id}+file://{path}".format(id=self.rule_id, path=self.file_path.value())
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not context.data.get("retrieved_files"):
             return
 
@@ -105,7 +105,7 @@ class FileContentRegexMatchTrigger(BaseTrigger[Image], RetrievedFileMixin):
         except Exception as e:
             logger.exception(
                 "Could not decode/process file content for {} in image {}/{} to do regex check".format(
-                    path, image_obj.user_id, image_obj.id
+                    path, artifact.user_id, artifact.id
                 )
             )
             raise Exception(
@@ -136,7 +136,7 @@ class RetrievedFileChecksGate(BaseGate[Image]):
         FileContentRegexMatchTrigger,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         prepare the context by extracting the /etc/passwd content for the image from the analysis artifacts list if it is found.
         loads from the db.
@@ -144,12 +144,12 @@ class RetrievedFileChecksGate(BaseGate[Image]):
         This is an optimization and could removed, but if removed the triggers should be updated to do the queries directly.
 
         :rtype:
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
 
-        retrieved_file_contents = image_obj.analysis_artifacts.filter(
+        retrieved_file_contents = artifact.analysis_artifacts.filter(
             AnalysisArtifact.analyzer_id == "retrieve_files",
             AnalysisArtifact.analyzer_artifact == "file_content.all",
             AnalysisArtifact.analyzer_type == "base",

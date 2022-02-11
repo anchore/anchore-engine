@@ -39,7 +39,7 @@ class FailTrigger(BaseTrigger[Image]):
 
     __params__ = {"PARAM1": str, "PARAM2": int}
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         raise Exception("Failing as intended")
 
 
@@ -62,7 +62,7 @@ class GateFailureTest(unittest.TestCase):
         clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)
         trigger = clazz(self.gate_clazz, ports="8088", type="whitelist")
         with self.assertRaises(TriggerEvaluationError) as f:
-            trigger.execute(image_obj=None, context=None)
+            trigger.execute(artifact=None, context=None)
 
     def test_trigger_parameter_invalid(self):
         clazz = self.gate_clazz.get_trigger_named(ExposedPortsTrigger.__trigger_name__)

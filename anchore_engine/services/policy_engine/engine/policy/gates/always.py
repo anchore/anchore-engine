@@ -17,7 +17,7 @@ class AlwaysFireTrigger(BaseTrigger[Image]):
     __msg__ = "Unconditional trigger match"
     __params__ = {}
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         self._fire()
 
 
@@ -26,7 +26,7 @@ class AlwaysGate(BaseGate[Image]):
     __description__ = "Triggers that fire unconditionally if present in policy, useful for things like testing and blacklisting."
     __triggers__ = [AlwaysFireTrigger]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
 
         :rtype:

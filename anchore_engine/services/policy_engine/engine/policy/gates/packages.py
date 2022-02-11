@@ -50,7 +50,7 @@ class VerifyTrigger(BaseTrigger[Image]):
         changed = "changed"
         missing = "missing"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         pkg_names = self.pkgs.value(default_if_none=[])
         pkg_dirs = self.directories.value(default_if_none=[])
         check = self.check_only.value()
@@ -58,15 +58,15 @@ class VerifyTrigger(BaseTrigger[Image]):
         if check:
             check = getattr(self.VerificationStates, check)
 
-        if image_obj.fs:
-            extracted_files_json = image_obj.fs.files
+        if artifact.fs:
+            extracted_files_json = artifact.fs.files
         else:
             extracted_files_json = []
 
         if pkg_names:
-            pkgs = image_obj.packages.filter(ImagePackage.name.in_(pkg_names)).all()
+            pkgs = artifact.packages.filter(ImagePackage.name.in_(pkg_names)).all()
         else:
-            pkgs = image_obj.packages.all()
+            pkgs = artifact.packages.all()
 
         for pkg in pkgs:
             pkg_name = pkg.name
@@ -199,7 +199,7 @@ class RequiredPackageTrigger(BaseTrigger[Image]):
         sort_order=3,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         name = self.pkg_name.value()
         version = self.pkg_version.value()
         comparison = self.version_comparison.value(default_if_none="exact")
@@ -207,7 +207,7 @@ class RequiredPackageTrigger(BaseTrigger[Image]):
         found = False
 
         # Filter is possible since the lazy='dynamic' is set on the packages relationship in Image.
-        for img_pkg in image_obj.packages.filter(ImagePackage.name == name).all():
+        for img_pkg in artifact.packages.filter(ImagePackage.name == name).all():
             if version is None:
                 found = True
                 break
@@ -288,13 +288,13 @@ class BlackListTrigger(BaseTrigger[Image]):
         is_required=False,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         pkg = self.pkg_name.value()
         vers = self.pkg_version.value()
 
         try:
             if vers:
-                matches = image_obj.packages.filter(
+                matches = artifact.packages.filter(
                     ImagePackage.name == pkg, ImagePackage.version == vers
                 )
                 for m in matches:
@@ -302,7 +302,7 @@ class BlackListTrigger(BaseTrigger[Image]):
                         msg="Package is blacklisted: " + m.name + "-" + m.version
                     )
             else:
-                matches = image_obj.packages.filter(ImagePackage.name == pkg)
+                matches = artifact.packages.filter(ImagePackage.name == pkg)
                 for m in matches:
                     self._fire(msg="Package is blacklisted: " + m.name)
         except Exception as e:

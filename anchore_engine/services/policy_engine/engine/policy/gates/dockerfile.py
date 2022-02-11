@@ -46,16 +46,16 @@ class DockerfileModeCheckedBaseTrigger(BaseTrigger[Image]):
 
     __actual_dockerfile_only__ = False
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not hasattr(context, "data") or not context.data.get("prepared_dockerfile"):
             return
         elif self.__actual_dockerfile_only__ and (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() != "actual"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() != "actual"
         ):
             return
         else:
-            return self._evaluate(image_obj, context)
+            return self._evaluate(artifact, context)
 
     def _evaluate(self, image_obj, context):
         raise NotImplementedError()
@@ -73,16 +73,16 @@ class ParameterizedDockerfileModeBaseTrigger(BaseTrigger[Image]):
         is_required=False,
     )
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         if not hasattr(context, "data") or not context.data.get("prepared_dockerfile"):
             return
         elif self.actual_dockerfile_only.value() and (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() != "actual"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() != "actual"
         ):
             return
         else:
-            return self._evaluate(image_obj, context)
+            return self._evaluate(artifact, context)
 
     def _evaluate(self, image_obj, context):
         raise NotImplementedError()
@@ -345,13 +345,13 @@ class NoDockerfile(BaseTrigger[Image]):
     __description__ = "Triggers if anchore analysis was performed without supplying the actual image Dockerfile."
     __msg__ = "Image was not analyzed with an actual Dockerfile"
 
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact, context):
         """
         Evaluate using the initialized values for this object:
         """
         if (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() != "actual"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() != "actual"
         ):
             self._fire()
 
@@ -366,7 +366,7 @@ class DockerfileGate(BaseGate[Image]):
         NoDockerfile,
     ]
 
-    def prepare_context(self, image_obj, context):
+    def prepare_context(self, artifact, context):
         """
         Pre-processes the image's dockerfile.
         Leaves the context with a dictionary of dockerfile lines by directive.
@@ -382,16 +382,16 @@ class DockerfileGate(BaseGate[Image]):
         # unknown/known is up to each trigger
 
         if (
-            image_obj.dockerfile_mode is None
-            or image_obj.dockerfile_mode.lower() == "unknown"
+            artifact.dockerfile_mode is None
+            or artifact.dockerfile_mode.lower() == "unknown"
         ):
             return
 
         context.data["prepared_dockerfile"] = {}
 
-        if image_obj.dockerfile_contents:
+        if artifact.dockerfile_contents:
             linebuf = ""
-            for line in image_obj.dockerfile_contents.splitlines():
+            for line in artifact.dockerfile_contents.splitlines():
                 line = line.strip()
                 if line and not line.startswith("#"):
                     patt = re.match(r".*\\\$", line)
