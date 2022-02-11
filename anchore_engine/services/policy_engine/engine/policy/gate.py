@@ -7,6 +7,7 @@ import enum
 import hashlib
 import inspect
 from abc import ABC, abstractmethod
+from typing import Generic, TypeVar
 
 import anchore_engine
 from anchore_engine.db import Image
@@ -136,7 +137,11 @@ class TriggerMatch(object):
         )
 
 
-class BaseTrigger(ABC, LifecycleMixin):
+# bound this type later
+T = TypeVar("T")
+
+
+class BaseTrigger(Generic[T], ABC, LifecycleMixin):
     """
     An evaluation trigger, representing something found image analysis specifically requested. Contained
     by a single gate, with execution context defined by the parent gate object.
@@ -368,12 +373,10 @@ class BaseTrigger(ABC, LifecycleMixin):
             self.parameters() if self.parameters() else [],
         )
 
-
-class BaseImageTrigger(BaseTrigger):
-    def execute(self, image_obj, context):
+    def execute(self, artifact: T, context):
         """
         Main entry point for the trigger execution. Will clear any previously saved exec state and call the evaluate() function.
-        :param image_obj:
+        :param artifact:
         :param context:
         :return:
         """
@@ -383,12 +386,12 @@ class BaseImageTrigger(BaseTrigger):
             self.gate_cls.__lifecycle_state__ != LifecycleStates.eol
             and self.__lifecycle_state__ != LifecycleStates.eol
         ):
-            if image_obj is None:
+            if artifact is None:
                 raise TriggerEvaluationError(
                     trigger=self, message="No image provided to evaluate against"
                 )
             try:
-                self.evaluate(image_obj, context)
+                self.evaluate(artifact, context)
             except Exception as e:
                 logger.exception("Error evaluating trigger. Aborting trigger execution")
                 raise TriggerEvaluationError(trigger=self, message=str(e))
@@ -396,7 +399,7 @@ class BaseImageTrigger(BaseTrigger):
         return True
 
     @abstractmethod
-    def evaluate(self, image_obj, context):
+    def evaluate(self, artifact: T, context):
         """
         Evaluate against the image update the state of the trigger based on result.
         If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
@@ -407,7 +410,7 @@ class BaseImageTrigger(BaseTrigger):
         ...
 
 
-class BaseGate(LifecycleMixin):
+class BaseGate(Generic[T], LifecycleMixin):
     """
     Base type for a gate module.
 
@@ -499,11 +502,9 @@ class BaseGate(LifecycleMixin):
     def __repr__(self):
         return "<Gate {}>".format(self.__gate_name__)
 
-
-class BaseImageGate(BaseGate, metaclass=GateMeta):
     def prepare_context(
         self,
-        image_obj: Image,
+        artifact: T,
         context: ExecutionContext,
     ):
         """

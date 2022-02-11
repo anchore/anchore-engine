@@ -4,11 +4,11 @@ import time
 from collections import OrderedDict
 
 from anchore_engine.common import nonos_package_types
-from anchore_engine.db import DistroNamespace
+from anchore_engine.db import DistroNamespace, Image
 from anchore_engine.db.entities.common import get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
-    BaseImageTrigger,
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringParameter,
@@ -27,7 +27,7 @@ from anchore_engine.util.time import datetime_to_epoch, days_to_seconds
 SEVERITY_ORDERING = ["unknown", "negligible", "low", "medium", "high", "critical"]
 
 
-class VulnerabilityMatchTrigger(BaseImageTrigger):
+class VulnerabilityMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "package"
     __description__ = (
         "Triggers if a found vulnerability in an image meets the comparison criteria."
@@ -629,7 +629,7 @@ class VulnerabilityMatchTrigger(BaseImageTrigger):
                     )
 
 
-class FeedOutOfDateTrigger(BaseImageTrigger):
+class FeedOutOfDateTrigger(BaseTrigger[Image]):
     __trigger_name__ = "stale_feed_data"
     __description__ = "Triggers if the CVE data for the image's distro is older than the window specified by the parameter MAXAGE (unit is number of days)."
     max_age = IntegerStringParameter(
@@ -674,7 +674,7 @@ class FeedOutOfDateTrigger(BaseImageTrigger):
                 )
 
 
-class UnsupportedDistroTrigger(BaseImageTrigger):
+class UnsupportedDistroTrigger(BaseTrigger[Image]):
     __trigger_name__ = "vulnerability_data_unavailable"
     __description__ = "Triggers if vulnerability data is unavailable for the image's distro packages such as rpms or dpkg. Non-OS packages like npms and java are not considered in this evaluation"
 
@@ -690,7 +690,7 @@ class UnsupportedDistroTrigger(BaseImageTrigger):
             )
 
 
-class VulnerabilityBlacklistTrigger(BaseImageTrigger):
+class VulnerabilityBlacklistTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklist"
     __description__ = "Triggers if any of a list of specified vulnerabilities has been detected in the image."
 
@@ -737,7 +737,7 @@ class VulnerabilityBlacklistTrigger(BaseImageTrigger):
             )
 
 
-class VulnerabilitiesGate(BaseImageGate):
+class VulnerabilitiesGate(BaseGate[Image]):
     __gate_name__ = "vulnerabilities"
     __description__ = "CVE/Vulnerability checks."
     __triggers__ = [

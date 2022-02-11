@@ -1,8 +1,9 @@
 import re
 
+from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
-    BaseImageTrigger,
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.gates.util import (
     CheckOperation,
@@ -18,7 +19,7 @@ from anchore_engine.services.policy_engine.engine.policy.params import (
 from anchore_engine.utils import BYTES_REGEX, convert_bytes_size
 
 
-class ImageMetadataAttributeCheckTrigger(BaseImageTrigger):
+class ImageMetadataAttributeCheckTrigger(BaseTrigger[Image]):
     __trigger_name__ = "attribute"
     __description__ = (
         "Triggers if a named image metadata value matches the given condition."
@@ -136,7 +137,7 @@ class ImageMetadataAttributeCheckTrigger(BaseImageTrigger):
             )
 
 
-class ImageMetadataGate(BaseImageGate):
+class ImageMetadataGate(BaseGate[Image]):
     __gate_name__ = "metadata"
     __description__ = (
         "Checks against image metadata, such as size, OS, distro, architecture, etc."

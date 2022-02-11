@@ -11,8 +11,8 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     ValidationError,
 )
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
-    BaseImageTrigger,
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.gates.dockerfile import (
     DockerfileGate,
@@ -32,7 +32,7 @@ test_bundle = {
 }
 
 
-class FailTrigger(BaseImageTrigger):
+class FailTrigger(BaseTrigger[Image]):
     __description__ = "Testing Trigger for ensuring failure"
     __trigger_name__ = "FAILALWAYS"
     __msg__ = "FAILALWAYS triggered"
@@ -43,7 +43,7 @@ class FailTrigger(BaseImageTrigger):
         raise Exception("Failing as intended")
 
 
-class FailGate(BaseImageGate):
+class FailGate(BaseGate[Image]):
     __gate_name__ = "FAILGATE"
     __triggers__ = [FailTrigger]
 

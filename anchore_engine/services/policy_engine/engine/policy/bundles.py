@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict, namedtuple
 from typing import Callable, Dict, List, Optional, Type, Union
 
+from anchore_engine.db import Image
 from anchore_engine.db.entities.common import anchore_now_datetime
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     BundleTargetTagMismatchError,
@@ -140,7 +141,7 @@ class ErrorMatch(TriggerMatch):
         __gate_name__ = "gate_not_found"
         __description__ = "Placeholder for executions where policy includes a gate not found in the server"
 
-    class EmptyTrigger(BaseImageTrigger):
+    class EmptyTrigger(BaseTrigger[Image]):
         __trigger_name__ = "empty"
         __description__ = (
             "Empty trigger definition for handling errors like trigger-not-found"
@@ -454,12 +455,12 @@ class ExecutablePolicyRule(PolicyRule):
 
         # Configure the trigger instance
         try:
-            self.gate_cls = BaseImageGate.get_gate_by_name(self.gate_name)
+            self.gate_cls = BaseGate.get_gate_by_name(self.gate_name)
         except KeyError:
             # Gate not found
             self.error_exc = GateNotFoundError(
                 gate=self.gate_name,
-                valid_gates=BaseImageGate.registered_gate_names(),
+                valid_gates=BaseGate.registered_gate_names(),
                 rule_id=self.rule_id,
             )
             self.configured_trigger = None
@@ -661,7 +662,7 @@ class ExecutablePolicy(VersionedEntityMixin):
     Execution is the process of invoking each trigger with the proper image context and collecting the results.
     Policy executions only depend on the image analysis context, not the tag mapping.
 
-    BaseImageGate objects are used only to construct the triggers and to prepare the execution context for each trigger.
+    BaseGate objects are used only to construct the triggers and to prepare the execution context for each trigger.
 
     """
 
@@ -849,11 +850,16 @@ class MappingRule(BaseMapping):
         :param tag: tag string
         :return: Boolean
         """
+        # Special handling of 'dockerhub' -> 'docker.io' conversion.
+        if tag and tag.startswith("dockerhub/"):
+            target_tag = tag.replace("dockerhub/", "docker.io/")
+        else:
+            target_tag = tag
 
-        if not tag:
+        if not target_tag:
             raise ValueError("Tag cannot be empty or null for matching evaluation")
         else:
-            match_target = parse_dockerimage_string(tag, strict=False)
+            match_target = parse_dockerimage_string(target_tag, strict=False)
 
         # Must match registry and repo first
         if not (
@@ -940,17 +946,7 @@ class ExecutableMapping(object):
         :param tag: tag string
         :return: ExecutableMappingRule that is the first match in the ruleset
         """
-
-        if not tag:
-            raise ValueError("tag cannot be None")
-
-        # Special handling of 'dockerhub' -> 'docker.io' conversion.
-        if tag and tag.startswith("dockerhub/"):
-            target_tag = tag.replace("dockerhub/", "docker.io/")
-        else:
-            target_tag = tag
-
-        result = [y for y in self.mapping_rules if y.matches(image_obj, target_tag)]
+        result = [y for y in self.mapping_rules if y.matches(image_obj, tag)]
 
         # Could have more than one match, in which case return the first
         if result and len(result) >= 1:

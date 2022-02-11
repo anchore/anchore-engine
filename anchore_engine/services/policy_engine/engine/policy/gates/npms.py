@@ -1,10 +1,10 @@
-from anchore_engine.db import NpmMetadata
+from anchore_engine.db import Image, NpmMetadata
 from anchore_engine.services.policy_engine.engine.feeds.feeds import (
     feed_instance_by_name,
 )
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
-    BaseImageTrigger,
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.params import (
     TriggerParameter,
@@ -19,7 +19,7 @@ NPM_LISTING_KEY = "npms"
 NPM_MATCH_KEY = "matched_feed_npms"
 
 
-class NotLatestTrigger(BaseImageTrigger):
+class NotLatestTrigger(BaseTrigger[Image]):
     __trigger_name__ = "newer_version_in_feed"
     __description__ = "Triggers if an installed NPM is not the latest version according to NPM data feed."
 
@@ -50,7 +50,7 @@ class NotLatestTrigger(BaseImageTrigger):
                     )
 
 
-class NotOfficialTrigger(BaseImageTrigger):
+class NotOfficialTrigger(BaseTrigger[Image]):
     __trigger_name__ = "unknown_in_feeds"
     __description__ = "Triggers if an installed NPM is not in the official NPM database, according to NPM data feed."
 
@@ -82,7 +82,7 @@ class NotOfficialTrigger(BaseImageTrigger):
                 )
 
 
-class BadVersionTrigger(BaseImageTrigger):
+class BadVersionTrigger(BaseTrigger[Image]):
     __trigger_name__ = "version_not_in_feeds"
     __description__ = "Triggers if an installed NPM version is not listed in the official NPM feed as a valid version."
 
@@ -123,7 +123,7 @@ class BadVersionTrigger(BaseImageTrigger):
                 )
 
 
-class PkgMatchTrigger(BaseImageTrigger):
+class PkgMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklisted_name_version"
     __description__ = "Triggers if the evaluated image has an NPM package installed that matches the name and optionally a version specified in the parameters."
 
@@ -172,7 +172,7 @@ class PkgMatchTrigger(BaseImageTrigger):
                 self._fire(msg="NPM Package is blacklisted: " + name)
 
 
-class NoFeedTrigger(BaseImageTrigger):
+class NoFeedTrigger(BaseTrigger[Image]):
     __trigger_name__ = "feed_data_unavailable"
     __description__ = (
         "Triggers if the engine does not have access to the NPM data feed."
@@ -193,7 +193,7 @@ class NoFeedTrigger(BaseImageTrigger):
         return
 
 
-class NpmCheckGate(BaseImageGate):
+class NpmCheckGate(BaseGate[Image]):
     __gate_name__ = "npms"
     __description__ = "NPM Checks"
     __triggers__ = [

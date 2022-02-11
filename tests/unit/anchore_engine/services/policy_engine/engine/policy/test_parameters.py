@@ -1,8 +1,13 @@
 import unittest
 
-from anchore_engine.services.policy_engine.engine.policy import gate, params
+from anchore_engine.db import Image
+from anchore_engine.services.policy_engine.engine.policy import params
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     ValidationError,
+)
+from anchore_engine.services.policy_engine.engine.policy.gate import (
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.params import (
     BooleanStringValidator,
@@ -306,7 +311,7 @@ class TestRegexRelatedValidators(unittest.TestCase, ValidatorTestMixin):
         self.run_matrix_test(matrix, v)
 
 
-class FakeTrigger(gate.BaseImageTrigger):
+class FakeTrigger(BaseTrigger[Image]):
     __trigger_name__ = "TestingTrigger"
     __description__ = "Not real"
     __trigger_id__ = "Blah123"
@@ -323,7 +328,7 @@ class FakeTrigger(gate.BaseImageTrigger):
         print((type(self.param1)))
 
 
-class FakeGate(gate.BaseImageGate):
+class FakeGate(BaseGate[Image]):
     __gate_name__ = "Somegate"
     __triggers__ = [FakeTrigger]
 

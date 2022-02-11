@@ -52,7 +52,7 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     ValidationError,
 )
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
+    BaseGate,
     ExecutionContext,
 )
 from anchore_engine.services.policy_engine.engine.tasks import ImageLoadTask
@@ -913,8 +913,8 @@ def describe_policy():
     try:
 
         doc = []
-        for name in BaseImageGate.registered_gate_names():
-            v = BaseImageGate.get_gate_by_name(name)
+        for name in BaseGate.registered_gate_names():
+            v = BaseGate.get_gate_by_name(name)
             g = GateSpec()
             g.name = name
             g.description = v.__description__ if v.__description__ else ""

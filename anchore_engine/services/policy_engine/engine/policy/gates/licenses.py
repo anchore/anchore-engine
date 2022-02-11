@@ -1,15 +1,16 @@
 import re
 
+from anchore_engine.db import Image
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
-    BaseImageTrigger,
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.params import (
     CommaDelimitedStringListParameter,
 )
 
 
-class FullMatchTrigger(BaseImageTrigger):
+class FullMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklist_exact_match"
     __description__ = "Triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s)."
 
@@ -39,7 +40,7 @@ class FullMatchTrigger(BaseImageTrigger):
             )
 
 
-class SubstringMatchTrigger(BaseImageTrigger):
+class SubstringMatchTrigger(BaseTrigger[Image]):
     __trigger_name__ = "blacklist_partial_match"
     __description__ = "triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)"
 
@@ -71,7 +72,7 @@ class SubstringMatchTrigger(BaseImageTrigger):
             )
 
 
-class LicensesGate(BaseImageGate):
+class LicensesGate(BaseGate[Image]):
     __gate_name__ = "licenses"
     __description__ = (
         "License checks against found software licenses in the container image"

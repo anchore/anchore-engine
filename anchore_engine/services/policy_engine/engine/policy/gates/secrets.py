@@ -1,10 +1,10 @@
 import base64
 import re
 
-from anchore_engine.db import AnalysisArtifact
+from anchore_engine.db import AnalysisArtifact, Image
 from anchore_engine.services.policy_engine.engine.policy.gate import (
-    BaseImageGate,
-    BaseImageTrigger,
+    BaseGate,
+    BaseTrigger,
 )
 from anchore_engine.services.policy_engine.engine.policy.params import (
     EnumStringParameter,
@@ -22,7 +22,7 @@ default_included_regex_names = [
 ]
 
 
-class SecretContentChecksTrigger(BaseImageTrigger):
+class SecretContentChecksTrigger(BaseTrigger[Image]):
     __trigger_name__ = "content_regex_checks"
     __description__ = 'Triggers if the secret content search analyzer has found any matches with the configured and named regexes. Checks can be configured to trigger if a match is found or is not found (selected using match_type parameter).  Matches are filtered by the content_regex_name and filename_regex if they are set. The content_regex_name shoud be a value from the "secret_search" section of the analyzer_config.yaml.'
 
@@ -113,7 +113,7 @@ class SecretContentChecksTrigger(BaseImageTrigger):
             )
 
 
-class SecretCheckGate(BaseImageGate):
+class SecretCheckGate(BaseGate[Image]):
     __gate_name__ = "secret_scans"
     __description__ = 'Checks for secrets and content found in the image using configured regexes found in the "secret_search" section of analyzer_config.yaml.'
     __triggers__ = [SecretContentChecksTrigger]
