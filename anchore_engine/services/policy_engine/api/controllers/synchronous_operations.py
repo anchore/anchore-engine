@@ -43,10 +43,10 @@ from anchore_engine.db import (
     ImagePackage,
 )
 from anchore_engine.db import get_thread_scoped_session as get_session
-from anchore_engine.services.policy_engine.engine.policy.bundles import (
-    ImageEvaluatable,
+from anchore_engine.services.policy_engine.engine.policy.bundles.bundles import (
     build_bundle,
     build_empty_error_execution,
+    ImageEvaluatable,
 )
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     InitializationError,

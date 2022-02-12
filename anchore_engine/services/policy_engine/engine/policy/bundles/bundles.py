@@ -1,16 +1,32 @@
 from __future__ import annotations
 
 import copy
-import datetime
-import enum
 import itertools
-import re
 from abc import ABC, abstractmethod
-from collections import OrderedDict, namedtuple
-from typing import Callable, Dict, Optional, Type, Union
+from collections import OrderedDict
+from typing import Dict, Optional, Type, Union
 
 from anchore_engine.db import Image
-from anchore_engine.db.entities.common import anchore_now_datetime
+from anchore_engine.services.policy_engine.engine.policy.bundles.decisions import (
+    BundleDecision,
+    FailurePolicyDecision,
+    GateAction,
+    PolicyDecision,
+    PolicyRuleDecision,
+)
+from anchore_engine.services.policy_engine.engine.policy.bundles.mappings import (
+    BaseMapping,
+    ImageMappingRule,
+    ImagePolicyMappingRule,
+)
+from anchore_engine.services.policy_engine.engine.policy.bundles.utils import (
+    VersionedEntityMixin,
+)
+from anchore_engine.services.policy_engine.engine.policy.bundles.whitelists import (
+    ExecutableWhitelistItem,
+    HybridTriggerIdKeyedItemIndex,
+    StandardCVETriggerIdKey,
+)
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     BundleTargetTagMismatchError,
     DeprecationWarning,
@@ -27,7 +43,6 @@ from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     ReferencedObjectNotFoundError,
     TriggerEvaluationError,
     TriggerNotFoundError,
-    UnsupportedVersionError,
     ValidationError,
 )
 from anchore_engine.services.policy_engine.engine.policy.gate import (
@@ -35,278 +50,84 @@ from anchore_engine.services.policy_engine.engine.policy.gate import (
     BaseTrigger,
     ExecutionContext,
     GateRegistry,
-    T,
-    TriggerMatch,
+    LifecycleStates,
 )
 
 # Load all the gate classes to ensure the registry is populated. This may appear unused but is necessary for proper lookup
 from anchore_engine.services.policy_engine.engine.policy.gates import *
 from anchore_engine.subsys import logger
-from anchore_engine.util.docker import parse_dockerimage_string
-from anchore_engine.util.matcher import is_match, regexify
-from anchore_engine.util.time import rfc3339str_to_datetime
 
 
-class VersionedEntityMixin(object):
-    __supported_versions__ = ["1_0"]
+class Evaluatable:
+    @classmethod
+    @abstractmethod
+    def get_mapping_rule_class(cls) -> Type[BaseMapping]:
+        ...
 
-    def verify_version(self, json_obj):
-        found_version = json_obj.get("version")
-        if not found_version or found_version not in self.__supported_versions__:
-            raise UnsupportedVersionError(
-                got_version=found_version,
-                supported_versions=self.__supported_versions__,
-                message="Version not supported",
+    @abstractmethod
+    def matches_mapping(self, mapping: Union[ImageMappingRule]):
+        ...
+
+    @abstractmethod
+    def execute_trigger(
+        self,
+        trigger: BaseTrigger,
+        execution_context: ExecutionContext,
+    ):
+        ...
+
+    @abstractmethod
+    def prepare_gate_context(self, gate_obj: BaseTrigger, context: ExecutionContext):
+        ...
+
+    @abstractmethod
+    def instantiate_bundle_execution(
+        self, executable_bundle: ExecutableBundle
+    ) -> BundleExecution:
+        ...
+
+    @abstractmethod
+    def check_bundle_target_mismatch(self, bundle_target: Evaluatable) -> None:
+        ...
+
+
+class ImageEvaluatable(Evaluatable):
+    _mapping_rule_class = ImageMappingRule
+
+    def __init__(self, image_obj: Optional[Image], tag: Optional[str] = None):
+        if image_obj is None and tag is None:
+            raise ValueError(
+                "Must provide either image_obj or tag when instantiating ImageEvaluatable"
             )
+        self.image_obj = image_obj
+        self.tag = tag
 
+    def __str__(self):
+        return f"image {self.image_obj.digest}"
 
-class GateAction(enum.IntEnum):
-    """
-    The outcome of a policy rule evaluation against a gate trigger
-    """
-
-    stop = -1
-    warn = 0
-    go = 1
-
-
-class SimpleMemoryBundleCache(object):
-    def __init__(self):
-        self._bundles = {}
-
-    def get(self, user_id, bundle_id):
-        return self._bundles.get((user_id, bundle_id))
-
-    def cache(self, user_id, bundle):
-        self._bundles[(user_id, bundle.id)] = bundle
-
-    def flush(self):
-        self._bundles = {}
-
-
-class WhitelistAwarePolicyDecider(object):
     @classmethod
-    def decide(cls, decisions):
-        candidate_actions = [
-            x.action
-            for x in [d for d in decisions if not getattr(d, "is_whitelisted", False)]
-        ]
-        if candidate_actions:
-            return min(candidate_actions)
-        else:
-            return GateAction.go  # No matches or everything is whitelisted
+    def get_mapping_rule_class(cls) -> Type[BaseMapping]:
+        return cls._mapping_rule_class
 
+    def matches_mapping(self, mapping: ImageMappingRule) -> bool:
+        return mapping.matches(self.image_obj, self.tag)
 
-class AlwaysStopDecider(object):
-    @classmethod
-    def decide(cls, decisions):
-        return GateAction.stop
+    def execute_trigger(
+        self, trigger: BaseTrigger, execution_context: ExecutionContext
+    ) -> None:
+        trigger.execute(self.image_obj, execution_context)
 
+    def prepare_gate_context(self, gate_obj: BaseGate, context: ExecutionContext):
+        return gate_obj.prepare_context(artifact=self.image_obj, context=context)
 
-class AlwaysGoDecider(object):
-    @classmethod
-    def decide(cls, decisions):
-        return GateAction.go
+    def instantiate_bundle_execution(
+        self, executable_bundle: ExecutableBundle
+    ) -> BundleExecution:
+        return BundleExecution(executable_bundle, self.image_obj.id, self.tag)
 
-
-class PolicyRuleDecision(object):
-    """
-    A policy decision is a combination of a TriggerMatch and an 'action' as defined by a policy.
-    """
-
-    def __init__(self, trigger_match, policy_rule):
-        self.match = trigger_match
-        self.policy_rule = policy_rule
-
-    @property
-    def action(self):
-        """
-        Returns the evaluated action from the trigger and mapped policy_rule
-        :return: a rule evaluation's GateAction result
-        """
-        if self.match and not (
-            hasattr(self.match, "is_whitelisted") and self.match.is_whitelisted
-        ):
-            return self.policy_rule.action
-        else:
-            return GateAction.go
-
-    def json(self):
-        return {
-            "match": self.match.json(),
-            "rule": self.policy_rule.json(),
-            "action": self.action.name,
-        }
-
-
-class ErrorMatch(TriggerMatch):
-    """
-    An instance of a fired trigger
-    """
-
-    class EmptyGate(object):
-        __gate_name__ = "gate_not_found"
-        __description__ = "Placeholder for executions where policy includes a gate not found in the server"
-
-    class EmptyTrigger(BaseTrigger[T]):
-        __trigger_name__ = "empty"
-        __description__ = (
-            "Empty trigger definition for handling errors like trigger-not-found"
-        )
-
-        def __init__(self, parent_gate_cls, msg=None):
-            self.gate_cls = parent_gate_cls if parent_gate_cls else ErrorMatch.EmptyGate
-            self.msg = (
-                "Trigger implementation not found, this is placeholder"
-                if not msg
-                else msg
-            )
-
-        def evaluate(self, artifact: T, context):
-            """
-            Evaluate against the image update the state of the trigger based on result.
-            If a match/fire is found, this code should call self._fire(), which may be called for each occurrence of a condition
-            match.
-
-            Result is the population of self._fired_instances, which can be accessed via the 'fired' property
-            """
-            raise NotImplementedError
-
-    def __init__(self, trigger, match_instance_id=None, msg=None):
-        self.trigger = (
-            trigger if trigger else ErrorMatch.EmptyTrigger(ErrorMatch.EmptyGate)
-        )
-        self.id = match_instance_id if match_instance_id else "evaluation_error"
-        self.msg = msg
-
-    def json(self):
-        return {
-            "trigger": self.trigger.__trigger_name__,
-            "trigger_id": self.id,
-            "message": self.msg,
-        }
-
-
-class PolicyRuleFailure(PolicyRuleDecision):
-    """
-    A failure indicator that the rule could not be evaluated.
-    """
-
-    def __init__(self, trigger_match, policy_rule, failure_msg, failure_cause):
-        """
-        A failure to execute. Failure-cause should be an exception, with addition info in the failure_msg
-
-        :param trigger_match:
-        :param policy_rule:
-        :param failure_msg:
-        :param failure_cause:
-        """
-        self.match = (
-            trigger_match if trigger_match else ErrorMatch(None, msg=failure_msg)
-        )
-        self.policy_rule = policy_rule
-        self.msg = failure_msg
-        self.cause = failure_cause
-
-    @property
-    def action(self):
-        """
-        Since this is a failure indicator, it simply emits WARN actions that can be mapped to warnings
-
-        :return: GateAction.warn
-        """
-        return GateAction.warn
-
-    def json(self):
-        return {
-            "match": self.match.json(),
-            "rule": self.policy_rule.json(),
-            "action": self.action.name,
-            "failed": True,
-            "error_message": self.msg,
-            "error_cause": self.cause.message
-            if hasattr(self.cause, "message")
-            else str(self.cause),
-        }
-
-
-class PolicyDecision(object):
-    """
-    A policy decision is a set of rule decisions and a final decision computed from those.
-    Each policy rule decision can have whitelist decorators and if so will be ignored in the
-    final decision computation.
-
-    """
-
-    __decider__ = WhitelistAwarePolicyDecider
-
-    def __init__(self, policy_obj=None, rule_decisions=None):
-        self.evaluated_policy = policy_obj
-        self.decisions = rule_decisions if rule_decisions else []
-
-    @property
-    def final_decision(self):
-        return self.__decider__.decide(self.decisions)
-
-    def json(self):
-        return {
-            "policy": self.evaluated_policy.json() if self.evaluated_policy else None,
-            "decisions": [r.json() for r in self.decisions] if self.decisions else None,
-            "final_action": self.final_decision,
-        }
-
-
-class BundleDecision(object):
-    """
-    Extentions of a PolicyDecision to include Image Blacklist and Whitelist abilities
-    """
-
-    def __init__(self, policy_decisions, whitelist_match=None, blacklist_match=None):
-        self.policy_decisions = (
-            policy_decisions if policy_decisions else [FallThruPolicyDecision()]
-        )
-        self.whitelisted_image = whitelist_match if whitelist_match else None
-        self.blacklisted_image = blacklist_match if blacklist_match else None
-
-        self.final_policy_decision = min(
-            [d.final_decision for d in self.policy_decisions]
-        )
-
-        if self.blacklisted_image:
-            self.final_decision = GateAction.stop
-            self.reason = "blacklisted"
-        elif self.whitelisted_image:
-            self.final_decision = GateAction.go
-            self.reason = "whitelisted"
-        else:
-            self.final_decision = self.final_policy_decision
-            self.reason = "policy_evaluation"
-
-    def json(self):
-        return {
-            "policy_decisions": [
-                policy_decision.json() for policy_decision in self.policy_decisions
-            ]
-            if self.policy_decisions
-            else None,
-            "policy_final_action": self.final_policy_decision.name,
-            "matched_whitelisted_image_rule": self.whitelisted_image.json()
-            if self.whitelisted_image
-            else None,
-            "matched_blacklisted_image_rule": self.blacklisted_image.json()
-            if self.blacklisted_image
-            else None,
-            "final_action": self.final_decision.name,
-            "reason": self.reason,
-        }
-
-
-class FallThruPolicyDecision(PolicyDecision):
-    __decider__ = AlwaysGoDecider
-
-
-class FailurePolicyDecision(PolicyDecision):
-    __decider__ = AlwaysStopDecider
+    def check_bundle_target_mismatch(self, bundle_target: Evaluatable):
+        if bundle_target.tag and self.tag != bundle_target.tag:
+            raise BundleTargetTagMismatchError(bundle_target.tag, self.tag)
 
 
 class BundleExecution(object):
@@ -328,7 +149,14 @@ class BundleExecution(object):
         "Policy_Id",
     ]
 
-    def __init__(self, bundle, image_id, tag, matched_mapping=None, decision=None):
+    def __init__(
+        self,
+        bundle: ExecutableBundle,
+        image_id: str,
+        tag: str,
+        matched_mapping=None,
+        decision=None,
+    ):
         self.executed_bundle = bundle
         self.executed_mapping = matched_mapping
         self.image_id = image_id
@@ -410,211 +238,6 @@ class BundleExecution(object):
         return table
 
 
-class BaseMapping(ABC):
-    def __init__(self, rule_json: Optional[Dict] = None):
-        self._raw = rule_json
-
-    @property
-    def raw(self):
-        return self._raw
-
-    @abstractmethod
-    def json(self):
-        pass
-
-
-class ImageMappingRule(BaseMapping):
-    """
-    A mapping rule that selects targets
-    """
-
-    def __init__(self, rule_json=None):
-        super().__init__(rule_json)
-        self.registry = rule_json.get("registry")
-        self.repository = rule_json.get("repository")
-        self.image_match_type = rule_json.get("image").get("type")
-
-        if self.image_match_type == "tag":
-            self.image_tag = rule_json.get("image").get("value")
-        else:
-            self.image_tag = None
-
-        if self.image_match_type == "id":
-            self.image_id = rule_json.get("image").get("value")
-        else:
-            self.image_id = None
-
-        if self.image_match_type == "digest":
-            self.image_digest = rule_json.get("image").get("value")
-        else:
-            self.image_digest = None
-
-    def json(self):
-        if self.raw:
-            return self.raw
-        else:
-            return {
-                "registry": self.registry,
-                "repository": self.repository,
-                "image": {
-                    "type": self.image_match_type,
-                    "value": self.image_tag
-                    if self.image_tag
-                    else self.image_digest
-                    if self.image_digest
-                    else self.image_id
-                    if self.image_id
-                    else None,
-                },
-            }
-
-    def is_all_registry(self):
-        return self.registry == "*"
-
-    def is_all_repository(self):
-        return self.repository == "*"
-
-    def is_all_tags(self):
-        return self.image_tag == "*"
-
-    def is_tag(self):
-        return self.image_match_type == "tag"
-
-    def is_digest(self):
-        return self.image_match_type == "digest"
-
-    def is_id(self):
-        return self.image_match_type == "id"
-
-    def _registry_match(self, registry_str):
-        return is_match(regexify, self.registry, registry_str)
-
-    def _repository_match(self, repository_str):
-        return is_match(regexify, self.repository, repository_str)
-
-    def _tag_match(self, tag_str):
-        return is_match(regexify, self.image_tag, tag_str)
-
-    def _id_match(self, image_id):
-        return self.image_id == image_id and image_id is not None
-
-    def _digest_match(self, image_digest):
-        return self.image_digest == image_digest and image_digest is not None
-
-    def matches(self, image_obj, tag):
-        """
-        Returns true if this rule matches the given tag and image tuple according to the matching rules.
-
-        :param image_obj: loaded image object
-        :param tag: tag string
-        :return: Boolean
-        """
-        # Special handling of 'dockerhub' -> 'docker.io' conversion.
-        if tag and tag.startswith("dockerhub/"):
-            target_tag = tag.replace("dockerhub/", "docker.io/")
-        else:
-            target_tag = tag
-
-        if not target_tag:
-            raise ValueError("Tag cannot be empty or null for matching evaluation")
-        else:
-            match_target = parse_dockerimage_string(target_tag, strict=False)
-
-        # Must match registry and repo first
-        if not (
-            self._registry_match(match_target.get("registry"))
-            and self._repository_match(match_target.get("repo"))
-        ):
-            return False
-
-        if self.is_digest():
-            return self._digest_match(image_obj.digest)
-        elif self.is_id():
-            return self._id_match(image_obj.id)
-        elif self.is_tag():
-
-            if image_obj:
-                return (
-                    self._tag_match(match_target.get("tag"))
-                    or self._id_match(image_obj.id)
-                    or self._digest_match(image_obj.digest)
-                )
-            else:
-                return self._tag_match(match_target.get("tag"))
-
-
-class Evaluatable:
-    @classmethod
-    @abstractmethod
-    def get_mapping_rule_class(cls) -> Type[BaseMapping]:
-        ...
-
-    @abstractmethod
-    def matches_mapping(self, mapping: Union[ImageMappingRule]):
-        ...
-
-    @abstractmethod
-    def execute_trigger(
-        self,
-        trigger: BaseTrigger,
-        execution_context: ExecutionContext,
-    ):
-        ...
-
-    @abstractmethod
-    def prepare_gate_context(self, gate_obj: BaseTrigger, context: ExecutionContext):
-        ...
-
-    @abstractmethod
-    def instantiate_bundle_execution(
-        self, executable_bundle: ExecutableBundle
-    ) -> BundleExecution:
-        ...
-
-    @abstractmethod
-    def check_bundle_target_mismatch(self, bundle_target: Evaluatable) -> None:
-        ...
-
-
-class ImageEvaluatable(Evaluatable):
-    _mapping_rule_class = ImageMappingRule
-
-    def __init__(self, image_obj: Optional[Image], tag: Optional[str] = None):
-        if image_obj is None and tag is None:
-            raise ValueError(
-                "Must provide either image_obj or tag when instantiating ImageEvaluatable"
-            )
-        self.image_obj = image_obj
-        self.tag = tag
-
-    def __str__(self):
-        return f"image {self.image_obj.digest}"
-
-    @classmethod
-    def get_mapping_rule_class(cls) -> Type[BaseMapping]:
-        return cls._mapping_rule_class
-
-    def matches_mapping(self, mapping: ImageMappingRule) -> bool:
-        return mapping.matches(self.image_obj, self.tag)
-
-    def execute_trigger(
-        self, trigger: BaseTrigger, execution_context: ExecutionContext
-    ) -> None:
-        trigger.execute(self.image_obj, execution_context)
-
-    def prepare_gate_context(self, gate_obj: BaseGate, context: ExecutionContext):
-        return gate_obj.prepare_context(artifact=self.image_obj, context=context)
-
-    def instantiate_bundle_execution(
-        self, executable_bundle: ExecutableBundle
-    ) -> BundleExecution:
-        return BundleExecution(executable_bundle, self.image_obj.id, self.tag)
-
-    def check_bundle_target_mismatch(self, bundle_target: Evaluatable):
-        if bundle_target.tag and self.tag != bundle_target.tag:
-            raise BundleTargetTagMismatchError(bundle_target.tag, self.tag)
-
-
 class PolicyRule(object):
     def __init__(self, parent, policy_json=None):
         self.gate_name = policy_json.get("gate")
@@ -646,24 +269,6 @@ class PolicyRule(object):
 
     def execute(self, image_obj, exec_context):
         pass
-
-
-def policy_rule_factory(
-    policy_obj, policy_json, gate_registry: Type[GateRegistry], strict_validation=True
-):
-    rule = ExecutablePolicyRule(policy_obj, policy_json, gate_registry)
-    if strict_validation:
-        if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
-            raise EndOfLifedError(
-                rule.gate_name, superceded=rule.gate_cls.__superceded_by__
-            )
-        elif rule.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
-            raise EndOfLifedError(
-                rule.gate_name,
-                trigger_name=rule.trigger_name,
-                superceded=rule.configured_trigger.__superceded_by__,
-            )
-    return rule
 
 
 class ExecutablePolicyRule(PolicyRule):
@@ -890,6 +495,27 @@ class ExecutablePolicy(VersionedEntityMixin):
 
     """
 
+    @staticmethod
+    def policy_rule_factory(
+        policy_obj,
+        policy_json,
+        gate_registry: Type[GateRegistry],
+        strict_validation=True,
+    ):
+        rule = ExecutablePolicyRule(policy_obj, policy_json, gate_registry)
+        if strict_validation:
+            if rule.gate_cls.__lifecycle_state__ == LifecycleStates.eol:
+                raise EndOfLifedError(
+                    rule.gate_name, superceded=rule.gate_cls.__superceded_by__
+                )
+            elif rule.configured_trigger.__lifecycle_state__ == LifecycleStates.eol:
+                raise EndOfLifedError(
+                    rule.gate_name,
+                    trigger_name=rule.trigger_name,
+                    superceded=rule.configured_trigger.__superceded_by__,
+                )
+        return rule
+
     def __init__(
         self,
         raw_json=None,
@@ -911,7 +537,7 @@ class ExecutablePolicy(VersionedEntityMixin):
         for x in raw_json.get("rules"):
             try:
                 self.rules.append(
-                    policy_rule_factory(
+                    self.policy_rule_factory(
                         self,
                         x,
                         gate_registry=gate_registry,
@@ -980,49 +606,6 @@ class ExecutablePolicy(VersionedEntityMixin):
             }
 
 
-class PolicyMappingMixin:
-    def set_policy_attribs(self: Union[BaseMapping, PolicyMappingMixin]):
-        if self.raw.get("policy_id") and self.raw.get("policy_ids"):
-            raise ValidationError(
-                "Cannot specify both policy_id and policy_ids properties in mapping rule, must use one or the other"
-            )
-        if self.raw.get("policy_id"):
-            self.policy_ids = [self.raw.get("policy_id")]
-        elif self.raw.get("policy_ids"):
-            self.policy_ids = self.raw.get("policy_ids", [])
-        else:
-            raise ValidationError(
-                "No policy_id or policy_ids property found for mapping rule: {}".format(
-                    self.raw
-                )
-            )
-        self.whitelist_ids = self.raw.get("whitelist_ids", [])
-
-    def to_json(self: Union[BaseMapping, PolicyMappingMixin]):
-        if self.raw:
-            return self.raw
-        else:
-            r = self.json()
-            r["policy_ids"] = (self.policy_ids,)
-            r["whitelist_ids"] = self.whitelist_ids
-            return r
-
-
-class ImagePolicyMappingRule(ImageMappingRule, PolicyMappingMixin):
-    """
-    A single mapping rule that can be evaluated against a tag and image
-    """
-
-    def __init__(self, rule_json=None):
-        super(ImagePolicyMappingRule, self).__init__(rule_json)
-        self.policy_ids = []
-        self.whitelist_ids = []
-        self.set_policy_attribs()
-
-    def json(self):
-        return self.to_json()
-
-
 class ExecutableMapping(object):
     """
     A set of mapping rules to be evaluated against a tag name and image (image identifiers can be in mapping rules)
@@ -1056,228 +639,35 @@ class ExecutableMapping(object):
             return [m.json() for m in self.mapping_rules]
 
 
-class WhitelistedTriggerMatch(TriggerMatch):
-    """
-    A recursive type extension for trigger match to indicate a whitelist match. May match against a base trigger match or
-    another type of trigger match including other WhitelistedTriggerMatches.
-    """
+class BundleProvider(ABC):
+    @abstractmethod
+    def init_artifact_mapping(self, raw_bundle_json: Dict):
+        ...
 
-    def __init__(self, trigger_match, matched_whitelist_item):
-        super(WhitelistedTriggerMatch, self).__init__(
-            trigger_match.trigger, trigger_match.id, trigger_match.msg
-        )
-        self.whitelist_match = matched_whitelist_item
+    @abstractmethod
+    def init_whitelist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        ...
 
-    def is_whitelisted(self):
-        return self.whitelist_match is not None
+    @abstractmethod
+    def init_blacklist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        ...
 
-    def whitelisted_json(self):
-        return {
-            "whitelist_name": self.whitelist_match.parent_whitelist.name,
-            "whitelist_id": self.whitelist_match.parent_whitelist.id,
-            "matched_rule_id": self.whitelist_match.id,
-        }
+    @abstractmethod
+    def optimize_mapping(self, mapping: ExecutableMapping):
+        ...
 
-    def json(self):
-        j = super(WhitelistedTriggerMatch, self).json()
+    @abstractmethod
+    def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
+        ...
 
-        # Note: encode this as an object in the 'whitelisted' col for tabular output.
-        # Note when rendering to json for result, a regular FiredTrigger's 'whitelisted' column should = bool false
-        j["whitelisted"] = {
-            "whitelist_name": self.whitelist_match.parent_whitelist.name,
-            "whitelist_id": self.whitelist_match.parent_whitelist.id,
-            "matched_rule_id": self.whitelist_match.id,
-        }
-        return j
-
-
-class ExecutableWhitelistItem(object):
-    """
-    A single whitelist item to evaluate against a single gate trigger instance
-    """
-
-    def __init__(self, item_json, parent):
-        self.id = item_json.get("id")
-        self.gate = item_json.get("gate").lower()
-        self.trigger_id = item_json.get("trigger_id")
-        expires_on_str = item_json.get("expires_on", "")
-        if expires_on_str:
-            try:
-                self.expires_on = rfc3339str_to_datetime(expires_on_str)
-            except Exception as err:
-                logger.exception("Failed to parse")
-                raise err
-        self.parent_whitelist = parent
-
-    def is_expired(self):
-        now_utc = anchore_now_datetime().replace(tzinfo=datetime.timezone.utc)
-        return (
-            hasattr(self, "expires_on")
-            and self.expires_on
-            and now_utc >= self.expires_on
-        )
-
-    def execute(self, trigger_match):
-        """
-        Return a processed instance
-        :param trigger_inst: the trigger instance to check
-        :return: a WhitelistedTriggerInstance or a TriggerInstance depending on if the items match
-        """
-        # If this whitelist rule is expired, we do not search for any matches
-        # When expires_on is parsed it's translated to UTC, so we must do the same for getting the current time
-        # so that we can compare them
-        if self.is_expired():
-            return trigger_match
-
-        if hasattr(trigger_match, "is_whitelisted") and trigger_match.is_whitelisted():
-            return trigger_match
-
-        if hasattr(trigger_match, "id"):
-            if self.matches(trigger_match):
-                return WhitelistedTriggerMatch(trigger_match, self)
-            else:
-                return trigger_match
-
-    def matches(self, fired_trigger_obj):
-        # TODO: add alias checks here for backwards compat
-
-        return (
-            self.gate == fired_trigger_obj.trigger.gate_cls.__gate_name__.lower()
-            and (
-                self.trigger_id == fired_trigger_obj.id
-                or is_match(regexify, self.trigger_id, fired_trigger_obj.id)
-            )
-        )
-
-    def json(self):
-        return {"id": self.id, "gate": self.gate, "trigger_id": self.trigger_id}
-
-
-class IWhitelistItemIndex(object):
-    """
-    A data structure to lookup potential whitelist items for a given gate output
-    """
-
-    def add(self, item):
-        """
-        Add the whitelist item to the index for lookup
-
-        :param item:
-        :return:
-        """
-        pass
-
-    def candidates_for(self, decision_match):
-        """
-        Return whitelist items that may match the decision. Depending on the implementation may be an exact or fuzzy match.
-
-        :param decision_match:
-        :return: list of ExecutableWhitelistItem objects
-        """
-        raise NotImplementedError()
-
-
-class HybridTriggerIdKeyedItemIndex(IWhitelistItemIndex):
-    """
-    An index that has a primary keyed lookup and a secondary list for unkeyed entries.
-
-    Each gate has its own index composed of a keyed index and an array for any whitelist items that are not triggerid specific
-    """
-
-    GateItemIndex = namedtuple("GateItemIndex", ["keyed", "unkeyed"])
-
-    def __init__(self, item_key_fn=None, match_key_fn=None):
-        self.gate_keys = OrderedDict()
-        self.key_fn = item_key_fn
-        self.match_key_fn = match_key_fn
-
-    def add(self, item):
-        key = None
-        if self.key_fn:
-            key = self.key_fn(item)
-
-        gate_name = item.gate.lower()
-
-        if gate_name not in self.gate_keys:
-            self.gate_keys[gate_name] = HybridTriggerIdKeyedItemIndex.GateItemIndex(
-                keyed=OrderedDict(), unkeyed=[]
-            )
-
-        if not key:
-            self.gate_keys[gate_name].unkeyed.append(item)
-        else:
-            if key not in self.gate_keys[gate_name].keyed:
-                self.gate_keys[gate_name].keyed[key] = []
-
-            self.gate_keys[gate_name].keyed[key].append(item)
-
-    def candidates_for(self, decision):
-        gate_entry = self.gate_keys.get(
-            decision.match.trigger.gate_cls.__gate_name__.lower()
-        )
-        if not gate_entry:
-            return []
-
-        if self.match_key_fn:
-            key = self.match_key_fn(decision)
-        else:
-            key = None
-
-        if key:
-            keyed = gate_entry.keyed.get(key, [])
-        else:
-            keyed = []
-
-        unkeyed = gate_entry.unkeyed
-        return keyed + unkeyed
-
-
-class StandardCVETriggerIdKey(object):
-    cve_trigger_id_regex = re.compile(r"([A-Za-z0-9\-])+\+\*")
-    supported_gates = [AnchoreSecGate.__gate_name__.lower()]
-
-    @classmethod
-    def whitelist_item_key(cls, item):
-        """
-        Return a key value for the item if the item is an ANCHORESEC gate with trigger_id of the
-        form <CVE>+<pkg> where <pkg> may be '*'. Else return None
-
-        :param item: a whitelist item json
-        :return: a key for a dictionary or None if not hashable/indexable
-        """
-
-        if item.gate.lower() in cls.supported_gates and cls.cve_trigger_id_regex.match(
-            item.trigger_id
-        ):
-            return cls.anchoresec_trigger_id_to_parts(item.trigger_id)
-        return None
-
-    @classmethod
-    def anchoresec_trigger_id_to_parts(cls, trigger_id):
-        pieces = trigger_id.split("+", 1)
-        if len(pieces) > 1:
-            cve, pkg = pieces
-            # pkg is either a specific pkg or a wildcard
-            return cve
-        return trigger_id
-
-    @classmethod
-    def decision_item_key(cls, decision):
-        gate = decision.match.trigger.gate_cls.__gate_name__.lower()
-        if gate in cls.supported_gates:
-            return cls.anchoresec_trigger_id_to_parts(decision.match.id)
-        else:
-            return decision.match.id
-
-    @classmethod
-    def noop_key(cls, item):
-        """
-        Always return None, so no keyed lookups are done.
-
-        :param item:
-        :return:
-        """
-        return None
+    @property
+    @abstractmethod
+    def gate_registry(self) -> Type[GateRegistry]:
+        ...
 
 
 class ExecutableWhitelist(VersionedEntityMixin):
@@ -1353,85 +743,6 @@ class ExecutableWhitelist(VersionedEntityMixin):
             "comment": self.comment,
             "items": [i.json() for i in self.items],
         }
-
-
-class BundleProvider(ABC):
-    @abstractmethod
-    def init_artifact_mapping(self, raw_bundle_json: Dict):
-        ...
-
-    @abstractmethod
-    def init_whitelist_artifact_mapping(
-        self, raw_bundle_json: Dict
-    ) -> ExecutableMapping:
-        ...
-
-    @abstractmethod
-    def init_blacklist_artifact_mapping(
-        self, raw_bundle_json: Dict
-    ) -> ExecutableMapping:
-        ...
-
-    @abstractmethod
-    def optimize_mapping(self, mapping: ExecutableMapping):
-        ...
-
-    @abstractmethod
-    def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
-        ...
-
-    @property
-    @abstractmethod
-    def gate_registry(self) -> Type[GateRegistry]:
-        ...
-
-
-class ImageBundleProvider(BundleProvider):
-    _artifact_mapping_key = "mappings"
-    _wl_artifact_mapping_key = "whitelisted_images"
-    _bl_artifact_mapping_key = "blacklisted_images"
-
-    def __init__(self, tag: Optional[str] = None):
-        self.target_tag = tag
-        self.evaluatable = ImageEvaluatable(image_obj=None, tag=self.target_tag)
-
-    def init_artifact_mapping(self, raw_bundle_json: Dict):
-        return ExecutableMapping(
-            raw_bundle_json.get(self._artifact_mapping_key, []),
-            rule_cls=ImagePolicyMappingRule,
-        )
-
-    def init_whitelist_artifact_mapping(
-        self, raw_bundle_json: Dict
-    ) -> ExecutableMapping:
-        return ExecutableMapping(
-            raw_bundle_json.get(self._wl_artifact_mapping_key, []),
-            rule_cls=ImageMappingRule,
-        )
-
-    def init_blacklist_artifact_mapping(
-        self, raw_bundle_json: Dict
-    ) -> ExecutableMapping:
-        return ExecutableMapping(
-            raw_bundle_json.get(self._bl_artifact_mapping_key, []),
-            rule_cls=ImageMappingRule,
-        )
-
-    def optimize_mapping(self, mapping: ExecutableMapping) -> None:
-        # If building for a specific tag target, only build the mapped rules, else build all rules
-        if self.target_tag:
-            rule = mapping.execute(self.evaluatable)
-            if rule is not None:
-                mapping.mapping_rules = [rule]
-            else:
-                mapping.mapping_rules = []
-
-    def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
-        evaluatable.check_bundle_target_mismatch(bundle_target=self.evaluatable)
-
-    @property
-    def gate_registry(self) -> Type[GateRegistry]:
-        return GateRegistry
 
 
 class ExecutableBundle(VersionedEntityMixin):
@@ -1705,6 +1016,54 @@ class ExecutableBundle(VersionedEntityMixin):
                 "whitelists": [w.json() for w in self.whitelists],
                 "mappings": self.mapping.json(),
             }
+
+
+class ImageBundleProvider(BundleProvider):
+    _artifact_mapping_key = "mappings"
+    _wl_artifact_mapping_key = "whitelisted_images"
+    _bl_artifact_mapping_key = "blacklisted_images"
+
+    def __init__(self, tag: Optional[str] = None):
+        self.target_tag = tag
+        self.evaluatable = ImageEvaluatable(image_obj=None, tag=self.target_tag)
+
+    def init_artifact_mapping(self, raw_bundle_json: Dict):
+        return ExecutableMapping(
+            raw_bundle_json.get(self._artifact_mapping_key, []),
+            rule_cls=ImagePolicyMappingRule,
+        )
+
+    def init_whitelist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        return ExecutableMapping(
+            raw_bundle_json.get(self._wl_artifact_mapping_key, []),
+            rule_cls=ImageMappingRule,
+        )
+
+    def init_blacklist_artifact_mapping(
+        self, raw_bundle_json: Dict
+    ) -> ExecutableMapping:
+        return ExecutableMapping(
+            raw_bundle_json.get(self._bl_artifact_mapping_key, []),
+            rule_cls=ImageMappingRule,
+        )
+
+    def optimize_mapping(self, mapping: ExecutableMapping) -> None:
+        # If building for a specific tag target, only build the mapped rules, else build all rules
+        if self.target_tag:
+            rule = mapping.execute(self.evaluatable)
+            if rule is not None:
+                mapping.mapping_rules = [rule]
+            else:
+                mapping.mapping_rules = []
+
+    def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
+        evaluatable.check_bundle_target_mismatch(bundle_target=self.evaluatable)
+
+    @property
+    def gate_registry(self) -> Type[GateRegistry]:
+        return GateRegistry
 
 
 def build_empty_error_execution(image_obj, tag, bundle, errors=None, warnings=None):
