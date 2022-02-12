@@ -4,7 +4,7 @@ import unittest
 import pytest
 
 from anchore_engine.db import Image
-from anchore_engine.services.policy_engine.engine.policy.bundles import (
+from anchore_engine.services.policy_engine.engine.policy.bundles.bundles import (
     ImageEvaluatable,
     build_bundle,
 )

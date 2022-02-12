@@ -3,7 +3,7 @@ import datetime
 import pytest
 
 from anchore_engine.db.entities.common import anchore_now_datetime
-from anchore_engine.services.policy_engine.engine.policy.bundles import (
+from anchore_engine.services.policy_engine.engine.policy.bundles.bundles import (
     ExecutableWhitelistItem,
 )
 from anchore_engine.util.time import datetime_to_rfc3339

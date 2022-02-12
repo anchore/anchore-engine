@@ -9,7 +9,7 @@ import pytest
 
 from anchore_engine.db import Image
 from anchore_engine.db import get_thread_scoped_session as get_session
-from anchore_engine.services.policy_engine.engine.policy.bundles import (
+from anchore_engine.services.policy_engine.engine.policy.bundles.bundles import (
     ExecutableWhitelist,
     ImageEvaluatable,
     build_bundle,

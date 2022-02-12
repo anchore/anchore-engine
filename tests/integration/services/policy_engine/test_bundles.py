@@ -4,10 +4,12 @@ import json
 import pytest
 
 from anchore_engine.db import Image, get_thread_scoped_session
-from anchore_engine.services.policy_engine.engine.policy.bundles import (
-    GateAction,
+from anchore_engine.services.policy_engine.engine.policy.bundles.bundles import (
     ImageEvaluatable,
     build_bundle,
+)
+from anchore_engine.services.policy_engine.engine.policy.bundles.decisions import (
+    GateAction,
 )
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     BundleTargetTagMismatchError,
