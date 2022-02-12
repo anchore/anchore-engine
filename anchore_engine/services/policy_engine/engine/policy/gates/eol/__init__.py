@@ -429,7 +429,7 @@ class FullMatchTrigger(BaseTrigger[Image]):
     __description__ = "triggers if the evaluated image has a package installed with software distributed under the specified (exact match) license(s)"
 
 
-class SubstringMatchTrigger(BaseImageTrigger):
+class SubstringMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "licsubmatch"
     __description__ = "triggers if the evaluated image has a package installed with software distributed under the specified (substring match) license(s)"
@@ -443,37 +443,37 @@ class LicenseBlacklistGate(BaseGate[Image]):
     __triggers__ = [FullMatchTrigger, SubstringMatchTrigger]
 
 
-class NpmNotLatestTrigger(BaseImageTrigger):
+class NpmNotLatestTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "npmnotlatest"
     __description__ = "triggers if an installed NPM is not the latest version according to NPM data feed"
 
 
-class NpmNotOfficialTrigger(BaseImageTrigger):
+class NpmNotOfficialTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "npmnotofficial"
     __description__ = "triggers if an installed NPM is not in the official NPM database, according to NPM data feed"
 
 
-class NpmBadVersionTrigger(BaseImageTrigger):
+class NpmBadVersionTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "npmbadversion"
     __description__ = "triggers if an installed NPM version is not listed in the official NPM feed as a valid version"
 
 
-class NpmPkgFullMatchTrigger(BaseImageTrigger):
+class NpmPkgFullMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "npmpkgfullmatch"
     __description__ = "triggers if the evaluated image has an NPM package installed that matches one in the list given as a param (package_name|vers)"
 
 
-class NpmPkgNameMatchTrigger(BaseImageTrigger):
+class NpmPkgNameMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "npmpkgnamematch"
     __description__ = "triggers if the evaluated image has an NPM package installed that matches one in the list given as a param (package_name)"
 
 
-class NpmNoFeedTrigger(BaseImageTrigger):
+class NpmNoFeedTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "npmnofeed"
     __description__ = "triggers if anchore does not have access to the NPM data feed"
@@ -495,13 +495,13 @@ class NpmCheckGate(BaseGate[Image]):
     ]
 
 
-class PkgFullMatchTrigger(BaseImageTrigger):
+class PkgFullMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "pkgfullmatch"
     __description__ = "triggers if the evaluated image has a package installed that matches one in the list given as a param (package_name|vers)"
 
 
-class NameMatchTrigger(BaseImageTrigger):
+class NameMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "pkgnamematch"
     __description__ = "triggers if the evaluated image has a package installed that matches one in the list given as a param (package_name)"
@@ -515,13 +515,13 @@ class PackageBlacklistGate(BaseGate[Image]):
     __triggers__ = [PkgFullMatchTrigger, NameMatchTrigger]
 
 
-class SecretContentMatchTrigger(BaseImageTrigger):
+class SecretContentMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "contentmatch"
     __description__ = "Triggers if the content search analyzer has found any matches.  If the parameter is set, then will only trigger against found matches that are also in the SECRETCHECK_CONTENTREGEXP parameter list.  If the parameter is absent or blank, then the trigger will fire if the analyzer found any matches."
 
 
-class SecretFilenameMatchTrigger(BaseImageTrigger):
+class SecretFilenameMatchTrigger(BaseTrigger[Image]):
     __lifecycle_state__ = LifecycleStates.eol
     __trigger_name__ = "filenamematch"
     __description__ = "Triggers if a file exists in the container that matches with any of the regular expressions given as SECRETCHECK_NAMEREGEXP parameters."
