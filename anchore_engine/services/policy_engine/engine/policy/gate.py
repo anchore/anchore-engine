@@ -43,39 +43,36 @@ class LifecycleMixin(object):
 
 class GateRegistry:
     _instance = None
-    _registry = {}
 
     def __new__(cls):
         if cls._instance is None:
-            print("Creating the object")
             cls._instance = super(GateRegistry, cls).__new__(cls)
+            cls._registry = {}
         return cls._instance
 
-    @classmethod
-    def add_gate(cls, gate: Type):
+    def add_gate(self, gate: GateMeta):
         if hasattr(gate, "__gate_name__"):
             gate_id = getattr(gate, "__gate_name__").lower()
-            cls._registry[gate_id] = gate
+            self._registry[gate_id] = gate
 
-    @classmethod
-    def get_gate_by_name(cls, name: str):
-        # Try direct name
-        found = cls._registry.get(name.lower())
+    def get_gate_by_name(self, name: str):
+        found = self._registry.get(name.lower())
 
         if found is not None:
             return found
         else:
             found = [
-                x for x in list(cls._registry.values()) if name.lower() in x.__aliases__
+                x
+                for x in list(self._registry.values())
+                if name.lower() in x.__aliases__
             ]
             if found:
                 return found[0]
             else:
                 raise KeyError(name)
 
-    @classmethod
-    def registered_gate_names(cls):
-        return list(cls._registry.keys())
+    def registered_gate_names(self):
+        return list(self._registry.keys())
 
 
 class GateMeta(type):
@@ -85,16 +82,18 @@ class GateMeta(type):
     """
 
     def __init__(cls, name, bases, dct):
-        if not hasattr(cls, "registry"):
-            cls.registry = GateRegistry()
-        cls.registry.add_gate(cls)
+        if not hasattr(cls, "_registry"):
+            cls._registry = GateRegistry()
+        else:
+            cls._registry.add_gate(gate=cls)
         super(GateMeta, cls).__init__(name, bases, dct)
 
     def get_gate_by_name(cls, name):
-        return cls.registry.get_gate_by_name(name)
+        result = cls._registry.get_gate_by_name(name)
+        logger.warn("%r", result)
 
     def registered_gate_names(cls):
-        return cls.registry.registered_gate_names()
+        return cls._registry.registered_gate_names()
 
 
 class ExecutionContext(object):
@@ -432,7 +431,7 @@ class BaseTrigger(Generic[T], ABC, LifecycleMixin):
         ...
 
 
-class BaseGate(Generic[T], LifecycleMixin):
+class BaseGate(Generic[T], LifecycleMixin, metaclass=GateMeta):
     """
     Base type for a gate module.
 
