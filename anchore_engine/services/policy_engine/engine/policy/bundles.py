@@ -566,10 +566,6 @@ class Evaluatable:
         ...
 
     @abstractmethod
-    def execute_mapping(self, mapping: ExecutableMapping):
-        ...
-
-    @abstractmethod
     def instantiate_bundle_execution(
         self, executable_bundle: ExecutableBundle
     ) -> BundleExecution:
@@ -685,12 +681,12 @@ class ExecutablePolicyRule(PolicyRule):
 
         # Configure the trigger instance
         try:
-            self.gate_cls = gate_registry.get_gate_by_name(self.gate_name)
+            self.gate_cls = gate_registry().get_gate_by_name(self.gate_name)
         except KeyError:
             # Gate not found
             self.error_exc = GateNotFoundError(
                 gate=self.gate_name,
-                valid_gates=gate_registry.registered_gate_names(),
+                valid_gates=gate_registry().registered_gate_names(),
                 rule_id=self.rule_id,
             )
             self.configured_trigger = None
@@ -1384,8 +1380,8 @@ class BundleProvider(ABC):
     def check_bundle_target_mismatch(self, evaluatable: Evaluatable):
         ...
 
-    @abstractmethod
     @property
+    @abstractmethod
     def gate_registry(self) -> Type[GateRegistry]:
         ...
 
@@ -1424,7 +1420,7 @@ class ImageBundleProvider(BundleProvider):
     def optimize_mapping(self, mapping: ExecutableMapping) -> None:
         # If building for a specific tag target, only build the mapped rules, else build all rules
         if self.target_tag:
-            rule = self.evaluatable.execute_mapping(mapping)
+            rule = mapping.execute(self.evaluatable)
             if rule is not None:
                 mapping.mapping_rules = [rule]
             else:
@@ -1649,15 +1645,15 @@ class ExecutableBundle(VersionedEntityMixin):
             # Send thru the whitelist mapping
             whitelisted_artifact_match = None
             if self.whitelisted_artifact_mapping:
-                whitelisted_artifact_match = evaluatable.execute_mapping(
-                    self.whitelisted_artifact_mapping
+                whitelisted_artifact_match = self.whitelisted_artifact_mapping.execute(
+                    evaluatable
                 )
 
             # Send thru the blacklist mapping
             blacklisted_artifact_match = None
             if self.blacklisted_artifact_mapping:
-                blacklisted_artifact_match = evaluatable.execute_mapping(
-                    self.blacklisted_artifact_mapping
+                blacklisted_artifact_match = self.blacklisted_artifact_mapping.execute(
+                    evaluatable
                 )
 
             bundle_exec.bundle_decision = BundleDecision(
