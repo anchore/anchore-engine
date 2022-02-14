@@ -100,7 +100,7 @@ def fail_target():
 
 
 @pytest.mark.skip(
-    msg="Disabled temporarily pending work to remove db requirement from internal client init"
+    reason="Disabled temporarily pending work to remove db requirement from internal client init"
 )
 def test_run_target_with_lease_ok():
     global SimpleQueueClient
@@ -119,7 +119,7 @@ def test_run_target_with_lease_ok():
 
 
 @pytest.mark.skip(
-    msg="Disabled temporarily pending work to remove db requirement from internal client init"
+    reason="Disabled temporarily pending work to remove db requirement from internal client init"
 )
 def test_run_target_with_lease_conn_error():
     global SimpleQueueClient

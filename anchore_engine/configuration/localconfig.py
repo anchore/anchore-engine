@@ -42,6 +42,7 @@ DEFAULT_CONFIG = {
     "keys": {},
     "policy_bundles_dir": "bundles/",
     "max_compressed_image_size_mb": -1,
+    "policy_engine_cache_ttl": -1,  # Set to -1 to maintain default behavior.
 }
 
 DEFAULT_SERVICE_THREAD_COUNT = 50

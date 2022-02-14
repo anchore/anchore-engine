@@ -35,6 +35,7 @@ from anchore_engine.common.models.policy_engine import (
     TriggerParamSpec,
     TriggerSpec,
 )
+from anchore_engine.configuration import localconfig
 from anchore_engine.db import (
     AnalysisArtifact,
     CachedPolicyEvaluation,
@@ -292,7 +293,7 @@ def problem_from_exception(eval_exception, severity=None):
 
 
 # Global cache for policy evaluations
-class EvaluationCacheManager(object):
+class EvaluationCacheManager:
     class CacheStatus(enum.Enum):
         valid = "valid"  # The cached entry is a valid result
         stale = "stale"  # The entry is stale because a feed sync has occurred since last evaluation
@@ -474,14 +475,22 @@ class EvaluationCacheManager(object):
         session = get_session()
         return session.merge(eval)
 
-    def _inputs_changed(self, cache_timestamp):
-        # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
+    def _inputs_changed(self, cache_timestamp) -> bool:
+        """Helper function to determine if the image is in the cache and is valid.
+
+        :param cache_timestamp: The most recent modification timestamp for the cache entry.
+        """
         db = get_session()
 
-        image_updated = self.image.last_modified > cache_timestamp
+        image_has_been_updated = self.image.last_modified > cache_timestamp
+        time_delta = datetime.datetime.utcnow() - cache_timestamp
+        image_has_exceeded_ttl = (
+            time_delta > localconfig.get_config()["policy_engine_cache_ttl"]
+        )
 
         return (
-            image_updated
+            image_has_been_updated
+            or image_has_exceeded_ttl
             or get_vulnerabilities_provider().is_image_vulnerabilities_updated(
                 image=self.image, db_session=db, since=cache_timestamp
             )
@@ -499,7 +508,8 @@ class EvaluationCacheManager(object):
             return EvaluationCacheManager.CacheStatus.missing
 
         if cache_entry.bundle_digest == self.bundle_digest:
-            # A feed sync has occurred since the eval was done or the image has been updated/reloaded, so inputs can have changed. Must be stale
+            # See if either a feed sync has occurred since the policy evaluation was done, if the image has been
+            # updated or reloaded, or if the cache TTL has expired. If so, the cache is stale and mark it as such.
             if self._inputs_changed(cache_entry.last_modified):
                 metrics.counter_inc(name="anchore_policy_evaluation_cache_misses_stale")
                 return EvaluationCacheManager.CacheStatus.stale
