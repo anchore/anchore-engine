@@ -1,6 +1,7 @@
 import pytest
 
 from anchore_engine.common import helpers
+from anchore_engine.common.helpers import make_anchore_exception
 
 values = [
     pytest.param("{}", {}, id="'{}'"),
@@ -206,3 +207,113 @@ class TestMakeResponseError:
         assert actual["message"] == param["expected"]["message"]
         assert actual["httpcode"] == param["expected"]["httpcode"]
         assert actual["detail"] == param["expected"]["detail"]
+
+
+class TestMakeAnchoreException:
+
+    # This handles the case where attributes are already set on the exception passed in
+    err_with_attrs = Exception("test")
+    err_with_attrs.anchore_error_json = {
+        "message": "attr-test",
+        "detail": {
+            "raw_exception_message": "attribute test",
+            "error_codes": [],
+        },
+        "httpcode": 500,
+    }
+    err_with_attrs.error_code = 404
+
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "err": "test",
+                    "input_message": None,
+                    "input_httpcode": None,
+                    "input_detail": None,
+                    "override_existing": None,
+                    "input_error_codes": None,
+                    "expected_msg": "test",
+                    "expected_anchore_json": {
+                        "message": "test",
+                        "detail": {
+                            "raw_exception_message": "test",
+                            "error_codes": [],
+                        },
+                        "httpcode": 500,
+                    },
+                },
+                id="string-err-only",
+            ),
+            pytest.param(
+                {
+                    "err": Exception("test"),
+                    "input_message": None,
+                    "input_httpcode": None,
+                    "input_detail": None,
+                    "override_existing": None,
+                    "input_error_codes": None,
+                    "expected_msg": "test",
+                    "expected_anchore_json": {
+                        "message": "test",
+                        "detail": {
+                            "raw_exception_message": "test",
+                            "error_codes": [],
+                        },
+                        "httpcode": 500,
+                    },
+                },
+                id="err-only",
+            ),
+            pytest.param(
+                {
+                    "err": err_with_attrs,
+                    "input_message": None,
+                    "input_httpcode": None,
+                    "input_detail": None,
+                    "override_existing": None,
+                    "input_error_codes": None,
+                    "expected_msg": "test",
+                    "expected_anchore_json": {
+                        "message": "attr-test",
+                        "detail": {
+                            "raw_exception_message": "attribute test",
+                            "error_codes": [404],
+                        },
+                        "httpcode": 500,
+                    },
+                },
+                id="err-only-with-attrs",
+            ),
+            pytest.param(
+                {
+                    "err": err_with_attrs,
+                    "input_message": "override-msg",
+                    "input_httpcode": 401,
+                    "input_detail": {"unit": "test"},
+                    "override_existing": True,
+                    "input_error_codes": [402, 403],
+                    "expected_msg": "test",
+                    "expected_anchore_json": {
+                        "message": "override-msg",
+                        "detail": {"unit": "test", "error_codes": [402, 403, 404]},
+                        "httpcode": 401,
+                    },
+                },
+                id="override-successful",
+            ),
+        ],
+    )
+    def test_make_anchore_exception(self, param):
+        actual = make_anchore_exception(
+            param["err"],
+            param["input_message"],
+            param["input_httpcode"],
+            param["input_detail"],
+            param["override_existing"],
+            param["input_error_codes"],
+        )
+
+        assert str(actual) == param["expected_msg"]
+        assert actual.anchore_error_json == param["expected_anchore_json"]
