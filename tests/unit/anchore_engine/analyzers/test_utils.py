@@ -81,11 +81,19 @@ class TestDig:
         ),
         pytest.param(
             {
-                "filename": "./nonstring-key-test.json",
-                "dict": {2: ""},
+                "filename": "./nonstring-value-test.json",
+                "dict": {"two": 2},
                 "expected": TypeError(
-                    "Expected value of key 2 to be a string, found int"
+                    "Expected value of key two to be a string, found int"
                 ),
+            },
+            id="nonstring-value",
+        ),
+        pytest.param(
+            {
+                "filename": "./nonstring-key-test.json",
+                "dict": {2: "two"},
+                "expected": TypeError("expected string or bytes-like object"),
             },
             id="nonstring-key",
         ),
