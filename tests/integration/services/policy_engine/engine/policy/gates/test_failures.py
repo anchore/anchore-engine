@@ -4,7 +4,10 @@ import unittest
 import pytest
 
 from anchore_engine.db import Image
-from anchore_engine.services.policy_engine.engine.policy.bundles import build_bundle
+from anchore_engine.services.policy_engine.engine.policy.bundles import (
+    ImageEvaluatable,
+    build_bundle,
+)
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
     PolicyRuleValidationErrorCollection,
     TriggerEvaluationError,
@@ -89,8 +92,9 @@ class PolicyFailureTest(unittest.TestCase):
         image_obj = Image(id="fakeid1")
 
         r = b.execute(
-            image_object=image_obj,
-            tag="dockerhub/library/alpine:latest",
+            evaluatable=ImageEvaluatable(
+                image_obj=image_obj, tag="dockerhub/library/alpine:latest"
+            ),
             context=object(),
         )
         logger.info((json.dumps((r.json()), indent=2)))

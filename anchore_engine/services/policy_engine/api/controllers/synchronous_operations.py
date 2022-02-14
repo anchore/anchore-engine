@@ -44,6 +44,7 @@ from anchore_engine.db import (
 )
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
+    ImageEvaluatable,
     build_bundle,
     build_empty_error_execution,
 )
@@ -655,8 +656,9 @@ def check_user_image_inline(user_id, image_id, tag, bundle):
         if not problems:
             # Execute bundle
             try:
+                image_evaluatable = ImageEvaluatable(image_obj=img_obj, tag=tag)
                 eval_result = executable_bundle.execute(
-                    img_obj, tag, ExecutionContext(db_session=db, configuration={})
+                    image_evaluatable, ExecutionContext(db_session=db, configuration={})
                 )
             except Exception as e:
                 log.exception(

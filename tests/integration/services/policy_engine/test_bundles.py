@@ -6,6 +6,7 @@ import pytest
 from anchore_engine.db import Image, get_thread_scoped_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     GateAction,
+    ImageEvaluatable,
     build_bundle,
 )
 from anchore_engine.services.policy_engine.engine.policy.exceptions import (
@@ -43,7 +44,8 @@ def test_basic_evaluation(test_data_env_with_images_loaded):
 
     assert img_obj is not None, "Failed to get an image object to test"
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None, "Got None eval"
@@ -59,7 +61,8 @@ def test_basic_evaluation(test_data_env_with_images_loaded):
     logger.info("Got: {}".format(multi_default))
     assert img_obj is not None, "Failed to get an image object to test"
     multi_default_evaluation = multi_default.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     default_built = build_bundle(
@@ -69,7 +72,8 @@ def test_basic_evaluation(test_data_env_with_images_loaded):
     logger.info("Got: {}".format(default_built))
     assert img_obj is not None, "Failed to get an image object to test"
     default_evaluation = default_built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert (
@@ -92,7 +96,8 @@ def test_basic_legacy_evaluation(test_data_env_with_images_loaded):
 
     assert img_obj is not None, "Failed to get an image object to test"
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None, "Got None eval"
@@ -180,7 +185,8 @@ def test_duplicate_rule_evaluation(test_data_env_with_images_loaded):
 
     assert img_obj is not None, "Failed to get an image object to test"
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None, "Got None eval"
@@ -235,7 +241,8 @@ def test_image_whitelist(test_data_env_with_images_loaded):
     test_tag = "docker.io/library/ruby:alpine"
     built = build_bundle(bundle, for_tag=test_tag)
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     assert GateAction.stop == evaluation.bundle_decision.final_decision
@@ -245,7 +252,8 @@ def test_image_whitelist(test_data_env_with_images_loaded):
     test_tag = "docker.io/library/ruby:latest"
     built = build_bundle(bundle, for_tag=test_tag)
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     assert GateAction.go == evaluation.bundle_decision.final_decision
@@ -300,7 +308,8 @@ def test_image_blacklist(test_data_env_with_images_loaded):
     test_tag = "docker.io/library/ruby:alpine"
     built = build_bundle(bundle, for_tag=test_tag)
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     assert GateAction.stop == evaluation.bundle_decision.final_decision
@@ -310,7 +319,8 @@ def test_image_blacklist(test_data_env_with_images_loaded):
     test_tag = "docker.io/library/ruby:latest"
     built = build_bundle(bundle, for_tag=test_tag)
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     assert GateAction.stop == evaluation.bundle_decision.final_decision
@@ -331,7 +341,8 @@ def test_image_blacklist(test_data_env_with_images_loaded):
 
     built = build_bundle(bundle, for_tag=test_tag)
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     assert GateAction.stop == evaluation.bundle_decision.final_decision
@@ -352,7 +363,8 @@ def test_image_blacklist(test_data_env_with_images_loaded):
 
     built = build_bundle(bundle, for_tag=test_tag)
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     assert GateAction.go == evaluation.bundle_decision.final_decision
@@ -373,7 +385,8 @@ def test_whitelists(test_data_env_with_images_loaded):
 
     assert img_obj is not None, "Failed to get an image object to test"
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None, "Got None eval"
@@ -409,7 +422,8 @@ def test_whitelists(test_data_env_with_images_loaded):
 
     assert img_obj is not None
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None
@@ -443,15 +457,17 @@ def test_error_evaluation(test_data_env_with_images_loaded):
     assert img_obj is not None
 
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     assert evaluation is not None
     logger.info("Result: {}".format(json.dumps(evaluation.as_table_json(), indent=2)))
 
     with pytest.raises(BundleTargetTagMismatchError) as f:
         evaluation = built.execute(
-            img_obj,
-            tag="docker.io/library/ubuntu:vivid-2015",
+            ImageEvaluatable(
+                image_obj=img_obj, tag="docker.io/library/ubuntu:vivid-2015"
+            ),
             context=ExecutionContext(db_session=db, configuration={}),
         )
 
@@ -515,8 +531,7 @@ def test_deprecated_gate_evaluation_error(test_data_env_with_images_loaded):
         assert img_obj is not None, "Failed to get an image object to test"
 
         evaluation = built.execute(
-            img_obj,
-            tag=test_tag,
+            ImageEvaluatable(image_obj=img_obj, tag=test_tag),
             context=ExecutionContext(db_session=db, configuration={}),
         )
 
@@ -582,7 +597,8 @@ def testDeprecatedGateEvaluationOk(test_data_env_with_images_loaded):
 
     assert img_obj is not None, "Failed to get an image object to test"
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(image_obj=img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None, "Got None eval"
@@ -607,7 +623,7 @@ def test_policy_init_error(test_data_env_with_images_loaded):
                 "mappings": [],
             }
         )
-        built.execute(image_object=img_obj, context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=img_obj, tag=ruby_tag), context=None)
 
     with pytest.raises(InitializationError) as f:
         built = build_bundle(
@@ -644,7 +660,8 @@ def test_policy_init_error(test_data_env_with_images_loaded):
             for_tag="dockerhub/library/centos:latest",
         )
         built.execute(
-            image_object=img_obj, context=None, tag="dockerhub/library/centos:latest"
+            ImageEvaluatable(image_obj=img_obj, tag="dockerhub/library/centos:latest"),
+            context=None,
         )
 
     assert type(f.value.causes[0]) == UnsupportedVersionError
@@ -684,7 +701,8 @@ def test_policy_init_error(test_data_env_with_images_loaded):
             for_tag="dockerhub/library/centos:latest",
         )
         built.execute(
-            image_object=img_obj, context=None, tag="dockerhub/library/centos:latest"
+            ImageEvaluatable(image_obj=img_obj, tag="dockerhub/library/centos:latest"),
+            context=None,
         )
     assert type(f.value.causes[0]) == UnsupportedVersionError
 
@@ -722,7 +740,7 @@ def test_policy_init_error(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=img_obj, context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=img_obj, tag=ruby_tag), context=None)
     assert type(f.value.causes[0]) == UnsupportedVersionError
 
 
@@ -776,7 +794,7 @@ def test_multi_policy_missing_errors(test_data_env_with_images_loaded):
             }
         )
 
-        built.execute(image_object=Image(), context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=Image(), tag=ruby_tag), context=None)
 
 
 def test_multi_policy_invalid_errors(test_data_env_with_images_loaded):
@@ -827,7 +845,7 @@ def test_multi_policy_invalid_errors(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=Image(), context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=Image(), tag=ruby_tag), context=None)
 
 
 def test_multi_policy_mix_use_errors(test_data_env_with_images_loaded):
@@ -879,7 +897,7 @@ def test_multi_policy_mix_use_errors(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=Image(), context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=Image(), tag=ruby_tag), context=None)
 
     with pytest.raises(InitializationError) as f:
         built = build_bundle(
@@ -922,7 +940,7 @@ def test_multi_policy_mix_use_errors(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=Image(), context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=Image(), tag=ruby_tag), context=None)
 
 
 @pytest.mark.skip
@@ -973,7 +991,7 @@ def test_no_policy_in_mapping_errors(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=Image(), context=None, tag=ruby_tag)
+        built.execute(ImageEvaluatable(image_obj=Image(), tag=ruby_tag), context=None)
 
 
 def test_policy_not_found(test_data_env_with_images_loaded):
@@ -986,7 +1004,8 @@ def test_policy_not_found(test_data_env_with_images_loaded):
             test_data_env_with_images_loaded.get_bundle("bad_policy_id")
         )
         built.execute(
-            image_object=img_obj, context=None, tag="dockerhub/library/ruby:latest"
+            ImageEvaluatable(image_obj=img_obj, tag="dockerhub/library/ruby:latest"),
+            context=None,
         )
         logger.info("Expected Initialization error: {}".format(f.exception))
 
@@ -999,9 +1018,10 @@ def test_invalid_actions(test_data_env_with_images_loaded):
     with pytest.raises(InitializationError) as f:
         built = build_bundle(test_data_env_with_images_loaded.get_bundle("bad_bundle1"))
         built.execute(
-            image_object=img_obj, context=None, tag="dockerhub/library/ruby:latest"
+            ImageEvaluatable(image_obj=img_obj, tag="dockerhub/library/ruby:latest"),
+            context=None,
         )
-        built.execute(image_object=img_obj, context=None, tag="test")
+        built.execute(ImageEvaluatable(image_obj=img_obj, tag="test"), context=None)
 
     with pytest.raises(InitializationError) as f:
         built = build_bundle(
@@ -1043,7 +1063,7 @@ def test_invalid_actions(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=img_obj, context=None, tag=None)
+        built.execute(ImageEvaluatable(image_obj=img_obj, tag=None), context=None)
 
     with pytest.raises(InitializationError) as f:
         bad_param1 = build_bundle(
@@ -1087,7 +1107,7 @@ def test_invalid_actions(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=img_obj, context=None, tag=None)
+        built.execute(ImageEvaluatable(image_obj=img_obj, tag=None), context=None)
 
     with pytest.raises(InitializationError) as f:
         bad_param2 = build_bundle(
@@ -1131,4 +1151,4 @@ def test_invalid_actions(test_data_env_with_images_loaded):
                 ],
             }
         )
-        built.execute(image_object=img_obj, context=None, tag=None)
+        built.execute(ImageEvaluatable(image_obj=img_obj, tag=None), context=None)

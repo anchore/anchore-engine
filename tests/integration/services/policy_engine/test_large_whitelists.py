@@ -11,6 +11,7 @@ from anchore_engine.db import Image
 from anchore_engine.db import get_thread_scoped_session as get_session
 from anchore_engine.services.policy_engine.engine.policy.bundles import (
     ExecutableWhitelist,
+    ImageEvaluatable,
     build_bundle,
 )
 from anchore_engine.services.policy_engine.engine.policy.gate import ExecutionContext
@@ -34,7 +35,8 @@ def test_basic_whitelist_evaluation(bundle, test_data_env_with_images_loaded):
 
     assert img_obj is not None, "Failed to get an image object to test"
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None, "Got None eval"
@@ -63,7 +65,8 @@ def test_whitelists(bundle, test_data_env_with_images_loaded):
     assert img_obj is not None
     t = time.time()
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     assert evaluation is not None
@@ -79,7 +82,8 @@ def test_whitelists(bundle, test_data_env_with_images_loaded):
 
     t = time.time()
     no_index_evaluation = no_index_built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
 
     ExecutableWhitelist._use_indexes = True
@@ -144,7 +148,8 @@ def test_regexes(bundle, test_data_env_with_images_loaded):
     logger.info("Executing with indexes")
     t = time.time()
     evaluation = built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     t1 = time.time() - t
     logger.info(("Took: {}".format(t1)))
@@ -156,7 +161,8 @@ def test_regexes(bundle, test_data_env_with_images_loaded):
     logger.info("Executing without indexes")
     t2 = time.time()
     evaluation2 = non_index_built.execute(
-        img_obj, tag=test_tag, context=ExecutionContext(db_session=db, configuration={})
+        ImageEvaluatable(img_obj, tag=test_tag),
+        context=ExecutionContext(db_session=db, configuration={}),
     )
     t2 = time.time() - t2
     logger.info(("Took: {}".format(t2)))
