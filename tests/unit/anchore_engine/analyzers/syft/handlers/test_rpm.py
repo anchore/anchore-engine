@@ -1,6 +1,6 @@
 import pytest
 
-from anchore_engine.analyzers.syft.handlers.rpm import save_entry
+from anchore_engine.analyzers.syft.handlers.rpm import save_entry, _all_packages
 
 
 class TestRpm:
@@ -40,3 +40,37 @@ class TestRpm:
             .get(findings_key, {})
             == param["expected"]
         )
+
+    @pytest.mark.parametrize(
+        "param",
+        [
+            pytest.param(
+                {
+                    "expected_key": "test",
+                    "expected_version": "1.0.0",
+                    "expected_err": None,
+                    "artifact": {"name": "test", "version": "1.0.0"},
+                },
+                id="basic-success",
+            ),
+            pytest.param(
+                {"expected_err": KeyError, "artifact": {"version": "1.0.0"}},
+                id="missing-name",
+            ),
+            pytest.param(
+                {"expected_err": KeyError, "artifact": {"name": "test"}},
+                id="missing-version",
+            ),
+        ],
+    )
+    def test_all_packages(self, param):
+        findings = {"package_list": {"pkgs.all": {"base": {}}}}
+        if param["expected_err"] is not None:
+            with pytest.raises(param["expected_err"]):
+                _all_packages(findings, param["artifact"])
+        else:
+            _all_packages(findings, param["artifact"])
+            assert (
+                findings["package_list"]["pkgs.all"]["base"][param["expected_key"]]
+                == param["expected_version"]
+            )
