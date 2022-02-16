@@ -166,7 +166,7 @@ test-container-dev: setup-test-infra venv ## CI ONLY Run container-structure-tes
 
 .PHONY: test-container-prod
 test-container-prod: setup-test-infra venv ## CI ONLY Run container-structure-tests on :latest prod image
-	@$(ACTIVATE_VENV) && $(CI_CMD) test-container $(CIRCLE_PROJECT_REPONAME) prod $(CONTAINER_TEST_CONFIG)
+	@$(ACTIVATE_VENV) && $(CI_CMD) test-container $(CIRCLE_PROJECT_REPONAME) prod $(CONTAINER_TEST_CONFIG) $(DEV_IMAGE_REPO) $(GIT_TAG)
 
 
 # Release targets

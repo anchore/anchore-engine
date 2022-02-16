@@ -20,11 +20,17 @@ if [[ "${CI:-false}" == true ]]; then
     # If we're asking for "prod", that means ${IMAGE}:latest, which means we
     # want to pull and check that image from dockerhub
     if [[ "${TAG}" == "prod" ]]; then
+      DEV_IMAGE_REPO="${4:?'Missing required parameter: DEV_IMAGE_REPO'}"
+      GIT_TAG="${5:?'Missing required parameter: GIT_TAG'}"
       test "${DOCKER_USER:?'Missing required environment variable: DOCKER_USER'}"
       test "${DOCKER_PASS:?'Missing required environment variable: DOCKER_PASS'}"
+      test "${DEV_IMAGE_REPO:?'Missing required environment variable: DEV_IMAGE_REPO'}"
+      test "${GIT_TAG:?'Missing required environment variable: GIT_TAG'}"
+
       echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-      IMAGE="anchore/${IMAGE}"
-      TAG="latest"
+
+      IMAGE="${DEV_IMAGE_REPO}"
+      TAG="$(git describe --match "${GIT_TAG}-rc*" --tags --abbrev=0)"
       docker pull "${IMAGE}:${TAG}"
     fi
 

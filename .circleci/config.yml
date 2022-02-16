@@ -538,6 +538,11 @@ workflows:
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
+      - container_tests:
+          name: test_container_prod
+          test_env: prod
+          context: dockerhub-prod
+          filters: *filter_semver_tags
       - slack/on-hold:
           context: slack-bot
           channel: 'C01NA1QMYCF'
@@ -558,6 +563,7 @@ workflows:
             - slack-bot
           filters: *filter_semver_tags
           requires:
+            - test_container_prod
             - hold_for_approval
       - ironbank-artifacts:
           context: aws-prod
@@ -567,13 +573,6 @@ workflows:
       - push_image:
           name: push_redhat_image
           make_job: push-redhat
-          context: dockerhub-prod
-          filters: *filter_semver_tags
-          requires:
-            - push_prod_image
-      - container_tests:
-          name: test_container_prod
-          test_env: prod
           context: dockerhub-prod
           filters: *filter_semver_tags
           requires:
