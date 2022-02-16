@@ -339,14 +339,8 @@ jobs:
 
   container_tests:
     description: Check container properties
-    parameters:
-      # dev:  a docker build job *must* take place before the job so that
-      #       there is a local image for it to run
-      # prod: the script that this invokes pulls the image from dockerhub
-      test_env:
-        type: enum
-        default: "dev"
-        enum: ["dev", "prod"]
+    # a docker build job *must* take place before the job so that
+    # there is a local image for it to run
     docker:
       - image: circleci/python:3.8
     environment: *global_environment_vars
@@ -357,7 +351,7 @@ jobs:
       - <<: *load_docker_image
       - run:
           name: Run container-structure-tests
-          command: make test-container-<< parameters.test_env >>
+          command: make test-container-dev
 
 workflows:
   default_workflow:
@@ -387,7 +381,6 @@ workflows:
           filters: *filter_release_branch
       - container_tests:
           name: test_container_dev
-          test_env: "dev"
           requires:
             - build
       - functional_tests:
@@ -451,7 +444,6 @@ workflows:
             - unit_tests_38
       - container_tests:
           name: test_container_nightly
-          test_env: "dev"
           filters: *filter_nightly
           requires:
             - build
@@ -502,7 +494,6 @@ workflows:
           filters: *filter_rc_tags
       - container_tests:
           name: test_container_rc
-          test_env: dev
           filters: *filter_rc_tags
           requires:
             - build
@@ -538,11 +529,6 @@ workflows:
           py_version: "3.8"
           context: e2e-testing
           filters: *filter_semver_tags
-      - container_tests:
-          name: test_container_prod
-          test_env: prod
-          context: dockerhub-prod
-          filters: *filter_semver_tags
       - slack/on-hold:
           context: slack-bot
           channel: 'C01NA1QMYCF'
@@ -563,7 +549,6 @@ workflows:
             - slack-bot
           filters: *filter_semver_tags
           requires:
-            - test_container_prod
             - hold_for_approval
       - ironbank-artifacts:
           context: aws-prod
@@ -602,7 +587,6 @@ workflows:
             - unit_tests_38
       - container_tests:
           name: test_container_rebuild
-          test_env: dev
           filters: *filter_rebuild_tags
           requires:
             - build
