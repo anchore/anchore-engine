@@ -425,6 +425,7 @@ workflows:
           requires:
             - push_dev_image
           image-name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          filters: *filter_release_branch
 
   nightly_build:
     triggers:
@@ -501,6 +502,12 @@ workflows:
           image_name: anchore/anchore-engine-dev:nightly
           private_registry: true
           timeout: "2000"
+      - grype/list-image-vulns:
+          context: dockerhub
+          requires:
+            - push_nightly_image
+          image-name: anchore/anchore-engine-dev:nightly
+          filters: *filter_nightly
 
   rc_image_workflow:
     jobs:
@@ -536,12 +543,12 @@ workflows:
           private_registry: true
           timeout: "2000"
           policy_failure: true
-
       - grype/list-image-vulns:
           context: dockerhub
           requires:
             - push_rc_image
-          image-name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          image-name: anchore/anchore-engine-dev:${CIRCLE_TAG}
+          filters: *filter_rc_tags
 
   prod_image_workflow:
     jobs:
@@ -665,6 +672,7 @@ workflows:
           requires:
             - push_dev_image
           image-name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          filters: *filter_rebuild_tags
       - hold_for_approval:
           type: approval
           filters: *filter_rebuild_tags
