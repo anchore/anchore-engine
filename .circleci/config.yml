@@ -62,7 +62,6 @@
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1
   grype: anchore/grype@0.2.0
   slack: circleci/slack@4.5
 
@@ -413,13 +412,6 @@ workflows:
             - functional_tests_38_legacy
             - integration_tests_38
             - test_container_dev
-      - anchore/image_scan:
-          context: dockerhub
-          requires:
-            - push_dev_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
-          private_registry: true
-          timeout: "2000"
       - grype/list-image-vulns:
           context: dockerhub
           requires:
@@ -493,14 +485,6 @@ workflows:
             - integration_tests_38
             - cli_smoke_tests_38
             - test_container_nightly
-      - anchore/image_scan:
-          context: dockerhub
-          filters: *filter_nightly
-          requires:
-            - push_nightly_image
-          image_name: anchore/anchore-engine-dev:nightly
-          private_registry: true
-          timeout: "2000"
       - grype/list-image-vulns:
           context: dockerhub
           requires:
@@ -533,15 +517,6 @@ workflows:
           requires:
             - rc_cli_smoke_tests_38
             - test_container_rc
-      - anchore/image_scan:
-          context: dockerhub
-          filters: *filter_rc_tags
-          requires:
-            - push_rc_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
-          private_registry: true
-          timeout: "2000"
-          policy_failure: true
       - grype/list-image-vulns:
           context: dockerhub
           requires:
@@ -657,15 +632,6 @@ workflows:
             - functional_tests_38_grype
             - integration_tests_38
             - test_container_rebuild
-      - anchore/image_scan:
-          name: anchore_image_scan
-          context: dockerhub
-          requires:
-            - push_dev_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
-          private_registry: true
-          timeout: "2000"
-          policy_failure: true
       - grype/list-image-vulns:
           context: dockerhub
           requires:
