@@ -425,7 +425,6 @@ workflows:
           requires:
             - push_dev_image
           image-name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
-          filters: *filter_release_branch
 
   nightly_build:
     triggers:
@@ -547,7 +546,7 @@ workflows:
           context: dockerhub
           requires:
             - push_rc_image
-          image-name: anchore/anchore-engine-dev:${CIRCLE_TAG}
+          image-name: anchore/anchore-engine-dev:rc
           filters: *filter_rc_tags
 
   prod_image_workflow:
