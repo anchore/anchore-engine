@@ -521,7 +521,7 @@ workflows:
           context: dockerhub
           requires:
             - push_rc_image
-          image-name: anchore/anchore-engine-dev:rc
+          image-name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           filters: *filter_rc_tags
 
   prod_image_workflow:
@@ -636,7 +636,7 @@ workflows:
           context: dockerhub
           requires:
             - push_dev_image
-          image-name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
+          image-name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           filters: *filter_rebuild_tags
       - hold_for_approval:
           type: approval
