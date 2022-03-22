@@ -633,6 +633,7 @@ workflows:
             - integration_tests_38
             - test_container_rebuild
       - grype/list-image-vulns:
+          name: grype_list_image_vulns
           context: dockerhub
           requires:
             - push_dev_image
@@ -642,7 +643,7 @@ workflows:
           type: approval
           filters: *filter_rebuild_tags
           requires:
-            - anchore_image_scan
+            - grype_list_image_vulns
       - push_image:
           name: push_rebuild_image
           make_job: push-rebuild
