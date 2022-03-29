@@ -359,6 +359,29 @@ jobs:
           name: Run container-structure-tests
           command: make test-container-<< parameters.test_env >>
 
+  grype_vuln_scan:
+    description: "Uses grype orb for vuln scans"
+    parameters:
+      image_name:
+        type: string
+        default: "docker:anchore-engine:dev"
+    docker:
+      - image: cimg/python:3.8.4
+    steps:
+      - setup_remote_docker
+      - checkout
+      - <<: *attach_workspace
+      - <<: *load_docker_image
+      - run:
+          name: Login to Registry
+          command: "echo ${DOCKER_PASS} | docker login --username ${DOCKER_USER} --password-stdin"
+      - grype/scan-image:
+          image-name: << parameters.image_name >>
+          output-format: "table"
+      - run:
+          name: List Grype Vulns
+          command: "cat grype-vulns.output"
+
 workflows:
   default_workflow:
     jobs:
@@ -412,11 +435,10 @@ workflows:
             - functional_tests_38_legacy
             - integration_tests_38
             - test_container_dev
-      - grype/list-image-vulns:
+      - grype_vuln_scan:
           context: dockerhub
           requires:
             - push_dev_image
-          image-name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
 
   nightly_build:
     triggers:
@@ -485,11 +507,11 @@ workflows:
             - integration_tests_38
             - cli_smoke_tests_38
             - test_container_nightly
-      - grype/list-image-vulns:
+      - grype_vuln_scan:
           context: dockerhub
           requires:
             - push_nightly_image
-          image-name: anchore/anchore-engine-dev:nightly
+          image_name: anchore/anchore-engine-dev:nightly
           filters: *filter_nightly
 
   rc_image_workflow:
@@ -517,11 +539,10 @@ workflows:
           requires:
             - rc_cli_smoke_tests_38
             - test_container_rc
-      - grype/list-image-vulns:
+      - grype_vuln_scan:
           context: dockerhub
           requires:
             - push_rc_image
-          image-name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           filters: *filter_rc_tags
 
   prod_image_workflow:
@@ -632,12 +653,11 @@ workflows:
             - functional_tests_38_grype
             - integration_tests_38
             - test_container_rebuild
-      - grype/list-image-vulns:
+      - grype_vuln_scan:
           name: grype_list_image_vulns
           context: dockerhub
           requires:
             - push_dev_image
-          image-name: anchore/anchore-engine-dev:${CIRCLE_TAG}
           filters: *filter_rebuild_tags
       - hold_for_approval:
           type: approval
