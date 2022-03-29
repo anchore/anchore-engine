@@ -160,14 +160,9 @@ setup-and-test-cli: setup-test-infra venv ## Set up and run end to end tests
 	@$(MAKE) test-cli
 	@$(MAKE) cluster-down
 
-.PHONY: test-container-dev
-test-container-dev: setup-test-infra venv ## CI ONLY Run container-structure-tests on locally built image
+.PHONY: test-container
+test-container: setup-test-infra venv ## CI ONLY Run container-structure-tests on locally built image
 	@$(ACTIVATE_VENV) && $(CI_CMD) test-container $(CIRCLE_PROJECT_REPONAME) dev $(CONTAINER_TEST_CONFIG)
-
-.PHONY: test-container-prod
-test-container-prod: setup-test-infra venv ## CI ONLY Run container-structure-tests on :latest prod image
-	@$(ACTIVATE_VENV) && $(CI_CMD) test-container $(CIRCLE_PROJECT_REPONAME) prod $(CONTAINER_TEST_CONFIG)
-
 
 # Release targets
 #######################
