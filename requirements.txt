@@ -33,6 +33,8 @@ zope.interface==4.7.2
 ijson==2.5.1
 cryptography==3.3.2
 cpe==1.2.1
+itsdangerous==2.0.1
+Jinja2==3.0.3
 #Optional and third-party/integration dependencies
 python-keystoneclient==3.22.0
 pg8000==1.10.6
