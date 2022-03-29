@@ -5,7 +5,6 @@ connexion==2.5.1
 Flask==1.1.1
 jsonschema==3.1.1
 passlib==1.7.4
-pathlib==1.0.1
 prettytable==0.7.2
 prometheus-client==0.7.1
 prometheus-flask-exporter==0.12.1
