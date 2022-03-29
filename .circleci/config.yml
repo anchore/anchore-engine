@@ -211,7 +211,7 @@ jobs:
         default: "-grype"
 
     machine:
-      image: ubuntu-1604:202007-01
+      image: ubuntu-2004:202201-02
     environment:
       <<: *global_environment_vars
       ANCHORE_TEST_DOCKER_REGISTRY_USER: anchore
