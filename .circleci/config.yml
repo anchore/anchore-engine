@@ -62,7 +62,7 @@
 # Start circleci configuration
 version: 2.1
 orbs:
-  anchore: anchore/anchore-engine@1
+  grype: anchore/grype@0.2.0
   slack: circleci/slack@4.5
 
 commands:
@@ -353,6 +353,29 @@ jobs:
           name: Run container-structure-tests
           command: make test-container
 
+  grype_vuln_scan:
+    description: "Uses grype orb for vuln scans"
+    parameters:
+      image_name:
+        type: string
+        default: "docker:anchore-engine:dev"
+    docker:
+      - image: cimg/python:3.8.4
+    steps:
+      - setup_remote_docker
+      - checkout
+      - <<: *attach_workspace
+      - <<: *load_docker_image
+      - run:
+          name: Login to Registry
+          command: "echo ${DOCKER_PASS} | docker login --username ${DOCKER_USER} --password-stdin"
+      - grype/scan-image:
+          image-name: << parameters.image_name >>
+          output-format: "table"
+      - run:
+          name: List Grype Vulns
+          command: "cat grype-vulns.output"
+
 workflows:
   default_workflow:
     jobs:
@@ -405,13 +428,10 @@ workflows:
             - functional_tests_38_legacy
             - integration_tests_38
             - test_container_dev
-      - anchore/image_scan:
+      - grype_vuln_scan:
           context: dockerhub
           requires:
             - push_dev_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
-          private_registry: true
-          timeout: "2000"
 
   nightly_build:
     triggers:
@@ -479,14 +499,12 @@ workflows:
             - integration_tests_38
             - cli_smoke_tests_38
             - test_container_nightly
-      - anchore/image_scan:
+      - grype_vuln_scan:
           context: dockerhub
-          filters: *filter_nightly
           requires:
             - push_nightly_image
           image_name: anchore/anchore-engine-dev:nightly
-          private_registry: true
-          timeout: "2000"
+          filters: *filter_nightly
 
   rc_image_workflow:
     jobs:
@@ -512,15 +530,11 @@ workflows:
           requires:
             - rc_cli_smoke_tests_38
             - test_container_rc
-      - anchore/image_scan:
+      - grype_vuln_scan:
           context: dockerhub
-          filters: *filter_rc_tags
           requires:
             - push_rc_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_TAG}
-          private_registry: true
-          timeout: "2000"
-          policy_failure: true
+          filters: *filter_rc_tags
 
   prod_image_workflow:
     jobs:
@@ -622,20 +636,17 @@ workflows:
             - functional_tests_38_grype
             - integration_tests_38
             - test_container_rebuild
-      - anchore/image_scan:
-          name: anchore_image_scan
+      - grype_vuln_scan:
+          name: grype_list_image_vulns
           context: dockerhub
           requires:
             - push_dev_image
-          image_name: anchore/anchore-engine-dev:${CIRCLE_SHA1}
-          private_registry: true
-          timeout: "2000"
-          policy_failure: true
+          filters: *filter_rebuild_tags
       - hold_for_approval:
           type: approval
           filters: *filter_rebuild_tags
           requires:
-            - anchore_image_scan
+            - grype_list_image_vulns
       - push_image:
           name: push_rebuild_image
           make_job: push-rebuild
