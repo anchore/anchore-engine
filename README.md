@@ -1,14 +1,15 @@
+**For the most up-to-date SBoM and Container scanning tools, see our newer projects that are more CI/CD and developer-focused:**
+
+- **[Syft](https://github.com/anchore/syft)**: a CLI tool and library for **generating a Software Bill of Materials** (SBOM) from container images and filesystems
+
+- **[Grype](https://github.com/anchore/grype)**: a **vulnerability scanner** for container images and filesystems
+
+
 # Anchore Engine [![CircleCI](https://circleci.com/gh/anchore/anchore-engine/tree/master.svg?style=svg)](https://circleci.com/gh/anchore/anchore-engine/tree/master)
 
 For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://engine.anchore.io).
 
 The Anchore Engine is an open-source project that provides a centralized service for inspection, analysis, and certification of container images. The Anchore Engine is provided as a Docker container image that can be run standalone or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
-
-In addition, we also have several modular container tools that can be run standalone or integrated into automated workflows such as CI/CD pipelines.
-
-- **[Syft](https://github.com/anchore/syft)**: a CLI tool and library for **generating a Software Bill of Materials** (SBOM) from container images and filesystems
-
-- **[Grype](https://github.com/anchore/grype)**: a **vulnerability scanner** for container images and filesystems
 
 The Anchore Engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
 
