@@ -1,4 +1,4 @@
-**For the most up-to-date SBoM and Container scanning tools, see our newer projects that are more CI/CD and developer-focused:**
+**For the latest SBoM and Container scanning tools, see our newer projects that are more CI/CD and developer-focused:**
 
 - **[Syft](https://github.com/anchore/syft)**: a CLI tool and library for **generating a Software Bill of Materials** (SBOM) from container images and filesystems
 
