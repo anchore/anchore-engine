@@ -1,26 +1,25 @@
 # Anchore Engine [![CircleCI](https://circleci.com/gh/anchore/anchore-engine/tree/master.svg?style=svg)](https://circleci.com/gh/anchore/anchore-engine/tree/master)
 
+**Latest News**
+Anchore Engine is now version 1.0 and considered feature complete. There are no plans for any new feature development because Anchore's open source development efforts are now focused on [Syft](https://github.com/anchore/syft) and [Grype](https://github.com/anchore/grype).
+
+The vulnerability feed that provides data to v0.9 and earlier will be deactivated on June 30th 2022. Please ensure you have upgraded to 1.0 with the [Grype-based provider](https://engine.anchore.io/docs/grype/) enabled before this date to ensure you continue to receive updated vulnerability data.
+
+For users interested in a supported commercial solution, [schedule a demo](https://get.anchore.com/demo-request/) to see Anchore Enterprise’s broad set of enterprise capabilities including SBOM management, security scanning, and reporting.
+
+For more information, please see this [blog post](https://anchore.com/blog/announcing-anchore-engine-1-0/) for details.
+
+**About**
+
+Anchore Engine is an open-source project that provides a centralized service for inspection, analysis, and certification of container images. Anchore Engine is provided as a Docker container image that can be run standalone or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
+
+With a deployment of Anchore Engine running in your environment, container images are downloaded and analyzed from Docker V2 compatible container registries and then evaluated against a vulnerability database.
+
 For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://engine.anchore.io).
 
-The Anchore Engine is an open-source project that provides a centralized service for inspection, analysis, and certification of container images. The Anchore Engine is provided as a Docker container image that can be run standalone or within an orchestration platform such as Kubernetes, Docker Swarm, Rancher, Amazon ECS, and other container orchestration platforms.
+Anchore Engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
 
-In addition, we also have several modular container tools that can be run standalone or integrated into automated workflows such as CI/CD pipelines.
-
-- **[Syft](https://github.com/anchore/syft)**: a CLI tool and library for **generating a Software Bill of Materials** (SBOM) from container images and filesystems
-
-- **[Grype](https://github.com/anchore/grype)**: a **vulnerability scanner** for container images and filesystems
-
-The Anchore Engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
-
-With a deployment of Anchore Engine running in your environment, container images are downloaded and analyzed from Docker V2 compatible container registries and then evaluated against user-customizable policies to perform security, compliance, and best practices enforcement checks.
-
-Anchore Engine can be used in several ways:
-
-- Standalone or interactively.
-- As a service integrated with your CI/CD to bring security/compliance/best-practice enforcement to your build pipeline
-- As a component integrated into existing container monitoring and control frameworks via integration with its RESTful API.
-
-Anchore Engine is also the OSS foundation for [Anchore Enterprise](https://anchore.com/enterprise), which adds a graphical UI (providing policy management, user management, a summary dashboard, security and policy evaluation reports, and many other graphical client controls), and other back-end features and modules.
+Anchore Engine is the foundation for [Anchore Enterprise](https://anchore.com/enterprise), an SBOM-powered platform for software supply chain security which includes support for source code, container images, secret scanning, malware detection, and more.
 
 **Supported Operating Systems**
 
