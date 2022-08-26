@@ -6,6 +6,11 @@
 # syntax dereferences it.
 #
 # Define YAML anchors
+parameters:
+  force_trigger_nightly_build:
+    type: boolean
+    default: false
+
 .global_environment_vars: &global_environment_vars
   PROD_IMAGE_REPO: anchore/anchore-engine
   LATEST_RELEASE_MAJOR_VERSION: 1.1.0
@@ -378,6 +383,9 @@ jobs:
 
 workflows:
   default_workflow:
+    when:
+      not:
+        equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - unit_tests:
           name: unit_tests_38
@@ -434,13 +442,13 @@ workflows:
             - push_dev_image
 
   nightly_build:
-    triggers:
-      - schedule:
-          cron: "0 5 * * *"
-          filters:
-            branches:
-              only:
-                - master
+    when:
+      or:
+        - and:
+            - equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
+            - equal: [ "nightly_build", << pipeline.schedule.name >> ]
+        - << pipeline.parameters.force_trigger_nightly_build >>
+
     jobs:
       - unit_tests:
           name: unit_tests_38
@@ -507,6 +515,9 @@ workflows:
           filters: *filter_nightly
 
   rc_image_workflow:
+    when:
+      not:
+        equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - build:
           filters: *filter_rc_tags
@@ -537,6 +548,9 @@ workflows:
           filters: *filter_rc_tags
 
   prod_image_workflow:
+    when:
+      not:
+        equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - cli_smoke_tests:
           name: prod_cli_smoke_tests_38
@@ -578,6 +592,9 @@ workflows:
             - push_prod_image
 
   rebuild_image_workflow:
+    when:
+      not:
+        equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - unit_tests:
           name: unit_tests_38
