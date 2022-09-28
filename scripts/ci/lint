@@ -5,7 +5,7 @@ set -euvo pipefail
 # Optional - only used for print_colorized
 source anchore-ci/utils
 
-hash pylint || python -m pip install -q pylint
+hash pylint || python -m pip install -q pylint==v2.10.2
 
 print_colorized INFO "Linting Anchore Engine code."; echo
 
