@@ -829,8 +829,8 @@ pkgs_allinfo = {
     "findutils": {
         "arch": "x86_64",
         "cpes": [
-            "cpe:2.3:a:findutils:findutils:1\\:4g.6.0-20.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:centos:findutils:1\\:4g.6.0-20.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:findutils:findutils:1\\:4.6.0-20.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:centos:findutils:1\\:4.6.0-20.el8:*:*:*:*:*:*:*",
         ],
         "license": "GPLv3+",
         "origin": "CentOS",
@@ -2233,14 +2233,14 @@ pkgs_allinfo = {
     "openssl-libs": {
         "arch": "x86_64",
         "cpes": [
-            "cpe:2.3:a:openssl-libs:openssl-libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:openssl_libs:openssl-libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:openssl-libs:openssl_libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:openssl_libs:openssl_libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:openssl:openssl-libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:openssl:openssl_libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:centos:openssl-libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
-            "cpe:2.3:a:centos:openssl_libs:1\\:1@g.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:openssl-libs:openssl-libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:openssl_libs:openssl-libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:openssl-libs:openssl_libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:openssl_libs:openssl_libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:openssl:openssl-libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:openssl:openssl_libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:centos:openssl-libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
+            "cpe:2.3:a:centos:openssl_libs:1\\:1.1.1c-15.el8:*:*:*:*:*:*:*",
         ],
         "license": "OpenSSL",
         "origin": "CentOS",
