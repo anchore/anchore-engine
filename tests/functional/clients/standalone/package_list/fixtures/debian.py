@@ -231,7 +231,9 @@ pkgs_allinfo = {
     },
     "findutils": {
         "arch": "amd64",
-        "cpes": ["cpe:2.3:a:findutils:findutils:4.6.0\\+git\\+20161106-2:*:*:*:*:*:*:*"],
+        "cpes": [
+            "cpe:2.3:a:findutils:findutils:4.6.0\\+git\\+20161106-2:*:*:*:*:*:*:*"
+        ],
         "license": "GFDL-1.3 GPL-3",
         "origin": "Andreas Metzler <ametzler@debian.org> (maintainer)",
         "release": "N/A",
@@ -743,7 +745,9 @@ pkgs_allinfo = {
     },
     "libsmartcols1": {
         "arch": "amd64",
-        "cpes": ["cpe:2.3:a:libsmartcols1:libsmartcols1:2.29.2-1\\+deb9u1:*:*:*:*:*:*:*"],
+        "cpes": [
+            "cpe:2.3:a:libsmartcols1:libsmartcols1:2.29.2-1\\+deb9u1:*:*:*:*:*:*:*"
+        ],
         "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
         "origin": "Debian util-linux Maintainers <ah-util-linux@debian.org> (maintainer)",
         "release": "N/A",
@@ -765,7 +769,9 @@ pkgs_allinfo = {
     },
     "libstdc++6": {
         "arch": "amd64",
-        "cpes": ["cpe:2.3:a:libstdc\\+\\+6:libstdc\\+\\+6:6.3.0-18\\+deb9u1:*:*:*:*:*:*:*"],
+        "cpes": [
+            "cpe:2.3:a:libstdc\\+\\+6:libstdc\\+\\+6:6.3.0-18\\+deb9u1:*:*:*:*:*:*:*"
+        ],
         "license": "Artistic GFDL-1.2 GPL GPL-2 GPL-3",
         "origin": "Debian GCC Maintainers <debian-gcc@lists.debian.org> (maintainer)",
         "release": "N/A",
@@ -787,7 +793,9 @@ pkgs_allinfo = {
     },
     "libtinfo5": {
         "arch": "amd64",
-        "cpes": ["cpe:2.3:a:libtinfo5:libtinfo5:6.0\\+20161126-1\\+deb9u2:*:*:*:*:*:*:*"],
+        "cpes": [
+            "cpe:2.3:a:libtinfo5:libtinfo5:6.0\\+20161126-1\\+deb9u2:*:*:*:*:*:*:*"
+        ],
         "license": "Unknown",
         "origin": "Craig Small <csmall@debian.org> (maintainer)",
         "release": "N/A",
