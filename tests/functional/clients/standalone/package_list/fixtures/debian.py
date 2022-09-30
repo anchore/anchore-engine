@@ -92,7 +92,7 @@ pkgs_allinfo = {
     },
     "bsdutils": {
         "arch": "amd64",
-        "cpes": ["cpe:2.3:a:bsdutils:bsdutils:1:2.29.2-1\\+deb9u1:*:*:*:*:*:*:*"],
+        "cpes": ["cpe:2.3:a:bsdutils:bsdutils:1\\:2.29.2-1\\+deb9u1:*:*:*:*:*:*:*"],
         "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
         "origin": "Debian util-linux Maintainers <ah-util-linux@debian.org> (maintainer)",
         "release": "N/A",
@@ -510,7 +510,7 @@ pkgs_allinfo = {
     },
     "libfdisk1": {
         "arch": "amd64",
-        "cpes": ["cpe:2.3:a:libfdisk1:libfdisk1:2.29.2-1+deb9u1:*:*:*:*:*:*:*"],
+        "cpes": ["cpe:2.3:a:libfdisk1:libfdisk1:2.29.2-1\\+deb9u1:*:*:*:*:*:*:*"],
         "license": "BSD-2-clause BSD-3-clause BSD-4-clause GPL-2 GPL-2+ GPL-3 GPL-3+ LGPL LGPL-2 LGPL-2+ LGPL-2.1 LGPL-2.1+ LGPL-3 LGPL-3+ MIT public-domain",
         "origin": "Debian util-linux Maintainers <ah-util-linux@debian.org> (maintainer)",
         "release": "N/A",
