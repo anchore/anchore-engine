@@ -415,12 +415,6 @@ workflows:
           requires:
             - build
       - functional_tests:
-          name: functional_tests_38_legacy
-          tox_env: "py38"
-          vulnerabilities_provider: "legacy"
-          requires:
-            - build
-      - functional_tests:
           name: functional_tests_38_grype
           vulnerabilities_provider: "grype"
           tox_env: "py38"
