@@ -12,7 +12,7 @@ ENV LANG=en_US.UTF-8
 ENV LC_ALL=C.UTF-8
 
 # environment variables for dependent binary versions
-ENV SYFT_VERSION=v0.33.0
+ENV SYFT_VERSION=v0.65.0
 ENV GRYPE_VERSION=v0.27.3
 ENV PIP_VERSION=21.0.1
 
