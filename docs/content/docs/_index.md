@@ -4,7 +4,7 @@ linkTitle: "Anchore Engine Documentation"
 weight: 10
 ---
 
-### Welcome to Anchore Engine
+NOTE: As of 2023, Anchore Engine is no longer maintained as an active project. Users are recommended to install Syft or Grype.
 
 Anchore Engine is a system to help automate the description and enforcement of requirements on the content of docker containers.
 
