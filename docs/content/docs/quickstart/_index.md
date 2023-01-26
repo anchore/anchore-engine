@@ -4,6 +4,10 @@ linkTitle: "Quickstart"
 weight: 1
 ---
 
+## Important note on project status
+
+As of 2023, Anchore Engine is no longer maintained as an active project. Users are recommended to install Syft or Grype.
+
 ## Introduction
 
 In this section, you'll learn how to get up and running with a stand-alone Anchore Engine installation for trial, demonstration and review with [Docker Compose](https://docs.docker.com/compose/install/).
