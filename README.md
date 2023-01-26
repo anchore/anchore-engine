@@ -2,7 +2,7 @@
 
 **IMPORTANT NOTE**
 
-As of 2023, Anchore Engine is no longer maintained by Anchore. There will be no future versions released. Users are advised to use [Syft](https://github.com/anchore/syft) and [Grype](https://github.com/anchore/grype).
+As of 2023, Anchore Engine is no longer maintained. There will be no future versions released. Users are advised to use [Syft](https://github.com/anchore/syft) and [Grype](https://github.com/anchore/grype).
 
 For users interested in a supported commercial solution for container scanning and complaiance, [schedule a demo](https://get.anchore.com/demo-request/) to see Anchore Enterprise’s broad set of enterprise capabilities including SBOM management, vulnerability management, and compliance management.
 
