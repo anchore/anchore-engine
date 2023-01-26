@@ -1,13 +1,10 @@
 # Anchore Engine [![CircleCI](https://circleci.com/gh/anchore/anchore-engine/tree/master.svg?style=svg)](https://circleci.com/gh/anchore/anchore-engine/tree/master)
 
-**Latest News**
-Anchore Engine is now version 1.0 and considered feature complete. There are no plans for any new feature development because Anchore's open source development efforts are now focused on [Syft](https://github.com/anchore/syft) and [Grype](https://github.com/anchore/grype).
+**IMPORTANT NOTE**
 
-The vulnerability feed that provides data to v0.9 and earlier will be deactivated on June 30th 2022. Please ensure you have upgraded to 1.0 with the [Grype-based provider](https://engine.anchore.io/docs/grype/) enabled before this date to ensure you continue to receive updated vulnerability data.
+As of 2023, Anchore Engine is no longer maintained by Anchore. There will be no future versions released. Users are advised to use [Syft](https://github.com/anchore/syft) and [Grype](https://github.com/anchore/grype).
 
-For users interested in a supported commercial solution, [schedule a demo](https://get.anchore.com/demo-request/) to see Anchore Enterprise’s broad set of enterprise capabilities including SBOM management, security scanning, and reporting.
-
-For more information, please see this [blog post](https://anchore.com/blog/announcing-anchore-engine-1-0/) for details.
+For users interested in a supported commercial solution for container scanning and complaiance, [schedule a demo](https://get.anchore.com/demo-request/) to see Anchore Enterprise’s broad set of enterprise capabilities including SBOM management, vulnerability management, and compliance management.
 
 **About**
 
@@ -15,11 +12,9 @@ Anchore Engine is an open-source project that provides a centralized service for
 
 With a deployment of Anchore Engine running in your environment, container images are downloaded and analyzed from Docker V2 compatible container registries and then evaluated against a vulnerability database.
 
-For the most up-to-date information on Anchore Engine, Anchore CLI, and other Anchore software, please refer to the [Anchore Documentation](https://engine.anchore.io).
+Historical documentation is available at [Anchore Documentation](https://engine.anchore.io).
 
 Anchore Engine can be accessed directly through a RESTful API or via the Anchore [CLI](https://github.com/anchore/anchore-cli).
-
-Anchore Engine is the foundation for [Anchore Enterprise](https://anchore.com/enterprise), an SBOM-powered platform for software supply chain security which includes support for source code, container images, secret scanning, malware detection, and more.
 
 **Supported Operating Systems**
 
