@@ -415,12 +415,6 @@ workflows:
           requires:
             - build
       - functional_tests:
-          name: functional_tests_38_legacy
-          tox_env: "py38"
-          vulnerabilities_provider: "legacy"
-          requires:
-            - build
-      - functional_tests:
           name: functional_tests_38_grype
           vulnerabilities_provider: "grype"
           tox_env: "py38"
@@ -433,7 +427,6 @@ workflows:
           filters: *filter_release_branch
           requires:
             - functional_tests_38_grype
-            - functional_tests_38_legacy
             - integration_tests_38
             - test_container_dev
       - grype_vuln_scan:
@@ -476,13 +469,6 @@ workflows:
           requires:
             - build
       - functional_tests:
-          name: functional_tests_38_legacy
-          vulnerabilities_provider: "legacy"
-          tox_env: "py38"
-          filters: *filter_nightly
-          requires:
-            - build
-      - functional_tests:
           name: functional_tests_38_grype
           vulnerabilities_provider: "grype"
           tox_env: "py38"
@@ -502,7 +488,6 @@ workflows:
           context: dockerhub
           filters: *filter_nightly
           requires:
-            - functional_tests_38_legacy
             - functional_tests_38_grype
             - integration_tests_38
             - cli_smoke_tests_38
