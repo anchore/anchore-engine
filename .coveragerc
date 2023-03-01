@@ -1,0 +1,6 @@
+[report]
+omit = */tests/*
+precision = 2
+
+[run]
+branch = true
