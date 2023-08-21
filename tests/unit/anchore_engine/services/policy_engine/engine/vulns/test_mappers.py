@@ -24,6 +24,7 @@ from anchore_engine.services.policy_engine.engine.vulns.mappers import (
         pytest.param("sles", "sles", "sles", id="sles"),
         pytest.param("windows", "windows", "", id="windows"),
         pytest.param("rocky", "rockylinux", "fedora", id="rocky"),
+        pytest.param("almalinux", "almalinux", "fedora", id="almalinux"),
     ],
 )
 def test_engine_distro_mappers(test_distro, expected_os, expected_like_os):
