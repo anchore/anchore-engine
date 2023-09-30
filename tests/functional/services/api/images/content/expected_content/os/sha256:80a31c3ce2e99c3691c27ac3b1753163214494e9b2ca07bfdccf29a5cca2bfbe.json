@@ -1,0 +1,265 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:alpine-baselayout:alpine-baselayout:3.2.0-r7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine-baselayout:alpine_baselayout:3.2.0-r7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine:alpine-baselayout:3.2.0-r7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine:alpine_baselayout:3.2.0-r7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine_baselayout:alpine-baselayout:3.2.0-r7:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine_baselayout:alpine_baselayout:3.2.0-r7:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2.0-only",
+      "licenses": [
+        "GPL-2.0-only"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "alpine-baselayout",
+      "size": "409600",
+      "sourcepkg": "alpine-baselayout",
+      "type": "APKG",
+      "version": "3.2.0-r7"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:alpine-keys:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine-keys:alpine_keys:2.2-r0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine:alpine_keys:2.2-r0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine_keys:alpine-keys:2.2-r0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:alpine_keys:alpine_keys:2.2-r0:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "alpine-keys",
+      "size": "106496",
+      "sourcepkg": "alpine-keys",
+      "type": "APKG",
+      "version": "2.2-r0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:apk-tools:apk-tools:2.10.5-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:apk-tools:apk_tools:2.10.5-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:apk:apk-tools:2.10.5-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:apk:apk_tools:2.10.5-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:apk_tools:apk-tools:2.10.5-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:apk_tools:apk_tools:2.10.5-r1:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2.0-only",
+      "licenses": [
+        "GPL-2.0-only"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "apk-tools",
+      "size": "262144",
+      "sourcepkg": "apk-tools",
+      "type": "APKG",
+      "version": "2.10.5-r1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:busybox:busybox:1.31.1-r19:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2.0-only",
+      "licenses": [
+        "GPL-2.0-only"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "busybox",
+      "size": "962560",
+      "sourcepkg": "busybox",
+      "type": "APKG",
+      "version": "1.31.1-r19"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ca-certificates-bundle:ca-certificates-bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates-bundle:ca_certificates_bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates:ca-certificates-bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca-certificates:ca_certificates_bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca-certificates-bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca:ca_certificates_bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca-certificates-bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates:ca_certificates_bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates_bundle:ca-certificates-bundle:20191127-r4:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ca_certificates_bundle:ca_certificates_bundle:20191127-r4:*:*:*:*:*:*:*"
+      ],
+      "license": "MPL-2.0 GPL-2.0-or-later",
+      "licenses": [
+        "GPL-2.0-or-later",
+        "MPL-2.0"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "ca-certificates-bundle",
+      "size": "233472",
+      "sourcepkg": "ca-certificates",
+      "type": "APKG",
+      "version": "20191127-r4"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libc-utils:libc-utils:0.7.2-r3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc-utils:libc_utils:0.7.2-r3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc:libc-utils:0.7.2-r3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc:libc_utils:0.7.2-r3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc_utils:libc-utils:0.7.2-r3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libc_utils:libc_utils:0.7.2-r3:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD-2-Clause AND BSD-3-Clause",
+      "licenses": [
+        "AND",
+        "BSD-2-Clause",
+        "BSD-3-Clause"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "libc-utils",
+      "size": "4096",
+      "sourcepkg": "libc-dev",
+      "type": "APKG",
+      "version": "0.7.2-r3"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libcrypto1.1:libcrypto1.1:1.1.1k-r0:*:*:*:*:*:*:*"
+      ],
+      "license": "OpenSSL",
+      "licenses": [
+        "OpenSSL"
+      ],
+      "origin": "Timo Teras <timo.teras@iki.fi>",
+      "package": "libcrypto1.1",
+      "size": "2764800",
+      "sourcepkg": "openssl",
+      "type": "APKG",
+      "version": "1.1.1k-r0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libssl1.1:libssl1.1:1.1.1k-r0:*:*:*:*:*:*:*"
+      ],
+      "license": "OpenSSL",
+      "licenses": [
+        "OpenSSL"
+      ],
+      "origin": "Timo Teras <timo.teras@iki.fi>",
+      "package": "libssl1.1",
+      "size": "540672",
+      "sourcepkg": "openssl",
+      "type": "APKG",
+      "version": "1.1.1k-r0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:libtls-standalone:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtls-standalone:libtls_standalone:2.9.1-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtls:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtls:libtls_standalone:2.9.1-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtls_standalone:libtls-standalone:2.9.1-r1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:libtls_standalone:libtls_standalone:2.9.1-r1:*:*:*:*:*:*:*"
+      ],
+      "license": "ISC",
+      "licenses": [
+        "ISC"
+      ],
+      "origin": "N/A",
+      "package": "libtls-standalone",
+      "size": "110592",
+      "sourcepkg": "libtls-standalone",
+      "type": "APKG",
+      "version": "2.9.1-r1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:musl:musl:1.1.24-r10:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "origin": "Timo Ter\u00e4s <timo.teras@iki.fi>",
+      "package": "musl",
+      "size": "614400",
+      "sourcepkg": "musl",
+      "type": "APKG",
+      "version": "1.1.24-r10"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:musl-utils:musl-utils:1.1.24-r10:*:*:*:*:*:*:*",
+        "cpe:2.3:a:musl-utils:musl_utils:1.1.24-r10:*:*:*:*:*:*:*",
+        "cpe:2.3:a:musl:musl-utils:1.1.24-r10:*:*:*:*:*:*:*",
+        "cpe:2.3:a:musl:musl_utils:1.1.24-r10:*:*:*:*:*:*:*",
+        "cpe:2.3:a:musl_utils:musl-utils:1.1.24-r10:*:*:*:*:*:*:*",
+        "cpe:2.3:a:musl_utils:musl_utils:1.1.24-r10:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT BSD GPL2+",
+      "licenses": [
+        "BSD",
+        "GPL2+",
+        "MIT"
+      ],
+      "origin": "Timo Ter\u00e4s <timo.teras@iki.fi>",
+      "package": "musl-utils",
+      "size": "151552",
+      "sourcepkg": "musl",
+      "type": "APKG",
+      "version": "1.1.24-r10"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:scanelf:scanelf:1.2.6-r0:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2.0-only",
+      "licenses": [
+        "GPL-2.0-only"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "scanelf",
+      "size": "94208",
+      "sourcepkg": "pax-utils",
+      "type": "APKG",
+      "version": "1.2.6-r0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:ssl-client:ssl-client:1.31.1-r19:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ssl-client:ssl_client:1.31.1-r19:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ssl:ssl-client:1.31.1-r19:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ssl:ssl_client:1.31.1-r19:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ssl_client:ssl-client:1.31.1-r19:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ssl_client:ssl_client:1.31.1-r19:*:*:*:*:*:*:*"
+      ],
+      "license": "GPL-2.0-only",
+      "licenses": [
+        "GPL-2.0-only"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "ssl_client",
+      "size": "28672",
+      "sourcepkg": "busybox",
+      "type": "APKG",
+      "version": "1.31.1-r19"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:zlib:zlib:1.2.11-r3:*:*:*:*:*:*:*"
+      ],
+      "license": "Zlib",
+      "licenses": [
+        "Zlib"
+      ],
+      "origin": "Natanael Copa <ncopa@alpinelinux.org>",
+      "package": "zlib",
+      "size": "110592",
+      "sourcepkg": "zlib",
+      "type": "APKG",
+      "version": "1.2.11-r3"
+    }
+  ],
+  "content_type": "os",
+  "imageDigest": "sha256:80a31c3ce2e99c3691c27ac3b1753163214494e9b2ca07bfdccf29a5cca2bfbe"
+}

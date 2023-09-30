@@ -1,0 +1,307 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:animal-sniffer-annotations:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal-sniffer-annotations:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal-sniffer:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal-sniffer:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer_annotations:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer_annotations:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:codehaus:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:codehaus:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mojo:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mojo:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/my-app-1.jar:animal-sniffer-annotations",
+      "maven-version": "1.14",
+      "metadata": {
+        "pom.properties": "\ngroupId=org.codehaus.mojo\nartifactId=animal-sniffer-annotations\nversion=1.14\n"
+      },
+      "origin": "org.codehaus.mojo",
+      "package": "animal-sniffer-annotations",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1.14"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:animal-sniffer-annotations:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal-sniffer-annotations:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal-sniffer:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal-sniffer:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer_annotations:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:animal_sniffer_annotations:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:codehaus:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:codehaus:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mojo:animal-sniffer-annotations:1.14:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mojo:animal_sniffer_annotations:1.14:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/original-my-app-1.jar:animal-sniffer-annotations",
+      "maven-version": "1.14",
+      "metadata": {
+        "pom.properties": "\ngroupId=org.codehaus.mojo\nartifactId=animal-sniffer-annotations\nversion=1.14\n"
+      },
+      "origin": "org.codehaus.mojo",
+      "package": "animal-sniffer-annotations",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1.14"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:error-prone-annotations:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error-prone-annotations:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error-prone:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error-prone:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone_annotations:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone_annotations:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:errorprone:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:errorprone:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:error_prone_annotations:2.0.18:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/my-app-1.jar:error_prone_annotations",
+      "maven-version": "2.0.18",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.google.errorprone\nartifactId=error_prone_annotations\nversion=2.0.18\n"
+      },
+      "origin": "com.google.errorprone",
+      "package": "error_prone_annotations",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "2.0.18"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:error-prone-annotations:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error-prone-annotations:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error-prone:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error-prone:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone_annotations:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:error_prone_annotations:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:errorprone:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:errorprone:error_prone_annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:error-prone-annotations:2.0.18:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:error_prone_annotations:2.0.18:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/original-my-app-1.jar:error_prone_annotations",
+      "maven-version": "2.0.18",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.google.errorprone\nartifactId=error_prone_annotations\nversion=2.0.18\n"
+      },
+      "origin": "com.google.errorprone",
+      "package": "error_prone_annotations",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "2.0.18"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:google:guava:23.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:guava:guava:23.0:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/my-app-1.jar:guava",
+      "maven-version": "23.0",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.google.guava\nartifactId=guava\nversion=23.0\n"
+      },
+      "origin": "com.google.guava",
+      "package": "guava",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "23.0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:google:guava:23.0:*:*:*:*:*:*:*",
+        "cpe:2.3:a:guava:guava:23.0:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/original-my-app-1.jar:guava",
+      "maven-version": "23.0",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.google.guava\nartifactId=guava\nversion=23.0\n"
+      },
+      "origin": "com.google.guava",
+      "package": "guava",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "23.0"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:google:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc-annotations:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc-annotations:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc-annotations:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc_annotations:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc_annotations:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc_annotations:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:oss:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:oss:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:oss:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sonatype:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sonatype:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sonatype:j2objc_annotations:1.1:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/my-app-1.jar:j2objc-annotations",
+      "maven-version": "1.1",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.google.j2objc\nartifactId=j2objc-annotations\nversion=1.1\n"
+      },
+      "origin": "com.google.j2objc",
+      "package": "j2objc-annotations",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:google:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:google:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc-annotations:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc-annotations:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc-annotations:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc_annotations:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc_annotations:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:j2objc_annotations:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:oss:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:oss:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:oss:j2objc_annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sonatype:j2objc-annotations:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sonatype:j2objc:1.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:sonatype:j2objc_annotations:1.1:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/original-my-app-1.jar:j2objc-annotations",
+      "maven-version": "1.1",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.google.j2objc\nartifactId=j2objc-annotations\nversion=1.1\n"
+      },
+      "origin": "com.google.j2objc",
+      "package": "j2objc-annotations",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:app:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:app:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:app:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my-app:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my-app:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my-app:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my_app:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my_app:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my_app:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mycompany:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mycompany:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mycompany:my_app:1:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/my-app-1.jar",
+      "maven-version": "1",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.mycompany.app\nartifactId=my-app\nversion=1\n"
+      },
+      "origin": "com.mycompany.app",
+      "package": "my-app",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:app:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:app:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:app:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my-app:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my-app:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my-app:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my_app:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my_app:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:my_app:my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mycompany:app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mycompany:my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:mycompany:my_app:1:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/original-my-app-1.jar:my-app",
+      "maven-version": "1",
+      "metadata": {
+        "pom.properties": "\ngroupId=com.mycompany.app\nartifactId=my-app\nversion=1\n"
+      },
+      "origin": "com.mycompany.app",
+      "package": "my-app",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:original-my-app:original-my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original-my-app:original_my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original-my:original-my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original-my:original_my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original:original-my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original:original_my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original_my:original-my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original_my:original_my_app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original_my_app:original-my-app:1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:original_my_app:original_my_app:1:*:*:*:*:*:*:*"
+      ],
+      "implementation-version": "N/A",
+      "location": "/sandbox/target/original-my-app-1.jar",
+      "maven-version": "N/A",
+      "metadata": {
+        "pom.properties": "\ngroupId=None\nartifactId=None\nversion=None\n"
+      },
+      "origin": "N/A",
+      "package": "original-my-app",
+      "specification-version": "N/A",
+      "type": "JAVA-JAR",
+      "version": "1"
+    }
+  ],
+  "content_type": "java",
+  "imageDigest": "sha256:80a31c3ce2e99c3691c27ac3b1753163214494e9b2ca07bfdccf29a5cca2bfbe"
+}

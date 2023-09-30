@@ -1,0 +1,34 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:numpy:numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:numpy:python-numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:numpy:python_numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-numpy:numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-numpy:python-numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python-numpy:python_numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python-numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python:python_numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_numpy:numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_numpy:python-numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:python_numpy:python_numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:travis_e__oliphant_et_al_:numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:travis_e__oliphant_et_al_:python-numpy:1.21.2:*:*:*:*:*:*:*",
+        "cpe:2.3:a:travis_e__oliphant_et_al_:python_numpy:1.21.2:*:*:*:*:*:*:*"
+      ],
+      "license": "BSD",
+      "licenses": [
+        "BSD"
+      ],
+      "location": "/usr/local/lib/python3.8/dist-packages/numpy",
+      "origin": "Travis E. Oliphant et al.",
+      "package": "numpy",
+      "type": "PYTHON",
+      "version": "1.21.2"
+    }
+  ],
+  "content_type": "python",
+  "imageDigest": "sha256:ee7e86bed95c7d2eb2f106f7706d57cdeb1909a20f9f3f17cba361f778df79e4"
+}

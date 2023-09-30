@@ -1,0 +1,46 @@
+{
+  "content": [
+    {
+      "cpes": [
+        "cpe:2.3:a:*:ftpd:0.2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ftpd:ftpd:0.2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby-lang:ftpd:0.2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby:ftpd:0.2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby_lang:ftpd:0.2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:wayne-conrad:ftpd:0.2.1:*:*:*:*:*:*:*",
+        "cpe:2.3:a:wayne_conrad:ftpd:0.2.1:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "location": "/usr/lib/ruby/gems/2.7.0/specifications/ftpd-0.2.1.gemspec",
+      "origin": "Wayne Conrad",
+      "package": "ftpd",
+      "type": "GEM",
+      "version": "0.2.1"
+    },
+    {
+      "cpes": [
+        "cpe:2.3:a:*:memoizer:1.0.3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:barun-singh:memoizer:1.0.3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:barun_singh:memoizer:1.0.3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:memoizer:memoizer:1.0.3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby-lang:memoizer:1.0.3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby:memoizer:1.0.3:*:*:*:*:*:*:*",
+        "cpe:2.3:a:ruby_lang:memoizer:1.0.3:*:*:*:*:*:*:*"
+      ],
+      "license": "MIT",
+      "licenses": [
+        "MIT"
+      ],
+      "location": "/usr/lib/ruby/gems/2.7.0/specifications/memoizer-1.0.3.gemspec",
+      "origin": "Barun Singh",
+      "package": "memoizer",
+      "type": "GEM",
+      "version": "1.0.3"
+    }
+  ],
+  "content_type": "gem",
+  "imageDigest": "sha256:80a31c3ce2e99c3691c27ac3b1753163214494e9b2ca07bfdccf29a5cca2bfbe"
+}
